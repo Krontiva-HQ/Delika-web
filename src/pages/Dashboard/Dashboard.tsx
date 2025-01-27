@@ -21,6 +21,7 @@ import NotificationsModal from '../../components/NotificationsModal';
 import { IoIosArrowDropdown, IoIosCloseCircleOutline } from "react-icons/io";
 import { useNotifications } from '../../context/NotificationContext';
 import { useUserProfile } from '../../hooks/useUserProfile';
+import { IoIosClose } from "react-icons/io";
 
 interface MainDashboardProps {
   children: ReactNode;
@@ -233,22 +234,33 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
             </button>
 
             {/* Search Bar */}
-            <div className={`hidden lg:flex flex-1 max-w-[200px] px-2 py-1 border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-[8px] ml-[10px] ${
-              activeView === 'dashboard' || activeView === 'settings' || activeView === 'reports' 
-                ? 'opacity-0 pointer-events-none' 
-                : ''
-            }`}>
-              <div className="self-stretch flex flex-row items-start justify-start gap-[8px]">
-                <CiSearch className="w-[20px] h-[20px] text-[rgba(32,26,24,0.2)]" />
-                <input
-                  className="[border:none] [outline:none] font-[Inter] text-[14px] bg-[transparent] flex-1 relative text-black text-left"
-                  placeholder="Search"
-                  type="search"
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                />
-              </div>
-            </div>
+            <div className={`hidden lg:flex flex-1 max-w-[200px] px-2 py-1 border-[1px] border-solid 
+              border-[rgba(167,161,158,0.1)] rounded-[8px] ml-[10px] relative ${
+  activeView === 'dashboard' || activeView === 'settings' || activeView === 'reports' 
+    ? 'opacity-0 pointer-events-none' 
+    : ''
+}`}>
+  <div className="flex items-center w-full">
+    <CiSearch className="w-4 h-4 text-[#a7a19e]" />
+    <input
+      type="text"
+      value={searchQuery}
+      onChange={handleSearchChange}
+      placeholder="Search"
+      className="flex-1 ml-2 bg-transparent border-none outline-none text-sm text-[#201a18] placeholder-[#a7a19e]"
+    />
+    {searchQuery && (
+     <button
+     onClick={() => setSearchQuery('')}
+     className="flex items-center justify-center rounded-full bg-transparent p-0 m-0 border-none"
+   >
+     <IoIosCloseCircleOutline className="w-4 h-4 text-[#201a18]" />
+   </button>
+   
+    
+    )}
+  </div>
+</div>
 
             {/* Right Section */}
             <div className="flex flex-1 lg:flex-none flex-row items-center justify-end gap-[8px] mr-[10px]">
