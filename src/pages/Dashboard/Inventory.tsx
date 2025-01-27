@@ -13,6 +13,8 @@ import { useBranches } from '../../hooks/useBranches';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import BranchFilter from '../../components/BranchFilter';
 import { api } from '../../services/api';
+import { optimizeImage } from '../../utils/imageOptimizer';
+import { OptimizedImage } from '../../components/OptimizedImage';
 
 interface MenuItem {
   id: string;
@@ -63,12 +65,10 @@ interface CategoryCard {
 }
 
 const optimizeImageUrl = (url: string) => {
-  // Check if it's a Cloudinary URL
-  if (url.includes('cloudinary.com')) {
-    // Add optimization parameters
-    return url.replace('/upload/', '/upload/w_auto,c_scale,q_auto,f_auto/');
-  }
-  return url;
+  return optimizeImage(url, {
+    quality: 80,
+    format: 'auto'
+  });
 };
 
 // Add InventoryProps interface
@@ -557,11 +557,11 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                 onClick={() => handleItemClick(item)}
               >
                 <div className="relative w-full">
-                  <img
-                    className="w-full h-[180px] object-cover"
+                  <OptimizedImage
+                    src={item.image}
                     alt={item.name}
-                    src={optimizeImageUrl(item.image)}
-                    loading="eager"
+                    className="w-full h-[180px] object-cover"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   />
                   <div className={`absolute top-2 right-2 text-[12px] px-2 py-1 rounded-full font-sans
                     ${(item.quantity ?? 0) > 0 
