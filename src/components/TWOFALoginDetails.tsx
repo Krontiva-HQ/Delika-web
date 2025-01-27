@@ -16,6 +16,7 @@ const TWOFALoginDetails: FunctionComponent<TWOFALoginDetailsType> = ({
   const { email } = useEmail();
   const { verify2FA } = useAuth();
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   // Create refs for each input
   const inputRefs = [
@@ -73,10 +74,12 @@ const TWOFALoginDetails: FunctionComponent<TWOFALoginDetailsType> = ({
       return;
     }
 
+    setIsVerifying(true);
     const success = await verify2FA(otp);
     if (!success) {
       setValidationError('Incorrect OTP code');
     }
+    setIsVerifying(false);
   };
 
   return (
@@ -170,11 +173,13 @@ const TWOFALoginDetails: FunctionComponent<TWOFALoginDetailsType> = ({
               {/* Verify Button */}
               <button
                 onClick={handleVerify}
+                disabled={isVerifying}
                 className="font-sans w-full h-[38px] bg-[#fe5b18] text-white rounded-[28px] 
                           text-[14px] hover:bg-[#e54d0e] 
-                          transition-colors duration-200"
+                          transition-colors duration-200
+                          disabled:bg-[#ffa182] disabled:cursor-not-allowed"
               >
-                Verify
+                {isVerifying ? 'Verifying...' : 'Verify'}
               </button>
 
               {/* Krontiva Footer Logo */}
