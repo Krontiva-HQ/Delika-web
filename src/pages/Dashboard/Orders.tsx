@@ -183,7 +183,11 @@ const Orders: FunctionComponent<{ searchQuery: string }> = ({ searchQuery }) => 
           order.orderNumber.toString().includes(searchQuery)
         : true;
 
-      const matchesTab = activeTab === 'all' ? true : order.orderStatus.toLowerCase() === activeTab;
+      const matchesTab = activeTab === 'all' 
+        ? true 
+        : activeTab === 'readyForPickup' 
+          ? order.orderStatus === 'ReadyForPickup'
+          : order.orderStatus.toLowerCase() === activeTab;
 
       return matchesSearch && matchesTab;
     });

@@ -199,6 +199,24 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
     fetchRecentOrders(branchId);
   };
 
+  const formatCurrency = (value: number) => {
+    if (value >= 1000000) {
+      return `GH₵${(value / 1000000).toFixed(1)}M`;
+    } else if (value >= 1000) {
+      return `GH₵${(value / 1000).toFixed(1)}K`;
+    }
+    return `GH₵${value}`;
+  };
+
+  const formatNumber = (value: number) => {
+    if (value >= 1000000) {
+      return `${(value / 1000000).toFixed(1)}M`;
+    } else if (value >= 1000) {
+      return `${(value / 1000).toFixed(1)}K`;
+    }
+    return value.toString();
+  };
+
   return (
     <main>
       <div className="p-3 md:p-4">
@@ -223,7 +241,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
             <div>
               <p className="text-gray-600 text-xs font-sans m-0">Total Revenue</p>
               <p className="text-xl font-bold font-sans m-0">
-                {isDashboardLoading ? 'Loading...' : `₵${data?.totalRevenue || 0}`}
+                {isDashboardLoading ? 'Loading...' : formatCurrency(Number(data?.totalRevenue || 0))}
               </p>
             </div>
           </div>
@@ -235,7 +253,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
             <div>
               <p className="text-gray-600 text-xs font-sans m-0">Total Orders</p>
               <p className="text-xl font-bold font-sans m-0">
-                {isDashboardLoading ? 'Loading...' : data?.totalOrders || 0}
+                {isDashboardLoading ? 'Loading...' : formatNumber(Number(data?.totalOrders || 0))}
               </p>
             </div>
           </div>
@@ -247,7 +265,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
             <div>
               <p className="text-gray-600 text-xs font-sans m-0">Total Menu</p>
               <p className="text-xl font-bold font-sans m-0">
-                {isDashboardLoading ? 'Loading...' : data?.totalMenu || 0}
+                {isDashboardLoading ? 'Loading...' : formatNumber(Number(data?.totalMenu || 0))}
               </p>
             </div>
           </div>
@@ -259,7 +277,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
             <div>
               <p className="text-gray-600 text-xs font-sans m-0">Total Staff</p>
               <p className="text-xl font-bold font-sans m-0">
-                {isDashboardLoading ? 'Loading...' : data?.totalStaff || 0}
+                {isDashboardLoading ? 'Loading...' : formatNumber(Number(data?.totalStaff || 0))}
               </p>
             </div>
           </div>
@@ -309,7 +327,13 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
                   <YAxis 
                     axisLine={false}
                     tickLine={false}
-                    tick={{ fill: '#666', fontSize: 12, fontFamily: 'sans-serif' }}
+                    tick={{
+                      fill: '#666',
+                      fontSize: 11,
+                      fontFamily: 'sans-serif',
+                    }}
+                    tickFormatter={formatNumber}
+                    width={45}
                   />
                   <Tooltip 
                     cursor={false}
@@ -380,13 +404,11 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
                     tickLine={false}
                     tick={{
                       fill: '#666',
-                      fontSize: 12,
+                      fontSize: 11,
                       fontFamily: 'sans-serif',
                     }}
-                    tickFormatter={(value) => {
-                      return `GH₵${value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}`;
-                    }}
-                    dx={-10}
+                    tickFormatter={formatCurrency}
+                    width={75}
                   />
                   <Tooltip
                     cursor={false}
@@ -395,7 +417,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
                         return (
                           <div className="bg-white shadow-lg rounded-lg p-2 text-sm font-sans">
                             <p className="font-medium text-gray-900">
-                              ₵{payload[0].value}
+                              GH₵{payload[0].value}
                             </p>
                           </div>
                         )

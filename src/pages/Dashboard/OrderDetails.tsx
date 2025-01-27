@@ -50,6 +50,8 @@ interface InvoiceData {
     name: string;
     logo: string;
   };
+  payNow: boolean;
+  payLater: boolean;
 }
 
 const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
@@ -90,6 +92,8 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
         name: restaurantName,
         logo: restaurantLogo,
       },
+      payNow: false,
+      payLater: false,
     };
   }
 
@@ -154,6 +158,8 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
         name: restaurantName,
         logo: restaurantLogo,
       },
+      payNow: false,
+      payLater: false,
     };
   } catch (error) {
     console.error('Error mapping API response to invoice data:', error);
@@ -275,7 +281,7 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                     />
                   )}
                   <div>
-                    <h2 className="text-lg font-semibold font-sans">
+                    <h2 className="text-lg font-semibold font-sans leading-tight mb-[2px]">
                       {invoiceData.restaurant.name}
                     </h2>
                     <p className="text-gray-500 text-xs font-sans">
@@ -302,6 +308,12 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                       </div>  
                       
                     </div>
+                      {/* Add Order Status under DropOff */}
+              <div className="flex items-center gap-1">
+                <span className="text-gray-600 font-medium text-xs">Order Status:</span>
+                <span className="text-xs font-bold">{invoiceData.orderStatus || 'N/A'}</span>
+              </div>
+
                   </div>
                 </div>
               </div>
@@ -326,50 +338,66 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                   <h3 className="text-lg font-semibold mb-4 font-sans">Customer Info</h3>
                   <div className="flex flex-col gap-2 font-sans text-xs">
                     <div className="flex">
-                      <span className="text-gray-500 w-24">Name:</span>
+                      <span className="text-gray-500 w-11">Name:</span>
                       <span>{invoiceData.customer.name}</span>
                     </div>
                     <div className="flex">
-                      <span className="text-gray-500 w-24">Phone:</span>
+                      <span className="text-gray-500 w-11">Phone:</span>
                       <span>{invoiceData.customer.phone}</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Order Status Info */}
+                {/* Courier Info */}
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold mb-4 font-sans">Order Status</h3>
-                  <ul className="list-none font-sans text-xs">
-                    <li className="flex items-center mb-1">
-                      <span className="text-red-500 mr-1">•</span>
+                  <h3 className="text-lg font-semibold mb-4 font-sans">Courier Info</h3>
+                  <div className="flex flex-col gap-2 font-sans text-xs">
+                    <div className="flex">
+                      <span className="text-gray-500 w-11">Name:</span>
+                      <span>{invoiceData.courierName || 'pending'}</span>
+                    </div>
+                    <div className="flex">
+                      <span className="text-gray-500 w-11">Phone:</span>
+                      <span>{invoiceData.courierPhoneNumber || 'pending'}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Order Status Info */}
+                <div className="flex-1 -ml-12">
+                  <h3 className="text-lg font-semibold mb-2 font-sans">Order Status</h3>
+                  <ul className="list-none font-sans text-xs -ml-1">
+                    <li className="flex items-center mb-[2px]">
+                      <span className={`${invoiceData.timeline.received ? 'text-red-500' : 'text-gray-400'} mr-1 w-2`}>•</span>
                       <span>Order Received | <strong>{invoiceData.timeline.received || ''}</strong></span>
                     </li>
-                    <li className="flex items-center mb-1">
-                      <span className="text-red-500 mr-1">•</span>
+                    <li className="flex items-center mb-[2px]">
+                      <span className={`${invoiceData.timeline.pickedUp ? 'text-red-500' : 'text-gray-400'} mr-1 w-2`}>•</span>
                       <span>Order Picked Up | <strong>{invoiceData.timeline.pickedUp || 'pending'}</strong></span>
                     </li>
-                    <li className="flex items-center mb-1">
-                      <span className="text-red-500 mr-1">•</span>
+                    <li className="flex items-center mb-[2px]">
+                      <span className={`${invoiceData.timeline.onWay ? 'text-red-500' : 'text-gray-400'} mr-1 w-2`}>•</span>
                       <span>Order On Way | <strong>{invoiceData.timeline.onWay || 'pending'}</strong></span>
                     </li>
-                    <li className="flex items-center text-gray-400">
-                      <span className="text-gray-400 mr-1">•</span>
+                    <li className="flex items-center">
+                      <span className={`${invoiceData.timeline.completed ? 'text-red-500' : 'text-gray-400'} mr-1 w-2`}>•</span>
                       <span>Order Complete | <strong>{invoiceData.timeline.completed || 'pending'}</strong></span>
                     </li>
                   </ul>
                 </div>
               </div>
 
+            
               {/* Order Table */}
               <div className="mb-6 w-full border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden bg-white">
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-[#ffffff]" style={{ borderBottom: '1px solid #eaeaea' }}>
-                      <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-semibold">S/L</th>
-                      <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-semibold">Product</th>
-                      <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-semibold">Unit price</th>
-                      <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-semibold">QTY</th>
-                      <th className="text-right p-2 text-[12px] leading-[20px] font-sans text-[#666] font-semibold">Total price</th>
+                      <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">S/L</th>
+                      <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Product</th>
+                      <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Unit price</th>
+                      <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">QTY</th>
+                      <th className="text-right p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Total price</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -399,8 +427,8 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
               {/* Payment Summary */}
               <div className="flex justify-between items-start bg-white rounded-lg">
                 <div>
-                  <p className="text-[12px] leading-[20px] font-sans text-[#666] mb-2 ml-4 font-semibold">
-                    Payment Method
+                  <p className="text-[12px] leading-[20px] font-sans text-[#666] mb-2 ml-4 font-bold">
+                    Transaction Status
                   </p>
                   <p className="text-[12px] leading-[20px] font-sans text-[#444] ml-4">
                     {invoiceData.payment.method}
@@ -408,16 +436,23 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                 </div>
                 <div className="flex gap-8">
                   <div className="text-[12px] leading-[20px] font-sans">
-                    <p className="text-[#666] mb-2 font-semibold">Sub Total</p>
+                    <p className="text-[#666] mb-2 font-bold">Payment Method</p>
+                    <p className="text-[#444]">
+                      {Boolean(invoiceData?.payNow) ? 'Momo' : 
+                       Boolean(invoiceData?.payLater) ? 'Cash' : 
+                       ''}
+                    </p>
+                  </div>
+                  <div className="text-[12px] leading-[20px] font-sans">
+                    <p className="text-[#666] mb-2 font-bold">Sub Total</p>
                     <p className="text-[#444]">GH₵{invoiceData.payment.subTotal}</p>
                   </div>
-                  
                   <div className="text-[12px] leading-[20px] font-sans">
-                    <p className="text-[#666] mb-2 font-semibold">Delivery Cost</p>
+                    <p className="text-[#666] mb-2 font-bold">Delivery Cost</p>
                     <p className="text-[#444]">GH₵{invoiceData.payment.deliveryCost}</p>
                   </div>
                   <div className="text-[12px] leading-[20px] font-sans">
-                    <p className="text-[#666] mb-2 font-semibold">Grand Total</p>
+                    <p className="text-[#666] mb-2 font-bold">Grand Total</p>
                     <p className="text-[#444] font-medium">GH₵{invoiceData.payment.grandTotal}</p>
                   </div>
                 </div>
@@ -425,7 +460,7 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
 
               {/* Krontiva Footer Logo */}
               <div className="mt-6 text-center border-t pt-4">
-                <p className="text-gray-500 text-xs mb-2">Powered By</p>
+                <p className="text-gray-500 text-xs mb-2 font-sans">Powered By</p>
                 <img
                   src="/Krontiva-Black.png"
                   alt="Powered by Krontiva"
