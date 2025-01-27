@@ -13,12 +13,12 @@ import Inventory from "./Inventory";
 import { Button, Menu, MenuItem } from "@mui/material";
 import { IoIosHelpCircleOutline, IoMdMoon, IoMdNotificationsOutline, IoMdSunny } from "react-icons/io";
 import { FaRegMoon, FaChevronDown } from "react-icons/fa";
-import { CiSearch } from "react-icons/ci";
+import { CiSearch, CiMenuBurger } from "react-icons/ci";
 import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import NotificationsModal from '../../components/NotificationsModal';
-import { IoIosArrowDropdown } from "react-icons/io";
+import { IoIosArrowDropdown, IoIosCloseCircleOutline } from "react-icons/io";
 import { useNotifications } from '../../context/NotificationContext';
 import { useUserProfile } from '../../hooks/useUserProfile';
 
@@ -148,8 +148,8 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
 
   return (
     <div className="flex h-screen w-full bg-white overflow-hidden">
-      {/* Side Menu */}
-      <aside className="hidden md:block w-[240px] bg-white border-r-[1px] border-solid border-[rgba(167,161,158,0.2)]">
+      {/* Side Menu - Hide on screens smaller than 1024px */}
+      <aside className="hidden lg:block w-[240px] bg-white border-r-[1px] border-solid border-[rgba(167,161,158,0.2)]">
         <div className="p-[10px] flex flex-col h-full justify-between">
           {/* Top Section with Logo and Main Menu */}
           <div className="flex flex-col gap-[10px]">
@@ -224,8 +224,16 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
         {/* Top Navbar */}
         <header className="bg-white border-b border-gray-200 px-4 py-2">
           <div className="flex items-center justify-between">
+            {/* Hamburger Menu - Show on screens smaller than 1024px */}
+            <button 
+              onClick={handleMobileMenuToggle}
+              className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
+            >
+              <CiMenuBurger className="w-6 h-6 text-gray-700" />
+            </button>
+
             {/* Search Bar */}
-            <div className={`hidden md:flex flex-1 max-w-[200px] px-2 py-1 border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-[8px] ml-[10px] ${
+            <div className={`hidden lg:flex flex-1 max-w-[200px] px-2 py-1 border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-[8px] ml-[10px] ${
               activeView === 'dashboard' || activeView === 'settings' || activeView === 'reports' 
                 ? 'opacity-0 pointer-events-none' 
                 : ''
@@ -243,7 +251,7 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
             </div>
 
             {/* Right Section */}
-            <div className="flex flex-row items-start justify-start gap-[8px] mr-[10px]">
+            <div className="flex flex-1 lg:flex-none flex-row items-center justify-end gap-[8px] mr-[10px]">
               <summary className="w-[160px] relative h-[40px]">
                 <div className="absolute top-[0px] left-[0px] rounded-[8px] border-[rgba(167,161,158,0.1)] border-[1px] border-solid box-border w-[160px] h-[40px]" />
                 <img
@@ -303,10 +311,10 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
         </div>
       </div>
 
-      {/* Mobile Menu with Animation */}
+      {/* Mobile/Tablet Menu with Animation - Show on screens smaller than 1024px */}
       <AnimatePresence>
         {isMobileMenuOpen && (
-          <div className="fixed inset-0 z-50 md:hidden">
+          <div className="fixed inset-0 z-[100] lg:hidden">
             {/* Overlay with fade animation */}
             <motion.div 
               initial={{ opacity: 0 }}
@@ -321,9 +329,17 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "tween", duration: 0.3 }}
-              className="fixed inset-y-0 left-0 w-[240px] bg-white shadow-xl"
+              className="fixed inset-y-0 left-0 w-[240px] bg-white shadow-xl overflow-y-auto"
             >
-              <div className="p-[10px] flex flex-col gap-[10px]">
+              <div className="p-[10px] flex flex-col h-full">
+                {/* Close button */}
+                <button
+                  onClick={handleMobileMenuToggle}
+                  className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full"
+                >
+                  <IoIosCloseCircleOutline size={24} className="text-gray-500" />
+                </button>
+
                 {/* Logo */}
                 <div className="w-[180px] h-[70px] flex items-center justify-center">
                   <img
@@ -334,7 +350,7 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
                 </div>
 
                 {/* Menu Items */}
-                <div className="flex flex-col items-start justify-start gap-[8px]">
+                <div className="flex flex-col items-start justify-start gap-[8px] mt-4">
                   {menuItems.map((item) => (
                     <button
                       key={item.id}
@@ -342,7 +358,7 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
                         handleViewChange(item.id);
                         setIsMobileMenuOpen(false);
                       }}
-                      className={`cursor-pointer border-none p-0 w-[200px] h-[40px] flex flex-row items-center justify-start gap-[12px] rounded-tr-[8px] rounded-br-[8px] relative ${
+                      className={`cursor-pointer border-none p-0 w-full h-[40px] flex flex-row items-center justify-start gap-[12px] rounded-tr-[8px] rounded-br-[8px] relative ${
                         activeView === item.id 
                           ? 'bg-[rgba(254,91,24,0.05)]'
                           : 'bg-transparent'
@@ -374,6 +390,18 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
                       </span>
                     </button>
                   ))}
+                </div>
+
+                {/* Footer */}
+                <div className="mt-auto pb-4">
+                  <div className="text-center border-t pt-4">
+                    <p className="text-gray-500 text-xs mb-1 font-sans">Powered By</p>
+                    <img
+                      src="/Krontiva-Black.png"
+                      alt="Powered by Krontiva"
+                      className="h-6 mx-auto"
+                    />
+                  </div>
                 </div>
               </div>
             </motion.div>
