@@ -80,7 +80,7 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
   const menuItems = [
     { name: "Dashboard", icon: <FiGrid size={24} />, id: "dashboard" },
     { name: "My Orders", icon: <FiBox size={24} />, id: "orders" },
-    { name: "Menu Items", icon: <IoFastFoodOutline size={24} />, id: "inventory" },
+    { name: "Menu Items", icon: <IoFastFoodOutline size={24} />, id: "inventory" }, 
     { name: "Transactions", icon: <LuCircleDollarSign size={24} />, id: "transactions" },
     { name: "Reports", icon: <LuFileSpreadsheet size={24} />, id: "reports" },
     { name: "Settings", icon: <IoSettingsOutline  size={24} style={{ fontWeight: 'bold', strokeWidth: '1.5' }}/>, id: "settings" },

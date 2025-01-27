@@ -529,9 +529,9 @@ const Reports: FunctionComponent = () => {
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Courier Name</div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Products</div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Order Date</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Order Price ₵</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Delivery Price ₵</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Price ₵</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Food Price GH₵</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Delivery Price GH₵</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Price GH₵</div>
             </div>
 
             {/* Detailed Orders Table Body */}
@@ -599,7 +599,7 @@ const Reports: FunctionComponent = () => {
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Spent</div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Avg. Order Value</div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Last Order</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Most Ordered Items</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Top Sold Items</div>
             </div>
 
             {/* Customer Report Table Body */}

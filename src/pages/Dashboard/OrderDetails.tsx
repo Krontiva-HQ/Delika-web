@@ -354,11 +354,11 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                   <div className="flex flex-col gap-2 font-sans text-xs">
                     <div className="flex">
                       <span className="text-gray-500 w-11">Name:</span>
-                      <span>{invoiceData.courierName || 'pending'}</span>
+                      <span>{invoiceData.courierName || 'not assigned'}</span>
                     </div>
                     <div className="flex">
                       <span className="text-gray-500 w-11">Phone:</span>
-                      <span>{invoiceData.courierPhoneNumber || 'pending'}</span>
+                      <span>{invoiceData.courierPhoneNumber || 'not assigned'}</span>
                     </div>
                   </div>
                 </div>
