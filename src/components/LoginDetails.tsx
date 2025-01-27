@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from '../hooks/useAuth';
 import { useEmail } from '../context/EmailContext';
 import { useTwoFAEmail } from '../hooks/useTwoFAEmail';
+import { RateLimiter } from '../utils/rateLimiter';
 
 interface LoginDetailsProps {
   onSubmit?: (data: { email: string; password: string }) => void;
@@ -16,6 +17,8 @@ const LoginDetails: FunctionComponent<LoginDetailsProps> = ({ onSubmit }) => {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
+  const [isRateLimited, setIsRateLimited] = useState(false);
+  const [waitTime, setWaitTime] = useState(0);
   const navigate = useNavigate();
   const { login, isLoading, error } = useAuth();
   const { setEmail } = useEmail();
@@ -44,11 +47,23 @@ const LoginDetails: FunctionComponent<LoginDetailsProps> = ({ onSubmit }) => {
 
   const handleSubmit = async () => {
     if (!validateForm()) return;
+
+    // Check rate limit before attempting login
+    const { limited, waitTime } = RateLimiter.isRateLimited(formData.email);
+    if (limited) {
+      setIsRateLimited(true);
+      setWaitTime(waitTime);
+      setValidationError(`Too many failed attempts. Try again in ${waitTime} minutes.`);
+      return;
+    }
   
     try {
       const response = await login(formData.email, formData.password);
   
       if (response.success && response.authToken) {
+        // Reset rate limit on successful login
+        RateLimiter.resetAttempts(formData.email);
+        
         const twoFAResponse = await sendTwoFAEmail(formData.email);
         
         if (twoFAResponse.success) {
@@ -59,10 +74,22 @@ const LoginDetails: FunctionComponent<LoginDetailsProps> = ({ onSubmit }) => {
           setValidationError('Failed to send 2FA email. Please try again.');
         }
       } else {
-        setValidationError('Invalid Credentials');
+        // Record failed attempt and check if user should be rate limited
+        const attempts = RateLimiter.recordFailedAttempt(formData.email);
+        const remainingAttempts = 5 - attempts;
+        
+        if (remainingAttempts > 0) {
+          setValidationError(`Invalid credentials.`);
+        } else {
+          const { waitTime } = RateLimiter.isRateLimited(formData.email);
+          setIsRateLimited(true);
+          setWaitTime(waitTime);
+          setValidationError(`Too many failed attempts. Try again in ${waitTime} minutes.`);
+        }
       }
     } catch (err: any) {
       console.error('Login failed:', err);
+      RateLimiter.recordFailedAttempt(formData.email);
       setValidationError('Incorrect email or password');
     }
   };
@@ -143,13 +170,8 @@ const LoginDetails: FunctionComponent<LoginDetailsProps> = ({ onSubmit }) => {
                 )}
               </div>
 
-              {/* Error Message and Forgot Password on same line */}
-              <div className="flex justify-end items-center">
-                {validationError && (
-                  <div className="font-sans text-[#fe5b18] text-xs mr-auto">
-                    {validationError}
-                  </div>
-                )}
+              {/* Forgot Password Link - Right aligned */}
+              <div className="w-full text-right">
                 <button 
                   onClick={handleForgotPasswordClick}
                   className="font-sans text-[12px] text-[#fe5b18] hover:text-[#e54d0e] 
@@ -159,19 +181,30 @@ const LoginDetails: FunctionComponent<LoginDetailsProps> = ({ onSubmit }) => {
                 </button>
               </div>
 
+              {/* Error Message - Centered */}
+              {validationError && (
+                <div className="w-full text-center">
+                  <span className="font-sans text-[#fe5b18] text-xs">
+                    {validationError}
+                  </span>
+                </div>
+              )}
+
               {/* Login Button */}
               <button
                 className="font-sans w-full h-[38px] bg-[#fe5b18] text-white rounded-[28px] 
                           text-[14px] hover:bg-[#e54d0e] 
                           transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"
                 onClick={handleSubmit}
-                disabled={isLoading}
+                disabled={isLoading || isRateLimited}
               >
                 {isLoading ? (
                   <div className="font-sans flex items-center justify-center gap-2">
                     <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
                     Logging in...
                   </div>
+                ) : isRateLimited ? (
+                  `Try again in ${waitTime} minutes`
                 ) : (
                   'Login'
                 )}
