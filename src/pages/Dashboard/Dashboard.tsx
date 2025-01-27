@@ -20,6 +20,7 @@ import { useAuth } from '../../hooks/useAuth';
 import NotificationsModal from '../../components/NotificationsModal';
 import { IoIosArrowDropdown } from "react-icons/io";
 import { useNotifications } from '../../context/NotificationContext';
+import { useUserProfile } from '../../hooks/useUserProfile';
 
 interface MainDashboardProps {
   children: ReactNode;
@@ -42,6 +43,8 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
   });
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const { notifications } = useNotifications();
+  const { userProfile } = useUserProfile();
+  const restaurantData = userProfile._restaurantTable?.[0] || {};
   
   useEffect(() => {
     document.documentElement.classList.remove('light', 'dark');
@@ -77,13 +80,15 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
     setSearchQuery('');
   };
 
+  // Filter menu items based on restaurant permissions
   const menuItems = [
     { name: "Dashboard", icon: <FiGrid size={24} />, id: "dashboard" },
     { name: "My Orders", icon: <FiBox size={24} />, id: "orders" },
-    { name: "Menu Items", icon: <IoFastFoodOutline size={24} />, id: "inventory" }, 
-    { name: "Transactions", icon: <LuCircleDollarSign size={24} />, id: "transactions" },
-    { name: "Reports", icon: <LuFileSpreadsheet size={24} />, id: "reports" },
-    { name: "Settings", icon: <IoSettingsOutline  size={24} style={{ fontWeight: 'bold', strokeWidth: '1.5' }}/>, id: "settings" },
+    {name : "Reports", icon: <LuFileSpreadsheet size={24} />, id: "reports"},
+    // Only show these items if the corresponding permission is false
+    ...(!restaurantData.Inventory ? [{ name: "Menu Items", icon: <IoFastFoodOutline size={24} />, id: "inventory" }] : []),
+    ...(!restaurantData.Transactions ? [{ name: "Transactions", icon: <LuCircleDollarSign size={24} />, id: "transactions" }] : []),
+    { name: "Settings", icon: <IoSettingsOutline size={24} style={{ fontWeight: 'bold', strokeWidth: '1.5' }}/>, id: "settings" },
   ];
 
   useEffect(() => {
@@ -140,9 +145,6 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
         return <Overview setActiveView={handleViewChange} />;
     }
   };
-
-  // Update the profile section to use the actual user data
-  const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
 
   return (
     <div className="flex h-screen w-full bg-white overflow-hidden">

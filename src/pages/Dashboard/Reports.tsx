@@ -30,6 +30,7 @@ interface ReportItem {
   date: string;
   format: string;
   status: string;
+  requiresPermissions?: boolean;
 }
 
 const reportItems: ReportItem[] = [
@@ -38,23 +39,33 @@ const reportItems: ReportItem[] = [
     name: "Orders Report",
     date: "All Time",
     format: "PDF",
-    status: "Active"
+    status: "Active",
+    requiresPermissions: false
   },
   {
     id: 2,
     name: "Top Sold Items",
     date: "All Time",
     format: "PDF",
-    status: "Active"
+    status: "Active",
+    requiresPermissions: false
   },
   {
     id: 3,
     name: "Customer Report",
     date: "All Time",
     format: "PDF",
-    status: "Active"
+    status: "Active",
+    requiresPermissions: false
+  },
+  {
+    id: 4,
+    name: "Delivery Report",
+    date: "All Time",
+    format: "PDF",
+    status: "Active",
+    requiresPermissions: true
   }
-  // Removed Inventory Report and Audits Report
 ];
 
 // Add new interface for detailed order
@@ -112,6 +123,16 @@ interface Category {
   foods: FoodItem[];
 }
 
+// Add new interface for delivery report
+interface DeliveryReport {
+  courierName: string;
+  totalDeliveries: number;
+  totalEarnings: number;
+  averageDeliveryTime: string;
+  completionRate: number;
+  lastDeliveryDate: string;
+}
+
 const Reports: FunctionComponent = () => {
   // Move all hooks to the top level
   const [activeTab, setActiveTab] = useState('all');
@@ -126,11 +147,26 @@ const Reports: FunctionComponent = () => {
     return localStorage.getItem('selectedBranchId') || '';
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [deliveryReports, setDeliveryReports] = useState<DeliveryReport[]>([]);
 
-  const { userProfile } = useUserProfile();
+  const { userProfile, restaurantData } = useUserProfile();
   const { branches, isLoading: branchesLoading } = useBranches(userProfile?.restaurantId ?? null);
   const { categories } = useMenuCategories();
   const { data } = useAuditData(userProfile?.restaurantId ?? null);
+
+  // Check if all special permissions are true
+  const hasAllSpecialPermissions = restaurantData.Reports && 
+                                 restaurantData.Inventory && 
+                                 restaurantData.Transactions;
+
+  // Filter reports based on permissions - REVERSED LOGIC
+  const availableReports = reportItems.filter((report: ReportItem) => {
+    if (hasAllSpecialPermissions) {
+      return report.requiresPermissions === true;
+    } else {
+      return report.requiresPermissions === false;
+    }
+  });
 
   // Effect for initial branch setup - always declare it
   useEffect(() => {
@@ -147,6 +183,7 @@ const Reports: FunctionComponent = () => {
       setOrderDetails([]);
       setMostSellingItems([]);
       setCustomerReports([]);
+      setDeliveryReports([]);
       setIsLoading(true);
       handleReportClick(selectedReport);
     }
@@ -309,6 +346,59 @@ const Reports: FunctionComponent = () => {
         console.error('Error fetching customer reports:', error);
         setCustomerReports([]);
       }
+    } else if (reportName === "Delivery Report") {
+      try {
+        const response = await api.get('/get/all/orders/per/branch', {
+          params: {
+            restaurantId: userProfile?.restaurantId,
+            branchId: branchId
+          }
+        });
+
+        // Process orders to get delivery statistics
+        const courierMap = new Map<string, {
+          deliveries: number;
+          earnings: number;
+          completedDeliveries: number;
+          lastDeliveryDate: string;
+        }>();
+
+        response.data.forEach((order: any) => {
+          if (!order.courierName) return;
+
+          const existing = courierMap.get(order.courierName) || {
+            deliveries: 0,
+            earnings: 0,
+            completedDeliveries: 0,
+            lastDeliveryDate: order.orderDate
+          };
+
+          existing.deliveries += 1;
+          existing.earnings += parseFloat(order.deliveryPrice || 0);
+          if (order.status === 'completed') {
+            existing.completedDeliveries += 1;
+          }
+          if (new Date(order.orderDate) > new Date(existing.lastDeliveryDate)) {
+            existing.lastDeliveryDate = order.orderDate;
+          }
+
+          courierMap.set(order.courierName, existing);
+        });
+
+        const deliveryStats = Array.from(courierMap.entries()).map(([courierName, data]) => ({
+          courierName,
+          totalDeliveries: data.deliveries,
+          totalEarnings: data.earnings,
+          averageDeliveryTime: 'N/A',
+          completionRate: (data.completedDeliveries / data.deliveries) * 100,
+          lastDeliveryDate: new Date(data.lastDeliveryDate).toLocaleDateString()
+        }));
+
+        setDeliveryReports(deliveryStats);
+      } catch (error) {
+        console.error('Error fetching delivery reports:', error);
+        setDeliveryReports([]);
+      }
     }
   };
 
@@ -365,6 +455,18 @@ const Reports: FunctionComponent = () => {
             `${customer.totalSpent.toFixed(2)} GHS`,
             `${customer.averageOrderValue.toFixed(2)} GHS`,
             customer.lastOrderDate
+          ]);
+          break;
+
+        case "Delivery Report":
+          headers = ["Courier Name", "Total Deliveries", "Total Earnings", "Avg Delivery Time", "Completion Rate", "Last Delivery"];
+          csvData = deliveryReports.map(report => [
+            report.courierName,
+            report.totalDeliveries,
+            `${report.totalEarnings.toFixed(2)} GHS`,
+            report.averageDeliveryTime,
+            `${report.completionRate.toFixed(1)}%`,
+            report.lastDeliveryDate
           ]);
           break;
       }
@@ -430,6 +532,18 @@ const Reports: FunctionComponent = () => {
               customer.totalOrders,
               `${customer.totalSpent.toFixed(2)} GHS`,
               `${customer.averageOrderValue.toFixed(2)} GHS`
+            ]);
+            break;
+
+          case "Delivery Report":
+            headers = ["Courier", "Total Deliveries", "Total Earnings", "Avg Delivery Time", "Completion Rate", "Last Delivery"];
+            data = deliveryReports.map(report => [
+              report.courierName,
+              report.totalDeliveries,
+              `${report.totalEarnings.toFixed(2)} GHS`,
+              report.averageDeliveryTime,
+              `${report.completionRate.toFixed(1)}%`,
+              report.lastDeliveryDate
             ]);
             break;
         }
@@ -627,6 +741,34 @@ const Reports: FunctionComponent = () => {
             ))}
           </>
         );
+      case "Delivery Report":
+        return (
+          <>
+            <div className="grid grid-cols-6 bg-[#f9f9f9] p-4" style={{ borderBottom: '1px solid #eaeaea' }}>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Courier Name</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Deliveries</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Earnings</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Avg Delivery Time</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Completion Rate</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Last Delivery</div>
+            </div>
+
+            {deliveryReports.map((report, index) => (
+              <div 
+                key={index}
+                className="grid grid-cols-6 p-4 hover:bg-[#f9f9f9]"
+                style={{ borderBottom: '1px solid #eaeaea' }}
+              >
+                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.courierName}</div>
+                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.totalDeliveries}</div>
+                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.totalEarnings.toFixed(2)} GHS</div>
+                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.averageDeliveryTime}</div>
+                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.completionRate.toFixed(1)}%</div>
+                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.lastDeliveryDate}</div>
+              </div>
+            ))}
+          </>
+        );
       default:
         return null;
     }
@@ -651,7 +793,7 @@ const Reports: FunctionComponent = () => {
                 className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)]"
               >
                 <option value="">Select Report Type</option>
-                {reportItems.map((item) => (
+                {availableReports.map((item) => (
                   <option key={item.id} value={item.name}>
                     {item.name}
                   </option>
