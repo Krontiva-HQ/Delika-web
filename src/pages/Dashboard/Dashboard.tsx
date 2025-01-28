@@ -83,12 +83,13 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
 
   // Filter menu items based on restaurant permissions
   const menuItems = [
-    { name: "Dashboard", icon: <FiGrid size={24} />, id: "dashboard" },
+    // Only show Overview if permissions are true
+    ...(!restaurantData.Inventory && !restaurantData.Transactions ? [{ name: "Overview", icon: <FiGrid size={24} />, id: "dashboard" }] : []),
     { name: "My Orders", icon: <FiBox size={24} />, id: "orders" },
-    {name : "Reports", icon: <LuFileSpreadsheet size={24} />, id: "reports"},
     // Only show these items if the corresponding permission is false
     ...(!restaurantData.Inventory ? [{ name: "Menu Items", icon: <IoFastFoodOutline size={24} />, id: "inventory" }] : []),
     ...(!restaurantData.Transactions ? [{ name: "Transactions", icon: <LuCircleDollarSign size={24} />, id: "transactions" }] : []),
+    {name : "Reports", icon: <LuFileSpreadsheet size={24} />, id: "reports"},
     { name: "Settings", icon: <IoSettingsOutline size={24} style={{ fontWeight: 'bold', strokeWidth: '1.5' }}/>, id: "settings" },
   ];
 
@@ -103,7 +104,12 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
       try {
         await fetchUserProfile();
         setIsLoading(false);
-        setActiveView('dashboard');
+        // Set default view based on permissions
+        if (!restaurantData.Inventory && !restaurantData.Transactions) {
+          setActiveView('dashboard');
+        } else {
+          setActiveView('orders'); // Set to 'orders' as default when Overview should be hidden
+        }
       } catch (err) {
         console.error('Error fetching user profile:', err);
         localStorage.removeItem('authToken');
@@ -115,35 +121,23 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
   }, [navigate, fetchUserProfile]);
 
   const renderContent = () => {
-    console.log('Current activeView:', activeView);
-    
-    if (searchQuery) {
-      if (activeView === 'orders') {
-        return <Orders searchQuery={searchQuery} />;
-      }
-      if (activeView === 'inventory') {
-        return <Inventory searchQuery={searchQuery} />;
-      }
-      return <div>Search results for "{searchQuery}"</div>;
+    if (!restaurantData.Inventory && !restaurantData.Transactions && activeView === 'dashboard') {
+      return <Overview setActiveView={setActiveView} />;
     }
 
     switch (activeView) {
-      case 'dashboard':
-        return <Overview setActiveView={handleViewChange} />;
       case 'orders':
         return <Orders searchQuery={searchQuery} />;
       case 'inventory':
-        return <Inventory searchQuery={searchQuery} />;
+        return <Inventory />;
       case 'transactions':
         return <Transactions />;
       case 'reports':
         return <Reports />;
       case 'settings':
         return <SettingsPage />;
-      
       default:
-        console.log('Falling back to Overview');
-        return <Overview setActiveView={handleViewChange} />;
+        return <Orders searchQuery={searchQuery} />;
     }
   };
 

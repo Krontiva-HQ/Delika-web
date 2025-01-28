@@ -643,8 +643,16 @@ const Reports: FunctionComponent = () => {
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Courier Name</div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Products</div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Order Date</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Food Price GH₵</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Delivery Price GH₵</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">
+                Food Price
+                <br />
+                GH₵
+              </div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">
+                Delivery Price
+                <br />
+                GH₵
+              </div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Price GH₵</div>
             </div>
 
@@ -711,7 +719,6 @@ const Reports: FunctionComponent = () => {
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Customer Name</div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Orders</div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Spent</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Avg. Order Value</div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Last Order</div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Top Sold Items</div>
             </div>
@@ -727,7 +734,6 @@ const Reports: FunctionComponent = () => {
                 <div className="text-[14px] leading-[22px] font-sans text-[#444]">{customer.customerName}</div>
                 <div className="text-[14px] leading-[22px] font-sans text-[#444]">{customer.totalOrders}</div>
                 <div className="text-[14px] leading-[22px] font-sans text-[#444]">{customer.totalSpent.toFixed(2)} GHS</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{customer.averageOrderValue.toFixed(2)} GHS</div>
                 <div className="text-[14px] leading-[22px] font-sans text-[#444]">{customer.lastOrderDate}</div>
                 <div className="text-[14px] leading-[22px] font-sans text-[#444]">
                   {customer.mostOrderedItems.map((item, i) => (
@@ -979,6 +985,15 @@ const Reports: FunctionComponent = () => {
             )}
           </div>
         </div>
+
+        {/* Add this conditional render */}
+        {!selectedReport && (
+          <div className="w-full text-center mt-8">
+            <p className="text-gray-500 text-sm font-sans">
+              Select a report type from the options above
+            </p>
+          </div>
+        )}
 
         {/* Table Section */}
         <div className="w-full border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden">
