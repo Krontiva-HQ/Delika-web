@@ -15,7 +15,6 @@ import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import { styled } from '@mui/material/styles';
-import { SelectChangeEvent } from '@mui/material/Select';
 
 interface PlaceOrderProps {
   onClose: () => void;
@@ -196,8 +195,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   const calculateTotal = () => {
     const itemsTotal = selectedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const deliveryAmount = deliveryPrice ? parseFloat(deliveryPrice) : 0;
-    const total = Math.round(itemsTotal + deliveryAmount);
-    return `${total}.00`;
+    return (itemsTotal + deliveryAmount).toFixed(2);
   };
 
   // Add this handler function
@@ -217,7 +215,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     const total = selectedItems.reduce((sum, item) => {
       return sum + (Number(item.price) * Number(item.quantity));
     }, 0);
-    setTotalFoodPrice(`${Math.round(total)}.00`);
+    setTotalFoodPrice(total.toFixed(2));
   }, [selectedItems]);
 
   // Function to handle next step
@@ -354,12 +352,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     }
   };
 
-  // Update the delivery price calculation in the useEffect
+  // Calculate delivery price based on distance
   useEffect(() => {
     if (distance !== null) {
       const updatedDistance = Math.max(0, distance - 1); // Ensure we don't go below 0
-      const calculatedPrice = Math.round(15 + (updatedDistance * 2.5)); // Round to nearest whole number
-      setDeliveryPrice(`${calculatedPrice}.00`); // Add .00 to the rounded number
+      const calculatedPrice = 15 + (updatedDistance * 2.5);
+      setDeliveryPrice(calculatedPrice.toFixed(2));
     }
   }, [distance]);
 
@@ -475,8 +473,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                   <StyledSelect
                     fullWidth
                     value={selectedBranchId}
-                    onChange={(event: SelectChangeEvent<unknown>, child: React.ReactNode) => {
-                      const selectedId = event.target.value as string;
+                    onChange={(e) => {
+                      const selectedId = e.target.value;
                       setSelectedBranchId(selectedId);
                       
                       // Find selected branch
@@ -572,9 +570,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                   <StyledSelect
                     fullWidth
                     value={selectedCategory}
-                    onChange={(event: SelectChangeEvent<unknown>, child: React.ReactNode) => {
-                      setSelectedCategory(event.target.value as string);
-                    }}
+                    onChange={(e) => setSelectedCategory(e.target.value)}
                     variant="outlined"
                     size="small"
                     className="mb-2"
@@ -945,28 +941,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           <StyledSelect
             fullWidth
             value={selectedBranchId}
-            onChange={(event: SelectChangeEvent<unknown>, child: React.ReactNode) => {
-              const selectedId = event.target.value as string;
-              setSelectedBranchId(selectedId);
-              
-              // Find selected branch
-              const selectedBranch = branches.find(branch => branch.id === selectedId);
-              if (selectedBranch) {
-                setPickupData({
-                  fromLatitude: selectedBranch.branchLatitude,
-                  fromLongitude: selectedBranch.branchLongitude,
-                  fromAddress: selectedBranch.branchLocation,
-                  branchId: selectedBranch.id
-                });
-                // Update pickup location for distance calculation
-                handlePickupLocationSelect({
-                  address: selectedBranch.branchLocation,
-                  latitude: parseFloat(selectedBranch.branchLatitude),
-                  longitude: parseFloat(selectedBranch.branchLongitude),
-                  name: selectedBranch.branchName
-                });
-              }
-            }}
+            onChange={(e) => setSelectedBranchId(e.target.value)}
             variant="outlined"
             size="small"
             className="mb-2"

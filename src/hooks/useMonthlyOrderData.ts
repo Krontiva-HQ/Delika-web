@@ -42,7 +42,7 @@ const useMonthlyOrderData = (restaurantId: string, branchId: string) => {
         const currentYear = dayjs().year();
         const currentYearOrders = orders.filter(order => 
           dayjs(order.orderDate).year() === currentYear
-        );
+        ); 
 
         const initialData = [
           { month: 'Jan', orders: 0, totalPrice: 0 },

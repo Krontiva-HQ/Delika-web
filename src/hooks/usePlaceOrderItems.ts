@@ -20,17 +20,9 @@ interface SelectedItem {
 }
 
 interface Category {
-  isActive: boolean;
+  foodType: string;
   id: string;
-  image: string;
-  name: string;
-  itemCount: number;
-  foods: {
-    name: string;
-    price: string;
-    foodImage: { url: string };
-    quantity: number;
-  }[];
+  _id?: string;
 }
 
 interface PlaceOrderItemsHook {
@@ -71,13 +63,13 @@ export const usePlaceOrderItems = (selectedBranchId?: string): PlaceOrderItemsHo
         console.log('API Response:', response.data); // Debug log
         
         const formattedCategories = response.data.map((cat: Category) => ({
-          label: cat.name || 'Unnamed Category',
-          value: cat.id || ''
+          label: cat.foodType || 'Unnamed Category',
+          value: cat.id || cat._id || ''
         }));
         
         const uniqueCategories = Array.from(new Map(
-          formattedCategories.map((item: { label: string; value: string }) => [item.label, item])
-        ).values()) as { label: string; value: string; }[];
+          formattedCategories.map(item => [item.label, item])
+        ).values());
         
         console.log('Formatted Categories:', uniqueCategories); // Debug log
         setCategories(uniqueCategories);
