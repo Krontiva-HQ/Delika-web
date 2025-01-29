@@ -417,7 +417,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
                         return (
                           <div className="bg-white shadow-lg rounded-lg p-2 text-sm font-sans">
                             <p className="font-medium text-gray-900">
-                              GH₵{payload[0].value}
+                                GH₵{payload[0].value}
                             </p>
                           </div>
                         )
@@ -432,6 +432,8 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
                     strokeWidth={2}
                     fill="url(#revenueGradient)"
                     dot={false}
+
+
                     activeDot={{
                       r: 6,
                       fill: "white",

@@ -5,6 +5,7 @@ import dayjs from 'dayjs';
 interface Order {
   orderDate: string;
   totalPrice: string;
+  orderPrice: string;
   customerName: string;
   customerPhone: string;
   amount: number;
@@ -45,11 +46,12 @@ const useMonthlyOrderData = (restaurantId: string, branchId: string) => {
         ); 
 
         const initialData = [
-          { month: 'Jan', orders: 0, totalPrice: 0 },
-          { month: 'Feb', orders: 0, totalPrice: 0 },
-          { month: 'Mar', orders: 0, totalPrice: 0 },
-          { month: 'Apr', orders: 0, totalPrice: 0 },
-          { month: 'May', orders: 0, totalPrice: 0 },
+          { month: 'Jan', orders: 0, orderPrice: 0 },
+          { month: 'Feb', orders: 0, orderPrice: 0 },
+          { month: 'Mar', orders: 0, orderPrice: 0 },
+          { month: 'Apr', orders: 0, orderPrice: 0 },
+          { month: 'May', orders: 0, orderPrice: 0 },
+
           { month: 'Jun', orders: 0, totalPrice: 0 },
           { month: 'Jul', orders: 0, totalPrice: 0 },
           { month: 'Aug', orders: 0, totalPrice: 0 },
@@ -61,19 +63,22 @@ const useMonthlyOrderData = (restaurantId: string, branchId: string) => {
 
         const ordersByMonth = currentYearOrders.reduce((acc, order) => {
           const month = dayjs(order.orderDate).format('MMM');
-          acc[month] = acc[month] || { orders: 0, totalPrice: 0 };
+          acc[month] = acc[month] || { orders: 0, orderPrice: 0 };
           acc[month].orders += 1;
-          acc[month].totalPrice += parseFloat(order.totalPrice) || 0;
+          acc[month].orderPrice += parseFloat(order.orderPrice) || 0;
           return acc;
-        }, {} as Record<string, { orders: number; totalPrice: number }>);
+        }, {} as Record<string, { orders: number; orderPrice: number }>);
+
+
 
         console.log('Processed orders by month:', ordersByMonth); // Debug log
 
         const formattedData = initialData.map((data) => ({
           month: data.month,
           orders: ordersByMonth[data.month]?.orders || 0,
-          totalPrice: ordersByMonth[data.month]?.totalPrice || 0,
+          totalPrice: ordersByMonth[data.month]?.orderPrice || 0,
         }));
+
 
         console.log('Final formatted data:', formattedData); // Debug log
         setMonthlyOrderData(formattedData);
