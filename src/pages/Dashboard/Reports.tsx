@@ -12,7 +12,7 @@ import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { Popover, Menu, MenuItem } from '@mui/material';
+import { Popover, Menu, MenuItem, Pagination } from '@mui/material';
 import { Dayjs } from 'dayjs';
 import { useMenuCategories } from '../../hooks/useMenuCategories';
 import jsPDF from 'jspdf';
@@ -74,8 +74,10 @@ interface OrderDetail {
   customerPhone: string;
   amount: number;
   courierName: string;
+  courierPhone: string;
   deliveryPrice: number;
   totalPrice: number;
+  dropOffName: string;
   orderDate: string;
   products: Array<{
     name: string;
@@ -125,12 +127,18 @@ interface Category {
 
 // Add new interface for delivery report
 interface DeliveryReport {
+  courierPhone: string;
+  customerName: string;
+  orderDate: string;
   courierName: string;
-  totalDeliveries: number;
-  totalEarnings: number;
-  averageDeliveryTime: string;
-  completionRate: number;
-  lastDeliveryDate: string;
+  customerPhone: string;
+  deliveryPrice: number;
+  deliveryLocation: string;
+  totalDeliveries?: number;
+  totalEarnings?: number;
+  averageDeliveryTime?: string;
+  completionRate?: number;
+  dropOffName?: string;
 }
 
 const Reports: FunctionComponent = () => {
@@ -148,6 +156,8 @@ const Reports: FunctionComponent = () => {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [deliveryReports, setDeliveryReports] = useState<DeliveryReport[]>([]);
+  const [page, setPage] = useState(1);
+  const [itemsPerPage] = useState(10);
 
   const { userProfile, restaurantData } = useUserProfile();
   const { branches, isLoading: branchesLoading } = useBranches(userProfile?.restaurantId ?? null);
@@ -221,10 +231,10 @@ const Reports: FunctionComponent = () => {
           const formattedOrders: OrderDetail[] = filteredData.map((order: any) => ({
             customerName: order.customerName,
             customerPhone: order.customerPhoneNumber,
-            amount: order.orderPrice,
+            amount: parseFloat(order.orderPrice || '0'),
             courierName: order.courierName,
-            deliveryPrice: order.deliveryPrice,
-            totalPrice: parseFloat(order.totalPrice),
+            deliveryPrice: parseFloat(order.deliveryPrice || '0'),
+            totalPrice: parseFloat(order.totalPrice || '0'),
             orderDate: order.orderDate,
             products: order.products
           }));
@@ -329,42 +339,13 @@ const Reports: FunctionComponent = () => {
 
         case "Delivery Report":
           // Process orders to get delivery statistics
-          const courierMap = new Map<string, {
-            deliveries: number;
-            earnings: number;
-            completedDeliveries: number;
-            lastDeliveryDate: string;
-          }>();
-
-          filteredData.forEach((order: any) => {
-            if (!order.courierName) return;
-
-            const existing = courierMap.get(order.courierName) || {
-              deliveries: 0,
-              earnings: 0,
-              completedDeliveries: 0,
-              lastDeliveryDate: order.orderDate
-            };
-
-            existing.deliveries += 1;
-            existing.earnings += parseFloat(order.deliveryPrice || 0);
-            if (order.status === 'completed') {
-              existing.completedDeliveries += 1;
-            }
-            if (new Date(order.orderDate) > new Date(existing.lastDeliveryDate)) {
-              existing.lastDeliveryDate = order.orderDate;
-            }
-
-            courierMap.set(order.courierName, existing);
-          });
-
-          const deliveryStats = Array.from(courierMap.entries()).map(([courierName, data]) => ({
-            courierName,
-            totalDeliveries: data.deliveries,
-            totalEarnings: data.earnings,
-            averageDeliveryTime: 'N/A',
-            completionRate: (data.completedDeliveries / data.deliveries) * 100,
-            lastDeliveryDate: new Date(data.lastDeliveryDate).toLocaleDateString()
+          const deliveryStats = filteredData.map((order: any) => ({
+            courierPhone: order.courierPhoneNumber || 'N/A',
+            customerName: order.customerName,
+            orderDate: new Date(order.orderDate).toLocaleDateString(),
+            courierName: order.courierName || 'N/A',
+            deliveryPrice: parseFloat(order.deliveryPrice || 0),
+            deliveryLocation: order.dropOff?.[0]?.toAddress || order.dropoffName || 'N/A'
           }));
 
           setDeliveryReports(deliveryStats);
@@ -472,14 +453,14 @@ const Reports: FunctionComponent = () => {
           break;
 
         case "Delivery Report":
-          headers = ["Courier Name", "Total Deliveries", "Total Earnings", "Avg Delivery Time", "Completion Rate", "Last Delivery"];
+          headers = ["Courier Phone", "Customer Name", "Order Date", "Courier Name", "Delivery Price", "Delivery Location"];
           csvData = deliveryReports.map(report => [
+            report.courierPhone,
+            report.customerName,
+            report.orderDate,
             report.courierName,
-            report.totalDeliveries,
-            `${report.totalEarnings.toFixed(2)} GHS`,
-            report.averageDeliveryTime,
-            `${report.completionRate.toFixed(1)}%`,
-            report.lastDeliveryDate
+            report.deliveryPrice.toFixed(2),
+            report.deliveryLocation
           ]);
           break;
       }
@@ -549,14 +530,14 @@ const Reports: FunctionComponent = () => {
             break;
 
           case "Delivery Report":
-            headers = ["Courier", "Total Deliveries", "Total Earnings", "Avg Delivery Time", "Completion Rate", "Last Delivery"];
+            headers = ["Courier Name", "Courier Phone", "Customer Name", "Order Date", "Delivery Price", "Delivery Location"];
             data = deliveryReports.map(report => [
               report.courierName,
-              report.totalDeliveries,
-              `${report.totalEarnings.toFixed(2)} GHS`,
-              report.averageDeliveryTime,
-              `${report.completionRate.toFixed(1)}%`,
-              report.lastDeliveryDate
+              report.courierPhone,
+              report.customerName,
+              report.orderDate,
+              report.deliveryPrice.toFixed(2),
+              report.deliveryLocation
             ]);
             break;
         }
@@ -644,33 +625,167 @@ const Reports: FunctionComponent = () => {
     }
   };
 
+  const renderDateFilter = () => {
+    // Only show date filter for Orders Report and Delivery Report
+    if (selectedReport === "Orders Report" || selectedReport === "Delivery Report") {
+      return (
+        <div className="relative">
+          <div 
+            onClick={handleDateClick}
+            className="flex items-center gap-2 px-3 py-2 border border-[rgba(167,161,158,0.1)] rounded-md cursor-pointer hover:bg-gray-50"
+          >
+            <svg 
+              xmlns="http://www.w3.org/2000/svg" 
+              className="h-4 w-4 text-[#666]" 
+              fill="none" 
+              viewBox="0 0 24 24" 
+              stroke="currentColor"
+            >
+              <path 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                strokeWidth={2} 
+                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
+              />
+            </svg>
+            <span className="text-[14px] font-sans text-[#666]">
+              {dateRange[0] && dateRange[1] 
+                ? `${dayjs(dateRange[0]).format('DD MMM')} - ${dayjs(dateRange[1]).format('DD MMM YYYY')}`
+                : 'Select Date Range'
+              }
+            </span>
+          </div>
+
+          <LocalizationProvider dateAdapter={AdapterDayjs}>
+            <Popover
+              open={open}
+              anchorEl={anchorEl}
+              onClose={handleClose}
+              anchorOrigin={{
+                vertical: 'bottom',
+                horizontal: 'right',
+              }}
+              transformOrigin={{
+                vertical: 'top',
+                horizontal: 'right',
+              }}
+              sx={{
+                '& .MuiPaper-root': {
+                  borderRadius: '8px',
+                  border: '1px solid rgba(167,161,158,0.1)',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                  marginTop: '8px',
+                },
+                '& .MuiPickersDay-root.Mui-selected': {
+                  backgroundColor: '#fe5b18',
+                  '&:hover': {
+                    backgroundColor: '#fe5b18',
+                  }
+                },
+                '& .MuiPickersDay-root.Mui-inRange': {
+                  backgroundColor: '#fff3e0',
+                  '&:hover': {
+                    backgroundColor: '#ffe0b2',
+                  }
+                },
+                '& .MuiPickersDay-root:hover': {
+                  backgroundColor: '#fff3e0',
+                },
+                '& .MuiTypography-root': {
+                  fontFamily: 'Inter',
+                },
+              }}
+            >
+              <div className="flex p-4">
+                <div className="flex flex-col">
+                  <div className="text-sm font-medium text-gray-600 mb-2">Start Date</div>
+                  <DateCalendar 
+                    value={dateRange[0]}
+                    onChange={(newDate) => handleDateSelect(newDate, true)}
+                    sx={{
+                      fontFamily: 'Inter',
+                      '& .MuiTypography-root': {
+                        fontFamily: 'Inter',
+                      },
+                    }}
+                  />
+                </div>
+                <div className="border-l border-gray-200" />
+                <div className="flex flex-col">
+                  <div className="text-sm font-medium text-gray-600 mb-2">End Date</div>
+                  <DateCalendar 
+                    value={dateRange[1]}
+                    minDate={dateRange[0] || undefined}
+                    onChange={(newDate) => handleDateSelect(newDate, false)}
+                    sx={{
+                      fontFamily: 'Inter',
+                      '& .MuiTypography-root': {
+                        fontFamily: 'Inter',
+                      },
+                    }}
+                  />
+                </div>
+              </div>
+            </Popover>
+          </LocalizationProvider>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // Pagination helper function
+  const paginateData = <T extends any>(data: T[]): T[] => {
+    const startIndex = (page - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return data.slice(startIndex, endIndex);
+  };
+
+  // Handle page change
+  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
+    setPage(value);
+  };
+
+  const renderPagination = (totalItems: number) => {
+    const totalPages = Math.ceil(totalItems / itemsPerPage);
+    return totalPages > 1 ? (
+      <div className="flex justify-center py-4">
+        <Pagination 
+          count={totalPages} 
+          page={page} 
+          onChange={handlePageChange}
+          color="primary"
+          sx={{
+            '& .MuiPaginationItem-root': {
+              fontFamily: 'Inter',
+            },
+            '& .Mui-selected': {
+              backgroundColor: '#fe5b18 !important',
+              color: 'white',
+            },
+          }}
+        />
+      </div>
+    ) : null;
+  };
+
   const renderContent = () => {
     switch (selectedReport) {
       case "Orders Report":
         return (
           <>
-            {/* Detailed Orders Table Header */}
             <div className="grid grid-cols-8 bg-[#f9f9f9] p-4" style={{ borderBottom: '1px solid #eaeaea' }}>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Customer Name</div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Phone Number</div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Courier Name</div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Products</div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Order Date</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">
-                Food Price
-                <br />
-                GH₵
-              </div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">
-                Delivery Price
-                <br />
-                GH₵
-              </div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Food Price GH₵</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Delivery Price GH₵</div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Price GH₵</div>
             </div>
 
-            {/* Detailed Orders Table Body */}
-            {orderDetails.map((order, index) => (
+            {paginateData(orderDetails).map((order, index) => (
               <div 
                 key={index}
                 className="grid grid-cols-8 p-4 hover:bg-[#f9f9f9]"
@@ -687,77 +802,67 @@ const Reports: FunctionComponent = () => {
                   ))}
                 </div>
                 <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.orderDate}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.amount}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.deliveryPrice}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.totalPrice}</div>
-                
+                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.amount?.toFixed(2) || '0.00'}</div>
+                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.deliveryPrice?.toFixed(2) || '0.00'}</div>
+                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.totalPrice?.toFixed(2) || '0.00'}</div>
               </div>
             ))}
+
+            {renderPagination(orderDetails.length)}
           </>
         );
       case "Top Sold Items":
         return (
           <>
-            {/* Most Selling Items Table Header */}
-            <div className="grid grid-cols-5 bg-[#f9f9f9] p-4" style={{ borderBottom: '1px solid #eaeaea' }}>
+            <div className="grid grid-cols-4 bg-[#f9f9f9] p-4" style={{ borderBottom: '1px solid #eaeaea' }}>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Item Name</div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Quantity Sold</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Revenue</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Average Price</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Revenue GH₵</div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Last Sold</div>
             </div>
 
-            {/* Most Selling Items Table Body */}
-            {mostSellingItems.map((item, index) => (
+            {paginateData(mostSellingItems).map((item, index) => (
+              <div 
+                key={index}
+                className="grid grid-cols-4 p-4 hover:bg-[#f9f9f9]"
+                style={{ borderBottom: '1px solid #eaeaea' }}
+              >
+                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{item.name}</div>
+                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{item.totalQuantitySold}</div>
+                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{item.totalRevenue.toFixed(2)}</div>
+                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{item.lastSoldDate}</div>
+              </div>
+            ))}
+
+            {renderPagination(mostSellingItems.length)}
+          </>
+        );
+      case "Customer Report": 
+        return (
+          <>
+            <div className="grid grid-cols-5 bg-[#f9f9f9] p-4" style={{ borderBottom: '1px solid #eaeaea' }}>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Customer Name</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Phone Number</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Orders</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Spent GH₵</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Last Order</div>
+            </div>
+
+            {paginateData(customerReports).map((customer, index) => (
               <div 
                 key={index}
                 className="grid grid-cols-5 p-4 hover:bg-[#f9f9f9]"
                 style={{ borderBottom: '1px solid #eaeaea' }}
               >
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{item.name}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{item.totalQuantitySold}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{item.totalRevenue.toFixed(2)} GHS</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{item.averagePrice.toFixed(2)} GHS</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{item.lastSoldDate}</div>
-              </div>
-            ))}
-          </>
-        );
-      case "Customer Report":
-        return (
-          <>
-            {/* Customer Report Table Header */}
-            <div className="grid grid-cols-7 bg-[#f9f9f9] p-4" style={{ borderBottom: '1px solid #eaeaea' }}>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Phone Number</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Customer Name</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Orders</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Spent</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Last Order</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Top Sold Items</div>
-            </div>
-
-            {/* Customer Report Table Body */}
-            {customerReports.map((customer, index) => (
-              <div 
-                key={index}
-                className="grid grid-cols-7 p-4 hover:bg-[#f9f9f9]"
-                style={{ borderBottom: '1px solid #eaeaea' }}
-              >
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{customer.phoneNumber}</div>
                 <div className="text-[14px] leading-[22px] font-sans text-[#444]">{customer.customerName}</div>
+                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{customer.phoneNumber}</div>
                 <div className="text-[14px] leading-[22px] font-sans text-[#444]">{customer.totalOrders}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{customer.totalSpent.toFixed(2)} GHS</div>
+                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{customer.totalSpent.toFixed(2)}</div>
                 <div className="text-[14px] leading-[22px] font-sans text-[#444]">{customer.lastOrderDate}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">
-                  {customer.mostOrderedItems.map((item, i) => (
-                    <span key={i}>
-                      {item.name} ({item.quantity}x)
-                      {i < customer.mostOrderedItems.length - 1 ? '; ' : ''}
-                    </span>
-                  ))}
-                </div>
               </div>
             ))}
+
+            {renderPagination(customerReports.length)}
           </>
         );
       case "Delivery Report":
@@ -765,33 +870,50 @@ const Reports: FunctionComponent = () => {
           <>
             <div className="grid grid-cols-6 bg-[#f9f9f9] p-4" style={{ borderBottom: '1px solid #eaeaea' }}>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Courier Name</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Deliveries</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Earnings</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Avg Delivery Time</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Completion Rate</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Last Delivery</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Courier Phone</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Customer Name</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Order Date</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Delivery Price GH₵</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Delivery Location</div>
             </div>
 
-            {deliveryReports.map((report, index) => (
+            {paginateData(deliveryReports).map((report, index) => (
               <div 
                 key={index}
                 className="grid grid-cols-6 p-4 hover:bg-[#f9f9f9]"
                 style={{ borderBottom: '1px solid #eaeaea' }}
               >
                 <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.courierName}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.totalDeliveries}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.totalEarnings.toFixed(2)} GHS</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.averageDeliveryTime}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.completionRate.toFixed(1)}%</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.lastDeliveryDate}</div>
+                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.courierPhone}</div>
+                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.customerName}</div>
+                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.orderDate}</div>
+                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.deliveryPrice.toFixed(2)}</div>
+                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.deliveryLocation}</div>
               </div>
             ))}
+
+            {renderPagination(deliveryReports.length)}
           </>
         );
       default:
         return null;
     }
   };
+
+  // Reset page when report type changes
+  useEffect(() => {
+    setPage(1);
+  }, [selectedReport]);
+
+  // Reset page when date range changes
+  useEffect(() => {
+    setPage(1);
+  }, [dateRange]);
+
+  // Reset page when branch changes
+  useEffect(() => {
+    setPage(1);
+  }, [selectedBranchId]);
 
   return (
     <div className="h-full w-full bg-white m-0 p-0">
@@ -836,109 +958,8 @@ const Reports: FunctionComponent = () => {
               />
             )}
 
-            {/* Date Range Picker - Only show for Orders Report */}
-            {selectedReport === "Orders Report" && (
-              <div className="relative">
-                <div 
-                  onClick={handleDateClick}
-                  className="flex items-center gap-2 px-3 py-2 border border-[rgba(167,161,158,0.1)] rounded-md cursor-pointer hover:bg-gray-50"
-                >
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    className="h-4 w-4 text-[#666]" 
-                    fill="none" 
-                    viewBox="0 0 24 24" 
-                    stroke="currentColor"
-                  >
-                    <path 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth={2} 
-                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
-                    />
-                  </svg>
-                  <span className="text-[14px] font-sans text-[#666]">
-                    {dateRange[0] && dateRange[1] 
-                      ? `${dayjs(dateRange[0]).format('DD MMM')} - ${dayjs(dateRange[1]).format('DD MMM YYYY')}`
-                      : 'Select Date Range'
-                    }
-                  </span>
-                </div>
-
-                <LocalizationProvider dateAdapter={AdapterDayjs}>
-                  <Popover
-                    open={open}
-                    anchorEl={anchorEl}
-                    onClose={handleClose}
-                    anchorOrigin={{
-                      vertical: 'bottom',
-                      horizontal: 'right',
-                    }}
-                    transformOrigin={{
-                      vertical: 'top',
-                      horizontal: 'right',
-                    }}
-                    sx={{
-                      '& .MuiPaper-root': {
-                        borderRadius: '8px',
-                        border: '1px solid rgba(167,161,158,0.1)',
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                        marginTop: '8px',
-                      },
-                      '& .MuiPickersDay-root.Mui-selected': {
-                        backgroundColor: '#fe5b18',
-                        '&:hover': {
-                          backgroundColor: '#fe5b18',
-                        }
-                      },
-                      '& .MuiPickersDay-root.Mui-inRange': {
-                        backgroundColor: '#fff3e0',
-                        '&:hover': {
-                          backgroundColor: '#ffe0b2',
-                        }
-                      },
-                      '& .MuiPickersDay-root:hover': {
-                        backgroundColor: '#fff3e0',
-                      },
-                      '& .MuiTypography-root': {
-                        fontFamily: 'Inter',
-                      },
-                    }}
-                  >
-                    <div className="flex p-4">
-                      <div className="flex flex-col">
-                        <div className="text-sm font-medium text-gray-600 mb-2">Start Date</div>
-                        <DateCalendar 
-                          value={dateRange[0]}
-                          onChange={(newDate) => handleDateSelect(newDate, true)}
-                          sx={{
-                            fontFamily: 'Inter',
-                            '& .MuiTypography-root': {
-                              fontFamily: 'Inter',
-                            },
-                          }}
-                        />
-                      </div>
-                      <div className="border-l border-gray-200" />
-                      <div className="flex flex-col">
-                        <div className="text-sm font-medium text-gray-600 mb-2">End Date</div>
-                        <DateCalendar 
-                          value={dateRange[1]}
-                          minDate={dateRange[0] || undefined}
-                          onChange={(newDate) => handleDateSelect(newDate, false)}
-                          sx={{
-                            fontFamily: 'Inter',
-                            '& .MuiTypography-root': {
-                              fontFamily: 'Inter',
-                            },
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </Popover>
-                </LocalizationProvider>
-              </div>
-            )}
+            {/* Date Range Picker - Now using the renderDateFilter function */}
+            {renderDateFilter()}
 
             {/* Download Button */}
             {selectedReport && (
@@ -1019,4 +1040,3 @@ const Reports: FunctionComponent = () => {
 };
 
 export default Reports;
-
