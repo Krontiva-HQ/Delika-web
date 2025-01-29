@@ -14,6 +14,9 @@ import { api } from '../../services/api';
 import { useBranches } from '../../hooks/useBranches';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import BranchFilter from '../../components/BranchFilter';
+import { CiEdit } from "react-icons/ci";
+import EditOrder from '../Dashboard/EditOrder';
+import { Order } from "@/types/order";
 
 const Transactions: FunctionComponent = () => {
   const navigate = useNavigate();
@@ -25,6 +28,8 @@ const Transactions: FunctionComponent = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [orders, setOrders] = useState<any[]>([]);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [editingOrder, setEditingOrder] = useState<Order | null>(null);
+  const [showEditOrder, setShowEditOrder] = useState(false);
   
   const { branches, isLoading: branchesLoading } = useBranches(userProfile?.restaurantId ?? null);
   const [selectedBranchId, setSelectedBranchId] = useState<string>(() => {
@@ -113,6 +118,20 @@ const Transactions: FunctionComponent = () => {
         return true; // 'all' tab shows everything
     }
   });
+
+  // Add this handler for edit click
+  const handleEditClick = (e: React.MouseEvent, order: Order) => {
+    e.stopPropagation();
+    setEditingOrder(order);
+    setShowEditOrder(true);
+  };
+
+  // Add this handler for after editing
+  const handleOrderEdited = useCallback(() => {
+    if (selectedDate && selectedBranchId) {
+      fetchTransactions(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
+    }
+  }, [selectedDate, selectedBranchId, fetchTransactions]);
 
   return (
     <div className="h-full w-full bg-white m-0 p-0">
@@ -311,8 +330,11 @@ const Transactions: FunctionComponent = () => {
                     }`}>
                       {order.paymentStatus}
                     </span>
-                    <button className="p-1 border-[1px] border-solid border-[#eaeaea] rounded-[4px] bg-white hover:bg-gray-50">
-                      <SlOptionsVertical className="w-[14px] h-[14px] text-[#666]" />
+                    <button 
+                      className="p-1 border-[1px] border-solid border-[#eaeaea] rounded-[4px] bg-white hover:bg-gray-50"
+                      onClick={(e) => handleEditClick(e, order)}
+                    >
+                      <CiEdit className="w-[14px] h-[14px] text-[#666]" />
                     </button>
                   </div>
                 </div>
@@ -320,6 +342,17 @@ const Transactions: FunctionComponent = () => {
             )}
           </div>
         </div>
+      )}
+
+      {showEditOrder && editingOrder && (
+        <EditOrder 
+          order={editingOrder}
+          onClose={() => {
+            setShowEditOrder(false);
+            setEditingOrder(null);
+          }}
+          onOrderEdited={handleOrderEdited}
+        />
       )}
     </div>
   );
