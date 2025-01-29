@@ -180,225 +180,238 @@ const Reports: FunctionComponent = () => {
   // Effect for handling report data updates
   useEffect(() => {
     if (selectedReport && userProfile) {
-      setOrderDetails([]);
-      setMostSellingItems([]);
-      setCustomerReports([]);
-      setDeliveryReports([]);
       setIsLoading(true);
+      // Don't reset date range here
       handleReportClick(selectedReport);
     }
   }, [selectedBranchId, selectedReport]);
 
-  const handleBranchSelect = useCallback((branchId: string) => {
-    console.log('Branch selected in Reports:', branchId);
-    localStorage.setItem('selectedBranchId', branchId);
-    setSelectedBranchId(branchId);
-    // Immediately refresh report data
-    if (selectedReport) {
-      handleReportClick(selectedReport);
-    }
-  }, [selectedReport]);
+  const fetchReportData = useCallback(async (
+    reportType: string, 
+    branchId: string, 
+    startDate: Dayjs | null, 
+    endDate: Dayjs | null
+  ) => {
+    setIsLoading(true);
+    
+    try {
+      const params = {
+        restaurantId: userProfile?.restaurantId,
+        branchId: branchId,
+        ...(startDate && endDate ? {
+          startDate: startDate.format('YYYY-MM-DD'),
+          endDate: endDate.format('YYYY-MM-DD')
+        } : {})
+      };
 
-  const handleReportClick = async (reportName: string) => {
-    setSelectedReport(reportName);
-    setDateRange([null, null]);
-    
-    const branchId = selectedBranchId || userProfile?.branchId;
-    
-    if (reportName === "Orders Report") {
-      try {
-        const response = await api.get('/get/all/orders/per/branch', {
-          params: {
-            restaurantId: userProfile?.restaurantId,
-            branchId: branchId
-          }
+      const response = await api.get('/get/all/orders/per/branch', { params });
+      
+      // If we have a date range, filter the response data
+      let filteredData = response.data;
+      if (startDate && endDate) {
+        filteredData = response.data.filter((order: any) => {
+          const orderDate = dayjs(order.orderDate);
+          return orderDate.isSameOrAfter(startDate, 'day') && 
+                 orderDate.isSameOrBefore(endDate, 'day');
         });
-
-        const formattedOrders: OrderDetail[] = response.data.map((order: any) => ({
-          customerName: order.customerName,
-          customerPhone: order.customerPhoneNumber,
-          amount: order.orderPrice,
-          courierName: order.courierName,
-          deliveryPrice: order.deliveryPrice,
-          totalPrice: parseFloat(order.totalPrice),
-          orderDate: order.orderDate,
-          products: order.products
-        }));
-
-        setOrderDetails(formattedOrders);
-      } catch (error) {
-        console.error('Error fetching order details:', error);
-        setOrderDetails([]);
       }
-    } else if (reportName === "Top Sold Items") {
-      try {
-        const response = await api.get('/get/all/orders/per/branch', {
-          params: {
-            restaurantId: userProfile?.restaurantId,
-            branchId: branchId
-          }
-        });
 
-        // Process orders to get most selling items
-        const itemsMap = new Map<string, {
-          totalQuantity: number;
-          totalRevenue: number;
-          lastSoldDate: string;
-          averagePrice: number;
-        }>();
+      switch (reportType) {
+        case "Orders Report":
+          const formattedOrders: OrderDetail[] = filteredData.map((order: any) => ({
+            customerName: order.customerName,
+            customerPhone: order.customerPhoneNumber,
+            amount: order.orderPrice,
+            courierName: order.courierName,
+            deliveryPrice: order.deliveryPrice,
+            totalPrice: parseFloat(order.totalPrice),
+            orderDate: order.orderDate,
+            products: order.products
+          }));
+          setOrderDetails(formattedOrders);
+          break;
 
-        response.data.forEach((order: any) => {
-          order.products.forEach((product: any) => {
-            const existing = itemsMap.get(product.name) || {
-              totalQuantity: 0,
-              totalRevenue: 0,
-              lastSoldDate: order.orderDate,
-              averagePrice: 0
-            };
+        case "Top Sold Items":
+          // Process orders to get most selling items
+          const itemsMap = new Map<string, {
+            totalQuantity: number;
+            totalRevenue: number;
+            lastSoldDate: string;
+            averagePrice: number;
+          }>();
 
-            const quantity = parseInt(product.quantity);
-            const price = parseFloat(product.price);
+          filteredData.forEach((order: any) => {
+            order.products.forEach((product: any) => {
+              const existing = itemsMap.get(product.name) || {
+                totalQuantity: 0,
+                totalRevenue: 0,
+                lastSoldDate: order.orderDate,
+                averagePrice: 0
+              };
 
-            itemsMap.set(product.name, {
-              totalQuantity: existing.totalQuantity + quantity,
-              totalRevenue: existing.totalRevenue + (price * quantity),
-              lastSoldDate: new Date(order.orderDate) > new Date(existing.lastSoldDate) 
-                ? order.orderDate 
-                : existing.lastSoldDate,
-              averagePrice: price
+              const quantity = parseInt(product.quantity);
+              const price = parseFloat(product.price);
+
+              itemsMap.set(product.name, {
+                totalQuantity: existing.totalQuantity + quantity,
+                totalRevenue: existing.totalRevenue + (price * quantity),
+                lastSoldDate: new Date(order.orderDate) > new Date(existing.lastSoldDate) 
+                  ? order.orderDate 
+                  : existing.lastSoldDate,
+                averagePrice: price
+              });
             });
           });
-        });
 
-        const sortedItems = Array.from(itemsMap.entries())
-          .map(([name, data]) => ({
-            name,
-            totalQuantitySold: data.totalQuantity,
-            totalRevenue: data.totalRevenue,
-            averagePrice: data.averagePrice,
-            lastSoldDate: new Date(data.lastSoldDate).toLocaleDateString()
-          }))
-          .sort((a, b) => b.totalQuantitySold - a.totalQuantitySold);
+          const sortedItems = Array.from(itemsMap.entries())
+            .map(([name, data]) => ({
+              name,
+              totalQuantitySold: data.totalQuantity,
+              totalRevenue: data.totalRevenue,
+              averagePrice: data.averagePrice,
+              lastSoldDate: new Date(data.lastSoldDate).toLocaleDateString()
+            }))
+            .sort((a, b) => b.totalQuantitySold - a.totalQuantitySold);
 
-        setMostSellingItems(sortedItems);
-      } catch (error) {
-        console.error('Error fetching most selling items:', error);
-        setMostSellingItems([]);
-      }
-    } else if (reportName === "Customer Report") {
-      try {
-        const response = await api.get('/get/all/orders/per/branch', {
-          params: {
-            restaurantId: userProfile?.restaurantId,
-            branchId: branchId
-          }
-        });
+          setMostSellingItems(sortedItems);
+          break;
 
-        // Process customer data with the filtered orders
-        const customersMap = new Map<string, {
-          name: string;
-          orders: number;
-          totalSpent: number;
-          lastOrderDate: string;
-          items: Map<string, number>;
-        }>();
+        case "Customer Report":
+          // Process customer data with the filtered orders
+          const customersMap = new Map<string, {
+            name: string;
+            orders: number;
+            totalSpent: number;
+            lastOrderDate: string;
+            items: Map<string, number>;
+          }>();
 
-        response.data.forEach((order: any) => {
-          const phone = order.customerPhoneNumber;
-          const existing = customersMap.get(phone) || {
-            name: order.customerName,
-            orders: 0,
-            totalSpent: 0,
-            lastOrderDate: order.orderDate,
-            items: new Map<string, number>()
-          };
+          filteredData.forEach((order: any) => {
+            const phone = order.customerPhoneNumber;
+            const existing = customersMap.get(phone) || {
+              name: order.customerName,
+              orders: 0,
+              totalSpent: 0,
+              lastOrderDate: order.orderDate,
+              items: new Map<string, number>()
+            };
 
-          // Update customer data
-          existing.orders += 1;
-          existing.totalSpent += parseFloat(order.totalPrice);
-          existing.lastOrderDate = new Date(order.orderDate) > new Date(existing.lastOrderDate)
-            ? order.orderDate
-            : existing.lastOrderDate;
+            // Update customer data
+            existing.orders += 1;
+            existing.totalSpent += parseFloat(order.totalPrice);
+            existing.lastOrderDate = new Date(order.orderDate) > new Date(existing.lastOrderDate)
+              ? order.orderDate
+              : existing.lastOrderDate;
 
-          // Track ordered items
-          order.products.forEach((product: any) => {
-            const currentQuantity = existing.items.get(product.name) || 0;
-            existing.items.set(product.name, currentQuantity + parseInt(product.quantity));
+            // Track ordered items
+            order.products.forEach((product: any) => {
+              const currentQuantity = existing.items.get(product.name) || 0;
+              existing.items.set(product.name, currentQuantity + parseInt(product.quantity));
+            });
+
+            customersMap.set(phone, existing);
           });
 
-          customersMap.set(phone, existing);
-        });
+          setCustomerReports(Array.from(customersMap.entries())
+            .map(([phoneNumber, data]) => ({
+              phoneNumber,
+              customerName: data.name,
+              totalOrders: data.orders,
+              totalSpent: data.totalSpent,
+              averageOrderValue: data.totalSpent / data.orders,
+              lastOrderDate: new Date(data.lastOrderDate).toLocaleDateString(),
+              mostOrderedItems: Array.from(data.items.entries())
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 3)
+                .map(([name, quantity]) => ({ name, quantity }))
+            })));
+          break;
 
-        setCustomerReports(Array.from(customersMap.entries())
-          .map(([phoneNumber, data]) => ({
-            phoneNumber,
-            customerName: data.name,
-            totalOrders: data.orders,
-            totalSpent: data.totalSpent,
-            averageOrderValue: data.totalSpent / data.orders,
-            lastOrderDate: new Date(data.lastOrderDate).toLocaleDateString(),
-            mostOrderedItems: Array.from(data.items.entries())
-              .sort((a, b) => b[1] - a[1])
-              .slice(0, 3)
-              .map(([name, quantity]) => ({ name, quantity }))
-          })));
-      } catch (error) {
-        console.error('Error fetching customer reports:', error);
-        setCustomerReports([]);
+        case "Delivery Report":
+          // Process orders to get delivery statistics
+          const courierMap = new Map<string, {
+            deliveries: number;
+            earnings: number;
+            completedDeliveries: number;
+            lastDeliveryDate: string;
+          }>();
+
+          filteredData.forEach((order: any) => {
+            if (!order.courierName) return;
+
+            const existing = courierMap.get(order.courierName) || {
+              deliveries: 0,
+              earnings: 0,
+              completedDeliveries: 0,
+              lastDeliveryDate: order.orderDate
+            };
+
+            existing.deliveries += 1;
+            existing.earnings += parseFloat(order.deliveryPrice || 0);
+            if (order.status === 'completed') {
+              existing.completedDeliveries += 1;
+            }
+            if (new Date(order.orderDate) > new Date(existing.lastDeliveryDate)) {
+              existing.lastDeliveryDate = order.orderDate;
+            }
+
+            courierMap.set(order.courierName, existing);
+          });
+
+          const deliveryStats = Array.from(courierMap.entries()).map(([courierName, data]) => ({
+            courierName,
+            totalDeliveries: data.deliveries,
+            totalEarnings: data.earnings,
+            averageDeliveryTime: 'N/A',
+            completionRate: (data.completedDeliveries / data.deliveries) * 100,
+            lastDeliveryDate: new Date(data.lastDeliveryDate).toLocaleDateString()
+          }));
+
+          setDeliveryReports(deliveryStats);
+          break;
       }
-    } else if (reportName === "Delivery Report") {
-      try {
-        const response = await api.get('/get/all/orders/per/branch', {
-          params: {
-            restaurantId: userProfile?.restaurantId,
-            branchId: branchId
-          }
-        });
+    } catch (error) {
+      console.error('Error fetching report data:', error);
+      setOrderDetails([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userProfile?.restaurantId]);
 
-        // Process orders to get delivery statistics
-        const courierMap = new Map<string, {
-          deliveries: number;
-          earnings: number;
-          completedDeliveries: number;
-          lastDeliveryDate: string;
-        }>();
+  // Update handleBranchSelect to properly use existing date range
+  const handleBranchSelect = useCallback((branchId: string) => {
+    setSelectedBranchId(branchId);
+    if (selectedReport) {
+      // Always use the current dateRange, whether it's set or not
+      fetchReportData(
+        selectedReport, 
+        branchId, 
+        dateRange[0],  // Use existing date range even if null
+        dateRange[1]   // Use existing date range even if null
+      );
+    }
+  }, [selectedReport, dateRange, fetchReportData]);
 
-        response.data.forEach((order: any) => {
-          if (!order.courierName) return;
+  // Update date range handler
+  const handleDateRangeChange = useCallback((newDateRange: [Dayjs | null, Dayjs | null]) => {
+    setDateRange(newDateRange);
+    if (selectedReport && selectedBranchId && newDateRange[0] && newDateRange[1]) {
+      fetchReportData(selectedReport, selectedBranchId, newDateRange[0], newDateRange[1]);
+    }
+  }, [selectedReport, selectedBranchId, fetchReportData]);
 
-          const existing = courierMap.get(order.courierName) || {
-            deliveries: 0,
-            earnings: 0,
-            completedDeliveries: 0,
-            lastDeliveryDate: order.orderDate
-          };
-
-          existing.deliveries += 1;
-          existing.earnings += parseFloat(order.deliveryPrice || 0);
-          if (order.status === 'completed') {
-            existing.completedDeliveries += 1;
-          }
-          if (new Date(order.orderDate) > new Date(existing.lastDeliveryDate)) {
-            existing.lastDeliveryDate = order.orderDate;
-          }
-
-          courierMap.set(order.courierName, existing);
-        });
-
-        const deliveryStats = Array.from(courierMap.entries()).map(([courierName, data]) => ({
-          courierName,
-          totalDeliveries: data.deliveries,
-          totalEarnings: data.earnings,
-          averageDeliveryTime: 'N/A',
-          completionRate: (data.completedDeliveries / data.deliveries) * 100,
-          lastDeliveryDate: new Date(data.lastDeliveryDate).toLocaleDateString()
-        }));
-
-        setDeliveryReports(deliveryStats);
-      } catch (error) {
-        console.error('Error fetching delivery reports:', error);
-        setDeliveryReports([]);
-      }
+  // Update handleReportClick
+  const handleReportClick = async (reportName: string) => {
+    setSelectedReport(reportName);
+    if (reportName !== selectedReport) {
+      setDateRange([null, null]);
+    }
+    
+    const branchId = selectedBranchId || userProfile?.branchId;
+    if (dateRange[0] && dateRange[1]) {
+      fetchReportData(reportName, branchId, dateRange[0], dateRange[1]);
+    } else {
+      fetchReportData(reportName, branchId, null, null);
     }
   };
 
