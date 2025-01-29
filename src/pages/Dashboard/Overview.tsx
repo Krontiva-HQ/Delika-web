@@ -74,9 +74,14 @@ const CustomTooltip = ({ active, payload, coordinate }: any) => {
 
 interface OverviewProps {
   setActiveView: (view: string) => void;
+  hideRevenue?: boolean;
 }
 
-const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
+interface DashboardPermissions {
+  canViewRevenue: boolean;
+}
+
+const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false }) => {
   const [orderTimeRange, setOrderTimeRange] = useState('6');
   const [revenueTimeRange, setRevenueTimeRange] = useState('6');
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
@@ -88,6 +93,10 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
     userProfile.restaurantId,
     selectedBranchId || userProfile.branchId
   );
+
+  const [permissions, setPermissions] = useState<DashboardPermissions>({
+    canViewRevenue: false
+  });
 
   useEffect(() => {
     console.log('Selected Branch ID changed:', selectedBranchId);
@@ -234,18 +243,20 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
           )}
         </div>
        {/* Overview Stats */}   
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4 font-sans">
-          <div className="bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_4px_rgba(0,0,0,0.05)]">
-            <div className="w-[50px] h-[50px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
-              <AiOutlineDollar className="w-5 h-5 text-[#fe5b18]" />
+        <section className={`grid ${!hideRevenue ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2 md:grid-cols-3'} gap-3 mb-4 font-sans`}>
+          {!hideRevenue && (
+            <div className="bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_4px_rgba(0,0,0,0.05)]">
+              <div className="w-[50px] h-[50px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
+                <AiOutlineDollar className="w-5 h-5 text-[#fe5b18]" />
+              </div>
+              <div>
+                <p className="text-gray-600 text-xs font-sans m-0">Total Revenue</p>
+                <p className="text-xl font-bold font-sans m-0">
+                  {isDashboardLoading ? 'Loading...' : formatCurrency(Number(data?.totalRevenue || 0))}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-gray-600 text-xs font-sans m-0">Total Revenue</p>
-              <p className="text-xl font-bold font-sans m-0">
-                {isDashboardLoading ? 'Loading...' : formatCurrency(Number(data?.totalRevenue || 0))}
-              </p>
-            </div>
-          </div>
+          )}
 
           <div className="bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_4px_rgba(0,0,0,0.05)]">
             <div className="w-[50px] h-[50px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
@@ -285,7 +296,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
         </section>
 
         <section className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 font-sans">
-          <div className="bg-white rounded-2xl p-4">
+          <div className={`bg-white rounded-2xl p-4 ${hideRevenue ? 'md:col-span-2' : ''}`}>
             <div className="flex justify-between items-center mb-3">
               <h2 className="text-lg font-semibold text-gray-800 font-sans">
                 Total Orders {isMonthlyOrderDataLoading && '(Loading...)'}
@@ -300,11 +311,6 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
                   <option value="6">Last 6 Months</option>
                   <option value="12">Last 12 Months</option>
                 </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                  </svg>
-                </div>
               </div>
             </div>
             {isMonthlyOrderDataLoading ? (
@@ -356,104 +362,101 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
             )}
           </div>
 
-          <div className="bg-white rounded-2xl p-4">
-            <div className="flex justify-between items-center mb-3">
-              <h2 className="text-lg font-semibold text-gray-800 font-sans">
-                Total Revenue {isMonthlyOrderDataLoading && '(Loading...)'}
-              </h2>
-              <div className="relative">
-                <select
-                  value={revenueTimeRange}
-                  onChange={(e) => setRevenueTimeRange(e.target.value)}
-                  className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)]"
-                >
-                  <option value="3">Last 3 Months</option>
-                  <option value="6">Last 6 Months</option>
-                  <option value="12">Last 12 Months</option>
-                </select>
-                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                  </svg>
+          {!hideRevenue && (
+            <div className="bg-white rounded-2xl p-4">
+              <div className="flex justify-between items-center mb-3">
+                <h2 className="text-lg font-semibold text-gray-800 font-sans">
+                  Total Revenue {isMonthlyOrderDataLoading && '(Loading...)'}
+                </h2>
+                <div className="relative">
+                  <select
+                    value={revenueTimeRange}
+                    onChange={(e) => setRevenueTimeRange(e.target.value)}
+                    className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)]"
+                  >
+                    <option value="3">Last 3 Months</option>
+                    <option value="6">Last 6 Months</option>
+                    <option value="12">Last 12 Months</option>
+                  </select>
                 </div>
               </div>
+              
+              {isMonthlyOrderDataLoading ? (
+                <div className="h-[200px] flex items-center justify-center">Loading...</div>
+              ) : monthlyOrderData?.length === 0 ? (
+                <div className="h-[200px] flex items-center justify-center">No data available</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={200}>
+                  <AreaChart
+                    data={filteredRevenueData}
+                    margin={{ top: 20, right: 0, left: 0, bottom: 5 }}
+                  >
+                    <defs>
+                      <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="rgb(255, 138, 76)" stopOpacity={0.8} />
+                        <stop offset="95%" stopColor="rgb(255, 138, 76)" stopOpacity={0.1} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid 
+                      horizontal={true}
+                      vertical={false}
+                      strokeDasharray="3 3"
+                      stroke="#eee"
+                    />
+                    <XAxis
+                      dataKey="month"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: '#666', fontSize: 12, fontFamily: 'sans-serif' }}
+                      dy={10}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{
+                        fill: '#666',
+                        fontSize: 11,
+                        fontFamily: 'sans-serif',
+                      }}
+                      tickFormatter={formatCurrency}
+                      width={75}
+                    />
+                    <Tooltip
+                      cursor={false}
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          return (
+                            <div className="bg-white shadow-lg rounded-lg p-2 text-sm font-sans">
+                              <p className="font-medium text-gray-900">
+                                  GH₵{payload[0].value}
+                              </p>
+                            </div>
+                          )
+                        }
+                        return null
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="totalPrice"
+                      stroke="rgb(255, 138, 76)"
+                      strokeWidth={2}
+                      fill="url(#revenueGradient)"
+                      dot={false}
+
+
+                      activeDot={{
+                        r: 6,
+                        fill: "white",
+                        stroke: "rgb(255, 138, 76)",
+                        strokeWidth: 2
+                      }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              )}
             </div>
-            
-            {isMonthlyOrderDataLoading ? (
-              <div className="h-[200px] flex items-center justify-center">Loading...</div>
-            ) : monthlyOrderData?.length === 0 ? (
-              <div className="h-[200px] flex items-center justify-center">No data available</div>
-            ) : (
-              <ResponsiveContainer width="100%" height={200}>
-                <AreaChart
-                  data={filteredRevenueData}
-                  margin={{ top: 20, right: 0, left: 0, bottom: 5 }}
-                >
-                  <defs>
-                    <linearGradient id="revenueGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="rgb(255, 138, 76)" stopOpacity={0.8} />
-                      <stop offset="95%" stopColor="rgb(255, 138, 76)" stopOpacity={0.1} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid 
-                    horizontal={true}
-                    vertical={false}
-                    strokeDasharray="3 3"
-                    stroke="#eee"
-                  />
-                  <XAxis
-                    dataKey="month"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#666', fontSize: 12, fontFamily: 'sans-serif' }}
-                    dy={10}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{
-                      fill: '#666',
-                      fontSize: 11,
-                      fontFamily: 'sans-serif',
-                    }}
-                    tickFormatter={formatCurrency}
-                    width={75}
-                  />
-                  <Tooltip
-                    cursor={false}
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="bg-white shadow-lg rounded-lg p-2 text-sm font-sans">
-                            <p className="font-medium text-gray-900">
-                                GH₵{payload[0].value}
-                            </p>
-                          </div>
-                        )
-                      }
-                      return null
-                    }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="totalPrice"
-                    stroke="rgb(255, 138, 76)"
-                    strokeWidth={2}
-                    fill="url(#revenueGradient)"
-                    dot={false}
-
-
-                    activeDot={{
-                      r: 6,
-                      fill: "white",
-                      stroke: "rgb(255, 138, 76)",
-                      strokeWidth: 2
-                    }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </div>
+          )}
         </section>
 
         <section className="bg-white rounded-2xl p-4">

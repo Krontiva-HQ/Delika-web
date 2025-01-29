@@ -84,8 +84,8 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
 
   // Filter menu items based on restaurant permissions
   const menuItems = [
-    // Only show Overview if permissions are true
-    { name: "Overview", icon: <FiBox size={24} />, id: "dashboard" },
+    // Always show Overview, remove permission check
+    { name: "Overview", icon: <FiGrid size={24} />, id: "dashboard" },
     { name: "My Orders", icon: <FiBox size={24} />, id: "orders" },
     // Only show these items if the corresponding permission is false
     ...(!restaurantData.Inventory ? [{ name: "Menu Items", icon: <IoFastFoodOutline size={24} />, id: "inventory" }] : []),
@@ -109,7 +109,7 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
         if (!restaurantData.Inventory && !restaurantData.Transactions) {
           setActiveView('dashboard');
         } else {
-          setActiveView('orders'); // Set to 'orders' as default when Overview should be hidden
+          setActiveView('dashboard'); // Set to 'orders' as default when Overview should be hidden
         }
       } catch (err) {
         console.error('Error fetching user profile:', err);
@@ -122,11 +122,12 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
   }, [navigate, fetchUserProfile]);
 
   const renderContent = () => {
-    if (!restaurantData.Inventory && !restaurantData.Transactions && activeView === 'dashboard') {
-      return <Overview setActiveView={setActiveView} />;
-    }
-
     switch (activeView) {
+      case 'dashboard':
+        return <Overview 
+          setActiveView={setActiveView} 
+          hideRevenue={!!restaurantData.Transactions}
+        />;
       case 'orders':
         return <Orders 
           searchQuery={searchQuery} 
