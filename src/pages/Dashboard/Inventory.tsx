@@ -455,7 +455,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         </div>
         {/* Total Items */}
         <div className="relative leading-[22px] font-sans mb-4">
-          Total item - {categories.reduce((total, category) => total + (category.foods?.length || 0), 0)}
+          Total item - {remoteCategories.reduce((total, category) => total + (category.foods?.length || 0), 0)}
         </div>
 
         {/* Categories Section */}

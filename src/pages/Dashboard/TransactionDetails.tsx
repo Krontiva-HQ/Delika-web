@@ -405,17 +405,19 @@ const TransactionDetailsView: FunctionComponent<TransactionDetailsViewProps> = (
                   </p>
                 </div>
                 <div className="flex gap-8">
-                  <div className="text-[12px] leading-[20px] font-sans">
+                 {/* <div className="text-[12px] leading-[20px] font-sans">
                     <p className="text-[#666] mb-2 font-bold">Payment Method</p>
                     <p className="text-[#444]">
+
                       {Boolean(invoiceData?.payNow) ? 'Momo' : 
                        Boolean(invoiceData?.payLater) ? 'Cash' : 
                        ''}
                     </p>
-                  </div>
+                  </div> */}
                   <div className="text-[12px] leading-[20px] font-sans">
                     <p className="text-[#666] mb-2 font-bold">Sub Total</p>
                     <p className="text-[#444]">GH₵{invoiceData.payment.subTotal}</p>
+
                   </div>
                   <div className="text-[12px] leading-[20px] font-sans">
                     <p className="text-[#666] mb-2 font-bold">Delivery Cost</p>
