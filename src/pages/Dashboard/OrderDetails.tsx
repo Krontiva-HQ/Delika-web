@@ -282,16 +282,20 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                     />
                   )}
                   <div>
-                    <h2 className="text-lg font-semibold font-sans leading-tight mb-[2px]">
+                    <h2 className="text-lg font-semibold font-sans leading-none mb-0">
                       {invoiceData.restaurant.name}
                     </h2>
-                    <p className="text-gray-500 text-xs font-sans">
+                    <p className="text-gray-500 text-xs font-sans mt-[1px]">
                       Order Number #{invoiceData.invoiceNumber || 'N/A'}
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-col text-gray-500 text-xs mt-2 font-sans">
                   <span>Order Date: {invoiceData.orderDate}</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-gray-600 font-medium text-xs">Order Status:</span>
+                    <span className="text-xs font-bold">{invoiceData.orderStatus || 'N/A'}</span>
+                  </div>
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-1">
                       <FaLocationDot className="w-4 h-4 text-green-600" />
@@ -307,14 +311,7 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                         <span className="text-gray-600 font-medium">Dropoff:</span>
                         <span>{invoiceData.dropOff?.[0]?.toAddress || 'N/A'}</span>
                       </div>  
-                      
                     </div>
-                      {/* Add Order Status under DropOff */}
-              <div className="flex items-center gap-1">
-                <span className="text-gray-600 font-medium text-xs">Order Status:</span>
-                <span className="text-xs font-bold">{invoiceData.orderStatus || 'N/A'}</span>
-              </div>
-
                   </div>
                 </div>
               </div>
@@ -365,9 +362,9 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                 </div>
 
                 {/* Order Status Info */}
-                <div className="flex-1 -ml-12">
-                  <h3 className="text-lg font-semibold mb-2 font-sans">Order Status</h3>
-                  <ul className="list-none font-sans text-xs -ml-1">
+                <div className="flex-1 -ml-24">
+                  <h3 className="text-lg font-semibold mb-2 font-sans mr-24">Order Status</h3>
+                  <ul className="list-none font-sans text-xs -ml-10">
                     <li className="flex items-center mb-[2px]">
                       <span className={`${invoiceData.timeline.received ? 'text-red-500' : 'text-gray-400'} mr-1 w-2`}>•</span>
                       <span>Order Received | <strong>{invoiceData.timeline.received || ''}</strong></span>
