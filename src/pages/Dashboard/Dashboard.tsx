@@ -22,6 +22,7 @@ import { IoIosArrowDropdown, IoIosCloseCircleOutline } from "react-icons/io";
 import { useNotifications } from '../../context/NotificationContext';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import { IoIosClose } from "react-icons/io";
+import { useBackgroundRefresh } from '../../hooks/useBackgroundRefresh';
 
 interface MainDashboardProps {
   children: ReactNode;
@@ -31,7 +32,10 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
   const navigate = useNavigate();
   const { fetchUserProfile } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
-  const [activeView, setActiveView] = useState('dashboard');
+  const [activeView, setActiveView] = useState(() => {
+    const savedView = localStorage.getItem('activeView');
+    return savedView || 'dashboard';
+  });
   const [vuesaxlineararrowDownAnchorEl, setVuesaxlineararrowDownAnchorEl] =
     useState<HTMLElement | null>(null);
   const vuesaxlineararrowDownOpen = Boolean(vuesaxlineararrowDownAnchorEl);
@@ -79,6 +83,7 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
 
   const handleViewChange = (view: string) => {
     setActiveView(view);
+    localStorage.setItem('activeView', view);
     setSearchQuery('');
   };
 
@@ -105,12 +110,6 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
       try {
         await fetchUserProfile();
         setIsLoading(false);
-        // Set default view based on permissions
-        if (!restaurantData.Inventory && !restaurantData.Transactions) {
-          setActiveView('dashboard');
-        } else {
-          setActiveView('dashboard'); // Set to 'orders' as default when Overview should be hidden
-        }
       } catch (err) {
         console.error('Error fetching user profile:', err);
         localStorage.removeItem('authToken');
@@ -120,6 +119,9 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
 
     initializeDashboard();
   }, [navigate, fetchUserProfile]);
+
+  // Add the background refresh hook
+  useBackgroundRefresh();
 
   const renderContent = () => {
     switch (activeView) {

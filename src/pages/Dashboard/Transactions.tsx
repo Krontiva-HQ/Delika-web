@@ -130,6 +130,8 @@ const Transactions: FunctionComponent = () => {
   const handleOrderEdited = useCallback(() => {
     if (selectedDate && selectedBranchId) {
       fetchTransactions(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
+      setShowEditOrder(false);  // Close the modal
+      setEditingOrder(null);    // Clear the editing order
     }
   }, [selectedDate, selectedBranchId, fetchTransactions]);
 

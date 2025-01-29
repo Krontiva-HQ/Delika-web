@@ -177,6 +177,8 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
   const handleOrderEdited = useCallback(() => {
     if (selectedDate && selectedBranchId) {
       fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
+      setShowEditOrder(false);  // Close the modal
+      setEditingOrder(null);    // Clear the editing order
     }
   }, [selectedDate, selectedBranchId, fetchOrders]);
 
