@@ -85,7 +85,7 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
   // Filter menu items based on restaurant permissions
   const menuItems = [
     // Only show Overview if permissions are true
-    ...(!restaurantData.Inventory && !restaurantData.Transactions ? [{ name: "Overview", icon: <FiGrid size={24} />, id: "dashboard" }] : []),
+    { name: "Overview", icon: <FiBox size={24} />, id: "dashboard" },
     { name: "My Orders", icon: <FiBox size={24} />, id: "orders" },
     // Only show these items if the corresponding permission is false
     ...(!restaurantData.Inventory ? [{ name: "Menu Items", icon: <IoFastFoodOutline size={24} />, id: "inventory" }] : []),

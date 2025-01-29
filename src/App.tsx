@@ -81,7 +81,10 @@ function App() {
           <Route path="/dashboard" element={<Dashboard>
             <Outlet />
           </Dashboard>} />
-          <Route path="/orders" element={<Orders searchQuery="" />} />
+          <Route path="/orders" element={<Orders 
+            searchQuery="" 
+            onOrderDetailsView={() => {}} 
+          />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/dashboard/add-inventory" element={<AddInventory onClose={() => {/* handle close */}} branchId="" />} />
           <Route path="/transactions" element={<Transactions />} />
