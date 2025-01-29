@@ -11,8 +11,6 @@ interface NotificationsModalProps {
 const NotificationsModal: FC<NotificationsModalProps> = ({ isOpen, onClose }) => {
   const { notifications, markAsRead, removeNotification } = useNotifications();
 
-  console.log('Current notifications:', notifications); // Debug log
-
   if (!isOpen) return null;
 
   const handleNotificationClick = (notificationId: string) => {

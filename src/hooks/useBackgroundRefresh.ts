@@ -16,60 +16,69 @@ export const useBackgroundRefresh = () => {
   const { userProfile } = useUserProfile();
   const refreshTimers = useRef<{ [key: string]: NodeJS.Timeout }>({});
 
+  // Helper function to get the correct branch ID
+  const getBranchId = (): string => {
+    const selectedBranchId = localStorage.getItem('selectedBranchId');
+    // If user is admin and has selected a branch, use that, otherwise use user's branch
+    return userProfile?.role === 'Admin' && selectedBranchId 
+      ? selectedBranchId 
+      : userProfile?.branchId || '';
+  };
+
   const refreshOrders = async () => {
     try {
       const params = new URLSearchParams({
-        restaurantId: userProfile.restaurantId || '',
-        branchId: userProfile.branchId || ''
+        restaurantId: userProfile?.restaurantId || '',
+        branchId: getBranchId()
       });
       await api.get(`/filter/orders/by/date?${params.toString()}`);
     } catch (error) {
-      console.error('Background refresh orders error:', error);
+      // Silent fail for background refresh
     }
   };
 
   const refreshMenu = async () => {
     try {
       await api.post('/get/all/menu', {
-        restaurantId: userProfile.restaurantId,
-        branchId: userProfile.branchId
+        restaurantId: userProfile?.restaurantId,
+        branchId: getBranchId()
       });
     } catch (error) {
-      console.error('Background refresh menu error:', error);
+      // Silent fail for background refresh
     }
   };
 
   const refreshTeam = async () => {
     try {
       await api.post('/get/team/members', {
-        restaurantId: userProfile.restaurantId,
-        branchId: userProfile.branchId
+        restaurantId: userProfile?.restaurantId,
+        branchId: getBranchId()
       });
     } catch (error) {
-      console.error('Background refresh team error:', error);
+      // Silent fail for background refresh
     }
   };
 
   const refreshTransactions = async () => {
     try {
       const params = new URLSearchParams({
-        restaurantId: userProfile.restaurantId || '',
-        branchId: userProfile.branchId || ''
+        restaurantId: userProfile?.restaurantId || '',
+        branchId: getBranchId()
       });
       await api.get(`/get/all/orders/per/branch?${params.toString()}`);
     } catch (error) {
-      console.error('Background refresh transactions error:', error);
+      // Silent fail for background refresh
     }
   };
 
   const refreshDashboard = async () => {
     try {
       await api.post('/get/dashboard/data', {
-        restaurantId: userProfile.restaurantId,
-        branchId: userProfile.branchId
+        restaurantId: userProfile?.restaurantId,
+        branchId: getBranchId()
       });
     } catch (error) {
-      console.error('Background refresh dashboard error:', error);
+      // Silent fail for background refresh
     }
   };
 
@@ -77,12 +86,12 @@ export const useBackgroundRefresh = () => {
     try {
       await api.get('/delikaquickshipper_audit_table', {
         params: {
-          restaurantId: userProfile.restaurantId,
-          branchId: userProfile.branchId
+          restaurantId: userProfile?.restaurantId,
+          branchId: getBranchId()
         }
       });
     } catch (error) {
-      console.error('Background refresh audit error:', error);
+      // Silent fail for background refresh
     }
   };
 
@@ -110,5 +119,23 @@ export const useBackgroundRefresh = () => {
     return () => {
       Object.values(refreshTimers.current).forEach(timer => clearInterval(timer));
     };
-  }, [userProfile?.restaurantId, userProfile?.branchId]);
+  }, [userProfile?.restaurantId]);
+
+  // Add a listener for branch changes
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'selectedBranchId') {
+        // Trigger immediate refresh when branch changes
+        refreshOrders();
+        refreshMenu();
+        refreshTeam();
+        refreshTransactions();
+        refreshDashboard();
+        refreshAudit();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 }; 
