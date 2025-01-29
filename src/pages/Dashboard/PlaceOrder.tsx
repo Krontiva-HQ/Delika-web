@@ -1,4 +1,4 @@
-import React, { useState, useEffect, FunctionComponent } from "react";
+import React, { useState, useEffect, FunctionComponent, useMemo } from "react";
 import { Button } from "@mui/material";
 import { getAuthenticatedUser, UserResponse } from "../../services/api";
 import LocationInput from '../../components/LocationInput';
@@ -146,6 +146,70 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     branchId: ''
   });
 
+  // Memoize validation values
+  const step1ValidationState = useMemo(() => {
+    const isPhoneValid = customerPhone.length === 10 && /^\d+$/.test(customerPhone);
+    const isNameValid = customerName.trim().length > 0;
+    const areLocationsValid = pickupLocation !== null && dropoffLocation !== null;
+    return isPhoneValid && isNameValid && areLocationsValid;
+  }, [customerPhone, customerName, pickupLocation, dropoffLocation]);
+
+  const step2ValidationState = useMemo(() => {
+    return selectedItems.length > 0 && deliveryPrice !== '';
+  }, [selectedItems, deliveryPrice]);
+
+  const step3ValidationState = useMemo(() => {
+    return customerName.trim() !== '' && 
+      customerPhone.trim() !== '' && 
+      pickupLocation !== null && 
+      dropoffLocation !== null &&
+      selectedItems.length > 0 && 
+      deliveryPrice !== '';
+  }, [customerName, customerPhone, pickupLocation, dropoffLocation, selectedItems, deliveryPrice]);
+
+  // Update validation states only when memoized values change
+  useEffect(() => {
+    setIsStep1Valid(step1ValidationState);
+  }, [step1ValidationState]);
+
+  useEffect(() => {
+    setIsStep2Valid(step2ValidationState);
+  }, [step2ValidationState]);
+
+  useEffect(() => {
+    setIsStep3Valid(step3ValidationState);
+  }, [step3ValidationState]);
+
+  // Initialize pickup location only once
+  useEffect(() => {
+    if (userProfile?.branchesTable && !pickupLocation) {
+      const location = {
+        longitude: parseFloat(userProfile.branchesTable.branchLongitude),
+        latitude: parseFloat(userProfile.branchesTable.branchLatitude),
+        name: userProfile.branchesTable.branchName,
+        address: userProfile.branchesTable.branchLocation
+      };
+      setPickupLocation(location);
+    }
+  }, [userProfile?.branchesTable, pickupLocation]);
+
+  // Calculate delivery price based on distance
+  useEffect(() => {
+    if (distance !== null) {
+      const updatedDistance = Math.max(0, distance - 1);
+      const calculatedPrice = 15 + (updatedDistance * 2.5);
+      setDeliveryPrice(calculatedPrice.toFixed(2));
+    }
+  }, [distance]);
+
+  // Calculate total food price
+  useEffect(() => {
+    const total = selectedItems.reduce((sum, item) => {
+      return sum + (Number(item.price) * Number(item.quantity));
+    }, 0);
+    setTotalFoodPrice(total.toFixed(2));
+  }, [selectedItems]);
+
   const handleSelectCategoryClick = (event: React.MouseEvent<HTMLElement>) => {
     setSelectCategoryAnchorEl(event.currentTarget);
   };
@@ -210,13 +274,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       ));
     }
   };
-
-  useEffect(() => {
-    const total = selectedItems.reduce((sum, item) => {
-      return sum + (Number(item.price) * Number(item.quantity));
-    }, 0);
-    setTotalFoodPrice(total.toFixed(2));
-  }, [selectedItems]);
 
   // Function to handle next step
   const handleNextStep = () => {
@@ -349,474 +406,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     }
   };
 
-  // Calculate delivery price based on distance
-  useEffect(() => {
-    if (distance !== null) {
-      const updatedDistance = Math.max(0, distance - 1); // Ensure we don't go below 0
-      const calculatedPrice = 15 + (updatedDistance * 2.5);
-      setDeliveryPrice(calculatedPrice.toFixed(2));
-    }
-  }, [distance]);
-
-  // Fix the validation effect to prevent infinite loop
-  useEffect(() => {
-    // Validate Step 1
-    const isPhoneValid = customerPhone.length === 10 && /^\d+$/.test(customerPhone);
-    const isNameValid = customerName.trim().length > 0;
-    const areLocationsValid = pickupLocation !== null && dropoffLocation !== null;
-    const isValid = isNameValid && isPhoneValid && areLocationsValid;
-    
-    // Only update if the value has changed
-    if (isValid !== isStep1Valid) {
-      setIsStep1Valid(isValid);
-    }
-  }, [customerName, customerPhone, pickupLocation, dropoffLocation]);
-
-  // Fix Step 2 validation
-  useEffect(() => {
-    const isValid = selectedItems.length > 0 && deliveryPrice !== '';
-    if (isValid !== isStep2Valid) {
-      setIsStep2Valid(isValid);
-    }
-  }, [selectedItems, deliveryPrice]);
-
-  // Fix Step 3 validation
-  useEffect(() => {
-    const isValid = customerName.trim() !== '' && 
-      customerPhone.trim() !== '' && 
-      pickupLocation !== null && 
-      dropoffLocation !== null &&
-      selectedItems.length > 0 && 
-      deliveryPrice !== '';
-      
-    if (isValid !== isStep3Valid) {
-      setIsStep3Valid(isValid);
-    }
-  }, [customerName, customerPhone, pickupLocation, dropoffLocation, selectedItems, deliveryPrice]);
-
-  // Initialize pickup location only once when component mounts
-  useEffect(() => {
-    if (userProfile?.branchesTable && !pickupLocation) {
-      const location = {
-        longitude: parseFloat(userProfile.branchesTable.branchLongitude),
-        latitude: parseFloat(userProfile.branchesTable.branchLatitude),
-        name: userProfile.branchesTable.branchName,
-        address: userProfile.branchesTable.branchLocation
-      };
-      setPickupLocation(location);
-    }
-  }, [userProfile?.branchesTable]);
-
-  // Render different sections based on current step
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case 1:
-        return (
-          <>
-            <b className="font-sans text-lg font-semibold gap-2 mb-4">Place New Order</b>
-            
-            {/* Add Estimated Distance section here */}
-            <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-4">
-              <div className="text-sm !font-sans">
-                <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
-                <div className="text-gray-500 !font-sans">
-                  From {pickupLocation?.address} to {dropoffLocation?.address}
-                </div>
-              </div>
-            </div>
-
-            {/* Customer Details Section */}
-            <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4">
-              <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
-                <div className="self-stretch relative leading-[20px] font-sans text-black">
-                  Customer Name
-                </div>
-                <input
-                  className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                            text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-center py-[10px] px-[12px] text-black"
-                  placeholder="customer name"
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                />
-              </div>
-              <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
-                <div className="self-stretch relative leading-[20px] font-sans text-black">
-                  Customer Phone
-                </div>
-                <input
-                  className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                            text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[10px] px-[12px] text-black"
-                  placeholder="customer phone number"
-                  type="tel"
-                  value={customerPhone}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9]/g, '');
-                    setCustomerPhone(value);
-                  }}
-                  maxLength={10}
-                />
-              </div>
-            </div>
-            <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4">
-              {userProfile?.role === 'Admin' ? (
-                <div className="w-full">
-                  <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                    Select Branch for Pickup
-                  </div>
-                  <StyledSelect
-                    fullWidth
-                    value={selectedBranchId}
-                    onChange={(e) => setSelectedBranchId(e.target.value as string)}
-                    variant="outlined"
-                    size="small"
-                    className="mb-2"
-                  >
-                    {branches.map((branch) => (
-                      <MenuItem key={branch.id} value={branch.id}>
-                        {branch.branchName} - {branch.branchLocation}
-                      </MenuItem>
-                    ))}
-                  </StyledSelect>
-                </div>
-              ) : (
-                <div className="w-full">
-                  <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                    Your Branch
-                  </div>
-                  <div className="font-sans border-[#efefef] border-[1px] border-solid 
-                                bg-[#f9fafb] self-stretch rounded-[3px] overflow-hidden 
-                                flex flex-row items-center py-[10px] px-[12px] text-gray-600">
-                    {userProfile?.branchesTable?.branchName} - {userProfile?.branchesTable?.branchLocation}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4">
-              <LocationInput label="Drop-Off Location" onLocationSelect={handleDropoffLocationSelect} />
-              {dropoffLocation && (
-                <div className="text-sm text-gray-600 mt-2 pl-2">
-                </div>
-              )}
-            </div>
-            <button
-              onClick={handleNextStep}
-              disabled={!isStep1Valid}
-              className={`self-stretch rounded-[4px] border-[1px] border-solid overflow-hidden 
-                         flex flex-row items-center justify-center py-[9px] px-[90px] 
-                         cursor-pointer text-[10px] text-[#fff] mt-4
-                         ${isStep1Valid 
-                           ? 'bg-[#fd683e] border-[#f5fcf8] hover:opacity-90' 
-                           : 'bg-gray-400 border-gray-300 cursor-not-allowed'}`}
-            >
-              <div className="relative leading-[16px] font-sans text-[#fff]">Next</div>
-            </button>
-          </>
-        );
-
-      case 2:
-        return (
-          <>
-            <b className="font-sans text-lg font-semibold">Add Menu Item</b>
-            {/* Add this scrollable container */}
-            <div className="flex-1 overflow-y-auto max-h-[75vh] pr-2">
-              {/* Delivery Price Section */}
-              <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
-                <div className="self-stretch relative leading-[20px] font-sans text-black">Delivery Price</div>
-                <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
-                  <div className="w-[60px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
-                    <div className="relative leading-[20px] font-sans">GH₵</div>
-                  </div>
-                  <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-between py-[12px] px-[16px] text-[#858a89] font-sans">
-                    <div className="relative leading-[20px]">{deliveryPrice}</div> 
-                  </div>
-                </div>
-              </div>
-             
-              {/* Menu Items Section */}
-              <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-4">
-                <div className="self-stretch relative leading-[20px] font-sans">Menu</div>
-                <div className="w-full">
-                  <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                    Select Category
-                  </div>
-                  <StyledSelect
-                    fullWidth
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value as string)}
-                    variant="outlined"
-                    size="small"
-                    className="mb-2"
-                    displayEmpty
-                  >
-                    <MenuItem value="" disabled>
-                      Select Category
-                    </MenuItem>
-                    {categories.map((category) => (
-                      <MenuItem key={category.value} value={category.label}>
-                        {category.label}
-                      </MenuItem>
-                    ))}
-                  </StyledSelect>
-                </div>
-              </div>
-              <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] text-[#6f7070] pt-4">
-                <div className="flex-1 flex flex-col items-start justify-start gap-[6px]">
-                  <div className="self-stretch relative leading-[20px] font-sans text-black">Items</div>
-                  <div className="relative w-full">
-                    <button
-                      onClick={() => setIsItemsDropdownOpen(!isItemsDropdownOpen)}
-                      className="w-full p-2 text-left border-[#efefef] border-[1px] border-solid rounded-md bg-white"
-                    >
-                      <div className="text-[14px] leading-[22px] font-sans">
-                        {selectedItem || "Select Item"}
-                      </div>
-                    </button>
-                    
-                    {isItemsDropdownOpen && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
-                        {categoryItems.map((item) => (
-                          <div
-                            key={item.name}
-                            className={`p-2 ${
-                              item.quantity > 0 
-                                ? 'hover:bg-gray-100 cursor-pointer'
-                                : 'cursor-not-allowed opacity-100'
-                            }`}
-                            onClick={() => {
-                              if (item.quantity > 0) {
-                                setSelectedItem(item.name);
-                                setIsItemsDropdownOpen(false);
-                                addItem(item);
-                              }
-                            }}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <span className="text-[14px] leading-[22px] font-sans">
-                                  {item.name}
-                                </span>
-                                {item.quantity === 0 && (
-                                  <span className="ml-2 text-[12px] text-red-500">
-                                    Out of stock
-                                  </span>
-                                )}
-                              </div>
-                              <span className="text-[14px] leading-[22px] font-sans">
-                                GH₵ {item.price}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
-                <div className="self-stretch relative leading-[20px] font-sans text-black">Selected Items</div>
-                {selectedItems.map((item, index) => (
-                  <div 
-                    key={`${item.name}-${index}`}
-                    className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-start justify-between p-[1px]"
-                  >
-                    <div className="w-[61px] rounded-[6px] bg-[#f6f6f6] box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[20px] gap-[7px]">
-                      <div className="flex flex-row items-center gap-1">
-                        <button 
-                          onClick={() => updateQuantity(item.name, item.quantity - 1)}
-                          className="w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center cursor-pointer text-black font-sans"
-                        >
-                          -
-                        </button>
-                        <div className="w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center text-black font-sans">
-                          {item.quantity}
-                        </div>
-                        <button 
-                          onClick={() => updateQuantity(item.name, item.quantity + 1)}
-                          className="w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center cursor-pointer text-black font-sans"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-between py-[15px] px-[20px] text-[#858a89]">
-                      <div className="relative leading-[20px] text-black font-sans">{item.name}</div>
-                      <div className="flex items-center gap-3">
-                        <div className="relative leading-[20px] text-black font-sans">{item.price * item.quantity} GHS</div>
-                        <RiDeleteBinLine 
-                          className="cursor-pointer text-red-500 hover:text-red-600" 
-                          onClick={() => removeItem(item.name)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {selectedItems.length === 0 && (
-                  <div className="text-[#b1b4b3] text-[13px] italic font-sans">No items selected</div>
-                )}
-              </div>
-              <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
-                <div className="self-stretch relative leading-[20px] font-sans text-black">
-                  Total Price
-                </div>
-                <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
-                  <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
-                    <div className="relative leading-[20px] text-black font-sans">GH₵</div>
-                  </div>
-                  <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
-                    <div className="relative leading-[20px] text-black font-sans">{calculateTotal()}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Navigation Buttons - Keep outside scrollable area */}
-            <div className="flex justify-between mt-8 pt-4 border-t">
-              <button
-                className="flex-1 font-sans cursor-pointer bg-[#201a18] border-[#201a18] border-[1px] border-solid 
-                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center"
-                onClick={handlePreviousStep}
-                disabled={isSubmitting}
-              >
-                Back
-              </button>
-              <div className="mx-2" /> {/* Add space between buttons */}
-              <button
-                className={`flex-1 font-sans cursor-pointer border-[#fd683e] border-[1px] border-solid 
-                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                          ${selectedItems.length === 0 ? 'bg-[#fd683e] cursor-not-allowed' : 'bg-[#fd683e] cursor-pointer'}`}
-                onClick={handleNextStep}
-                disabled={selectedItems.length === 0}
-              >
-                Next
-              </button>
-            </div>
-          </>
-        );
-
-      case 3:
-        return (
-          <>
-            {/* Back button and heading */}
-            <div className="flex items-center mb-6">
-              <button
-                className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent"
-                onClick={handlePreviousStep}
-                disabled={isSubmitting}
-              >
-                <IoIosArrowBack className="w-5 h-5" />
-                <span>Back</span>
-              </button>
-            </div>
-
-            <b className="font-sans text-lg font-semibold mb-6">Choose Payment Method</b>
-            
-            {/* Add Estimated Distance section here */}
-            <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-4">
-              <div className="text-sm !font-sans">
-                <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
-                <div className="text-gray-500 !font-sans">
-                  From {pickupLocation?.address} to {dropoffLocation?.address}
-                </div>
-              </div>
-            </div>
-
-            {/* Order Price Section */}
-            <div className="self-stretch flex flex-col items-start justify-start gap-[4px] text-[12px] text-[#686868] font-sans">
-              <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
-                <div className="self-stretch relative leading-[20px] font-sans">Delivery Price</div>
-                <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px] mb-4">
-                  <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
-                    <div className="relative leading-[20px] font-sans">GH₵</div>
-                  </div>
-                  <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
-                    <div className="relative leading-[20px] font-sans">{deliveryPrice}</div>
-                  </div>
-                </div>
-                <div className="self-stretch relative leading-[20px] font-sans">Food Price</div>
-                <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
-                  <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
-                    <div className="relative leading-[20px] font-sans">GH₵</div>
-                  </div>
-                  <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
-                    <div className="relative leading-[20px] font-sans">{totalFoodPrice}</div>
-                  </div>
-                </div>
-                
-              </div>
-
-              <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-2">
-              <div className="self-stretch relative leading-[20px] font-sans text-black">
-                Total Price
-              </div>
-              <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
-                <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
-                  <div className="relative leading-[20px] text-black font-sans">GH₵</div>
-                </div>
-                <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
-                  <div className="relative leading-[20px] text-black font-sans">{calculateTotal()}</div>
-                </div>
-              </div>
-            </div>
-
-           
-
-              {/* Payment Buttons */}
-              <div className="flex gap-4 w-full pt-4">
-                <button
-                  className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
-                            py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                            ${isPayLaterSubmitting || isPayNowSubmitting
-                              ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
-                              : 'bg-[#201a18] border-[#201a18]'}`}
-                  onClick={() => handlePlaceOrder('later')}
-                  disabled={isPayLaterSubmitting || isPayNowSubmitting}
-                >
-                  {isPayLaterSubmitting ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Processing...
-                    </div>
-                  ) : (
-                    'Pay on Delivery'
-                  )}
-                </button>
-                <button
-                  className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
-                            py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                            ${isPayLaterSubmitting || isPayNowSubmitting
-                              ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
-                              : 'bg-[#fd683e] border-[#fd683e]'}`}
-                  onClick={() => handlePlaceOrder('now')}
-                  disabled={isPayLaterSubmitting || isPayNowSubmitting}
-                >
-                  {isPayNowSubmitting ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Processing...
-                    </div>
-                  ) : (
-                    'Request Payment'
-                  )}
-                </button>
-              </div>
-            </div>
-          </>
-        );
-
-      default:
-        return null;
-    }
-  };
-
-  const handlePickupLocationSelect = (location: LocationData) => {
-    setPickupLocation(location);
-  };
-
-  const handleDropoffLocationSelect = (location: LocationData) => {
-    setDropoffLocation(location);
-  };
-
   useEffect(() => {
     if (pickupLocation && dropoffLocation) {
       const calculatedDistance = calculateDistance(
@@ -938,6 +527,14 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     return null;
   };
 
+  const handlePickupLocationSelect = (location: LocationData) => {
+    setPickupLocation(location);
+  };
+
+  const handleDropoffLocationSelect = (location: LocationData) => {
+    setDropoffLocation(location);
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-8 rounded-lg w-[600px] relative flex flex-col">
@@ -955,8 +552,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           </div>
         )}
 
-        {/* Main content */}
-        {renderStepContent()}
+      
       </div>
     </div>
   );
