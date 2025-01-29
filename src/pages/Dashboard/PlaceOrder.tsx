@@ -473,28 +473,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                   <StyledSelect
                     fullWidth
                     value={selectedBranchId}
-                    onChange={(e) => {
-                      const selectedId = e.target.value;
-                      setSelectedBranchId(selectedId);
-                      
-                      // Find selected branch
-                      const selectedBranch = branches.find(branch => branch.id === selectedId);
-                      if (selectedBranch) {
-                        setPickupData({
-                          fromLatitude: selectedBranch.branchLatitude,
-                          fromLongitude: selectedBranch.branchLongitude,
-                          fromAddress: selectedBranch.branchLocation,
-                          branchId: selectedBranch.id
-                        });
-                        // Update pickup location for distance calculation
-                        handlePickupLocationSelect({
-                          address: selectedBranch.branchLocation,
-                          latitude: parseFloat(selectedBranch.branchLatitude),
-                          longitude: parseFloat(selectedBranch.branchLongitude),
-                          name: selectedBranch.branchName
-                        });
-                      }
-                    }}
+                    onChange={(e) => setSelectedBranchId(e.target.value as string)}
                     variant="outlined"
                     size="small"
                     className="mb-2"
@@ -570,7 +549,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                   <StyledSelect
                     fullWidth
                     value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
+                    onChange={(e) => setSelectedCategory(e.target.value as string)}
                     variant="outlined"
                     size="small"
                     className="mb-2"
@@ -941,7 +920,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           <StyledSelect
             fullWidth
             value={selectedBranchId}
-            onChange={(e) => setSelectedBranchId(e.target.value)}
+            onChange={(e) => setSelectedBranchId(e.target.value as string)}
             variant="outlined"
             size="small"
             className="mb-2"

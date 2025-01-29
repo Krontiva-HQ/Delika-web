@@ -68,10 +68,10 @@ export const usePlaceOrderItems = (selectedBranchId?: string): PlaceOrderItemsHo
         }));
         
         const uniqueCategories = Array.from(new Map(
-          formattedCategories.map(item => [item.label, item])
-        ).values());
+          formattedCategories.map((item: { label: string; value: string }) => [item.label, item])
+        ).values()) as { label: string; value: string }[];
         
-        console.log('Formatted Categories:', uniqueCategories); // Debug log
+        console.log('Formatted Categories:', uniqueCategories);
         setCategories(uniqueCategories);
       } catch (error) {
         console.error('Error fetching categories:', error);

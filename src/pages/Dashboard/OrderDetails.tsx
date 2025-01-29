@@ -276,6 +276,7 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                   {invoiceData.restaurant.logo && (
                     <img 
                       src={invoiceData.restaurant.logo} 
+
                       alt={invoiceData.restaurant.name}
                       className="w-14 h-14 rounded-full object-cover"
                     />
