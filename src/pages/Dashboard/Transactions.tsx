@@ -52,7 +52,6 @@ const Transactions: FunctionComponent = () => {
       const response = await api.get(`/filter/orders/by/date?${params.toString()}`);
       setOrders(response.data);
     } catch (error) {
-      console.error('Error fetching transactions:', error);
       setOrders([]);
     } finally {
       setIsLoading(false);
@@ -63,7 +62,6 @@ const Transactions: FunctionComponent = () => {
 
   // Immediate fetch on branch selection
   const handleBranchSelect = useCallback((branchId: string) => {
-    console.log('Branch selected in Transactions:', branchId);
     localStorage.setItem('selectedBranchId', branchId);
     setSelectedBranchId(branchId);
     

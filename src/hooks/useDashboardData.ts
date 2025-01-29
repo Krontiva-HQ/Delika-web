@@ -29,7 +29,6 @@ export const useDashboardData = ({ restaurantId, branchId }: UseDashboardDataPro
       setData(response.data);
     } catch (err) {
       setError('Failed to fetch dashboard data');
-      console.error('Error fetching dashboard data:', err);
     } finally {
       setIsLoading(false);
     }

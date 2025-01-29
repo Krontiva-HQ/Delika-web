@@ -37,13 +37,11 @@ const AddTeamMember: FunctionComponent<AddTeamMemberProps> = ({ onClose, restaur
   useEffect(() => {
     const fetchBranches = async () => {
       if (!restaurantId) {
-        console.log('No restaurantId provided');
         return;
       }
       
       setIsLoading(true);
       try {
-        console.log('Fetching branches for restaurant:', restaurantId);
         const response = await fetch(
           `${import.meta.env.VITE_API_URL}/delikaquickshipper_branches_table/${restaurantId}`
         );
@@ -53,10 +51,8 @@ const AddTeamMember: FunctionComponent<AddTeamMemberProps> = ({ onClose, restaur
         }
         
         const data = await response.json();
-        console.log('Fetched branches:', data);
         setBranches(data);
       } catch (error) {
-        console.error('Error fetching branches:', error);
       } finally {
         setIsLoading(false);
       }

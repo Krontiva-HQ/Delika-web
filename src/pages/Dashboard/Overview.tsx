@@ -98,11 +98,6 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false 
     canViewRevenue: false
   });
 
-  useEffect(() => {
-    console.log('Selected Branch ID changed:', selectedBranchId);
-    console.log('Current Monthly Data:', monthlyOrderData);
-  }, [selectedBranchId, monthlyOrderData]);
-
   const getBarSize = () => {
     switch (orderTimeRange) {
       case '3': return 40;
@@ -128,7 +123,6 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false 
       }));
       setRecentOrders(ordersWithDefaultImage);
     } catch (error) {
-      console.error('Error fetching orders:', error);
       setRecentOrders([]);
     } finally {
       setIsLoading(false);
@@ -160,22 +154,18 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false 
         }
       });
       
-      console.log('Monthly data fetched:', response.data);
     } catch (error) {
-      console.error('Error fetching monthly data:', error);
     }
   };
 
   const getFilteredOrderData = () => {
     const range = parseInt(orderTimeRange);
     const filteredData = monthlyOrderData?.slice(0, range) || [];
-    console.log('Filtered Order Data:', filteredData);
     return filteredData;
   };
 
   const filteredRevenueData = useMemo(() => {
     const filtered = monthlyOrderData?.slice(0, parseInt(revenueTimeRange)) || [];
-    console.log('Filtered Revenue Data:', filtered);
     return filtered;
   }, [monthlyOrderData, revenueTimeRange]);
 
@@ -203,7 +193,6 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false 
   };
 
   const handleBranchSelect = async (branchId: string) => {
-    console.log('Branch selected:', branchId);
     setSelectedBranchId(branchId);
     fetchRecentOrders(branchId);
   };

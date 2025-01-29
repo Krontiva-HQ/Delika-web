@@ -79,7 +79,6 @@ export const useAuditData = ({ restaurantId, branchId }: UseAuditDataProps) => {
       setData(formattedData);
     } catch (err) {
       setError('Failed to fetch audit data');
-      console.error('Error fetching audit data:', err);
     } finally {
       setIsLoading(false);
     }

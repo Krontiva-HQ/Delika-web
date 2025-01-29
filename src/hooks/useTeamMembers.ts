@@ -76,7 +76,6 @@ export const useTeamMembers = ({ restaurantId, branchId }: UseTeamMembersProps) 
       setTeamMembers(response.data);
     } catch (err) {
       setError('Failed to fetch team members');
-      console.error('Error fetching team members:', err);
     } finally {
       setIsLoading(false);
     }

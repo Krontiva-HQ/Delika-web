@@ -59,7 +59,6 @@ const ResetPasswordDetails: FunctionComponent = () => {
         setValidationError(response.error || "Failed to change password");
       }
     } catch (error) {
-      console.error('Password reset failed:', error);
       setValidationError("Failed to reset password. Please try again.");
     }
   };

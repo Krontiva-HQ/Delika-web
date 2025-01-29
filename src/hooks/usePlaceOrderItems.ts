@@ -60,7 +60,6 @@ export const usePlaceOrderItems = (selectedBranchId?: string): PlaceOrderItemsHo
           branchId: effectiveBranchId
         });
         
-        console.log('API Response:', response.data); // Debug log
         
         const formattedCategories = response.data.map((cat: Category) => ({
           label: cat.foodType || 'Unnamed Category',
@@ -71,10 +70,8 @@ export const usePlaceOrderItems = (selectedBranchId?: string): PlaceOrderItemsHo
           formattedCategories.map((item: { label: string; value: string }) => [item.label, item])
         ).values()) as { label: string; value: string }[];
         
-        console.log('Formatted Categories:', uniqueCategories);
         setCategories(uniqueCategories);
       } catch (error) {
-        console.error('Error fetching categories:', error);
       }
     };
 
@@ -97,7 +94,6 @@ export const usePlaceOrderItems = (selectedBranchId?: string): PlaceOrderItemsHo
         setCategoryItems(category.foods);
       }
     } catch (error) {
-      console.error('Error fetching category items:', error);
     }
   }, [userProfile?.restaurantId, effectiveBranchId]);
 
@@ -117,7 +113,6 @@ export const usePlaceOrderItems = (selectedBranchId?: string): PlaceOrderItemsHo
       const filename = url.split('/').pop() || 'image.jpg';
       return new File([blob], filename, { type: blob.type });
     } catch (error) {
-      console.error('Error converting URL to File:', error);
       throw error;
     }
   };
@@ -144,7 +139,6 @@ export const usePlaceOrderItems = (selectedBranchId?: string): PlaceOrderItemsHo
         }];
       });
     } catch (error) {
-      console.error('Error adding item:', error);
     }
   };
 

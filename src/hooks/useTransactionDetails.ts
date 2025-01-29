@@ -42,7 +42,6 @@ const useTransactionDetails = (orderNumber: string | null) => {
         setTransactionDetails(response.data);
       } catch (err) {
         setError('Failed to fetch transaction details');
-        console.error('Error fetching transaction details:', err);
       } finally {
         setIsLoading(false);
       }

@@ -92,7 +92,6 @@ export const useAuth = () => {
       
       return false;
     } catch (error) {
-      console.error('OTP Verification Error:', error);
       return false;
     } finally {
       setIsLoading(false);
@@ -115,7 +114,6 @@ export const useAuth = () => {
       setUser(userData);
       return userData;
     } catch (error) {
-      console.error('Error fetching user profile:', error);
       throw error;
     }
   }, []);

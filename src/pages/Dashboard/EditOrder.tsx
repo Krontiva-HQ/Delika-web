@@ -117,7 +117,6 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
         message: `Order #${order.orderNumber} has been successfully edited.`,
       });
     } catch (err) {
-      console.error('Error editing order:', err);
       
       // Add a notification for error
       addNotification({

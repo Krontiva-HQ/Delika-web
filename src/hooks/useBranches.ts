@@ -33,7 +33,6 @@ export const useBranches = (restaurantId: string | null) => {
     const oneHour = 60 * 60 * 1000; // 1 hour in milliseconds
     
     if (!force && branches.length > 0 && (now - lastFetched) < oneHour) {
-      console.log('Using cached branches data');
       return;
     }
     
@@ -65,7 +64,6 @@ export const useBranches = (restaurantId: string | null) => {
       localStorage.setItem(`branchIds_${restaurantId}`, JSON.stringify(branchIds));
       
     } catch (error) {
-      console.error('Error fetching branches:', error);
       setError(error instanceof Error ? error.message : 'Failed to fetch branches');
       
       // If fetch fails and we have cached data, use that

@@ -61,7 +61,6 @@ export const useAddCategory = () => {
       onSuccess?.();
       return data;
     } catch (error) {
-      console.error('Error adding category:', error);
       throw error;
     } finally {
       setIsLoading(false);

@@ -221,7 +221,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       window.location.href = '/dashboard?view=inventory';
 
     } catch (error) {
-      console.error('Failed to update inventory:', error);
     }
   };
 
@@ -336,7 +335,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
 
   // Update handleBranchSelect
   const handleBranchSelect = async (branchId: string) => {
-    console.log('Branch selected in Inventory:', branchId);
     localStorage.setItem('selectedBranchId', branchId);
     setSelectedBranchId(branchId);
   };
@@ -418,7 +416,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       const response = await api.post(`/get/menu/items?${params.toString()}`);
       setCategories(response.data);
     } catch (error) {
-      console.error('Error fetching inventory:', error);
     }
   };
 

@@ -37,7 +37,6 @@ export const useUpdateUser = () => {
       return response.data;
     } catch (err) {
       setError('Failed to update user details');
-      console.error(err);
     } finally {
       setIsLoading(false);
     }

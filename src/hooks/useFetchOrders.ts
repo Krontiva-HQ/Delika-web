@@ -37,7 +37,6 @@ const useFetchOrders = (selectedDate: Dayjs | null) => {
         const response = await api.get(`/filter/orders/by/date?${params.toString()}`);
         setOrders(response.data);
       } catch (error) {
-        console.error('Error fetching orders:', error);
         setOrders([]);
       } finally {
         setIsLoading(false);

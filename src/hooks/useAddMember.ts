@@ -33,7 +33,6 @@ export const useAddMember = () => {
         ? err.response?.data?.message || 'Failed to add member'
         : 'An error occurred';
       setError(errorMessage);
-      console.error('Error adding member:', err);
     } finally {
       setIsLoading(false);
     }

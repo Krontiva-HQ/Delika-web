@@ -352,7 +352,6 @@ const Reports: FunctionComponent = () => {
           break;
       }
     } catch (error) {
-      console.error('Error fetching report data:', error);
       setOrderDetails([]);
     } finally {
       setIsLoading(false);
@@ -562,7 +561,6 @@ const Reports: FunctionComponent = () => {
           doc.save(`${selectedReport.toLowerCase().replace(/\s+/g, '-')}${dateRangeString}.pdf`);
         }
       } catch (error) {
-        console.error('Error generating PDF:', error);
         // You might want to show an error message to the user here
       }
     }
@@ -597,7 +595,6 @@ const Reports: FunctionComponent = () => {
           setOrderDetails(filteredOrders);
         } 
       } catch (error) {
-        console.error('Error filtering data with date range:', error);
         if (selectedReport === "Orders Report") {
           setOrderDetails([]);
         }

@@ -83,7 +83,6 @@ const EnterOTPDetails: FunctionComponent = () => {
         setValidationError('Incorrect OTP code');
       }
     } catch (error) {
-      console.error('Error verifying OTP:', error);
       setValidationError('Incorrect OTP code');
     } finally {
       setIsLoading(false);

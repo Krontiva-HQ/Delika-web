@@ -193,7 +193,6 @@ const TransactionDetailsView: FunctionComponent<TransactionDetailsViewProps> = (
 
       pdf.save(`transaction-${invoiceData?.invoiceNumber || 'details'}.pdf`);
     } catch (error) {
-      console.error('Error generating PDF:', error);
     }
   };
 
@@ -203,7 +202,6 @@ const TransactionDetailsView: FunctionComponent<TransactionDetailsViewProps> = (
         const data = mapApiResponseToInvoiceData(transactionDetails);
         setInvoiceData(data);
       } catch (error) {
-        console.error("Error mapping API response to invoice data:", error);
       }
     }
   }, [transactionDetails]);

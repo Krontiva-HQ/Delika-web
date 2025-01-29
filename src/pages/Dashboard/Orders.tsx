@@ -142,7 +142,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       const response = await api.get(`/filter/orders/by/date?${params.toString()}`);
       setOrders(response.data);
     } catch (error) {
-      console.error('Error fetching orders:', error);
       setOrders([]);
     } finally {
       setIsLoading(false);
@@ -151,7 +150,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
   // Immediate fetch on branch selection
   const handleBranchSelect = useCallback((branchId: string) => {
-    console.log('Branch selected in Orders:', branchId);
     localStorage.setItem('selectedBranchId', branchId);
     setSelectedBranchId(branchId);
     

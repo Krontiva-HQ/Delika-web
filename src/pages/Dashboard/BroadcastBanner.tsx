@@ -15,36 +15,29 @@ export const BroadcastBanner: React.FC<BroadcastBannerProps> = ({ restaurantId }
       const response = await fetch(`${import.meta.env.VITE_API_URL}/delikaquickshipper_broadcast_table`);
       if (response.ok) {
         const data = await response.json();
-        console.log('Broadcast data:', data); // Debugging log
-        // Find the broadcast message for the specific restaurant
         const restaurantBroadcast = data.find((broadcast: any) =>
           broadcast.restaurants.some((restaurant: { restaurantId: string }) => restaurant.restaurantId === restaurantId)
         );
         if (restaurantBroadcast) {
-          setBroadcastMessage(restaurantBroadcast.Body); // Set the body of the broadcast message
-          setHeader(restaurantBroadcast.Header); // Set the header of the broadcast message
-          // Correctly set the image URL
+          setBroadcastMessage(restaurantBroadcast.Body);
+          setHeader(restaurantBroadcast.Header);
           if (restaurantBroadcast.Image && restaurantBroadcast.Image.url) {
-            setImageUrl(restaurantBroadcast.Image.url); // Set the image URL from the Image object
+            setImageUrl(restaurantBroadcast.Image.url);
           }
-          // Set the expiry date
-          setExpiryDate(restaurantBroadcast.ExpiryDate); // Assuming the expiry date is in the broadcast data
-          console.log('Broadcast message:', restaurantBroadcast.Body); // Debugging log
-          console.log('Image URL:', restaurantBroadcast.Image?.url); // Debugging log
-          console.log('Expiry Date:', restaurantBroadcast.ExpiryDate); // Debugging log
+          setExpiryDate(restaurantBroadcast.ExpiryDate);
         }
       } else {
-        console.error('Failed to fetch broadcast message:', response.status);
+        // Handle error silently
       }
     } catch (error) {
-      console.error('Error fetching broadcast message:', error);
+      // Handle error silently
     }
   };
 
   useEffect(() => {
-    if (restaurantId) { // Ensure restaurantId is defined before fetching
+    if (restaurantId) {
       fetchBroadcastMessage();
-      const interval = setInterval(fetchBroadcastMessage, 60000); // Fetch every minute
+      const interval = setInterval(fetchBroadcastMessage, 60000);
       return () => clearInterval(interval);
     }
   }, [restaurantId]);

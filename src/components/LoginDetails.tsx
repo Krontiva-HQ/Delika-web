@@ -88,7 +88,6 @@ const LoginDetails: FunctionComponent<LoginDetailsProps> = ({ onSubmit }) => {
         }
       }
     } catch (err: any) {
-      console.error('Login failed:', err);
       RateLimiter.recordFailedAttempt(formData.email);
       setValidationError('Incorrect email or password');
     }

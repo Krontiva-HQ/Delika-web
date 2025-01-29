@@ -111,7 +111,6 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
         await fetchUserProfile();
         setIsLoading(false);
       } catch (err) {
-        console.error('Error fetching user profile:', err);
         localStorage.removeItem('authToken');
         navigate('/login');
       }

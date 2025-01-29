@@ -57,7 +57,6 @@ const LocationInput: React.FC<LocationInputProps> = ({ label, onLocationSelect, 
         setSuggestions(data.features || []);
         setShowSuggestions(true);
       } catch (error) {
-        console.error('Error fetching suggestions:', error);
       }
     } else {
       setSuggestions([]);

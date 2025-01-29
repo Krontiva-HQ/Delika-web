@@ -29,7 +29,6 @@ const useMonthlyOrderData = (restaurantId: string, branchId: string) => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        console.log('Fetching data for branch:', branchId); // Debug log
         const response = await api.get('/get/all/orders/per/branch', {
           params: {
             restaurantId,
@@ -38,7 +37,6 @@ const useMonthlyOrderData = (restaurantId: string, branchId: string) => {
         });
 
         const orders: Order[] = response.data;
-        console.log('Raw orders data:', orders); // Debug log
 
         const currentYear = dayjs().year();
         const currentYearOrders = orders.filter(order => 
@@ -69,21 +67,14 @@ const useMonthlyOrderData = (restaurantId: string, branchId: string) => {
           return acc;
         }, {} as Record<string, { orders: number; orderPrice: number }>);
 
-
-
-        console.log('Processed orders by month:', ordersByMonth); // Debug log
-
         const formattedData = initialData.map((data) => ({
           month: data.month,
           orders: ordersByMonth[data.month]?.orders || 0,
           totalPrice: ordersByMonth[data.month]?.orderPrice || 0,
         }));
 
-
-        console.log('Final formatted data:', formattedData); // Debug log
         setMonthlyOrderData(formattedData);
       } catch (error) {
-        console.error('Error fetching monthly data:', error);
         setMonthlyOrderData([]);
       } finally {
         setIsLoading(false);

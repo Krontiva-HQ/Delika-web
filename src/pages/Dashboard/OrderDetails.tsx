@@ -60,7 +60,6 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
   const restaurantLogo = userProfile._restaurantTable?.[0]?.restaurantLogo?.url || '';
 
   if (!apiResponse) {
-    console.error("API response is null or undefined");
     return {
       invoiceNumber: 'N/A',
       orderDate: 'N/A',
@@ -162,7 +161,6 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       payLater: false,
     };
   } catch (error) {
-    console.error('Error mapping API response to invoice data:', error);
     throw error;
   }
 };
@@ -189,7 +187,6 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
         const data = mapApiResponseToInvoiceData(orderDetails);
         setInvoiceData(data);
       } catch (error) {
-        console.error("Error mapping API response to invoice data:", error);
       }
     }
   }, [orderDetails]);
@@ -234,7 +231,6 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
       // Download the PDF
       pdf.save(`order-${invoiceData?.invoiceNumber || 'details'}.pdf`);
     } catch (error) {
-      console.error('Error generating PDF:', error);
     }
   };
 

@@ -58,7 +58,6 @@ const EditTeamMemberModal: FunctionComponent<EditTeamMemberModalProps> = ({
       await onSave(formData);
       onClose();
     } catch (err) {
-      console.error('Failed to update team member:', err);
     }
   };
 

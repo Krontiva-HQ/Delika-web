@@ -171,7 +171,6 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
       setNewCategoryImage(null);
       
     } catch (error) {
-      console.error('Failed to save:', error);
       alert('Failed to save. Please try again.');
     }
   };

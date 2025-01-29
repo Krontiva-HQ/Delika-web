@@ -129,7 +129,7 @@ export const useMenuCategories = () => {
         localStorage.setItem('menuCategories', JSON.stringify(response.data));
         localStorage.setItem('menuCategoriesTimestamp', Date.now().toString());
       } catch (error) {
-        console.error('Error prefetching categories:', error);
+        // Handle error silently
       }
     };
 

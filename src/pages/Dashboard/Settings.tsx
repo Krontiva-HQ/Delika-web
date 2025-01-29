@@ -184,7 +184,6 @@ const Settings: FunctionComponent = () => {
 
         setUserData(userData);
       } catch (error) {
-        console.error('Error fetching user data:', error);
       }
     };
 
@@ -338,7 +337,6 @@ const Settings: FunctionComponent = () => {
         });
       }
     } catch (error) {
-      console.error('Error updating user:', error);
     }
   };
 
@@ -412,17 +410,14 @@ const Settings: FunctionComponent = () => {
             contact: userProfile.email
         });
 
-        console.log('Server response:', response.data);
 
         if (response.data.otpValidate === 'otpFound') {
-            console.log('OTP verified, transitioning to new password step');
             setPasswordChangeStep('newPassword');
             setOtp(['', '', '', '']);
         } else {
             alert('Invalid OTP. Please try again.');
         }
     } catch (error) {
-        console.error('Error verifying OTP:', error);
         alert('An error occurred. Please try again.');
     }
   };
@@ -568,7 +563,6 @@ const Settings: FunctionComponent = () => {
       setDeleteModalOpen(false);
       setUserToDelete(null);
     } catch (error) {
-      console.error('Error deleting user:', error);
     }
   };
 
@@ -601,9 +595,7 @@ const Settings: FunctionComponent = () => {
     try {
       // Add your API call here to update restaurant data
       // await updateRestaurant(formData);
-      console.log('Restaurant details updated successfully');
     } catch (error) {
-      console.error('Error updating restaurant details:', error);
     }
   };
 
@@ -620,7 +612,6 @@ const Settings: FunctionComponent = () => {
       setIsEditMemberOpen(false);
       setMemberToEdit(null);
     } catch (error) {
-      console.error('Error updating team member:', error);
     }
   };
 
@@ -786,7 +777,6 @@ const Settings: FunctionComponent = () => {
                           placeholder="dd/mm/yyyy"
                           onChange={(e) => {
                             // Handle date change
-                            console.log(e.target.value);
                           }}
                           max={new Date().toISOString().split('T')[0]}
                           min="1900-01-01"

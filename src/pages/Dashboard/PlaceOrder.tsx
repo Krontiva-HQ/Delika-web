@@ -235,7 +235,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         const response = await getAuthenticatedUser();
         setUserData(response.data);
       } catch (error) {
-        console.error('Error fetching user data:', error);
       }
     };
 
@@ -319,7 +318,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         message: `Order number **#${Math.floor(Math.random() * 1000000)}** has been created with a total price of GHS ${calculateTotal()}`
       });
 
-      console.log('Order placed successfully:', result);
       
       // Call onOrderPlaced before closing
       onOrderPlaced?.();
@@ -341,7 +339,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         type: 'order_status',
         message: 'Failed to send payment request SMS'
       });
-      console.error('Error placing order:', error);
       throw error;
     } finally {
       // Reset the submitting state after a delay to show the loading state
@@ -361,57 +358,54 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     }
   }, [distance]);
 
-  // Add validation effects
+  // Fix the validation effect to prevent infinite loop
   useEffect(() => {
     // Validate Step 1
     const isPhoneValid = customerPhone.length === 10 && /^\d+$/.test(customerPhone);
     const isNameValid = customerName.trim().length > 0;
     const areLocationsValid = pickupLocation !== null && dropoffLocation !== null;
-
-    // Detailed validation logging
-    console.log('Validation Details:', {
-      customerName: {
-        value: customerName,
-        isValid: isNameValid
-      },
-      customerPhone: {
-        value: customerPhone,
-        isValid: isPhoneValid,
-        length: customerPhone.length,
-        matchesPattern: /^\d+$/.test(customerPhone)
-      },
-      locations: {
-        pickup: pickupLocation,
-        dropoff: dropoffLocation,
-        areValid: areLocationsValid
-      }
-    });
-
     const isValid = isNameValid && isPhoneValid && areLocationsValid;
-    console.log('Final validation result:', isValid);
     
-    setIsStep1Valid(isValid);
+    // Only update if the value has changed
+    if (isValid !== isStep1Valid) {
+      setIsStep1Valid(isValid);
+    }
   }, [customerName, customerPhone, pickupLocation, dropoffLocation]);
 
+  // Fix Step 2 validation
   useEffect(() => {
-    // Validate Step 2
-    setIsStep2Valid(
-      selectedItems.length > 0 && 
-      deliveryPrice !== ''
-    );
+    const isValid = selectedItems.length > 0 && deliveryPrice !== '';
+    if (isValid !== isStep2Valid) {
+      setIsStep2Valid(isValid);
+    }
   }, [selectedItems, deliveryPrice]);
 
+  // Fix Step 3 validation
   useEffect(() => {
-    // Validate Step 3
-    setIsStep3Valid(
-      customerName.trim() !== '' && 
+    const isValid = customerName.trim() !== '' && 
       customerPhone.trim() !== '' && 
       pickupLocation !== null && 
       dropoffLocation !== null &&
       selectedItems.length > 0 && 
-      deliveryPrice !== ''
-    );
+      deliveryPrice !== '';
+      
+    if (isValid !== isStep3Valid) {
+      setIsStep3Valid(isValid);
+    }
   }, [customerName, customerPhone, pickupLocation, dropoffLocation, selectedItems, deliveryPrice]);
+
+  // Initialize pickup location only once when component mounts
+  useEffect(() => {
+    if (userProfile?.branchesTable && !pickupLocation) {
+      const location = {
+        longitude: parseFloat(userProfile.branchesTable.branchLongitude),
+        latitude: parseFloat(userProfile.branchesTable.branchLatitude),
+        name: userProfile.branchesTable.branchName,
+        address: userProfile.branchesTable.branchLocation
+      };
+      setPickupLocation(location);
+    }
+  }, [userProfile?.branchesTable]);
 
   // Render different sections based on current step
   const renderStepContent = () => {
@@ -817,11 +811,9 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
   const handlePickupLocationSelect = (location: LocationData) => {
     setPickupLocation(location);
-    console.log('Selected Pickup Location:', location);
   };
 
   const handleDropoffLocationSelect = (location: LocationData) => {
-    console.log('Dropoff location selected:', location);
     setDropoffLocation(location);
   };
 
@@ -846,7 +838,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
   useEffect(() => {
     const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
-    console.log('UserProfile:', userProfile); // Debug log
 
     if (userProfile.branchesTable) {
       const location = {
@@ -855,7 +846,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         name: userProfile.branchesTable.branchName,
         address: userProfile.branchesTable.branchLocation
       };
-      console.log('Setting pickup location:', location); // Debug log
       setPickupLocation(location);
     }
   }, []);
