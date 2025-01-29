@@ -77,7 +77,12 @@ const formatOrderStatus = (status: string): string => {
   }
 };
 
-const Orders: FunctionComponent<{ searchQuery: string }> = ({ searchQuery }) => {
+interface OrdersProps {
+  searchQuery: string;
+  onOrderDetailsView: (viewing: boolean) => void;
+}
+
+const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsView }) => {
   const [activeTab, setActiveTab] = useState('all');
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(dayjs());
   const [anchorEl, setAnchorEl] = useState<HTMLDivElement | null>(null);
@@ -246,12 +251,20 @@ const Orders: FunctionComponent<{ searchQuery: string }> = ({ searchQuery }) => 
     }
   }, [branches, userProfile?.role]);
 
+  useEffect(() => {
+    // Update parent component when selectedOrderId changes
+    onOrderDetailsView(!!selectedOrderId);
+  }, [selectedOrderId, onOrderDetailsView]);
+
   return (
     <div className="h-full w-full bg-white m-0 p-0">
       {selectedOrderId ? (
         <OrderDetails 
           orderId={selectedOrderId} 
-          onBack={handleBackToOrders} 
+          onBack={() => {
+            handleBackToOrders();
+            onOrderDetailsView(false);
+          }} 
           orderDetails={orderDetails}
           isLoading={isOrderDetailsLoading}
           error={error}
@@ -272,7 +285,6 @@ const Orders: FunctionComponent<{ searchQuery: string }> = ({ searchQuery }) => 
                   onBranchSelect={handleBranchSelect}
                   selectedBranchId={selectedBranchId}
                   hideAllBranches={true}
-                  className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)]"
                 />
               )}
               
