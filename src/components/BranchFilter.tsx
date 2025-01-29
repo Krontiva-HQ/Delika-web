@@ -8,9 +8,10 @@ interface BranchFilterProps {
   onBranchSelect: (branchId: string) => void;
   selectedBranchId: string;
   hideAllBranches?: boolean;
+  className?: string;
 }
 
-const BranchFilter = ({ restaurantId, onBranchSelect, selectedBranchId, hideAllBranches }: BranchFilterProps) => {
+const BranchFilter = ({ restaurantId, onBranchSelect, selectedBranchId, hideAllBranches, className }: BranchFilterProps) => {
   const { branches, isLoading } = useBranches(restaurantId);
   const { userProfile } = useUserProfile();
   const [selectedBranch, setSelectedBranch] = useState<string>(selectedBranchId);
@@ -37,7 +38,7 @@ const BranchFilter = ({ restaurantId, onBranchSelect, selectedBranchId, hideAllB
       <select
         value={selectedBranch}
         onChange={(e) => handleBranchSelect(e.target.value, e.target.value)}
-        className="appearance-none bg-white border border-gray-300 rounded-md py-1 pl-2 pr-8 text-xs leading-tight focus:outline-none focus:border-blue-500 font-sans text-black"
+        className={className || "appearance-none bg-white border border-gray-300 rounded-md py-1 pl-2 pr-8 text-xs leading-tight focus:outline-none focus:border-blue-500 font-sans text-black"}
       >
         {isLoading ? (
           <option disabled>Loading...</option>

@@ -157,6 +157,7 @@ const Transactions: FunctionComponent = () => {
                   onBranchSelect={handleBranchSelect}
                   selectedBranchId={selectedBranchId}
                   hideAllBranches={true}
+                  className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)]"
                 />
               )}
             </div>

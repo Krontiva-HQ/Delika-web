@@ -229,6 +229,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
               restaurantId={userProfile.restaurantId || null}
               onBranchSelect={handleBranchSelect}
               selectedBranchId={selectedBranchId}
+              className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)]"
             />
           )}
         </div>
@@ -293,13 +294,17 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
                 <select
                   value={orderTimeRange}
                   onChange={(e) => setOrderTimeRange(e.target.value)}
-                  className="appearance-none bg-white border border-gray-300 rounded-md py-1 pl-2 pr-8 text-xs leading-tight focus:outline-none focus:border-blue-500 font-sans text-black"
+                  className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)]"
                 >
-                  <option value="3" className="font-sans-serif">Last 3 Months</option>
-                  <option value="6" className="font-sans-serif">Last 6 Months</option>
-                  <option value="12" className="font-sans-serif">Last 12 Months</option>
+                  <option value="3">Last 3 Months</option>
+                  <option value="6">Last 6 Months</option>
+                  <option value="12">Last 12 Months</option>
                 </select>
-                <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                  </svg>
+                </div>
               </div>
             </div>
             {isMonthlyOrderDataLoading ? (
@@ -360,13 +365,17 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
                 <select
                   value={revenueTimeRange}
                   onChange={(e) => setRevenueTimeRange(e.target.value)}
-                  className="appearance-none bg-white border border-gray-300 rounded-md py-1 pl-2 pr-8 text-xs leading-tight focus:outline-none focus:border-blue-500 font-sans text-black"
+                  className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)]"
                 >
-                  <option value="3" className="font-sans-serif">Last 3 Months</option>
-                  <option value="6" className="font-sans-serif">Last 6 Months</option>
-                  <option value="12" className="font-sans-serif">Last 12 Months</option>
+                  <option value="3">Last 3 Months</option>
+                  <option value="6">Last 6 Months</option>
+                  <option value="12">Last 12 Months</option>
                 </select>
-                <ChevronDownIcon className="absolute right-2 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                  </svg>
+                </div>
               </div>
             </div>
             
