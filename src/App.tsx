@@ -14,9 +14,12 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import AddInventory from './pages/Dashboard/AddInventory';
 import TWOFALogin from './pages/TWOFALogin';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import TransactionDetailsView from './pages/Dashboard/TransactionDetails';
 import OrderDetailsView from './pages/Dashboard/OrderDetails';
+import LoadingSpinner from './components/LoadingSpinner';
+import { checkAuthStatus } from './services/auth';
+
 
 // Protected Route Component
 const ProtectedRoute = () => {
@@ -37,7 +40,7 @@ const ProtectedRoute = () => {
   }, [isLoading, navigate]);
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <LoadingSpinner />;
   }
 
   if (!isAuthenticated) {
@@ -52,7 +55,7 @@ const PublicRoute = () => {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
-    return <div>Loading...</div>; // Or your loading component
+    return <LoadingSpinner />; // Or your loading component
   }
 
   if (isAuthenticated) {
@@ -63,12 +66,33 @@ const PublicRoute = () => {
 };
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const authStatus = await checkAuthStatus();
+        setIsAuthenticated(authStatus);
+      } catch (error) {
+        setIsAuthenticated(false);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
+
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <Routes>
         {/* Public Routes */}
         <Route element={<PublicRoute />}>
-          <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<LoginDetails />} />
           <Route path="/forgot-password" element={<ForgotPasswordDetails />} />
           <Route path="/enter-otp" element={<EnterOTP />} />
@@ -78,13 +102,8 @@ function App() {
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>
-          <Route path="/dashboard" element={<Dashboard>
-            <Outlet />
-          </Dashboard>} />
-          <Route path="/orders" element={<Orders 
-            searchQuery="" 
-            onOrderDetailsView={() => {}} 
-          />} />
+          <Route path="/dashboard" element={<Dashboard><></></Dashboard>} />
+          <Route path="/orders" element={<Orders searchQuery="" onOrderDetailsView={() => {}} />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/dashboard/add-inventory" element={<AddInventory onClose={() => {/* handle close */}} branchId="" />} />
           <Route path="/transactions" element={<Transactions />} />
@@ -94,8 +113,11 @@ function App() {
           <Route path="/orderDetails/:id" element={<OrderDetailsView orderId="" onBack={() => {/* handle back */}} orderDetails={null} isLoading={false} error={null} />} />
         </Route>
 
-        {/* Catch all route - redirects to login */}
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        {/* Root redirect */}
+        <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
+        
+        {/* Catch all */}
+        <Route path="*" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} replace />} />
       </Routes>
     </LocalizationProvider>
   );

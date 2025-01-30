@@ -25,7 +25,7 @@ import { IoIosClose } from "react-icons/io";
 import { useBackgroundRefresh } from '../../hooks/useBackgroundRefresh';
 
 interface MainDashboardProps {
-  children: ReactNode;
+  children?: React.ReactNode;
 }
 
 const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {

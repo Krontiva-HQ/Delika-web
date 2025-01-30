@@ -22,6 +22,11 @@ export const useAuth = () => {
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    // Check localStorage on initial load
+    return localStorage.getItem('auth_token') ? true : null;
+  });
+
   // Step 1: Login
   const login = async (email: string, password: string): Promise<LoginResponse> => {
     setIsLoading(true);
