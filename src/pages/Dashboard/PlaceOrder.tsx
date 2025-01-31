@@ -1167,8 +1167,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
           case 3:
             return (
-              <>
-                {/* Back button and heading */}
+              <div className="flex flex-col h-full">
+                {/* Back button and heading - Fixed at top */}
                 <div className="flex items-center mb-6">
                   <button
                     className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent"
@@ -1181,105 +1181,100 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 </div>
 
                 <b className="font-sans text-lg font-semibold mb-6">Choose Payment Method</b>
-                
-                 {/* Estimated Distance section first */}
-                 <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-4">
-                  <div className="text-sm !font-sans">
-                    <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
-                    <div className="text-gray-500 !font-sans">
-                      From {pickupLocation?.address} to {dropoffLocation?.address}
-                    </div>
-                  </div>
-                </div>
 
-                {/* Schedule Time Section */}
-                <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-6 font-sans">
-                  <div className="text-sm mb-4 font-sans">Schedule Delivery Time</div>
-                  <div>
-                    <label className="block text-gray-600 mb-2 text-xs font-sans">Time</label>
-                    <input
-                      type="time"
-                      value={scheduledTime}
-                      onChange={(e) => setScheduledTime(e.target.value)}
-                      className="w-full p-2 border border-gray-200 rounded-md focus:outline-none focus:border-[#fd683e]"
-                      placeholder="--:-- --"
-                    />
-                  </div>
-                </div>
-
-               
-                
-                {/* Order Price Section */}
-                <div className="self-stretch flex flex-col items-start justify-start gap-[4px] text-[12px] text-[#686868] font-sans">
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
-                    <div className="self-stretch relative leading-[20px] font-sans">Delivery Price</div>
-                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px] mb-4">
-                      <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
-                        <div className="relative leading-[20px] font-sans">GH₵</div>
-                      </div>
-                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
-                        <div className="relative leading-[20px] font-sans">{deliveryPrice}</div>
+                {/* Scrollable content */}
+                <div className="flex-1 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 250px)' }}>
+                  <div className="flex flex-col gap-4 pr-2">
+                    {/* All content sections go here */}
+                    <div className="self-stretch bg-[#f9fafb] rounded-lg p-4">
+                      <div className="text-sm !font-sans">
+                        <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
+                        <div className="text-gray-500 !font-sans">
+                          From {pickupLocation?.address} to {dropoffLocation?.address}
+                        </div>
                       </div>
                     </div>
-                   
-                    
-                  </div>
 
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-2">
-                  <div className="self-stretch relative leading-[20px] font-sans text-black">
-                    Total Price
-                  </div>
-                  <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
-                    <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
-                      <div className="relative leading-[20px] text-black font-sans">GH₵</div>
+                    <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 font-sans">
+                      <div className="text-sm mb-4 font-sans">Schedule Delivery Time</div>
+                      <div>
+                        <label className="block text-gray-600 mb-2 text-xs font-sans">Time</label>
+                        <input
+                          type="time"
+                          value={scheduledTime}
+                          onChange={(e) => setScheduledTime(e.target.value)}
+                          className="w-full p-2 border border-gray-200 rounded-md focus:outline-none focus:border-[#fd683e]"
+                          placeholder="--:-- --"
+                        />
+                      </div>
                     </div>
-                    <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
-                      <div className="relative leading-[20px] text-black font-sans">{calculateTotal()}</div>
+
+                    <div className="self-stretch flex flex-col items-start justify-start gap-[4px] text-[12px] text-[#686868] font-sans">
+                      <div className="self-stretch relative leading-[20px] font-sans">Delivery Price</div>
+                      <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
+                        <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
+                          <div className="relative leading-[20px] font-sans">GH₵</div>
+                        </div>
+                        <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
+                          <div className="relative leading-[20px] font-sans">{deliveryPrice}</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="self-stretch flex flex-col items-start justify-start gap-[4px] text-[12px] text-[#686868] font-sans">
+                      <div className="self-stretch relative leading-[20px] font-sans text-black">Total Price</div>
+                      <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
+                        <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
+                          <div className="relative leading-[20px] text-black font-sans">GH₵</div>
+                        </div>
+                        <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
+                          <div className="relative leading-[20px] text-black font-sans">{calculateTotal()}</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                  {/* Payment Buttons */}
-                  <div className="flex gap-4 w-full pt-4">
-                    <button
-                      className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
-                                py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                                ${isPayLaterSubmitting || isPayNowSubmitting
-                                  ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
-                                  : 'bg-[#201a18] border-[#201a18]'}`}
-                      onClick={() => handlePlaceOrder('later')}
-                      disabled={isPayLaterSubmitting || isPayNowSubmitting}
-                    >
-                      {isPayLaterSubmitting ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Processing...
-                        </div>
-                      ) : (
-                        'Pay on Delivery'
-                      )}
-                    </button>
-                    <button
-                      className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
-                                py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                                ${isPayLaterSubmitting || isPayNowSubmitting
-                                  ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
-                                  : 'bg-[#fd683e] border-[#fd683e]'}`}
-                      onClick={() => handlePlaceOrder('now')}
-                      disabled={isPayLaterSubmitting || isPayNowSubmitting}
-                    >
-                      {isPayNowSubmitting ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Processing...
-                        </div>
-                      ) : (
-                        'Request Payment'
-                      )}
-                    </button>
-                  </div>
+                {/* Payment Buttons - Fixed at bottom */}
+                <div className="flex gap-4 w-full pt-4 mt-4">
+                  <button
+                    className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
+                              py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
+                              ${isPayLaterSubmitting || isPayNowSubmitting
+                                ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
+                                : 'bg-[#201a18] border-[#201a18]'}`}
+                    onClick={() => handlePlaceOrder('later')}
+                    disabled={isPayLaterSubmitting || isPayNowSubmitting}
+                  >
+                    {isPayLaterSubmitting ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Processing...
+                      </div>
+                    ) : (
+                      'Pay on Delivery'
+                    )}
+                  </button>
+                  <button
+                    className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
+                              py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
+                              ${isPayLaterSubmitting || isPayNowSubmitting
+                                ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
+                                : 'bg-[#fd683e] border-[#fd683e]'}`}
+                    onClick={() => handlePlaceOrder('now')}
+                    disabled={isPayLaterSubmitting || isPayNowSubmitting}
+                  >
+                    {isPayNowSubmitting ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Processing...
+                      </div>
+                    ) : (
+                      'Request Payment'
+                    )}
+                  </button>
                 </div>
-              </>
+              </div>
             );
 
           default:
