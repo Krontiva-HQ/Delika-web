@@ -324,10 +324,14 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       formData.append('payNow', (paymentType === 'now').toString());
       formData.append('payLater', (paymentType === 'later').toString());
 
-      // Add scheduled date and time for schedule delivery type
+      // Convert date and time to timestamp for schedule delivery
       if (deliveryMethod === 'schedule') {
-        formData.append('scheduledDate', scheduledDate);
-        formData.append('scheduledTime', scheduledTime);
+        // Combine date and time into a single timestamp
+        const dateTimeString = `${scheduledDate}T${scheduledTime}:00`;
+        const timestamp = new Date(dateTimeString).toISOString();
+        
+        // Append the timestamp to formData
+        formData.append('scheduledTime', timestamp);
       }
 
       const response = await fetch(`${import.meta.env.VITE_API_URL}/delikaquickshipper_orders_table`, {
@@ -430,7 +434,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           case 1:
             return (
               <>
-                <b className="font-sans text-lg font-semibold gap-2 mb-4">Place New Order for On Demand Delivery</b>
+                <b className="font-sans text-lg font-semibold gap-2 mb-4">On Demand Delivery</b>
                 
                 {/* Add Estimated Distance section here */}
                 <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-4">
@@ -1197,15 +1201,26 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
                     <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 font-sans">
                       <div className="text-sm mb-4 font-sans">Schedule Delivery Time</div>
-                      <div>
-                        <label className="block text-gray-600 mb-2 text-xs font-sans">Time</label>
-                        <input
-                          type="time"
-                          value={scheduledTime}
-                          onChange={(e) => setScheduledTime(e.target.value)}
-                          className="w-full p-2 border border-gray-200 rounded-md focus:outline-none focus:border-[#fd683e]"
-                          placeholder="--:-- --"
-                        />
+                      <div className="flex gap-8">
+                        <div className="flex-1">
+                          <label className="block text-gray-600 mb-2 text-xs font-sans">Date</label>
+                          <input
+                            type="date"
+                            value={scheduledDate}
+                            onChange={(e) => setScheduledDate(e.target.value)}
+                            className="w-full p-2 border border-gray-200 rounded-md focus:outline-none focus:border-[#fd683e]"
+                          />
+                        </div>
+                        <div className="flex-1">
+                          <label className="block text-gray-600 mb-2 text-xs font-sans">Time</label>
+                          <input
+                            type="time"
+                            value={scheduledTime}
+                            onChange={(e) => setScheduledTime(e.target.value)}
+                            className="w-full p-2 border border-gray-200 rounded-md focus:outline-none focus:border-[#fd683e]"
+                            placeholder="--:-- --"
+                          />
+                        </div>
                       </div>
                     </div>
 

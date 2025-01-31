@@ -31,10 +31,11 @@ interface MainDashboardProps {
 const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
   const navigate = useNavigate();
   const { fetchUserProfile } = useAuth();
+  const { userProfile } = useUserProfile();
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState(() => {
     const savedView = localStorage.getItem('activeView');
-    return savedView || 'dashboard';
+    return savedView || 'orders';
   });
   const [vuesaxlineararrowDownAnchorEl, setVuesaxlineararrowDownAnchorEl] =
     useState<HTMLElement | null>(null);
@@ -48,7 +49,6 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
   });
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const { notifications } = useNotifications();
-  const { userProfile } = useUserProfile();
   const restaurantData = userProfile._restaurantTable?.[0] || {};
   const [isViewingOrderDetails, setIsViewingOrderDetails] = useState(false);
   
@@ -57,6 +57,17 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
     document.documentElement.classList.add(activeTheme);
     localStorage.setItem('theme', activeTheme);
   }, [activeTheme]);
+
+  useEffect(() => {
+    if (userProfile) {
+      if (userProfile.role === 'Store Clerk') {
+        if (activeView === 'dashboard') {
+          setActiveView('orders');
+          localStorage.setItem('activeView', 'orders');
+        }
+      }
+    }
+  }, [userProfile, activeView]);
 
   const handleVuesaxlineararrowDownClick = (event: React.MouseEvent<HTMLElement>) => {
     setVuesaxlineararrowDownAnchorEl(event.currentTarget);
@@ -87,15 +98,12 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
     setSearchQuery('');
   };
 
-  // Filter menu items based on restaurant permissions
   const menuItems = [
-    // Always show Overview, remove permission check
-    { name: "Overview", icon: <FiGrid size={24} />, id: "dashboard" },
+    ...(userProfile?.role !== 'Store Clerk' ? [{ name: "Overview", icon: <FiGrid size={24} />, id: "dashboard" }] : []),
     { name: "My Orders", icon: <FiBox size={24} />, id: "orders" },
-    // Only show these items if the corresponding permission is false
-    ...(!restaurantData.Inventory ? [{ name: "Menu Items", icon: <IoFastFoodOutline size={24} />, id: "inventory" }] : []),
-    ...(!restaurantData.Transactions ? [{ name: "Transactions", icon: <LuCircleDollarSign size={24} />, id: "transactions" }] : []),
-    {name : "Reports", icon: <LuFileSpreadsheet size={24} />, id: "reports"},
+    ...(!restaurantData?.Inventory ? [{ name: "Menu Items", icon: <IoFastFoodOutline size={24} />, id: "inventory" }] : []),
+    ...(!restaurantData?.Transactions ? [{ name: "Transactions", icon: <LuCircleDollarSign size={24} />, id: "transactions" }] : []),
+    { name: "Reports", icon: <LuFileSpreadsheet size={24} />, id: "reports" },
     { name: "Settings", icon: <IoSettingsOutline size={24} style={{ fontWeight: 'bold', strokeWidth: '1.5' }}/>, id: "settings" },
   ];
 
@@ -119,7 +127,6 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
     initializeDashboard();
   }, [navigate, fetchUserProfile]);
 
-  // Add the background refresh hook
   useBackgroundRefresh();
 
   const renderContent = () => {
@@ -152,12 +159,9 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
 
   return (
     <div className="flex h-screen w-full bg-white overflow-hidden">
-      {/* Side Menu - Hide on screens smaller than 1024px */}
       <aside className="hidden lg:block w-[240px] bg-white border-r-[1px] border-solid border-[rgba(167,161,158,0.2)]">
         <div className="p-[10px] flex flex-col h-full justify-between">
-          {/* Top Section with Logo and Main Menu */}
           <div className="flex flex-col gap-[10px]">
-            {/* Logo */}
             <div className="w-[180px] h-[70px] flex items-center justify-center">
               <img
                 className="w-[180px] h-[70px] object-contain"
@@ -166,7 +170,6 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
               />
             </div>
 
-            {/* Menu Items */}
             <div className="flex flex-col items-start justify-start gap-[8px]">
               {menuItems.map((item) => (
                 <button
@@ -178,14 +181,12 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
                       : 'bg-transparent'
                   }`}
                 >
-                  {/* Orange vertical line */}
                   <div className={`w-[2px] rounded-[8px] bg-[#fe5b18] h-[40px] absolute left-0 transition-opacity duration-200 ${
                     activeView === item.id 
                       ? 'opacity-100'
                       : 'opacity-0'
                   }`} />
 
-                  {/* Icon */}
                   <span className={`pl-[12px] ${
                     activeView === item.id 
                       ? 'text-[#fe5b18]'
@@ -194,7 +195,6 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
                     {item.icon}
                   </span>
 
-                  {/* Text */}
                   <span className={`text-[14px] font-sans text-left ${
                     activeView === item.id 
                       ? 'text-[#fe5b18]'
@@ -207,10 +207,8 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
             </div>
           </div>
 
-          {/* Bottom Section with Settings and Theme Toggle */}
           <div className="flex flex-col gap-1 mb-4">
             
-            {/* Krontiva Footer Logo */}
             <div className="text-center border-t mr-[100px] mt-4">
                 <p className="text-gray-500 text-xs mb-1 font-sans"> Powered By</p>
                 <img
@@ -223,12 +221,9 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
         </div>
       </aside>
 
-      {/* Main Content Area */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        {/* Top Navbar */}
         <header className="bg-white border-b border-gray-200 px-4 py-2">
           <div className="flex items-center justify-between">
-            {/* Hamburger Menu - Show on screens smaller than 1024px */}
             <button 
               onClick={handleMobileMenuToggle}
               className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
@@ -236,7 +231,6 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
               <CiMenuBurger className="w-6 h-6 text-gray-700" />
             </button>
 
-            {/* Search Bar */}
             <div className={`hidden lg:flex flex-1 max-w-[200px] px-2 py-1 border-[1px] border-solid 
               border-[rgba(167,161,158,0.1)] rounded-[8px] ml-[10px] relative ${
                 activeView === 'dashboard' || 
@@ -268,7 +262,6 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
               </div>
             </div>
 
-            {/* Right Section */}
             <div className="flex flex-1 lg:flex-none flex-row items-center justify-end gap-[8px] mr-[10px]">
               <summary className="w-[160px] relative h-[40px]">
                 <div className="absolute top-[0px] left-[0px] rounded-[8px] border-[rgba(167,161,158,0.1)] border-[1px] border-solid box-border w-[160px] h-[40px]" />
@@ -293,15 +286,15 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
                   >
                     <IoIosArrowDropdown className="w-[18px] h-[18px] text-[#201a18]" />
                   </button>
-                  {/* Dropdown menu */}
                   {vuesaxlineararrowDownOpen && (
-                    <div className="absolute right-0 mt-2 w-40 rounded-md shadow-lg z-20 border">
+                    <div className="absolute right-0 mt-2 mr-[20px] w-40 rounded-md shadow-lg z-20 border">
                       <button
                         onClick={handleLogout}
                         className="w-[70px] text-left px-2 py-1 text-[12px] font-sans-serif bg-white"
                       >
                         Logout
                       </button>
+
                     </div>
                   )}
                 </div>
@@ -323,17 +316,14 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
           </div>
         </header>
 
-        {/* Content Section */}
         <div className="flex-1 overflow-auto">
           {renderContent()}
         </div>
       </div>
 
-      {/* Mobile/Tablet Menu with Animation - Show on screens smaller than 1024px */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <div className="fixed inset-0 z-[100] lg:hidden">
-            {/* Overlay with fade animation */}
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -341,7 +331,6 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
               className="fixed inset-0 bg-black/50" 
               onClick={handleMobileMenuToggle}
             />
-            {/* Side Menu with slide animation */}
             <motion.div 
               initial={{ x: "-100%" }}
               animate={{ x: 0 }}
@@ -350,7 +339,6 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
               className="fixed inset-y-0 left-0 w-[240px] bg-white shadow-xl overflow-y-auto"
             >
               <div className="p-[10px] flex flex-col h-full">
-                {/* Close button */}
                 <button
                   onClick={handleMobileMenuToggle}
                   className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full"
@@ -358,7 +346,6 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
                   <IoIosCloseCircleOutline size={24} className="text-gray-500" />
                 </button>
 
-                {/* Logo */}
                 <div className="w-[180px] h-[70px] flex items-center justify-center">
                   <img
                     className="w-[180px] h-[70px] object-contain"
@@ -367,7 +354,6 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
                   />
                 </div>
 
-                {/* Menu Items */}
                 <div className="flex flex-col items-start justify-start gap-[8px] mt-4">
                   {menuItems.map((item) => (
                     <button
@@ -382,14 +368,12 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
                           : 'bg-transparent'
                       }`}
                     >
-                      {/* Orange vertical line */}
                       <div className={`w-[2px] rounded-[8px] bg-[#fe5b18] h-[40px] absolute left-0 transition-opacity duration-200 ${
                         activeView === item.id 
                           ? 'opacity-100'
                           : 'opacity-0'
                       }`} />
 
-                      {/* Icon */}
                       <span className={`pl-[12px] ${
                         activeView === item.id 
                           ? 'text-[#fe5b18]'
@@ -398,7 +382,6 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
                         {item.icon}
                       </span>
 
-                      {/* Text */}
                       <span className={`text-[14px] font-sans text-left ${
                         activeView === item.id 
                           ? 'text-[#fe5b18]'
@@ -410,7 +393,6 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
                   ))}
                 </div>
 
-                {/* Footer */}
                 <div className="mt-auto pb-4">
                   <div className="text-center border-t pt-4">
                     <p className="text-gray-500 text-xs mb-1 font-sans">Powered By</p>

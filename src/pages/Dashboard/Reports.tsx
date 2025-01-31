@@ -158,6 +158,7 @@ const Reports: FunctionComponent = () => {
   const [deliveryReports, setDeliveryReports] = useState<DeliveryReport[]>([]);
   const [page, setPage] = useState(1);
   const [itemsPerPage] = useState(10);
+  const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
 
   const { userProfile, restaurantData } = useUserProfile();
   const { branches, isLoading: branchesLoading } = useBranches(userProfile?.restaurantId ?? null);
@@ -766,16 +767,25 @@ const Reports: FunctionComponent = () => {
     ) : null;
   };
 
+  const toggleRowExpansion = (index: number) => {
+    const newExpandedRows = new Set(expandedRows);
+    if (newExpandedRows.has(index)) {
+      newExpandedRows.delete(index);
+    } else {
+      newExpandedRows.add(index);
+    }
+    setExpandedRows(newExpandedRows);
+  };
+
   const renderContent = () => {
     switch (selectedReport) {
       case "Orders Report":
         return (
           <>
-            <div className="grid grid-cols-8 bg-[#f9f9f9] p-4" style={{ borderBottom: '1px solid #eaeaea' }}>
+            <div className="grid grid-cols-7 bg-[#f9f9f9] p-4" style={{ borderBottom: '1px solid #eaeaea' }}>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Customer Name</div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Phone Number</div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Courier Name</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Products</div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Order Date</div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Food Price GH₵</div>
               <div className="text-[14px] leading-[22px] font-sans text-[#666]">Delivery Price GH₵</div>
@@ -783,25 +793,49 @@ const Reports: FunctionComponent = () => {
             </div>
 
             {paginateData(orderDetails).map((order, index) => (
-              <div 
-                key={index}
-                className="grid grid-cols-8 p-4 hover:bg-[#f9f9f9]"
-                style={{ borderBottom: '1px solid #eaeaea' }}
-              >
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.customerName}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.customerPhone}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.courierName}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">
-                  {order.products.map((product, idx) => (
-                    <div key={idx}>
-                      {product.name} (x{product.quantity})
-                    </div>
-                  ))}
+              <div key={index} className="border-b border-gray-200">
+                <div 
+                  className="grid grid-cols-7 p-4 hover:bg-[#f9f9f9] cursor-pointer"
+                  onClick={() => toggleRowExpansion(index)}
+                >
+                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.customerName}</div>
+                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.customerPhone}</div>
+                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.courierName}</div>
+                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.orderDate}</div>
+                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.amount?.toFixed(2) || '0.00'}</div>
+                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.deliveryPrice?.toFixed(2) || '0.00'}</div>
+                  <div className="text-[14px] leading-[22px] font-sans text-[#444] flex items-center gap-2">
+                    {order.totalPrice?.toFixed(2) || '0.00'}
+                    <svg 
+                      className={`w-4 h-4 transition-transform ${expandedRows.has(index) ? 'transform rotate-180' : ''}`} 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
                 </div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.orderDate}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.amount?.toFixed(2) || '0.00'}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.deliveryPrice?.toFixed(2) || '0.00'}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.totalPrice?.toFixed(2) || '0.00'}</div>
+
+                {expandedRows.has(index) && (
+                  <div className="bg-gray-50 p-4 border-t border-gray-100">
+                    <div className="text-sm font text-gray-600 mb-2 font-sans">Products:</div>
+                    <div className="grid gap-2">
+
+                      {order.products.map((product, idx) => (
+                        <div 
+                          key={idx} 
+                          className="flex justify-between items-center bg-white p-2 rounded-md"
+                        >
+                          <span className="text-[14px] font-sans text-[#444]">{product.name}</span>
+                          <span className="text-[14px] font-sans text-[#666] bg-gray-100 px-2 py-1 rounded">
+                            x{product.quantity}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
 

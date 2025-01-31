@@ -36,6 +36,8 @@ export const useBranches = (restaurantId: string | null) => {
       return;
     }
     
+
+
     setIsLoading(true);
     
     try {
