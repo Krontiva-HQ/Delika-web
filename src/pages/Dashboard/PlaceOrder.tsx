@@ -153,6 +153,10 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   // Add new state for delivery method selection
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>(null);
 
+  // Add these new state variables near the top of the component with other state declarations
+  const [scheduledDate, setScheduledDate] = useState<string>('');
+  const [scheduledTime, setScheduledTime] = useState<string>('');
+
   const handleSelectCategoryClick = (event: React.MouseEvent<HTMLElement>) => {
     setSelectCategoryAnchorEl(event.currentTarget);
   };
@@ -319,6 +323,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       formData.append('onlyDeliveryFee', 'false');
       formData.append('payNow', (paymentType === 'now').toString());
       formData.append('payLater', (paymentType === 'later').toString());
+
+      // Add scheduled date and time for schedule delivery type
+      if (deliveryMethod === 'schedule') {
+        formData.append('scheduledDate', scheduledDate);
+        formData.append('scheduledTime', scheduledTime);
+      }
 
       const response = await fetch(`${import.meta.env.VITE_API_URL}/delikaquickshipper_orders_table`, {
         method: 'POST',
@@ -545,7 +555,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           case 3:
             return (
               <>
-              
                 {/* Back button and heading */}
                 <div className="flex items-center mb-6">
                   <button
@@ -559,7 +568,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 </div>
 
                 <b className="font-sans text-lg font-semibold mb-6">Choose Payment Method</b>
-                
+             
                 {/* Add Estimated Distance section here */}
                 <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-4">
                   <div className="text-sm !font-sans">
@@ -974,6 +983,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
                 <b className="font-sans text-lg font-semibold mb-6">Choose Payment Method</b>
                 
+               
+
                 {/* Add Estimated Distance section here */}
                 <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-4">
                   <div className="text-sm !font-sans">
@@ -996,8 +1007,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                         <div className="relative leading-[20px] font-sans">{deliveryPrice}</div>
                       </div>
                     </div>
+                  </div>
+
+
+                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
                     <div className="self-stretch relative leading-[20px] font-sans">Food Price</div>
-                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
+                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px] mb-4">
                       <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
                         <div className="relative leading-[20px] font-sans">GH₵</div>
                       </div>
@@ -1005,8 +1020,9 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                         <div className="relative leading-[20px] font-sans">{totalFoodPrice}</div>
                       </div>
                     </div>
-                    
                   </div>
+
+
 
                   <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-2">
                   <div className="self-stretch relative leading-[20px] font-sans text-black">
@@ -1072,14 +1088,13 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         }
 
       case 'schedule':
-        // Full flow for schedule delivery
         switch (currentStep) {
           case 1:
             return (
               <>
                 <b className="font-sans text-lg font-semibold gap-2 mb-4">Schedule Delivery</b>
                 
-                {/* Add Estimated Distance section here */}
+                {/* Add Estimated Distance section first */}
                 <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-4">
                   <div className="text-sm !font-sans">
                     <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
@@ -1088,7 +1103,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                     </div>
                   </div>
                 </div>
-
                 {/* Customer Details Section */}
                 <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4">
                   <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
@@ -1122,61 +1136,11 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                     />
                   </div>
                 </div>
-                <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4">
-                  {userProfile?.role === 'Admin' ? (
-                    <div className="w-full">
-                      <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                        Select Branch for Pickup
-                      </div>
-                      <StyledSelect
-                        fullWidth
-                        value={selectedBranchId}
-                        onChange={(event: SelectChangeEvent<unknown>, child: React.ReactNode) => {
-                          const selectedId = event.target.value as string;
-                          setSelectedBranchId(selectedId);
-                          
-                          // Find selected branch
-                          const selectedBranch = branches.find(branch => branch.id === selectedId);
-                          if (selectedBranch) {
-                            setPickupData({
-                              fromLatitude: selectedBranch.branchLatitude,
-                              fromLongitude: selectedBranch.branchLongitude,
-                              fromAddress: selectedBranch.branchLocation,
-                              branchId: selectedBranch.id
-                            });
-                            // Update pickup location for distance calculation
-                            handlePickupLocationSelect({
-                              address: selectedBranch.branchLocation,
-                              latitude: parseFloat(selectedBranch.branchLatitude),
-                              longitude: parseFloat(selectedBranch.branchLongitude),
-                              name: selectedBranch.branchName
-                            });
-                          }
-                        }}
-                        variant="outlined"
-                        size="small"
-                        className="mb-2"
-                      >
-                        {branches.map((branch) => (
-                          <MenuItem key={branch.id} value={branch.id}>
-                            {branch.branchName} - {branch.branchLocation}
-                          </MenuItem>
-                        ))}
-                      </StyledSelect>
-                    </div>
-                  ) : (
-                    <div className="w-full">
-                      <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                        Your Branch
-                      </div>
-                      <div className="font-sans border-[#efefef] border-[1px] border-solid 
-                                    bg-[#f9fafb] self-stretch rounded-[3px] overflow-hidden 
-                                    flex flex-row items-center py-[10px] px-[12px] text-gray-600">
-                        {userProfile?.branchesTable?.branchName} - {userProfile?.branchesTable?.branchLocation}
-                      </div>
-                    </div>
-                  )}
-                </div>
+
+                {/* Branch Selection */}
+                {renderBranchSelection()}
+
+                {/* Location Inputs */}
                 <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4">
                   <LocationInput label="Drop-Off Location" onLocationSelect={handleDropoffLocationSelect} />
                   {dropoffLocation && (
@@ -1184,6 +1148,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                     </div>
                   )}
                 </div>
+
+                {/* Next Button */}
                 <button
                   onClick={handleNextStep}
                   disabled={!isStep1Valid}
@@ -1216,8 +1182,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
                 <b className="font-sans text-lg font-semibold mb-6">Choose Payment Method</b>
                 
-                {/* Add Estimated Distance section here */}
-                <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-4">
+                 {/* Estimated Distance section first */}
+                 <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-4">
                   <div className="text-sm !font-sans">
                     <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
                     <div className="text-gray-500 !font-sans">
@@ -1226,6 +1192,23 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                   </div>
                 </div>
 
+                {/* Schedule Time Section */}
+                <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-6 font-sans">
+                  <div className="text-sm mb-4 font-sans">Schedule Delivery Time</div>
+                  <div>
+                    <label className="block text-gray-600 mb-2 text-xs font-sans">Time</label>
+                    <input
+                      type="time"
+                      value={scheduledTime}
+                      onChange={(e) => setScheduledTime(e.target.value)}
+                      className="w-full p-2 border border-gray-200 rounded-md focus:outline-none focus:border-[#fd683e]"
+                      placeholder="--:-- --"
+                    />
+                  </div>
+                </div>
+
+               
+                
                 {/* Order Price Section */}
                 <div className="self-stretch flex flex-col items-start justify-start gap-[4px] text-[12px] text-[#686868] font-sans">
                   <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
@@ -1238,6 +1221,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                         <div className="relative leading-[20px] font-sans">{deliveryPrice}</div>
                       </div>
                     </div>
+                   
+                    
                   </div>
 
                   <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-2">
@@ -1249,11 +1234,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                       <div className="relative leading-[20px] text-black font-sans">GH₵</div>
                     </div>
                     <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
-                      <div className="relative leading-[20px] text-black font-sans">{deliveryPrice}</div>
+                      <div className="relative leading-[20px] text-black font-sans">{calculateTotal()}</div>
                     </div>
                   </div>
                 </div>
-                      {/* Payment Buttons */}
+
+                  {/* Payment Buttons */}
                   <div className="flex gap-4 w-full pt-4">
                     <button
                       className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
@@ -1455,9 +1441,13 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     return null;
   };
 
-  // Add new function to handle delivery method selection
+  // Modify the handleDeliveryMethodSelect function
   const handleDeliveryMethodSelect = (method: DeliveryMethod) => {
     setDeliveryMethod(method);
+    // For schedule and on-demand, start at step 1
+    if (method === 'schedule' || method === 'on-demand') {
+      setCurrentStep(1);
+    }
   };
 
   return (
