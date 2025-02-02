@@ -52,6 +52,7 @@ interface InvoiceData {
   };
   payNow: boolean;
   payLater: boolean;
+  scheduledTime: string | null;
 }
 
 const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
@@ -93,6 +94,7 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       },
       payNow: false,
       payLater: false,
+      scheduledTime: null,
     };
   }
 
@@ -116,7 +118,8 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       orderReceivedTime,
       orderPickedUpTime,
       orderOnmywayTime,
-      orderCompletedTime
+      orderCompletedTime,
+      scheduledTime
     } = apiResponse;
 
     return {
@@ -159,6 +162,7 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       },
       payNow: false,
       payLater: false,
+      scheduledTime: scheduledTime || null,
     };
   } catch (error) {
     throw error;
@@ -178,6 +182,7 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
   const navigate = useNavigate();
   const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const { userProfile } = useUserProfile();
 
   const { orderDetails, isLoading, error } = useOrderDetails(orderId || orderIdFromUrl || null);
 
@@ -272,7 +277,6 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                   {invoiceData.restaurant.logo && (
                     <img 
                       src={invoiceData.restaurant.logo} 
-
                       alt={invoiceData.restaurant.name}
                       className="w-14 h-14 rounded-full object-cover"
                     />
@@ -291,6 +295,10 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                   <div className="flex items-center gap-1">
                     <span className="text-gray-600 font-medium text-xs">Order Status:</span>
                     <span className="text-xs font-bold">{invoiceData.orderStatus || 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-gray-600 font-medium">Scheduled Time:</span>
+                    <span>{invoiceData.scheduledTime ? new Date(invoiceData.scheduledTime).toLocaleString() : 'no scheduled time'}</span>
                   </div>
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-1">
@@ -383,40 +391,42 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
 
             
               {/* Order Table */}
-              <div className="mb-6 w-full border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden bg-white">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-[#ffffff]" style={{ borderBottom: '1px solid #eaeaea' }}>
-                      <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">S/L</th>
-                      <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Product</th>
-                      <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Unit price</th>
-                      <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">QTY</th>
-                      <th className="text-right p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Total price</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {invoiceData.orders.map((order) => (
-                      <tr key={order.id} className="hover:bg-[#f9f9f9]" style={{ borderBottom: '1px solid #eaeaea' }}>
-                        <td className="p-2 text-[12px] leading-[20px] font-sans text-[#444]">{order.id}</td>
-                        <td className="p-2">
-                          <span className="text-[12px] leading-[20px] font-sans text-[#444]">
-                            {order.productName}
-                          </span>
-                        </td>
-                        <td className="p-2 text-[12px] leading-[20px] font-sans text-[#666]">
-                          GH₵{order.unitPrice}
-                        </td>
-                        <td className="p-2 text-[12px] leading-[20px] font-sans text-[#666]">
-                          {order.quantity}
-                        </td>
-                        <td className="p-2 text-right text-[12px] leading-[20px] font-sans text-[#444]">
-                          GH₵{order.totalPrice}
-                        </td>
+              {!userProfile._restaurantTable?.[0]?.Inventory && !userProfile._restaurantTable?.[0]?.Transactions && (
+                <div className="mb-6 w-full border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden bg-white">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-[#ffffff]" style={{ borderBottom: '1px solid #eaeaea' }}>
+                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">S/L</th>
+                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Product</th>
+                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Unit price</th>
+                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">QTY</th>
+                        <th className="text-right p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Total price</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {invoiceData.orders.map((order) => (
+                        <tr key={order.id} className="hover:bg-[#f9f9f9]" style={{ borderBottom: '1px solid #eaeaea' }}>
+                          <td className="p-2 text-[12px] leading-[20px] font-sans text-[#444]">{order.id}</td>
+                          <td className="p-2">
+                            <span className="text-[12px] leading-[20px] font-sans text-[#444]">
+                              {order.productName}
+                            </span>
+                          </td>
+                          <td className="p-2 text-[12px] leading-[20px] font-sans text-[#666]">
+                            GH₵{order.unitPrice}
+                          </td>
+                          <td className="p-2 text-[12px] leading-[20px] font-sans text-[#666]">
+                            {order.quantity}
+                          </td>
+                          <td className="p-2 text-right text-[12px] leading-[20px] font-sans text-[#444]">
+                            GH₵{order.totalPrice}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
               {/* Payment Summary */}
               <div className="flex justify-between items-start bg-white rounded-lg">

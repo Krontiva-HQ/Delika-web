@@ -259,17 +259,19 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false 
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_4px_rgba(0,0,0,0.05)]">
-            <div className="w-[50px] h-[50px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
-              <IoFastFoodOutline className="w-5 h-5 text-[#fe5b18]" />
+          {!hideRevenue && (
+            <div className="bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_4px_rgba(0,0,0,0.05)]">
+              <div className="w-[50px] h-[50px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
+                <IoFastFoodOutline className="w-5 h-5 text-[#fe5b18]" />
+              </div>
+              <div>
+                <p className="text-gray-600 text-xs font-sans m-0">Inventory Items</p>
+                <p className="text-xl font-bold font-sans m-0">
+                  {isDashboardLoading ? 'Loading...' : formatNumber(Number(data?.totalMenu || 0))}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-gray-600 text-xs font-sans m-0">Total Menu</p>
-              <p className="text-xl font-bold font-sans m-0">
-                {isDashboardLoading ? 'Loading...' : formatNumber(Number(data?.totalMenu || 0))}
-              </p>
-            </div>
-          </div>
+          )}
 
           <div className="bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_4px_rgba(0,0,0,0.05)]">
             <div className="w-[50px] h-[50px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">

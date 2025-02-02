@@ -98,9 +98,25 @@ const StyledSelect = styled(Select)({
 // Add new type for delivery method
 type DeliveryMethod = 'on-demand' | 'full-service' | 'schedule' | null;
 
+// Add this CSS class near your other styled components
+const StyledDateInput = styled('input')({
+  '&::-webkit-calendar-picker-indicator': {
+    display: 'none'
+  },
+  '&::-webkit-inner-spin-button': {
+    display: 'none'
+  },
+  '&::-webkit-clear-button': {
+    display: 'none'
+  },
+  appearance: 'textfield',
+  '-webkit-appearance': 'textfield',
+  '-moz-appearance': 'textfield',
+});
+
 const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced, branchId: initialBranchId }) => {
   const { addNotification } = useNotifications();
-  const { userProfile } = useUserProfile();
+  const { userProfile, restaurantData } = useUserProfile();
   const { branches, isLoading: branchesLoading } = useBranches(userProfile?.restaurantId ?? null);
   const [selectedBranchId, setSelectedBranchId] = useState(initialBranchId || '');
   const [selectCategoryAnchorEl, setSelectCategoryAnchorEl] = useState<null | HTMLElement>(null);
@@ -154,8 +170,14 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>(null);
 
   // Add these new state variables near the top of the component with other state declarations
-  const [scheduledDate, setScheduledDate] = useState<string>('');
-  const [scheduledTime, setScheduledTime] = useState<string>('');
+  const [scheduledDate, setScheduledDate] = useState(() => {
+    // Set default to today's date in YYYY-MM-DD format
+    return new Date().toISOString().split('T')[0];
+  });
+  const [scheduledTime, setScheduledTime] = useState('');
+
+  // Add this check
+  const isFullServiceDisabled = restaurantData?.Inventory && restaurantData?.Transactions;
 
   const handleSelectCategoryClick = (event: React.MouseEvent<HTMLElement>) => {
     setSelectCategoryAnchorEl(event.currentTarget);
@@ -1204,10 +1226,11 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                       <div className="flex gap-8">
                         <div className="flex-1">
                           <label className="block text-gray-600 mb-2 text-xs font-sans">Date</label>
-                          <input
+                          <StyledDateInput
                             type="date"
                             value={scheduledDate}
-                            onChange={(e) => setScheduledDate(e.target.value)}
+                            onChange={handleDateChange}
+                            min={new Date().toISOString().split('T')[0]}
                             className="w-full p-2 border border-gray-200 rounded-md focus:outline-none focus:border-[#fd683e]"
                           />
                         </div>
@@ -1460,6 +1483,28 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     }
   };
 
+  // Add this function to handle date changes with validation
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedDate = e.target.value;
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Only allow dates from today onwards
+    if (selectedDate >= today) {
+      setScheduledDate(selectedDate);
+    }
+  };
+
+  // When submitting the order, you can create the timestamp like this:
+  const getScheduledTimestamp = () => {
+    if (scheduledDate && scheduledTime) {
+      const [hours, minutes] = scheduledTime.split(':');
+      const scheduleDateTime = new Date(scheduledDate);
+      scheduleDateTime.setHours(parseInt(hours), parseInt(minutes), 0);
+      return scheduleDateTime.getTime(); // Returns timestamp in milliseconds
+    }
+    return null;
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-8 rounded-lg w-[600px] relative flex flex-col">
@@ -1488,14 +1533,23 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
               {/* Full-service */}
               <div
-                onClick={() => handleDeliveryMethodSelect('full-service')}
-                className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors"
+                className={`flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg relative 
+                  ${isFullServiceDisabled 
+                    ? 'opacity-50 cursor-not-allowed' 
+                    : 'cursor-pointer hover:bg-[#FFE5E0] transition-colors'}`}
+                onClick={() => {
+                  if (!isFullServiceDisabled) {
+                    handleDeliveryMethodSelect('full-service');
+                  }
+                }}
               >
                 <div className="w-16 h-16 mb-4">
                   <img src="/full-service.svg" alt="Full-service" className="w-full h-full" />
                 </div>
                 <span className="text-center font-medium font-sans">Full-service Delivery</span>
-              </div>
+                
+              
+              </div>  
 
               {/* Schedule Delivery */}
               <div

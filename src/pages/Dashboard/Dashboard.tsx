@@ -35,28 +35,29 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState(() => {
     const savedView = localStorage.getItem('activeView');
-    return savedView || 'orders';
+    
+    if (!savedView) {
+      return userProfile?.role === 'Store Clerk' ? 'orders' : 'dashboard';
+    }
+    
+    return savedView;
   });
   const [vuesaxlineararrowDownAnchorEl, setVuesaxlineararrowDownAnchorEl] =
     useState<HTMLElement | null>(null);
   const vuesaxlineararrowDownOpen = Boolean(vuesaxlineararrowDownAnchorEl);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTheme, setActiveTheme] = useState(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) return savedTheme;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
+  const [activeTheme] = useState('light');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const { notifications } = useNotifications();
   const restaurantData = userProfile._restaurantTable?.[0] || {};
   const [isViewingOrderDetails, setIsViewingOrderDetails] = useState(false);
   
   useEffect(() => {
-    document.documentElement.classList.remove('light', 'dark');
-    document.documentElement.classList.add(activeTheme);
-    localStorage.setItem('theme', activeTheme);
-  }, [activeTheme]);
+    document.documentElement.classList.remove('dark');
+    document.documentElement.classList.add('light');
+    localStorage.setItem('theme', 'light');
+  }, []);
 
   useEffect(() => {
     if (userProfile) {
@@ -117,6 +118,13 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
 
       try {
         await fetchUserProfile();
+        
+        if (!localStorage.getItem('activeView')) {
+          const initialView = userProfile?.role === 'Store Clerk' ? 'orders' : 'dashboard';
+          setActiveView(initialView);
+          localStorage.setItem('activeView', initialView);
+        }
+        
         setIsLoading(false);
       } catch (err) {
         localStorage.removeItem('authToken');
