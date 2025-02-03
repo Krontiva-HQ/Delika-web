@@ -8,6 +8,7 @@ export interface OrderDetails {
     fromAddress: string;
     fromLatitude: number;
     fromLongitude: number;
+    pickupName: string;
   }>;
   dropOff: Array<{
     toAddress: string;
@@ -50,6 +51,9 @@ export interface OrderDetails {
   courierPhoneNumber: string;
   foodAndDeliveryFee: boolean;
   customerPhoneNumber: string;
+  branch: {
+    branchName: string;
+  };
 }
 
 const useOrderDetails = (orderNumber: string | null) => {

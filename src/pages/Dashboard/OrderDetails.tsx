@@ -53,6 +53,9 @@ interface InvoiceData {
   payNow: boolean;
   payLater: boolean;
   scheduledTime: string | null;
+  branch?: {
+    branchName: string;
+  };
 }
 
 const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
@@ -119,7 +122,8 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       orderPickedUpTime,
       orderOnmywayTime,
       orderCompletedTime,
-      scheduledTime
+      scheduledTime,
+      branch
     } = apiResponse;
 
     return {
@@ -163,6 +167,7 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       payNow: false,
       payLater: false,
       scheduledTime: scheduledTime || null,
+      branch
     };
   } catch (error) {
     throw error;
@@ -213,33 +218,34 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
       const leftMargin = 5;
       const width = 70;
 
-      // Restaurant name - centered
+      // Restaurant name and location - centered
       pdf.setFontSize(10);
       pdf.text(invoiceData.restaurant.name, 40, yPos, { align: 'center' });
-      yPos += 8;
-
-      // Order details
+      yPos += 6;
+      
+      // Branch name with smaller font
       pdf.setFontSize(7);
-      pdf.text(`Order #: ${invoiceData.invoiceNumber}`, leftMargin, yPos);
-      yPos += 4;
-      pdf.text(`Date: ${invoiceData.orderDate}`, leftMargin, yPos);
+      const pickupLocation = invoiceData.pickup?.[0]?.fromAddress || 'N/A';
+      pdf.text(pickupLocation, 40, yPos, { align: 'center' });
       yPos += 6;
 
-      // Customer details
+      // Order details on the right
+      pdf.text(`Order #: ${invoiceData.invoiceNumber}`, 75, yPos, { align: 'right' });
+      yPos += 4;
+      pdf.text(`Date: ${invoiceData.orderDate}`, 75, yPos, { align: 'right' });
+      yPos += 6;
+
+      // Customer details (left-aligned)
       pdf.text(`Customer's name: ${invoiceData.customer.name}`, leftMargin, yPos);
       yPos += 4;
       pdf.text(`Phone number: ${invoiceData.customer.phone}`, leftMargin, yPos);
       yPos += 6;
 
-
-
-      // Courier details
+      // Courier details (left-aligned)
       pdf.text(`Courier's name: ${invoiceData.courierName || 'Not assigned'}`, leftMargin, yPos);
       yPos += 4;
       pdf.text(`Phone number: ${invoiceData.courierPhoneNumber || 'Not assigned'}`, leftMargin, yPos);
       yPos += 6;
-
-
 
       // Separator line
       pdf.line(leftMargin, yPos, 75, yPos);
@@ -290,13 +296,14 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
 
       // Payment method
       pdf.setFontSize(7);
-      pdf.text(`Payment: ${invoiceData.payment.method}`, leftMargin, yPos);
+      pdf.text(`Payment Status: ${invoiceData.payment.method}`, leftMargin, yPos);
       yPos += 8;
 
+      
       // Footer
       pdf.text('Thank you for your order!', 40, yPos, { align: 'center' });
       yPos += 4;
-      pdf.text('Powered by Krontiva', 40, yPos, { align: 'center' });
+      pdf.text('Powered by Krontiva Africa', 40, yPos, { align: 'center' });
 
       // Download the PDF
       pdf.save(`receipt-${invoiceData.invoiceNumber}.pdf`);
