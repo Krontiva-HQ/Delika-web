@@ -197,45 +197,111 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
   }, [orderDetails]);
 
   const handleDownload = async () => {
-    if (!contentRef.current) return;
+    if (!invoiceData) return;
 
     try {
-      // Temporarily hide the download button
-      const downloadButton = contentRef.current.querySelector('[data-pdf-hide]') as HTMLElement;
-      if (downloadButton) {
-        downloadButton.style.display = 'none';
-      }
-
-      // Create a canvas from the content
-      const canvas = await html2canvas(contentRef.current, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
+      const pdf = new jsPDF({
+        unit: 'mm',
+        format: [80, 200]
       });
 
-      // Restore the download button visibility
-      if (downloadButton) {
-        downloadButton.style.display = 'flex';
-      }
+      // Set font to Inter (Note: Using Helvetica as fallback since jsPDF doesn't support Inter directly)
+      pdf.setFont("Helvetica");
+      pdf.setFontSize(7);
 
-      // Calculate dimensions to fit A4 page
-      const imgWidth = 210;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let yPos = 10;
+      const leftMargin = 5;
+      const width = 70;
+
+      // Restaurant name - centered
+      pdf.setFontSize(10);
+      pdf.text(invoiceData.restaurant.name, 40, yPos, { align: 'center' });
+      yPos += 8;
+
+      // Order details
+      pdf.setFontSize(7);
+      pdf.text(`Order #: ${invoiceData.invoiceNumber}`, leftMargin, yPos);
+      yPos += 4;
+      pdf.text(`Date: ${invoiceData.orderDate}`, leftMargin, yPos);
+      yPos += 6;
+
+      // Customer details
+      pdf.text(`Customer's name: ${invoiceData.customer.name}`, leftMargin, yPos);
+      yPos += 4;
+      pdf.text(`Phone number: ${invoiceData.customer.phone}`, leftMargin, yPos);
+      yPos += 6;
+
+
+
+      // Courier details
+      pdf.text(`Courier's name: ${invoiceData.courierName || 'Not assigned'}`, leftMargin, yPos);
+      yPos += 4;
+      pdf.text(`Phone number: ${invoiceData.courierPhoneNumber || 'Not assigned'}`, leftMargin, yPos);
+      yPos += 6;
+
+
+
+      // Separator line
+      pdf.line(leftMargin, yPos, 75, yPos);
+      yPos += 5;
+
+      // Items table header
+      pdf.text("Item", leftMargin, yPos);
+      pdf.text("Qty", 35, yPos);
+      pdf.text("Price", 45, yPos);
+      pdf.text("Total", 60, yPos);
+      yPos += 4;
+
+      // Separator line
+      pdf.line(leftMargin, yPos, 75, yPos);
+      yPos += 4;
+
+      // Items
+      invoiceData.orders.forEach(order => {
+        // Product name with wrapping if needed
+        const nameLines = pdf.splitTextToSize(order.productName, 30);
+        pdf.text(nameLines, leftMargin, yPos);
+        
+        // Quantity, unit price, and total aligned in columns
+        pdf.text(order.quantity.toString(), 35, yPos);
+        pdf.text(`GHS ${order.unitPrice.toFixed(2)}`, 45, yPos);
+        pdf.text(`GHS ${order.totalPrice.toFixed(2)}`, 60, yPos);
+        
+        yPos += (nameLines.length * 4) + 2;
+      });
+
+      // Separator line
+      pdf.line(leftMargin, yPos, 75, yPos);
+      yPos += 5;
+
+      // Totals
+      pdf.text('Subtotal:', leftMargin, yPos);
+      pdf.text(`GHS ${invoiceData.payment.subTotal.toFixed(2)}`, 60, yPos, { align: 'right' });
+      yPos += 4;
+      pdf.text('Delivery:', leftMargin, yPos);
+      pdf.text(`GHS ${invoiceData.payment.deliveryCost.toFixed(2)}`, 60, yPos, { align: 'right' });
+      yPos += 4;
       
-      // Create PDF
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      pdf.addImage(
-        canvas.toDataURL('image/png'),
-        'PNG',
-        0,
-        0,
-        imgWidth,
-        imgHeight
-      );
+      // Grand total
+      pdf.setFontSize(8);
+      pdf.text('Total:', leftMargin, yPos);
+      pdf.text(`GHS ${invoiceData.payment.grandTotal.toFixed(2)}`, 60, yPos, { align: 'right' });
+      yPos += 6;
+
+      // Payment method
+      pdf.setFontSize(7);
+      pdf.text(`Payment: ${invoiceData.payment.method}`, leftMargin, yPos);
+      yPos += 8;
+
+      // Footer
+      pdf.text('Thank you for your order!', 40, yPos, { align: 'center' });
+      yPos += 4;
+      pdf.text('Powered by Krontiva', 40, yPos, { align: 'center' });
 
       // Download the PDF
-      pdf.save(`order-${invoiceData?.invoiceNumber || 'details'}.pdf`);
+      pdf.save(`receipt-${invoiceData.invoiceNumber}.pdf`);
     } catch (error) {
+      console.error('Error generating receipt:', error);
     }
   };
 
@@ -413,13 +479,13 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                             </span>
                           </td>
                           <td className="p-2 text-[12px] leading-[20px] font-sans text-[#666]">
-                            GH₵{order.unitPrice}
+                            GHS{order.unitPrice}
                           </td>
                           <td className="p-2 text-[12px] leading-[20px] font-sans text-[#666]">
                             {order.quantity}
                           </td>
                           <td className="p-2 text-right text-[12px] leading-[20px] font-sans text-[#444]">
-                            GH₵{order.totalPrice}
+                            GHS{order.totalPrice}
                           </td>
                         </tr>
                       ))}
@@ -449,15 +515,15 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                   </div> */}
                   <div className="text-[12px] leading-[20px] font-sans">
                     <p className="text-[#666] mb-2 font-bold">Sub Total</p>
-                    <p className="text-[#444]">GH₵{invoiceData.payment.subTotal}</p>
+                    <p className="text-[#444]">GHS{invoiceData.payment.subTotal}</p>
                   </div>
                   <div className="text-[12px] leading-[20px] font-sans">
                     <p className="text-[#666] mb-2 font-bold">Delivery Cost</p>
-                    <p className="text-[#444]">GH₵{invoiceData.payment.deliveryCost}</p>
+                    <p className="text-[#444]">GHS{invoiceData.payment.deliveryCost}</p>
                   </div>
                   <div className="text-[12px] leading-[20px] font-sans">
                     <p className="text-[#666] mb-2 font-bold">Grand Total</p>
-                    <p className="text-[#444] font-medium">GH₵{invoiceData.payment.grandTotal}</p>
+                    <p className="text-[#444] font-medium">GHS{invoiceData.payment.grandTotal}</p>
                   </div>
                 </div>
               </div>

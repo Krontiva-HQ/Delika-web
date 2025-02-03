@@ -2,6 +2,7 @@ interface ImageOptimizationOptions {
   width?: number;
   quality?: number;
   format?: 'auto' | 'webp' | 'jpeg' | 'png';
+  height?: number;
 }
 
 export const optimizeImage = (url: string, options: ImageOptimizationOptions = {}) => {

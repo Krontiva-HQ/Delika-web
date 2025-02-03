@@ -196,12 +196,12 @@ const Reports: FunctionComponent = () => {
 
   // Effect for handling report data updates
   useEffect(() => {
-    if (selectedReport && userProfile) {
+    if (selectedReport && userProfile && selectedBranchId) {
       setIsLoading(true);
-      // Don't reset date range here
-      handleReportClick(selectedReport);
+      const branchId = selectedBranchId || userProfile?.branchId;
+      fetchReportData(selectedReport, branchId, dateRange[0], dateRange[1]);
     }
-  }, [selectedBranchId, selectedReport]);
+  }, [selectedBranchId]);
 
   const fetchReportData = useCallback(async (
     reportType: string, 
@@ -389,17 +389,16 @@ const Reports: FunctionComponent = () => {
 
   // Update handleReportClick
   const handleReportClick = async (reportName: string) => {
-    setSelectedReport(reportName);
+    // Always reset date range when switching reports
     if (reportName !== selectedReport) {
       setDateRange([null, null]);
     }
     
+    setSelectedReport(reportName);
+    
+    // Immediately fetch data for the new report without date range
     const branchId = selectedBranchId || userProfile?.branchId;
-    if (dateRange[0] && dateRange[1]) {
-      fetchReportData(reportName, branchId, dateRange[0], dateRange[1]);
-    } else {
-      fetchReportData(reportName, branchId, null, null);
-    }
+    await fetchReportData(reportName, branchId, null, null);
   };
 
   const handleDownloadClick = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -605,48 +604,38 @@ const Reports: FunctionComponent = () => {
 
   const open = Boolean(anchorEl);
 
+  const handleDateSelect = (newDate: Dayjs | null, isStart: boolean) => {
+    let newDateRange: [Dayjs | null, Dayjs | null];
+    
+    if (isStart) {
+      newDateRange = [newDate, dateRange[1]];
+    } else {
+      if (dateRange[0] && newDate && newDate.isBefore(dateRange[0])) {
+        newDateRange = [newDate, dateRange[0]];
+      } else {
+        newDateRange = [dateRange[0], newDate];
+      }
+    }
+    
+    setDateRange(newDateRange);
+    
+    // Immediately fetch data if we have both dates and a selected report
+    if (newDateRange[0] && newDateRange[1] && selectedReport) {
+      const branchId = selectedBranchId || userProfile?.branchId;
+      fetchReportData(selectedReport, branchId, newDateRange[0], newDateRange[1]);
+      handleClose();
+    }
+  };
+
+  // Update handleDateRangeSelect to also fetch immediately
   const handleDateRangeSelect = async ([start, end]: [Dayjs | null, Dayjs | null]) => {
     setDateRange([start, end]);
     
-    if (start && end) {
-      try {
-        const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
-        
-        if (selectedReport === "Orders Report" && orderDetails.length > 0) {
-          // Filter orders based on orderDate
-          const filteredOrders = orderDetails.filter(order => {
-            const orderDate = dayjs(order.orderDate);
-            return orderDate.isSameOrAfter(start, 'day') && 
-                   orderDate.isSameOrBefore(end, 'day');
-          });
-          setOrderDetails(filteredOrders);
-        } 
-      } catch (error) {
-        if (selectedReport === "Orders Report") {
-          setOrderDetails([]);
-        }
-      }
+    if (start && end && selectedReport) {
+      const branchId = selectedBranchId || userProfile?.branchId;
+      fetchReportData(selectedReport, branchId, start, end);
     }
     handleClose();
-  };
-
-  // Add this helper function to handle date selection
-  const handleDateSelect = (newDate: Dayjs | null, isStart: boolean) => {
-    if (isStart) {
-      setDateRange([newDate, dateRange[1]]);
-    } else {
-      if (dateRange[0] && newDate && newDate.isBefore(dateRange[0])) {
-        // If end date is before start date, swap them
-        setDateRange([newDate, dateRange[0]]);
-      } else {
-        setDateRange([dateRange[0], newDate]);
-      }
-
-      // If we have both dates, trigger the filter
-      if (dateRange[0] && newDate) {
-        handleDateRangeSelect([dateRange[0], newDate]);
-      }
-    }
   };
 
   const renderDateFilter = () => {
@@ -965,21 +954,6 @@ const Reports: FunctionComponent = () => {
         return null;
     }
   };
-
-  // Reset page when report type changes
-  useEffect(() => {
-    setPage(1);
-  }, [selectedReport]);
-
-  // Reset page when date range changes
-  useEffect(() => {
-    setPage(1);
-  }, [dateRange]);
-
-  // Reset page when branch changes
-  useEffect(() => {
-    setPage(1);
-  }, [selectedBranchId]);
 
   return (
     <div className="h-full w-full bg-white m-0 p-0">

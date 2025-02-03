@@ -1345,8 +1345,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 </div>
                 </div>
 
-
-
                 {/* Payment Buttons - Fixed at bottom */}
                 <div className="flex gap-4 w-full pt-4 mt-4">
                   <button
@@ -1386,8 +1384,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                     )}
                   </button>
                 </div>
-
-               
               </div>
             );
 
