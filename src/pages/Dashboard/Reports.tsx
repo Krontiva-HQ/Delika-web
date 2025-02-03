@@ -64,7 +64,7 @@ const reportItems: ReportItem[] = [
     date: "All Time",
     format: "PDF",
     status: "Active",
-    requiresPermissions: true
+    requiresPermissions: false
   }
 ];
 
@@ -170,8 +170,14 @@ const Reports: FunctionComponent = () => {
                                  restaurantData.Inventory && 
                                  restaurantData.Transactions;
 
-  // Filter reports based on permissions - REVERSED LOGIC
+  // Filter reports based on permissions - MODIFIED LOGIC
   const availableReports = reportItems.filter((report: ReportItem) => {
+    // Always show Delivery Report
+    if (report.name === "Delivery Report") {
+      return true;
+    }
+    
+    // For other reports, apply the permission logic
     if (hasAllSpecialPermissions) {
       return report.requiresPermissions === true;
     } else {
@@ -411,22 +417,27 @@ const Reports: FunctionComponent = () => {
       ? `-${dateRange[0].format('YYYY-MM-DD')}-to-${dateRange[1].format('YYYY-MM-DD')}` 
       : '';
 
+    // For Orders Report, only allow CSV download
+    if (selectedReport === "Orders Report") {
+      format = 'CSV';
+    }
+
     if (format === 'CSV') {
       let headers: string[] = [];
       let csvData: any[][] = [];
 
       switch (selectedReport) {
         case "Orders Report":
-          headers = ["Customer Name", "Phone", "Amount", "Courier", "Delivery Price", "Total Price", "Order Date", "Products"];
+          headers = ["Customer Name", "Phone", "Amount", "Total", "Date", "Products"];
           csvData = orderDetails.map(order => [
             order.customerName,
             order.customerPhone,
-            order.amount,
-            order.courierName,
-            order.deliveryPrice,
-            order.totalPrice,
+            `GH₵${order.amount?.toFixed(2)}`,
+            `GH₵${order.totalPrice?.toFixed(2)}`,
             order.orderDate,
-            order.products.map(p => `${p.name} (x${p.quantity})`).join(', ')
+            order.products.map(p => 
+              `${p.name} (x${p.quantity}) - GH₵${Number(p.price).toFixed(2)}`
+            ).join('; ')
           ]);
           break;
 
@@ -481,88 +492,103 @@ const Reports: FunctionComponent = () => {
         window.URL.revokeObjectURL(url);
       }
     } else if (format === 'PDF') {
-      try {
-        const doc = new jsPDF();
-        
-        // Add title
-        doc.setFontSize(16);
-        doc.text(selectedReport, 15, 15);
-        
-        // Add date if applicable
-        if (dateRange[0] && dateRange[1]) {
-          doc.setFontSize(10);
-          doc.text(`Period: ${dateRange[0].format('YYYY-MM-DD')} to ${dateRange[1].format('YYYY-MM-DD')}`, 15, 25);
+      // Only show PDF option for non-Orders Reports
+      if (selectedReport !== "Orders Report") {
+        try {
+          const doc = new jsPDF();
+          
+          // Add title
+          doc.setFontSize(16);
+          doc.text(selectedReport, 15, 15);
+          
+          // Add date if applicable
+          if (dateRange[0] && dateRange[1]) {
+            doc.setFontSize(10);
+            doc.text(`Period: ${dateRange[0].format('YYYY-MM-DD')} to ${dateRange[1].format('YYYY-MM-DD')}`, 15, 25);
+          }
+
+          let headers: string[] = [];
+          let data: any[][] = [];
+
+          switch (selectedReport) {
+            case "Orders Report":
+              headers = ["Customer", "Phone", "Amount", "Total", "Date", "Products"];
+              data = orderDetails.map(order => [
+                order.customerName,
+                order.customerPhone,
+                order.amount,
+                order.totalPrice,
+                order.orderDate,
+                order.products.map(p => 
+                  `${p.name} (x${p.quantity}) - GH₵${Number(p.price).toFixed(2)}`
+                ).join('\n')
+              ]);
+              break;
+
+            case "Top Sold Items":
+              headers = ["Item", "Qty Sold", "Revenue", "Avg Price"];
+              data = mostSellingItems.map(item => [
+                item.name,
+                item.totalQuantitySold,
+                `${item.totalRevenue.toFixed(2)} GH₵`,
+                `${item.averagePrice.toFixed(2)} GH₵`
+              ]);
+              break;
+
+            case "Customer Report":
+              headers = ["Customer", "Orders", "Total Spent", "Avg Order"];
+              data = customerReports.map(customer => [
+                `${customer.customerName}\n${customer.phoneNumber}`,
+                customer.totalOrders,
+                `${customer.totalSpent.toFixed(2)} GH₵`,
+                `${customer.averageOrderValue.toFixed(2)} GH₵`
+              ]);
+              break;
+
+            case "Delivery Report":
+              headers = ["Courier Name", "Courier Phone", "Customer Name", "Order Date", "Delivery Price", "Delivery Location"];
+              data = deliveryReports.map(report => [
+                report.courierName,
+                report.courierPhone,
+                report.customerName,
+                report.orderDate,
+                report.deliveryPrice.toFixed(2),
+                report.deliveryLocation
+              ]);
+              break;
+          }
+
+          if (headers.length > 0 && data.length > 0) {
+            (doc as any).autoTable({
+              head: [headers],
+              body: data,
+              startY: dateRange[0] && dateRange[1] ? 30 : 20,
+              theme: 'grid',
+              styles: {
+                fontSize: 8,
+                cellPadding: 2,
+                overflow: 'linebreak',
+                cellWidth: 'wrap',
+                lineHeight: 1.2
+              },
+              columnStyles: {
+                5: { 
+                  cellWidth: 'auto',
+                  whiteSpace: 'pre-line'
+                }
+              },
+              headStyles: {
+                fillColor: [254, 91, 24],
+                textColor: [255, 255, 255],
+                fontStyle: 'bold',
+              },
+            });
+
+            doc.save(`${selectedReport.toLowerCase().replace(/\s+/g, '-')}${dateRangeString}.pdf`);
+          }
+        } catch (error) {
+          // You might want to show an error message to the user here
         }
-
-        let headers: string[] = [];
-        let data: any[][] = [];
-
-        switch (selectedReport) {
-          case "Orders Report":
-            headers = ["Customer", "Phone", "Amount", "Total", "Date"];
-            data = orderDetails.map(order => [
-              order.customerName,
-              order.customerPhone,
-              order.amount,
-              order.totalPrice,
-              order.orderDate
-            ]);
-            break;
-
-          case "Top Sold Items":
-            headers = ["Item", "Qty Sold", "Revenue", "Avg Price"];
-            data = mostSellingItems.map(item => [
-              item.name,
-              item.totalQuantitySold,
-              `${item.totalRevenue.toFixed(2)} GHS`,
-              `${item.averagePrice.toFixed(2)} GHS`
-            ]);
-            break;
-
-          case "Customer Report":
-            headers = ["Customer", "Orders", "Total Spent", "Avg Order"];
-            data = customerReports.map(customer => [
-              `${customer.customerName}\n${customer.phoneNumber}`,
-              customer.totalOrders,
-              `${customer.totalSpent.toFixed(2)} GHS`,
-              `${customer.averageOrderValue.toFixed(2)} GHS`
-            ]);
-            break;
-
-          case "Delivery Report":
-            headers = ["Courier Name", "Courier Phone", "Customer Name", "Order Date", "Delivery Price", "Delivery Location"];
-            data = deliveryReports.map(report => [
-              report.courierName,
-              report.courierPhone,
-              report.customerName,
-              report.orderDate,
-              report.deliveryPrice.toFixed(2),
-              report.deliveryLocation
-            ]);
-            break;
-        }
-
-        if (headers.length > 0 && data.length > 0) {
-          (doc as any).autoTable({
-            head: [headers],
-            body: data,
-            startY: dateRange[0] && dateRange[1] ? 30 : 20,
-            theme: 'grid',
-            styles: {
-              fontSize: 8,
-              cellPadding: 2,
-            },
-            headStyles: {
-              fillColor: [254, 91, 24],
-              textColor: [255, 255, 255],
-              fontStyle: 'bold',
-            },
-          });
-
-          doc.save(`${selectedReport.toLowerCase().replace(/\s+/g, '-')}${dateRangeString}.pdf`);
-        }
-      } catch (error) {
-        // You might want to show an error message to the user here
       }
     }
 
@@ -821,15 +847,24 @@ const Reports: FunctionComponent = () => {
                   <div className="bg-gray-50 p-4 border-t border-gray-100">
                     <div className="text-sm font text-gray-600 mb-2 font-sans">Products:</div>
                     <div className="grid gap-2">
+                      {/* Add header for products table */}
+                      <div className="grid grid-cols-3 gap-4 bg-white p-2 rounded-md font-medium text-[14px] font-sans text-[#666]">
+                        <span>Product Name</span>
+                        <span>Quantity</span>
+                        <span>Unit Price (GH₵)</span>
+                      </div>
 
                       {order.products.map((product, idx) => (
                         <div 
                           key={idx} 
-                          className="flex justify-between items-center bg-white p-2 rounded-md"
+                          className="grid grid-cols-3 gap-4 bg-white p-2 rounded-md items-center"
                         >
                           <span className="text-[14px] font-sans text-[#444]">{product.name}</span>
-                          <span className="text-[14px] font-sans text-[#666] bg-gray-100 px-2 py-1 rounded">
+                          <span className="text-[14px] font-sans text-[#666] bg-gray-100 px-2 py-1 rounded w-fit">
                             x{product.quantity}
+                          </span>
+                          <span className="text-[14px] font-sans text-[#444]">
+                            {Number(product.price).toFixed(2) || '0.00'}
                           </span>
                         </div>
                       ))}
@@ -1026,16 +1061,18 @@ const Reports: FunctionComponent = () => {
                     },
                   }}
                 >
-                  <MenuItem 
-                    onClick={() => handleDownloadFormat('PDF')}
-                    sx={{ 
-                      fontSize: '14px',
-                      fontFamily: 'Inter',
-                      '&:hover': { backgroundColor: '#fff3e0' }
-                    }}
-                  >
-                    Download as PDF
-                  </MenuItem>
+                  {selectedReport !== "Orders Report" && (
+                    <MenuItem 
+                      onClick={() => handleDownloadFormat('PDF')}
+                      sx={{ 
+                        fontSize: '14px',
+                        fontFamily: 'Inter',
+                        '&:hover': { backgroundColor: '#fff3e0' }
+                      }}
+                    >
+                      Download as PDF
+                    </MenuItem>
+                  )}
                   <MenuItem 
                     onClick={() => handleDownloadFormat('CSV')}
                     sx={{ 

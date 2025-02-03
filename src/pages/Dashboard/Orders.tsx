@@ -305,7 +305,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
               <div 
                 className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
                   ${activeTab === 'all' 
-                    ? 'font-bold text-[#fe5b18]' 
+                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]' 
                     : 'text-[#797979]'
                   }`}
                 onClick={() => setActiveTab('all')}
@@ -315,7 +315,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
               <div 
                 className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
                   ${activeTab === 'readyForPickup'
-                    ? 'font-bold text-[#fe5b18]'
+                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
                     : 'text-[#929494]'
                   }`}
                 onClick={() => setActiveTab('readyForPickup')}
@@ -323,9 +323,9 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                 Ready For Pickup
               </div>
               <div 
-                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
+                className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
                   ${activeTab === 'assigned'
-                    ? 'font-bold text-[#fe5b18]'
+                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
                     : 'text-[#929494]'
                   }`}
                 onClick={() => setActiveTab('assigned')}
@@ -335,7 +335,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
               <div 
                 className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
                   ${activeTab === 'pickup'
-                    ? 'font-bold text-[#fe5b18]'
+                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
                     : 'text-[#929494]'
                   }`}
                 onClick={() => setActiveTab('pickup')}
@@ -345,7 +345,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
               <div 
                 className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
                   ${activeTab === 'onTheWay'
-                    ? 'font-bold text-[#fe5b18]'
+                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
                     : 'text-[#929494]'
                   }`}
                 onClick={() => setActiveTab('onTheWay')}
@@ -355,7 +355,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
               <div 
                 className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 
                   ${activeTab === 'delivered'
-                    ? 'font-bold text-[#fe5b18]'
+                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
                     : 'text-[#929494]'
                   }`}
                 onClick={() => setActiveTab('delivered')}
@@ -365,7 +365,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
               <div 
                 className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
                   ${activeTab === 'cancelled'
-                    ? 'font-bold text-[#fe5b18]'
+                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
                     : 'text-[#929494]'
                   }`}
                 onClick={() => setActiveTab('cancelled')}
@@ -375,7 +375,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
               <div 
                 className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
                   ${activeTab === 'deliveryFailed'
-                    ? 'font-bold text-[#fe5b18]'
+                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
                     : 'text-[#929494]'
                   }`}
                 onClick={() => setActiveTab('deliveryFailed')}

@@ -169,7 +169,7 @@ const Transactions: FunctionComponent = () => {
               <div 
                 className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
                   ${activeTab === 'all' 
-                    ? 'font-bold text-[#fe5b18]' 
+                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]' 
                     : 'text-[#797979]'
                   }`}
                 onClick={() => setActiveTab('all')}
@@ -179,7 +179,7 @@ const Transactions: FunctionComponent = () => {
               <div 
                 className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
                   ${activeTab === 'pending'
-                    ? 'font-bold text-[#fe5b18]'
+                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
                     : 'text-[#929494]'
                   }`}
                 onClick={() => setActiveTab('pending')}
@@ -189,7 +189,7 @@ const Transactions: FunctionComponent = () => {
               <div 
                 className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
                   ${activeTab === 'paid'
-                    ? 'font-bold text-[#fe5b18]'
+                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
                     : 'text-[#929494]'
                   }`}
                 onClick={() => setActiveTab('paid')}
@@ -199,7 +199,7 @@ const Transactions: FunctionComponent = () => {
               <div 
                 className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
                   ${activeTab === 'cancelled'
-                    ? 'font-bold text-[#fe5b18]'
+                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
                     : 'text-[#929494]'
                   }`}
                 onClick={() => setActiveTab('cancelled')}
