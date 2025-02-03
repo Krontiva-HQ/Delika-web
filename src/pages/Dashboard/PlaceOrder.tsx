@@ -179,6 +179,9 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   // Add this check
   const isFullServiceDisabled = restaurantData?.Inventory && restaurantData?.Transactions;
 
+  // First, add the state at the top with other states
+  const [orderComment, setOrderComment] = useState<string>('');
+
   const handleSelectCategoryClick = (event: React.MouseEvent<HTMLElement>) => {
     setSelectCategoryAnchorEl(event.currentTarget);
   };
@@ -288,14 +291,42 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   }, []);
 
   // Modify your handlePlaceOrder function
-  const handlePlaceOrder = async (paymentType: 'later' | 'now') => {
-    if (paymentType === 'later') {
-      setIsPayLaterSubmitting(true);
-    } else {
-      setIsPayNowSubmitting(true);
-    }
-
+  const handlePlaceOrder = async (paymentType: 'now' | 'later') => {
     try {
+      if (paymentType === 'now') {
+        setIsPayNowSubmitting(true);
+      } else {
+        setIsPayLaterSubmitting(true);
+      }
+
+      const orderData = {
+        customerName,
+        customerPhone,
+        restaurantId: userProfile?.restaurantId,
+        branchId: selectedBranchId || userProfile?.branchId,
+        deliveryType: deliveryMethod,
+        deliveryPrice,
+        orderPrice: totalFoodPrice,
+        totalPrice: calculateTotal(),
+        orderComment, // Add this line to include the comment
+        pickup: [{
+          fromLatitude: pickupLocation?.latitude.toString(),
+          fromLongitude: pickupLocation?.longitude.toString(),
+          fromAddress: pickupLocation?.address,
+        }],
+        dropOff: [{
+          toLatitude: dropoffLocation?.latitude.toString(),
+          toLongitude: dropoffLocation?.longitude.toString(),
+          toAddress: dropoffLocation?.address,
+        }],
+        products: selectedItems.map(item => ({
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity
+        })),
+        // ... any other existing order data ...
+      };
+      
       const formData = new FormData();
       
       // Use the selected branch data for Admin users, otherwise use userProfile data
@@ -329,6 +360,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       formData.append('customerPhoneNumber', customerPhone);
       formData.append('restaurantId', userProfile?.restaurantId || '');
       formData.append('orderStatus', 'ReadyForPickup');
+      formData.append('orderComment', orderComment);
       
       // Products array without foodImage
       selectedItems.forEach((item, index) => {
@@ -633,7 +665,19 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                   </div>
                 </div>
 
-               
+               {/* Add this before the payment buttons */}
+               <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
+                  <div className="self-stretch relative leading-[20px] font-sans">Additional Comment</div>
+                  <textarea
+                    className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
+                              text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
+                              flex flex-row items-start justify-start py-[10px] px-[12px] 
+                              min-h-[20px] resize-none w-[575px]"
+                    placeholder="Add any special instructions or notes here..."
+                    value={orderComment}
+                    onChange={(e) => setOrderComment(e.target.value)}
+                  />
+                </div>
 
                   {/* Payment Buttons */}
                   <div className="flex gap-4 w-full pt-4">
@@ -675,6 +719,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                     </button>
                   </div>
                 </div>
+
+                
               </>
             );
 
@@ -995,7 +1041,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           case 3:
             return (
               <>
-                {/* Back button and heading */}
+                {/* Back button and heading - Keep outside scrollable area */}
                 <div className="flex items-center mb-6">
                   <button
                     className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent"
@@ -1008,103 +1054,113 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 </div>
 
                 <b className="font-sans text-lg font-semibold mb-6">Choose Payment Method</b>
-                
-               
 
-                {/* Add Estimated Distance section here */}
-                <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-4">
-                  <div className="text-sm !font-sans">
-                    <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
-                    <div className="text-gray-500 !font-sans">
-                      From {pickupLocation?.address} to {dropoffLocation?.address}
+                {/* Scrollable content area */}
+                <div className="flex-1 overflow-y-auto pr-2" style={{ maxHeight: 'calc(100vh - 250px)' }}>
+                  <div className="flex flex-col gap-4">
+                    {/* Add Estimated Distance section */}
+                    <div className="self-stretch bg-[#f9fafb] rounded-lg p-4">
+                      <div className="text-sm !font-sans">
+                        <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
+                        <div className="text-gray-500 !font-sans">
+                          From {pickupLocation?.address} to {dropoffLocation?.address}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Order Price Section */}
+                    <div className="self-stretch flex flex-col items-start justify-start gap-[4px] text-[12px] text-[#686868] font-sans">
+                      <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
+                        <div className="self-stretch relative leading-[20px] font-sans">Delivery Price</div>
+                        <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px] mb-4">
+                          <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
+                            <div className="relative leading-[20px] font-sans">GH₵</div>
+                          </div>
+                          <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
+                            <div className="relative leading-[20px] font-sans">{deliveryPrice}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
+                        <div className="self-stretch relative leading-[20px] font-sans">Food Price</div>
+                        <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px] mb-4">
+                          <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
+                            <div className="relative leading-[20px] font-sans">GH₵</div>
+                          </div>
+                          <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
+                            <div className="relative leading-[20px] font-sans">{totalFoodPrice}</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-2">
+                        <div className="self-stretch relative leading-[20px] font-sans text-black">Total Price</div>
+                        <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
+                          <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
+                            <div className="relative leading-[20px] text-black font-sans">GH₵</div>
+                          </div>
+                          <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
+                            <div className="relative leading-[20px] text-black font-sans">{calculateTotal()}</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Additional Comment Section */}
+                    <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
+                      <div className="self-stretch relative leading-[20px] font-sans">Additional Comment</div>
+                      <textarea
+                        className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
+                                  text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
+                                  flex flex-row items-start justify-start py-[10px] px-[12px] 
+                                  min-h-[20px] resize-none w-[550px]"
+                        placeholder="Add any special instructions or notes here..."
+                        value={orderComment}
+                        onChange={(e) => setOrderComment(e.target.value)}
+                      />
                     </div>
                   </div>
                 </div>
 
-                {/* Order Price Section */}
-                <div className="self-stretch flex flex-col items-start justify-start gap-[4px] text-[12px] text-[#686868] font-sans">
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
-                    <div className="self-stretch relative leading-[20px] font-sans">Delivery Price</div>
-                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px] mb-4">
-                      <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
-                        <div className="relative leading-[20px] font-sans">GH₵</div>
+                {/* Payment Buttons - Keep outside scrollable area */}
+                <div className="flex gap-4 w-full pt-4 mt-4">
+                  <button
+                    className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
+                              py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
+                              ${isPayLaterSubmitting || isPayNowSubmitting
+                                ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
+                                : 'bg-[#201a18] border-[#201a18]'}`}
+                    onClick={() => handlePlaceOrder('later')}
+                    disabled={isPayLaterSubmitting || isPayNowSubmitting}
+                  >
+                    {isPayLaterSubmitting ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Processing...
                       </div>
-                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
-                        <div className="relative leading-[20px] font-sans">{deliveryPrice}</div>
+                    ) : (
+                      'Pay on Delivery'
+                    )}
+                  </button>
+                  <button
+                    className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
+                              py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
+                              ${isPayLaterSubmitting || isPayNowSubmitting
+                                ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
+                                : 'bg-[#fd683e] border-[#fd683e]'}`}
+                    onClick={() => handlePlaceOrder('now')}
+                    disabled={isPayLaterSubmitting || isPayNowSubmitting}
+                  >
+                    {isPayNowSubmitting ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        Processing...
                       </div>
-                    </div>
-                  </div>
-
-
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
-                    <div className="self-stretch relative leading-[20px] font-sans">Food Price</div>
-                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px] mb-4">
-                      <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
-                        <div className="relative leading-[20px] font-sans">GH₵</div>
-                      </div>
-                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
-                        <div className="relative leading-[20px] font-sans">{totalFoodPrice}</div>
-                      </div>
-                    </div>
-                  </div>
-
-
-
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-2">
-                  <div className="self-stretch relative leading-[20px] font-sans text-black">
-                    Total Price
-                  </div>
-                  <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
-                    <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
-                      <div className="relative leading-[20px] text-black font-sans">GH₵</div>
-                    </div>
-                    <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
-                      <div className="relative leading-[20px] text-black font-sans">{calculateTotal()}</div>
-                    </div>
-                  </div>
-                </div>
-
-               
-
-                  {/* Payment Buttons */}
-                  <div className="flex gap-4 w-full pt-4">
-                    <button
-                      className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
-                                py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                                ${isPayLaterSubmitting || isPayNowSubmitting
-                                  ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
-                                  : 'bg-[#201a18] border-[#201a18]'}`}
-                      onClick={() => handlePlaceOrder('later')}
-                      disabled={isPayLaterSubmitting || isPayNowSubmitting}
-                    >
-                      {isPayLaterSubmitting ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Processing...
-                        </div>
-                      ) : (
-                        'Pay on Delivery'
-                      )}
-                    </button>
-                    <button
-                      className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
-                                py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                                ${isPayLaterSubmitting || isPayNowSubmitting
-                                  ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
-                                  : 'bg-[#fd683e] border-[#fd683e]'}`}
-                      onClick={() => handlePlaceOrder('now')}
-                      disabled={isPayLaterSubmitting || isPayNowSubmitting}
-                    >
-                      {isPayNowSubmitting ? (
-                        <div className="flex items-center justify-center gap-2">
-                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                          Processing...
-                        </div>
-                      ) : (
-                        'Request Payment'
-                      )}
-                    </button>
-                  </div>
+                    ) : (
+                      'Request Payment'
+                    )}
+                  </button>
                 </div>
               </>
             );
@@ -1271,7 +1327,25 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                       </div>
                     </div>
                   </div>
+
+                   {/* Add this before the payment buttons */}
+                    <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4 mt-2">
+                  <div className="self-stretch relative leading-[25px] font-sans text-sm">Additional Comment</div>
+                  <textarea
+
+                    className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
+                              text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
+                              flex flex-row items-start justify-start py-[10px] px-[12px] 
+                              min-h-[20px] resize-none w-[550px]"
+                    placeholder="Add any special instructions or notes here..."
+                    value={orderComment}
+                    onChange={(e) => setOrderComment(e.target.value)}
+
+                  />
                 </div>
+                </div>
+
+
 
                 {/* Payment Buttons - Fixed at bottom */}
                 <div className="flex gap-4 w-full pt-4 mt-4">
@@ -1312,6 +1386,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                     )}
                   </button>
                 </div>
+
+               
               </div>
             );
 
