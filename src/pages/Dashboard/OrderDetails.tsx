@@ -282,16 +282,17 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
 
       // Totals
       pdf.text('Subtotal:', leftMargin, yPos);
-      pdf.text(`GHS ${invoiceData.payment.subTotal.toFixed(2)}`, 60, yPos, { align: 'right' });
+      pdf.text(`GHS ${invoiceData.payment.subTotal.toFixed(2)}`, 75, yPos, { align: 'right' });
       yPos += 4;
+      
       pdf.text('Delivery:', leftMargin, yPos);
-      pdf.text(`GHS ${invoiceData.payment.deliveryCost.toFixed(2)}`, 60, yPos, { align: 'right' });
+      pdf.text(`GHS ${invoiceData.payment.deliveryCost.toFixed(2)}`, 75, yPos, { align: 'right' });
       yPos += 4;
       
       // Grand total
       pdf.setFontSize(8);
       pdf.text('Total:', leftMargin, yPos);
-      pdf.text(`GHS ${invoiceData.payment.grandTotal.toFixed(2)}`, 60, yPos, { align: 'right' });
+      pdf.text(`GHS ${invoiceData.payment.grandTotal.toFixed(2)}`, 75, yPos, { align: 'right' });
       yPos += 6;
 
       // Payment method
@@ -344,7 +345,7 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
         <div ref={contentRef} className="mt-[-10px] border-[2px] border-solid border-[#CACACA] rounded-lg bg-[#FBFBFB] overflow-y-auto">
           <div className="p-4">
             {/* Invoice Header */}
-            <div className="flex justify-between items-start mb-6 pb-2 mt-[-10px]">
+            <div className="flex justify-between items-start mb-6 pb-2 mt-[-5px]">
               <div>
                 <div className="flex items-center gap-4 mb-4">
                   {invoiceData.restaurant.logo && (

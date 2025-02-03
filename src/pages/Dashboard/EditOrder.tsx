@@ -39,6 +39,7 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
   const [paymentStatus, setPaymentStatus] = useState(order.paymentStatus);
   const [orderPrice] = useState(parseFloat(order.orderPrice));
   const [totalPrice, setTotalPrice] = useState(parseFloat(order.totalPrice));
+  const [comment, setComment] = useState(order.orderComment || '');
   
   const { 
     selectedItems,
@@ -105,6 +106,7 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
       totalPrice: totalPrice.toString(),
       paymentStatus: paymentStatus,
       dropOffCity: dropoffLocation.name, // Assuming this is the city name
+      orderComment: comment
     };
 
     try {
@@ -232,6 +234,19 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
                 <option value="Pending">Pending</option>
                 <option value="Paid">Paid</option>
               </select>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1 font-sans">
+                Additional Comment
+              </label>
+              <textarea
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                className="w-[465px] h-[40px] p-2 border border-gray-300 rounded-md text-sm font-sans"
+                rows={3}
+                placeholder="Add any additional comments..."
+              />
             </div>
           </>
         );

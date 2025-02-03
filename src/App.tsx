@@ -19,6 +19,7 @@ import TransactionDetailsView from './pages/Dashboard/TransactionDetails';
 import OrderDetailsView from './pages/Dashboard/OrderDetails';
 import LoadingSpinner from './components/LoadingSpinner';
 import { checkAuthStatus } from './services/auth';
+import 'react-toastify/dist/ReactToastify.css';
 
 
 // Protected Route Component

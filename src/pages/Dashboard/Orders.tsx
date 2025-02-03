@@ -48,6 +48,7 @@ interface Order {
   status: string;
   transactionStatus: string;
   paymentStatus: string;
+  orderComment?: string;
 }
 
 // Add interface for API request params

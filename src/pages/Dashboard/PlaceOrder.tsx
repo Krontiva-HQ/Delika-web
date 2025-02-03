@@ -7,7 +7,7 @@ import { calculateDistance } from "../../utils/distance";
 import { RiDeleteBinLine } from "react-icons/ri";
 import { usePlaceOrderItems } from '../../hooks/usePlaceOrderItems';
 import { useNotifications } from '../../context/NotificationContext';
-import { IoIosCloseCircleOutline, IoIosArrowBack } from "react-icons/io";
+import { IoIosCloseCircleOutline, IoIosArrowBack, IoMdAdd } from "react-icons/io";
 import { useUserProfile } from '../../hooks/useUserProfile';
 import { useBranches } from '../../hooks/useBranches';
 import Select from '@mui/material/Select';
@@ -16,6 +16,7 @@ import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import { styled } from '@mui/material/styles';
 import { SelectChangeEvent } from '@mui/material/Select';
+import { toast } from 'react-toastify';
 
 interface PlaceOrderProps {
   onClose: () => void;
@@ -74,6 +75,14 @@ interface OrderPayload {
   payLater: boolean;
 }
 
+interface MenuItem {
+  name: string;
+  price: number;
+  quantity: number;
+  stockQuantity: number;
+  image?: string;  // Add this line
+}
+
 // Style the Select component to match LocationInput
 const StyledSelect = styled(Select)({
   '& .MuiOutlinedInput-input': {
@@ -123,7 +132,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   const [selectItemAnchorEl, setSelectItemAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedItem, setSelectedItem] = useState("");
   const [isItemsDropdownOpen, setIsItemsDropdownOpen] = useState(false);
-  const [deliveryPrice, setDeliveryPrice] = useState("");
+  const [deliveryPrice, setDeliveryPrice] = useState<string>("");  // Change initial state type
   const [totalFoodPrice, setTotalFoodPrice] = useState("0.00");
   const [currentStep, setCurrentStep] = useState(1);
   const [customerName, setCustomerName] = useState("");
@@ -159,12 +168,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   const [isPayLaterSubmitting, setIsPayLaterSubmitting] = useState(false);
   const [isPayNowSubmitting, setIsPayNowSubmitting] = useState(false);
 
-  const [pickupData, setPickupData] = useState({
-    fromLatitude: '',
-    fromLongitude: '',
-    fromAddress: '',
-    branchId: ''
-  });
+  const [pickupData, setPickupData] = useState<any>(null);
+  const [dropoffData, setDropoffData] = useState<any>(null);
 
   // Add new state for delivery method selection
   const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>(null);
@@ -268,13 +273,22 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
   // Function to handle previous step
   const handlePreviousStep = () => {
-    if ((deliveryMethod === 'on-demand' || deliveryMethod === 'schedule') && currentStep === 3) {
-      // Go back to step 1 for on-demand and schedule delivery from step 3
-      setCurrentStep(1);
-    } else {
-      // Normal progression for other cases
-      setCurrentStep(prev => Math.max(prev - 1, 1));
-    }
+    // Reset all relevant states
+    setSelectedItems([]);
+    setCustomerName('');
+    setCustomerPhone('');
+    setSelectedCategory('');
+    setSelectedItem('');
+    setOrderComment('');
+    setPickupLocation(null);
+    setDropoffLocation(null);
+    setDeliveryPrice("0");  // Convert number to string when setting
+    setDistance(0);
+    setPickupData(null);
+    setDropoffData(null);
+    
+    // Move back one step
+    setCurrentStep((prev) => prev - 1);
   };
 
   // Add useEffect to fetch user data when component mounts
@@ -968,7 +982,10 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                           <div className="flex flex-row items-center gap-1">
                             <button 
                               onClick={() => updateQuantity(item.name, item.quantity - 1)}
-                              className="w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center cursor-pointer text-black font-sans"
+                              disabled={item.quantity <= 1}
+                              className={`w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center 
+                                     ${item.quantity <= 1 ? 'text-gray-400 cursor-not-allowed' : 'text-black cursor-pointer'} 
+                                     font-sans`}
                             >
                               -
                             </button>
@@ -976,8 +993,22 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                               {item.quantity}
                             </div>
                             <button 
-                              onClick={() => updateQuantity(item.name, item.quantity + 1)}
-                              className="w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center cursor-pointer text-black font-sans"
+                              onClick={() => {
+                                const menuItem = categoryItems.find(mi => mi.name === item.name);
+                                if (menuItem && item.quantity < menuItem.quantity) {
+                                  updateQuantity(item.name, item.quantity + 1);
+                                } else {
+                                  toast.error(`Maximum available quantity is ${menuItem?.quantity}`);
+                                }
+                              }}
+                              disabled={!categoryItems.find(mi => mi.name === item.name)?.quantity || 
+                                        item.quantity >= (categoryItems.find(mi => mi.name === item.name)?.quantity || 0)}
+                              className={`w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center 
+                                     ${!categoryItems.find(mi => mi.name === item.name)?.quantity || 
+                                       item.quantity >= (categoryItems.find(mi => mi.name === item.name)?.quantity || 0)
+                                       ? 'text-gray-400 cursor-not-allowed' 
+                                       : 'text-black cursor-pointer'} 
+                                     font-sans`}
                             >
                               +
                             </button>
@@ -1575,6 +1606,34 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       return scheduleDateTime.getTime(); // Returns timestamp in milliseconds
     }
     return null;
+  };
+
+  const handleAddItem = (item: MenuItem) => {
+    // Check if item already exists in selected items
+    const existingItem = selectedItems.find(i => i.name === item.name);
+    
+    if (existingItem) {
+      // Check if adding one more would exceed stock
+      if (existingItem.quantity >= item.stockQuantity) {
+        toast.error(`Cannot add more. Only ${item.stockQuantity} items available in stock`);
+        return;
+      }
+      
+      updateQuantity(item.name, existingItem.quantity + 1);
+    } else {
+      // Adding new item
+      if (item.stockQuantity <= 0) {
+        toast.error('This item is out of stock');
+        return;
+      }
+      
+      setSelectedItems([...selectedItems, { 
+        name: item.name, 
+        price: item.price, 
+        quantity: 1,
+        image: item.image || '' // Add this line
+      }]);
+    }
   };
 
   return (

@@ -29,4 +29,5 @@ export interface Order {
   }[];
   products: any[];
   customerImage?: string;
+  orderComment?: string;
 } 
