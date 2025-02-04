@@ -17,6 +17,7 @@ import InputLabel from '@mui/material/InputLabel';
 import { styled } from '@mui/material/styles';
 import { SelectChangeEvent } from '@mui/material/Select';
 import { toast } from 'react-toastify';
+import BatchSummaryModal from '../../components/BatchSummaryModal';
 
 interface PlaceOrderProps {
   onClose: () => void;
@@ -105,7 +106,7 @@ const StyledSelect = styled(Select)({
 });
 
 // Add new type for delivery method
-type DeliveryMethod = 'on-demand' | 'full-service' | 'schedule' | null;
+type DeliveryMethod = 'on-demand' | 'full-service' | 'schedule' | 'batch-delivery' | null;
 
 // Add this CSS class near your other styled components
 const StyledDateInput = styled('input')({
@@ -122,6 +123,7 @@ const StyledDateInput = styled('input')({
   '-webkit-appearance': 'textfield',
   '-moz-appearance': 'textfield',
 });
+
 
 const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced, branchId: initialBranchId }) => {
   const { addNotification } = useNotifications();
@@ -162,8 +164,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   const selectCategoryOpen = Boolean(selectCategoryAnchorEl);
   const selectItemOpen = Boolean(selectItemAnchorEl);
 
-  const [showBanner, setShowBanner] = useState(false);
-
   // Add this to your state declarations at the top of the component
   const [isPayLaterSubmitting, setIsPayLaterSubmitting] = useState(false);
   const [isPayNowSubmitting, setIsPayNowSubmitting] = useState(false);
@@ -186,6 +186,11 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
   // First, add the state at the top with other states
   const [orderComment, setOrderComment] = useState<string>('');
+
+  // Add these new state variables at the top with other states
+  const [batchId, setBatchId] = useState<string | null>(null);
+  const [batchedOrders, setBatchedOrders] = useState<any[]>([]);
+  const [showBatchSummary, setShowBatchSummary] = useState(false);
 
   const handleSelectCategoryClick = (event: React.MouseEvent<HTMLElement>) => {
     setSelectCategoryAnchorEl(event.currentTarget);
@@ -262,8 +267,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
   // Function to handle next step
   const handleNextStep = () => {
-    if ((deliveryMethod === 'on-demand' || deliveryMethod === 'schedule') && currentStep === 1) {
-      // Skip directly to step 3 for on-demand and schedule delivery after step 1
+    if ((deliveryMethod === 'on-demand' || deliveryMethod === 'schedule' || deliveryMethod === 'batch-delivery') && currentStep === 1) {
+      // Skip directly to step 3 for on-demand, schedule and batch delivery after step 1
       setCurrentStep(3);
     } else {
       // Normal progression for other cases
@@ -313,6 +318,15 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         setIsPayLaterSubmitting(true);
       }
 
+      // Generate batch ID if it doesn't exist and only for batch delivery
+      let currentBatchId = batchId;
+      if (deliveryMethod === 'batch-delivery') {
+        currentBatchId = batchId || Math.floor(100000 + Math.random() * 900000).toString();
+        if (!batchId) {
+          setBatchId(currentBatchId);
+        }
+      }
+
       const orderData = {
         customerName,
         customerPhone,
@@ -322,7 +336,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         deliveryPrice,
         orderPrice: totalFoodPrice,
         totalPrice: calculateTotal(),
-        orderComment, // Add this line to include the comment
+        orderComment,
+        batchID: currentBatchId, // Only included for batch delivery
         pickup: [{
           fromLatitude: pickupLocation?.latitude.toString(),
           fromLongitude: pickupLocation?.longitude.toString(),
@@ -338,7 +353,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           price: item.price,
           quantity: item.quantity
         })),
-        // ... any other existing order data ...
       };
       
       const formData = new FormData();
@@ -392,14 +406,9 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       formData.append('payNow', (paymentType === 'now').toString());
       formData.append('payLater', (paymentType === 'later').toString());
 
-      // Convert date and time to timestamp for schedule delivery
-      if (deliveryMethod === 'schedule') {
-        // Combine date and time into a single timestamp
-        const dateTimeString = `${scheduledDate}T${scheduledTime}:00`;
-        const timestamp = new Date(dateTimeString).toISOString();
-        
-        // Append the timestamp to formData
-        formData.append('scheduledTime', timestamp);
+      // Only append batchID for batch delivery
+      if (deliveryMethod === 'batch-delivery' && currentBatchId) {
+        formData.append('batchID', currentBatchId);
       }
 
       const response = await fetch(`${import.meta.env.VITE_API_URL}/delikaquickshipper_orders_table`, {
@@ -413,27 +422,21 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
       const result = await response.json();
       
-     
-
-      addNotification({
-        type: 'order_created',
-        message: `Order number **#${Math.floor(Math.random() * 1000000)}** has been created with a total price of GHS ${calculateTotal()}`
-      });
-
-      
-      // Call onOrderPlaced before closing
-      onOrderPlaced?.();
-      onClose?.();
-
-      // Show the banner after the payment request
-      if (paymentType === 'now') {
-        // Handle immediate payment logic
+      // Only show batch summary for batch delivery
+      if (deliveryMethod === 'batch-delivery') {
+        setBatchedOrders(prev => [...prev, { ...orderData, id: result.id }]);
+        setShowBatchSummary(true);
+        addNotification({
+          type: 'order_created',
+          message: `Order number **#${Math.floor(Math.random() * 1000000)}** has been added to batch **#${currentBatchId}**`
+        });
       } else {
-        // Show banner for payment request
-        setShowBanner(true);
-        setTimeout(() => {
-          setShowBanner(false); // Hide banner after a few seconds
-        }, 3000); // Adjust duration as needed
+        // Regular notification for other delivery types
+        addNotification({
+          type: 'order_created',
+          message: `Order placed successfully!`
+        });
+        onClose?.(); // Close modal for non-batch orders
       }
 
     } catch (error) {
@@ -443,13 +446,11 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       });
       throw error;
     } finally {
-      // Reset the submitting state after a delay to show the loading state
-      setTimeout(() => {
-        setIsPayLaterSubmitting(false);
-        setIsPayNowSubmitting(false);
-      }, 2000);
+      setIsPayLaterSubmitting(false);
+      setIsPayNowSubmitting(false);
     }
   };
+
 
   // Update the delivery price calculation in the useEffect
   useEffect(() => {
@@ -741,7 +742,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           default:
             return null;
         }
-
+      
       case 'full-service':
         // Full flow for full-service delivery
         switch (currentStep) {
@@ -1415,7 +1416,255 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                     )}
                   </button>
                 </div>
+
+                
               </div>
+            );
+
+      default:
+        return null;
+        }
+        
+      case 'batch-delivery':
+        // Special case for batch delivery
+        switch (currentStep) {
+          case 1:
+            return (
+              <>
+                <b className="font-sans text-lg font-semibold gap-2 mb-4">Batch Delivery</b>
+                
+                {/* Add Estimated Distance section here */}
+                <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-4">
+                  <div className="text-sm !font-sans">
+                    <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
+                    <div className="text-gray-500 !font-sans">
+                      From {pickupLocation?.address} to {dropoffLocation?.address}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Customer Details Section */}
+                <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4">
+                  <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
+                    <div className="self-stretch relative leading-[20px] font-sans text-black">
+                      Customer Name
+                    </div>
+                    <input
+                      className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
+                                text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-center py-[10px] px-[12px] text-black"
+                      placeholder="customer name"
+                      type="text"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
+                    <div className="self-stretch relative leading-[20px] font-sans text-black">
+                      Customer Phone
+                    </div>
+                    <input
+                      className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
+                                text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[10px] px-[12px] text-black"
+                      placeholder="customer phone number"
+                      type="tel"
+                      value={customerPhone}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/[^0-9]/g, '');
+                        setCustomerPhone(value);
+                      }}
+                      maxLength={10}
+                    />
+                  </div>
+                </div>
+                <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4">
+                  {userProfile?.role === 'Admin' ? (
+                    <div className="w-full">
+                      <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
+                        Select Branch for Pickup
+                      </div>
+                      <StyledSelect
+                        fullWidth
+                        value={selectedBranchId}
+                        onChange={(event: SelectChangeEvent<unknown>, child: React.ReactNode) => {
+                          const selectedId = event.target.value as string;
+                          setSelectedBranchId(selectedId);
+                          
+                          // Find selected branch
+                          const selectedBranch = branches.find(branch => branch.id === selectedId);
+                          if (selectedBranch) {
+                            setPickupData({
+                              fromLatitude: selectedBranch.branchLatitude,
+                              fromLongitude: selectedBranch.branchLongitude,
+                              fromAddress: selectedBranch.branchLocation,
+                              branchId: selectedBranch.id
+                            });
+                            // Update pickup location for distance calculation
+                            handlePickupLocationSelect({
+                              address: selectedBranch.branchLocation,
+                              latitude: parseFloat(selectedBranch.branchLatitude),
+                              longitude: parseFloat(selectedBranch.branchLongitude),
+                              name: selectedBranch.branchName
+                            });
+                          }
+                        }}
+                        variant="outlined"
+                        size="small"
+                        className="mb-2"
+                      >
+                        {branches.map((branch) => (
+                          <MenuItem key={branch.id} value={branch.id}>
+                            {branch.branchName} - {branch.branchLocation}
+                          </MenuItem>
+                        ))}
+                      </StyledSelect>
+                    </div>
+                  ) : (
+                    <div className="w-full">
+                      <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
+                        Your Branch
+                      </div>
+                      <div className="font-sans border-[#efefef] border-[1px] border-solid 
+                                    bg-[#f9fafb] self-stretch rounded-[3px] overflow-hidden 
+                                    flex flex-row items-center py-[10px] px-[12px] text-gray-600">
+                        {userProfile?.branchesTable?.branchName} - {userProfile?.branchesTable?.branchLocation}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4">
+                  <LocationInput label="Drop-Off Location" onLocationSelect={handleDropoffLocationSelect} />
+                  {dropoffLocation && (
+                    <div className="text-sm text-gray-600 mt-2 pl-2">
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={handleNextStep}
+                  disabled={!isStep1Valid}
+                  className={`self-stretch rounded-[4px] border-[1px] border-solid overflow-hidden 
+                             flex flex-row items-center justify-center py-[9px] px-[90px] 
+                             cursor-pointer text-[10px] text-[#fff] mt-4
+                             ${isStep1Valid 
+                               ? 'bg-[#fd683e] border-[#f5fcf8] hover:opacity-90' 
+                               : 'bg-gray-400 border-gray-300 cursor-not-allowed'}`}
+                >
+                  <div className="relative leading-[16px] font-sans text-[#fff]">Next</div>
+                </button>
+              </>
+            );
+
+          case 3:
+            return (
+              <>
+                {/* Back button and heading */}
+                <div className="flex items-center mb-6">
+                  <button
+                    className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent"
+                    onClick={handlePreviousStep}
+                    disabled={isSubmitting}
+                  >
+                    <IoIosArrowBack className="w-5 h-5" />
+                    <span>Back</span>
+                  </button>
+                </div>
+
+                <b className="font-sans text-lg font-semibold mb-6">Choose Payment Method</b>
+             
+                {/* Add Estimated Distance section here */}
+                <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-4">
+                  <div className="text-sm !font-sans">
+                    <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
+                    <div className="text-gray-500 !font-sans">
+                      From {pickupLocation?.address} to {dropoffLocation?.address}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Order Price Section */}
+                <div className="self-stretch flex flex-col items-start justify-start gap-[4px] text-[12px] text-[#686868] font-sans">
+                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
+                    <div className="self-stretch relative leading-[20px] font-sans">Delivery Price</div>
+                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px] mb-4">
+                      <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
+                        <div className="relative leading-[20px] font-sans">GH₵</div>
+                      </div>
+                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
+                        <div className="relative leading-[20px] font-sans">{deliveryPrice}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-2">
+                  <div className="self-stretch relative leading-[20px] font-sans text-black">
+                    Total Price
+                  </div>
+                  <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
+                    <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
+                      <div className="relative leading-[20px] text-black font-sans">GH₵</div>
+                    </div>
+                    <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
+                      <div className="relative leading-[20px] text-black font-sans">{calculateTotal()}</div>
+                    </div>
+                  </div>
+                </div>
+
+               {/* Add this before the payment buttons */}
+               <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
+                  <div className="self-stretch relative leading-[20px] font-sans">Additional Comment</div>
+                  <textarea
+                    className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
+                              text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
+                              flex flex-row items-start justify-start py-[10px] px-[12px] 
+                              min-h-[20px] resize-none w-[575px]"
+                    placeholder="Add any special instructions or notes here..."
+                    value={orderComment}
+                    onChange={(e) => setOrderComment(e.target.value)}
+                  />
+                </div>
+
+                  {/* Payment Buttons */}
+                  <div className="flex gap-4 w-full pt-4">
+                    <button
+                      className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
+                                py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
+                                ${isPayLaterSubmitting || isPayNowSubmitting
+                                  ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
+                                  : 'bg-[#201a18] border-[#201a18]'}`}
+                      onClick={() => handlePlaceOrder('later')}
+                      disabled={isPayLaterSubmitting || isPayNowSubmitting}
+                    >
+                      {isPayLaterSubmitting ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Processing...
+                        </div>
+                      ) : (
+                        'Pay on Delivery'
+                      )}
+                    </button>
+                    <button
+                      className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
+                                py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
+                                ${isPayLaterSubmitting || isPayNowSubmitting
+                                  ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
+                                  : 'bg-[#fd683e] border-[#fd683e]'}`}
+                      onClick={() => handlePlaceOrder('now')}
+                      disabled={isPayLaterSubmitting || isPayNowSubmitting}
+                    >
+                      {isPayNowSubmitting ? (
+                        <div className="flex items-center justify-center gap-2">
+                          <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                          Processing...
+                        </div>
+                      ) : (
+                        'Request Payment'
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                
+              </>
             );
 
           default:
@@ -1636,6 +1885,44 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     }
   };
 
+  // Add these functions inside the PlaceOrder component
+  const handleAddAnotherOrder = () => {
+    // Reset form fields but keep the batch ID
+    setCustomerName('');
+    setCustomerPhone('');
+    setPickupLocation(null);
+    setDropoffLocation(null);
+    setSelectedItems([]);
+    setOrderComment('');
+    setDeliveryPrice("0");
+    setDistance(0);
+    
+    // Hide the summary modal
+    setShowBatchSummary(false);
+    
+    // Reset to step 1
+    setCurrentStep(1);
+  };
+
+  const handleCompleteBatch = () => {
+    // Reset all states including batch ID
+    setBatchId(null);
+    setBatchedOrders([]);
+    setShowBatchSummary(false);
+    
+    // Call onOrderPlaced to trigger refresh in parent
+    onOrderPlaced();
+    
+    // Close the place order modal
+    onClose?.();
+    
+    // Show completion notification
+    addNotification({
+      type: 'order_created',
+      message: `Batch order completed successfully`
+    });
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-8 rounded-lg w-[600px] relative flex flex-col">
@@ -1650,21 +1937,21 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           // Initial delivery method selection modal
           <div className="flex flex-col items-center">
             <h2 className="text-2xl font-semibold mb-8 font-sans">Select Delivery Type</h2>
-            <div className="grid grid-cols-3 gap-8 w-full">
+            <div className="flex gap-4 w-full justify-center">
               {/* On-Demand Delivery */}
               <div
                 onClick={() => handleDeliveryMethodSelect('on-demand')}
-                className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors"
+                className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[200px]"
               >
-                <div className="w-16 h-16 mb-4">
+                <div className="w-14 h-14 mb-4">
                   <img src="/on-demand-delivery.svg" alt="On-Demand" className="w-full h-full" />
                 </div>
-                <span className="text-center font-medium font-sans">On Demand Delivery</span>
+                <span className="text-center font-medium font-sans">On Demand<br/>Delivery</span>
               </div>
 
               {/* Full-service */}
               <div
-                className={`flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg relative 
+                className={`flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg relative w-[200px]
                   ${isFullServiceDisabled 
                     ? 'opacity-50 cursor-not-allowed' 
                     : 'cursor-pointer hover:bg-[#FFE5E0] transition-colors'}`}
@@ -1674,40 +1961,50 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                   }
                 }}
               >
-                <div className="w-16 h-16 mb-4">
+                <div className="w-14 h-14 mb-4">
                   <img src="/full-service.svg" alt="Full-service" className="w-full h-full" />
                 </div>
-                <span className="text-center font-medium font-sans">Full-service Delivery</span>
-                
-              
+                <span className="text-center font-medium font-sans">Full-service<br/>Delivery</span>
               </div>  
 
               {/* Schedule Delivery */}
               <div
                 onClick={() => handleDeliveryMethodSelect('schedule')}
-                className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors"
+                className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[200px]"
               >
-                <div className="w-16 h-16 mb-4">
+                <div className="w-14 h-14 mb-4">
                   <img src="/schedule-delivery.svg" alt="Schedule" className="w-full h-full" />
                 </div>
-                <span className="text-center font-medium font-sans">Schedule Delivery</span>
+                <span className="text-center font-medium font-sans">Schedule<br/>Delivery</span>
+              </div>
+
+              {/* Batch Delivery */}
+              <div
+                onClick={() => handleDeliveryMethodSelect('batch-delivery')}
+                className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[200px]"
+              >
+                <div className="w-14 h-14 mb-4">
+                  <img src="/batch-delivery.svg" alt="Batch" className="w-full h-full" />
+                </div>
+                <span className="text-center font-medium font-sans">Batch<br/>Delivery</span>
               </div>
             </div>
           </div>
         ) : (
           // Existing order placement modal content
           <>
-            {/* Banner Modal */}
-            {showBanner && (
-              <div className="fixed top-0 left-0 right-0 bg-green-500 text-white text-center py-2">
-                SMS has been sent to the user to make payments.
-              </div>
-            )}
-
             {/* Main content */}
             {renderStepContent()}
           </>
         )}
+
+        <BatchSummaryModal
+          open={showBatchSummary}
+          orders={batchedOrders}
+          batchId={batchId || ''}
+          onAddAnother={handleAddAnotherOrder}
+          onComplete={handleCompleteBatch}
+        />
       </div>
     </div>
   );
