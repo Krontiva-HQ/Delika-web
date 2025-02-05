@@ -271,11 +271,11 @@ const Settings: FunctionComponent = () => {
                 e.stopPropagation();
                 setMemberToEdit({
                   ...member,
-                  city: '',
-                  address: '',
-                  postalCode: '',
-                  country: ''
-                } as TeamMember);
+                  address: member.address || 'N/A',
+                  city: member.city || 'N/A',
+                  postalCode: member.postalCode || 'N/A',
+                  country: member.country || 'N/A'
+                });
                 setIsEditMemberOpen(true);
               }}
             >

@@ -1,4 +1,4 @@
-import { FunctionComponent, useState, useMemo, useRef } from "react";
+import { FunctionComponent, useState, useMemo, useRef, useEffect } from "react";
 import Select from 'react-select';
 import countryList from 'react-select-country-list';
 import { FaCamera } from "react-icons/fa";
@@ -17,14 +17,33 @@ const EditTeamMemberModal: FunctionComponent<EditTeamMemberModalProps> = ({
   onClose,
   onSave
 }) => {
-  const [editedMember, setEditedMember] = useState(member);
-  const [country, setCountry] = useState<{ value: string; label: string } | null>(null);
+  // Initialize state with all member data immediately
+  const [editedMember, setEditedMember] = useState({
+    ...member,
+    address: member.address || 'N/A',
+    city: member.city || 'N/A',
+    postalCode: member.postalCode || 'N/A',
+  });
+
+  // Initialize country state with existing country data
+  const [country, setCountry] = useState<{ value: string; label: string } | null>(() => {
+    const countryCode = member.country || 'N/A';
+    const countryLabel = countryList().getLabel(countryCode);
+    return { value: countryCode, label: countryLabel };
+  });
+
   const [previewImage, setPreviewImage] = useState<string | null>(member.image?.url || null);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const options = useMemo(() => countryList().getData(), []);
   const { updateTeamMember, isLoading, error } = useUpdateTeamMember();
 
+  // For debugging - remove this after confirming data
+  useEffect(() => {
+    console.log('Member data:', member);
+    console.log('Edited member:', editedMember);
+    console.log('Country:', country);
+  }, [member, editedMember, country]);
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -75,6 +94,53 @@ const EditTeamMemberModal: FunctionComponent<EditTeamMemberModalProps> = ({
       editedMember.postalCode.trim() !== '' &&
       country?.value // Check if country is selected
     );
+  };
+
+  const customStyles = {
+    control: (provided: any) => ({
+      ...provided,
+      height: '50px',
+      borderRadius: '6px',
+      backgroundColor: 'var(--bg-color, white)',
+      borderColor: 'var(--border-color, #edf0f2)',
+      boxShadow: 'none',
+      '&:hover': {
+        borderColor: 'var(--border-hover-color, #d1d5db)'
+      }
+    }),
+    singleValue: (provided: any) => ({
+      ...provided,
+      color: 'var(--text-color, black)',
+      fontFamily: 'inherit',
+      fontSize: '14px'
+    }),
+    input: (provided: any) => ({
+      ...provided,
+      color: 'var(--text-color, black)',
+      fontFamily: 'inherit',
+      fontSize: '14px'
+    }),
+    menu: (provided: any) => ({
+      ...provided,
+      backgroundColor: 'var(--bg-color, white)',
+      border: '1px solid var(--border-color, #edf0f2)'
+    }),
+    option: (provided: any, state: { isSelected: boolean }) => ({
+      ...provided,
+      backgroundColor: state.isSelected ? 'var(--selected-bg, #f3f4f6)' : 'var(--bg-color, white)',
+      color: 'var(--text-color, black)',
+      '&:hover': {
+        backgroundColor: 'var(--hover-bg, #f9fafb)'
+      },
+      fontFamily: 'inherit',
+      fontSize: '14px'
+    }),
+    placeholder: (provided: any) => ({
+      ...provided,
+      color: 'var(--placeholder-color, #6b7280)',
+      fontFamily: 'inherit',
+      fontSize: '14px'
+    })
   };
 
   return (
@@ -202,17 +268,12 @@ const EditTeamMemberModal: FunctionComponent<EditTeamMemberModalProps> = ({
         <div className="mb-6">
   <label className="block text-sm font-medium text-black dark:text-white mb-2 font-sans">Country</label>
   <Select
-    options={options}  // 'options' is an array of country options
-    value={country}    // 'country' is the current selected value
-    onChange={(val) => setCountry(val)} // Updates the 'country' state
-    className="w-[330px] h-[45px] border border-gray-200  rounded-lg bg-white rounded-lg dark:bg-black text-black dark:text-white"
-    styles={{
-      control: (provided) => ({
-        ...provided,
-        height: '50px', 
-        borderRadius: '6px',
-      }),
-    }}
+    options={options}
+    value={country}
+    onChange={(val) => setCountry(val)}
+    className="w-[330px]"
+    styles={customStyles}
+    placeholder="Select a country"
   />
 </div>
       </div>

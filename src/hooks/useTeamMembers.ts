@@ -13,6 +13,10 @@ interface TeamMemberResponse {
   fullName: string;
   phoneNumber: string;
   Status: boolean;
+  address?: string;
+  city?: string;
+  postalCode?: string;
+  country?: string;
   image: {
     url: string;
   };
