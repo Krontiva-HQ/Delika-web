@@ -17,12 +17,17 @@ const BatchSummaryModal: React.FC<BatchSummaryModalProps> = ({
 }) => {
   if (!open) return null;
 
+  const isMaxOrdersReached = orders.length >= 5;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg w-[400px] max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="p-4 border-b">
           <h2 className="text-center text-lg font-medium font-sans">Batch Order Summary</h2>
+          <p className="text-center text-sm text-gray-600 mt-1 font-sans">
+            {orders.length}/5 orders in batch
+          </p>
         </div>
 
         {/* Orders List */}
@@ -63,12 +68,18 @@ const BatchSummaryModal: React.FC<BatchSummaryModalProps> = ({
 
         {/* Buttons */}
         <div className="p-4 space-y-3">
-          <button
-            onClick={onAddAnother}
-            className="w-full py-3 px-4 bg-[#fd683e] text-white rounded-lg font-medium hover:bg-[#fd683e]/90 transition-colors"
-          >
-            Add another order
-          </button>
+          {!isMaxOrdersReached ? (
+            <button
+              onClick={onAddAnother}
+              className="w-full py-3 px-4 bg-[#fd683e] text-white rounded-lg font-medium hover:bg-[#fd683e]/90 transition-colors"
+            >
+              Add another order
+            </button>
+          ) : (
+            <div className="text-center text-sm text-red-500 mb-2 font-sans">
+              Maximum limit of 5 orders reached
+            </div>
+          )}
           <button
             onClick={onComplete}
             className="w-full py-3 px-4 bg-[#201a18] text-white rounded-lg font-medium hover:bg-[#201a18]/90 transition-colors"

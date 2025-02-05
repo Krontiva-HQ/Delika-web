@@ -1,17 +1,12 @@
 import { createContext, useContext, useState, ReactNode, useEffect, FC } from 'react';
 
+type NotificationType = 'order_created' | 'order_status' | 'inventory_update' | 'transaction_status' | 
+                       'employee_update' | 'profile_update' | 'password_change' | 'user_deleted' | 
+                       'user_added' | 'order_edited';
+
 export interface Notification {
   id: string;
-  type: 
-    | 'order_created' 
-    | 'order_status' 
-    | 'inventory_update' 
-    | 'transaction_status' 
-    | 'employee_update' 
-    | 'profile_update' 
-    | 'password_change' 
-    | 'user_deleted'
-    | 'user_added';
+  type: NotificationType;
   message: string;
   time: string;
   read: boolean;
@@ -21,7 +16,12 @@ interface NotificationContextType {
   notifications: Notification[];
   markAsRead: (id: string) => void;
   removeNotification: (id: string) => void;
-  addNotification: (notification: Omit<Notification, 'id' | 'time' | 'read'>) => void;
+  addNotification: (notification: {
+    type: 'order_created' | 'order_status' | 'inventory_update' | 'transaction_status' | 
+          'employee_update' | 'profile_update' | 'password_change' | 'user_deleted' | 
+          'user_added' | 'order_edited';
+    message: string;
+  }) => void;
   deleteNotification: (id: string) => void;
   unreadCount: number;
 }
@@ -63,7 +63,7 @@ export const NotificationProvider: FC<{ children: ReactNode }> = ({ children }) 
 
   const addNotification = (notification: {
     type: 'order_created' | 'order_status' | 'inventory_update' | 'transaction_status' | 
-           'employee_update' | 'profile_update' | 'password_change' | 'user_deleted' | 'user_added';
+           'employee_update' | 'profile_update' | 'password_change' | 'user_deleted' | 'user_added' | 'order_edited';
     message: string;
   }) => {
     const newNotification: Notification = {

@@ -1,7 +1,11 @@
 import { FC } from 'react';
 import { IoIosCloseCircleOutline } from "react-icons/io";
-import { FiPackage, FiUser, FiDollarSign, FiBox, FiLock } from 'react-icons/fi';
+import { FiPackage, FiUser, FiDollarSign, FiBox, FiLock, FiEdit } from 'react-icons/fi';
 import { useNotifications } from '../context/NotificationContext';
+
+type NotificationType = 'order_created' | 'order_status' | 'inventory_update' | 'transaction_status' | 
+                       'employee_update' | 'profile_update' | 'password_change' | 'user_deleted' | 
+                       'user_added' | 'order_edited';
 
 interface NotificationsModalProps {
   isOpen: boolean;
@@ -26,6 +30,8 @@ const NotificationsModal: FC<NotificationsModalProps> = ({ isOpen, onClose }) =>
       case 'order_created':
       case 'order_status':
         return <FiPackage />;
+      case 'order_edited':
+        return <FiEdit />;
       case 'inventory_update':
         return <FiBox />;
       case 'transaction_status':
@@ -68,8 +74,16 @@ const NotificationsModal: FC<NotificationsModalProps> = ({ isOpen, onClose }) =>
                 onClick={() => handleNotificationClick(notification.id)}
               >
                 <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-[#00B087] bg-opacity-10">
-                    <div className="w-8 h-8 flex items-center justify-center text-[#00B087]">
+                  <div className={`p-2 rounded-lg ${
+                    notification.type === 'order_edited' 
+                      ? 'bg-[#fd683e] bg-opacity-10' 
+                      : 'bg-[#00B087] bg-opacity-10'
+                  }`}>
+                    <div className={`w-8 h-8 flex items-center justify-center ${
+                      notification.type === 'order_edited'
+                        ? 'text-[#fd683e]'
+                        : 'text-[#00B087]'
+                    }`}>
                       {getIcon(notification.type)}
                     </div>
                   </div>
@@ -77,7 +91,11 @@ const NotificationsModal: FC<NotificationsModalProps> = ({ isOpen, onClose }) =>
                     <h3 className="font-['Inter'] text-sm text-gray-900 dark:text-white font-medium">
                       {notification.message.split('**').map((part, index) => 
                         index % 2 === 1 ? (
-                          <span key={index} className="text-[#00B087]">
+                          <span key={index} className={
+                            notification.type === 'order_edited'
+                              ? 'text-[#fd683e]'
+                              : 'text-[#00B087]'
+                          }>
                             {part}
                           </span>
                         ) : (

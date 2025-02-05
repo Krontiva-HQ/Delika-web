@@ -312,6 +312,15 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   // Modify your handlePlaceOrder function
   const handlePlaceOrder = async (paymentType: 'now' | 'later') => {
     try {
+      // Add check for maximum orders
+      if (deliveryMethod === 'batch-delivery' && batchedOrders.length >= 5) {
+        addNotification({
+          type: 'order_status',
+          message: 'Maximum limit of 5 orders per batch reached'
+        });
+        return;
+      }
+
       if (paymentType === 'now') {
         setIsPayNowSubmitting(true);
       } else {
@@ -1887,6 +1896,15 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
   // Add these functions inside the PlaceOrder component
   const handleAddAnotherOrder = () => {
+    // Add check for maximum orders
+    if (batchedOrders.length >= 5) {
+      addNotification({
+        type: 'order_status',
+        message: 'Maximum limit of 5 orders per batch reached'
+      });
+      return;
+    }
+
     // Reset form fields but keep the batch ID
     setCustomerName('');
     setCustomerPhone('');
