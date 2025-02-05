@@ -51,6 +51,8 @@ const EditTeamMemberModal: FunctionComponent<EditTeamMemberModalProps> = ({
     
     if (photoFile) {
       formData.append('photo', photoFile);
+    } else if (member.image?.url) {
+      formData.append('photo', member.image.url);
     }
 
     try {
@@ -153,9 +155,9 @@ const EditTeamMemberModal: FunctionComponent<EditTeamMemberModalProps> = ({
             className="w-[330px] h-[45px] px-3 border border-gray-200 border-solid rounded-lg bg-white dark:bg-black text-black dark:text-white"
           >
             <option value="">Select a role</option>
+            <option value="Admin">Admin</option>
             <option value="Manager">Manager</option>
             <option value="Store Clerk">Store Clerk</option>
-            <option value="Dispatcher">Dispatcher</option>
             <option value="Rider">Rider</option>
           </select>
         </div>

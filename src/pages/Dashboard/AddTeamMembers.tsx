@@ -244,9 +244,9 @@ const AddTeamMember: FunctionComponent<AddTeamMemberProps> = ({ onClose, restaur
                          focus:outline-none focus:border-[#fe5b18] font-sans bg-white"
               >
                 <option value="">Select role</option>
+                <option value="Admin">Admin</option>
                 <option value="Manager">Manager</option>
                 <option value="Store Clerk">Store Clerk</option>
-                <option value="Dispatcher">Dispatcher</option>
                 <option value="Rider">Rider</option>
               </select>
             </div>

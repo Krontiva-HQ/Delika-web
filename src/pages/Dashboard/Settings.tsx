@@ -1,4 +1,4 @@
-/// <reference types="vite/client" />
+/// <reference types="vite/client" />                   
 
 import { FunctionComponent, useState, useMemo, useEffect, useRef } from "react";
 import { Button, Menu } from "@mui/material";
@@ -226,19 +226,18 @@ const Settings: FunctionComponent = () => {
         </button>
       </div>
 
-      {/* Table Headers */}
-      <div className="grid grid-cols-[200px_1fr_1fr_1fr_100px_100px] items-center p-3 bg-white dark:bg-black text-black dark:text-white font-sans">
+      {/* Table Headers - Removed Status column */}
+      <div className="grid grid-cols-[200px_1fr_1fr_1fr_100px] items-center p-3 bg-white dark:bg-black text-black dark:text-white font-sans">
         <div className="text-[12px] flex items-center">Name</div>
         <div className="text-[12px]">Email</div>
         <div className="text-[12px]">Branch Name</div>
         <div className="text-[12px]">Role</div>
-        <div className="text-[12px]">Status</div>
         <div className="text-[12px]">Action</div>
       </div>
 
-      {/* Table Body */}
+      {/* Table Body - Removed Status column */}
       {teamMembers.map((member) => (
-        <div key={member.id} className="grid grid-cols-[200px_1fr_1fr_1fr_100px_100px] items-center gap-2 p-3 border-t border-gray-200 dark:border-[#333] font-sans bg-white dark:bg-black text-black dark:text-white">
+        <div key={member.id} className="grid grid-cols-[200px_1fr_1fr_1fr_100px] items-center gap-2 p-3 border-t border-gray-200 dark:border-[#333] font-sans bg-white dark:bg-black text-black dark:text-white">
           <div className="text-[12px] flex items-center gap-1 min-h-[24px]">
             <img 
               src={member.image?.url || '/default-profile.jpg'} 
@@ -254,15 +253,6 @@ const Settings: FunctionComponent = () => {
           <div className="text-[12px] truncate">{member.email}</div>
           <div className="text-[12px] truncate">{member.branchesTable?.branchName || 'N/A'}</div>
           <div className="text-[12px] truncate">{member.role}</div>
-          <div>
-            <span className={`px-1.5 py-0.5 rounded-full text-[11px] font-sans ${
-              member.Status 
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-red-100 text-red-800'
-            }`}>
-              {member.Status ? 'Active' : 'Inactive'}
-            </span>
-          </div>
           <div className="flex items-center gap-1">
             <button 
               className="p-1.5 border-[1px] border-solid border-red-600 text-orange-600 rounded-[4px] hover:bg-red-50 dark:hover:bg-red-900/20 text-[11px] font-sans"
@@ -281,9 +271,10 @@ const Settings: FunctionComponent = () => {
                 e.stopPropagation();
                 setMemberToEdit({
                   ...member,
-                  city: '',        // Add default values for missing fields
+                  city: '',
                   address: '',
-                  postalCode: ''
+                  postalCode: '',
+                  country: ''
                 } as TeamMember);
                 setIsEditMemberOpen(true);
               }}
@@ -296,7 +287,7 @@ const Settings: FunctionComponent = () => {
     </div>
   );
 
-  // Add a function to handle form submission
+  // Update the handleSave function to preserve existing image if no new one is uploaded
   const handleSave = async () => {
     if (!userData) return;
 
@@ -315,7 +306,7 @@ const Settings: FunctionComponent = () => {
       formData.append('dateOfBirth', userData.dateOfBirth.toString());
     }
     
-    // Only append photo if a new one was selected
+    // Only append photo if a new one was selected, otherwise keep existing image
     if (photoFile) {
       formData.append('photo', photoFile);
     } else if (userData.image?.url) {
@@ -323,8 +314,6 @@ const Settings: FunctionComponent = () => {
     }
 
     formData.append('role', userData.role);
-
-    // Ensure restaurantId and branchId are set and never change
     formData.append('restaurantId', userData.restaurantId || '');
     formData.append('branchId', userData.branchId || '');
 
@@ -337,6 +326,7 @@ const Settings: FunctionComponent = () => {
         });
       }
     } catch (error) {
+      // Handle error
     }
   };
 

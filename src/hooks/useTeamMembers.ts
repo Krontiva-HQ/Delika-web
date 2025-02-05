@@ -40,6 +40,7 @@ export interface TeamMember {
   phoneNumber: string;
   address: string;
   postalCode: string;
+  country: string;
   restaurantId: string;
   branchId: string;
   image?: {
