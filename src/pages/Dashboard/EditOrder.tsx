@@ -52,6 +52,27 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
 
   const { editOrder, isLoading, error } = useEditOrder();
 
+  // Add validation states
+  const [isValidPhone, setIsValidPhone] = useState(true);
+  const [isValidName, setIsValidName] = useState(true);
+
+  // Modify the customer phone input handler
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/[^0-9]/g, '');
+    setCustomerPhone(value);
+    setIsValidPhone(value.length === 10); // Validate phone number length
+  };
+
+  // Add name input handler
+  const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.trim();
+    setCustomerName(value);
+    setIsValidName(value.length > 0);
+  };
+
+  // Add validation check
+  const isFormValid = isValidPhone && isValidName && customerName.trim() !== '' && customerPhone.length === 10;
+
   // Initialize selected items from order
   useEffect(() => {
     const initialItems = order.products.map(product => ({
@@ -99,6 +120,8 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
         },
       ],
       orderNumber: order.orderNumber,
+      customerName: customerName,
+      customerPhoneNumber: customerPhone,
       deliveryDistance: distance?.toString() || '',
       trackingUrl: order.trackingUrl, // Assuming this is part of the order object
       orderStatus,
@@ -141,11 +164,11 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
                   Customer Name
                 </div>
                 <input
-                  className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                            text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-center py-[8px] px-[10px] text-black"
+                  className={`font-sans border-[1px] border-solid [outline:none] 
+                            text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-center py-[8px] px-[10px] text-black
+                            ${!isValidName ? 'border-red-500' : 'border-[#efefef]'}`}
                   value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                  readOnly
+                  onChange={handleNameChange}
                 />
               </div>
               <div className="flex-1 flex flex-col items-start justify-start gap-[4px] font-sans text-sm">
@@ -153,15 +176,12 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
                   Customer Phone
                 </div>
                 <input
-                        className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                            text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[8px] px-[10px] text-black"
+                  className={`font-sans border-[1px] border-solid [outline:none] 
+                            text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[8px] px-[10px] text-black
+                            ${!isValidPhone ? 'border-red-500' : 'border-[#efefef]'}`}
                   value={customerPhone}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9]/g, '');
-                    setCustomerPhone(value);
-                  }}
+                  onChange={handlePhoneChange}
                   maxLength={10}
-                  readOnly
                 />
               </div>
             </div>
@@ -282,9 +302,13 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
         {/* Navigation Buttons */}
         <button
           onClick={handleSaveChanges}
-          className="self-stretch rounded-[4px] bg-[#fd683e] border-[#f5fcf8] border-[1px] border-solid overflow-hidden 
+          disabled={!isFormValid}
+          className={`self-stretch rounded-[4px] border-[1px] border-solid overflow-hidden 
                    flex flex-row items-center justify-center py-[15px] px-[60px] 
-                   cursor-pointer text-[12px] text-[#fff] mt-4 hover:opacity-90"
+                   cursor-pointer text-[12px] mt-4
+                   ${isFormValid 
+                     ? 'bg-[#fd683e] border-[#f5fcf8] text-[#fff] hover:opacity-90' 
+                     : 'bg-gray-300 border-gray-300 text-gray-500 cursor-not-allowed'}`}
         >
           <div className="relative leading-[16px] font-sans text-[#fff]">
             {isLoading ? 'Saving...' : 'Save Changes'}
