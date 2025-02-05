@@ -11,6 +11,7 @@ export interface Order {
   orderStatus: string;
   totalPrice: string;
   orderDate: string;
+  orderReceivedTime: string;
   deliveryPrice: string;
   pickupName: string;
   dropoffName: string;

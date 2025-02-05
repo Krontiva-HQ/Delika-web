@@ -36,7 +36,7 @@ const Transactions: FunctionComponent = () => {
     return localStorage.getItem('selectedBranchId') || '';
   });
 
-  // Simplified fetch function
+  // Update the fetchTransactions function to include sorting
   const fetchTransactions = useCallback(async (branchId: string, date: string) => {
     setIsLoading(true);
     setOrders([]); // Clear existing data
@@ -44,13 +44,16 @@ const Transactions: FunctionComponent = () => {
     try {
       const params = new URLSearchParams({
         restaurantId: userProfile?.restaurantId || '',
-        // Use branchId only if Admin, otherwise use profile branchId
         branchId: userProfile?.role === 'Admin' ? branchId : userProfile?.branchId || '',
         date: date
       });
 
       const response = await api.get(`/filter/orders/by/date?${params.toString()}`);
-      setOrders(response.data);
+      // Sort orders by orderReceivedTime before setting state
+      const sortedOrders = response.data.sort((a: Order, b: Order) => {
+        return new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime();
+      });
+      setOrders(sortedOrders);
     } catch (error) {
       setOrders([]);
     } finally {
@@ -101,21 +104,26 @@ const Transactions: FunctionComponent = () => {
     setSelectedOrderNumber(null);
   };
 
-  // Filter orders based on active tab
-  const filteredOrders = orders.filter(order => {
-    switch (activeTab) {
-      case 'pending':
-        return order.paymentStatus === 'Pending';
-      case 'paid':
-        return order.paymentStatus === 'Paid';
-      case 'cancelled':
-        return order.paymentStatus === 'Abandoned';
-      case 'not-paid':
-        return order.paymentStatus === 'Not Paid';
-      default:
-        return true; // 'all' tab shows everything
-    }
-  });
+  // Update the filteredOrders to maintain the sorting
+  const filteredOrders = orders
+    .sort((a, b) => {
+      // Sort by most recent first using orderReceivedTime
+      return new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime();
+    })
+    .filter(order => {
+      switch (activeTab) {
+        case 'pending':
+          return order.paymentStatus === 'Pending';
+        case 'paid':
+          return order.paymentStatus === 'Paid';
+        case 'cancelled':
+          return order.paymentStatus === 'Abandoned';
+        case 'not-paid':
+          return order.paymentStatus === 'Not Paid';
+        default:
+          return true; // 'all' tab shows everything
+      }
+    });
 
   // Add this handler for edit click
   const handleEditClick = (e: React.MouseEvent, order: Order) => {

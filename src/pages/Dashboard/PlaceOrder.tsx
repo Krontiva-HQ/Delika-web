@@ -444,7 +444,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           type: 'order_created',
           message: `Order placed successfully!`
         });
-        onClose?.(); // Close modal for non-batch orders
+        onOrderPlaced(); // Make sure this is called
+        onClose(); // Close the modal
       }
 
     } catch (error) {
@@ -1498,13 +1499,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           <>
             <div className="flex items-center mb-6">
               
-              <button
-                className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent mr-4"
-                onClick={handleBackToDeliveryType}
-              >
-                <IoIosArrowBack className="w-5 h-5" />
-                <span>Back to Delivery Types</span>
-              </button>
+              
               <button
                 className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent"
                 onClick={handlePreviousStep}
@@ -1608,7 +1603,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                     className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
                               text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
                               flex flex-row items-start justify-start py-[10px] px-[12px] 
-                              min-h-[20px] resize-none w-full"
+                              min-h-[20px] resize-none w-[550px]"
                     placeholder="Add any special instructions or notes here..."
                     value={orderComment}
                     onChange={(e) => setOrderComment(e.target.value)}

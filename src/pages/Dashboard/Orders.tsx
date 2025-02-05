@@ -49,6 +49,7 @@ interface Order {
   transactionStatus: string;
   paymentStatus: string;
   orderComment?: string;
+  orderReceivedTime: string;
 }
 
 // Add interface for API request params
@@ -128,7 +129,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
   const open = Boolean(anchorEl);
 
-  // Simplified fetch function
+  // Update the fetchOrders function to sort by orderReceivedTime
   const fetchOrders = useCallback(async (branchId: string, date: string) => {
     setIsLoading(true);
     setOrders([]); // Clear existing data
@@ -141,7 +142,11 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       });
 
       const response = await api.get(`/filter/orders/by/date?${params.toString()}`);
-      setOrders(response.data);
+      // Sort orders by orderReceivedTime before setting state
+      const sortedOrders = response.data.sort((a: Order, b: Order) => {
+        return new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime();
+      });
+      setOrders(sortedOrders);
     } catch (error) {
       setOrders([]);
     } finally {
@@ -170,8 +175,19 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
   const handleOrderPlaced = useCallback(() => {
     if (selectedDate && selectedBranchId) {
       fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
+      setShowPlaceOrder(false); // Close the modal
     }
   }, [selectedDate, selectedBranchId, fetchOrders]);
+
+  // Add this effect to refresh orders periodically after a new order
+  useEffect(() => {
+    if (!showPlaceOrder) { // Only trigger when modal closes
+      // Immediate refresh
+      if (selectedDate && selectedBranchId) {
+        fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
+      }
+    }
+  }, [showPlaceOrder, selectedDate, selectedBranchId, fetchOrders]);
 
   const handleOrderEdited = useCallback(() => {
     if (selectedDate && selectedBranchId) {
@@ -181,22 +197,27 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     }
   }, [selectedDate, selectedBranchId, fetchOrders]);
 
-  // Filter orders based on search query and active tab
+  // Update the filteredOrders useMemo to use orderReceivedTime
   const filteredOrders = useMemo(() => {
-    return orders.filter(order => {
-      const matchesSearch = searchQuery
-        ? order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          order.orderNumber.toString().includes(searchQuery)
-        : true;
+    return orders
+      .sort((a, b) => {
+        // Sort by most recent first using orderReceivedTime
+        return new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime();
+      })
+      .filter(order => {
+        const matchesSearch = searchQuery
+          ? order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            order.orderNumber.toString().includes(searchQuery)
+          : true;
 
-      const matchesTab = activeTab === 'all' 
-        ? true 
-        : activeTab === 'readyForPickup' 
-          ? order.orderStatus === 'ReadyForPickup'
-          : order.orderStatus.toLowerCase() === activeTab;
+        const matchesTab = activeTab === 'all' 
+          ? true 
+          : activeTab === 'readyForPickup' 
+            ? order.orderStatus === 'ReadyForPickup'
+            : order.orderStatus.toLowerCase() === activeTab;
 
-      return matchesSearch && matchesTab;
-    });
+        return matchesSearch && matchesTab;
+      });
   }, [orders, searchQuery, activeTab]);
 
   // Update the New Order button click handler
