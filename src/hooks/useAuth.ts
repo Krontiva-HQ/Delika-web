@@ -30,28 +30,26 @@ export const useAuth = () => {
   // Step 1: Login
   const login = async (email: string, password: string): Promise<LoginResponse> => {
     setIsLoading(true);
-    setError(null); // Clear any previous errors
+    setError(null);
     
     try {
       const response = await api.post('/auth/login', { email, password });
       
       if (response.data.authToken) {
-        // Clear any existing auth data first
-        localStorage.removeItem('2faVerified');
-        localStorage.removeItem('userProfile');
+        // Handle state updates before navigation
+        await Promise.all([
+          localStorage.removeItem('2faVerified'),
+          localStorage.removeItem('userProfile'),
+          localStorage.setItem('authToken', response.data.authToken)
+        ]);
         
-        // Save new auth token
-        localStorage.setItem('authToken', response.data.authToken);
-        
-        // Get initial user profile
+        // Get user profile and update state
         const userProfile = await getAuthenticatedUser();
-        localStorage.setItem('userProfile', JSON.stringify(userProfile.data));
+        await localStorage.setItem('userProfile', JSON.stringify(userProfile.data));
         setUser(userProfile.data);
-
-        // Use setTimeout to ensure state updates are complete before navigation
-        setTimeout(() => {
-          navigate('/2fa-login', { replace: true }); // Use replace to prevent back navigation
-        }, 100);
+        
+        // Use React Router's navigate without setTimeout
+        navigate('/2fa-login', { replace: true });
 
         return { 
           success: true, 
@@ -90,26 +88,22 @@ export const useAuth = () => {
       );
       
       if (response.data.otpValidate === 'otpFound') {
-        localStorage.setItem('2faVerified', 'true');
+        await localStorage.setItem('2faVerified', 'true');
         
-        // Get user role from stored profile
         const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
         
-        // Use setTimeout to ensure state updates are complete
-        setTimeout(() => {
-          // Redirect based on role with replace to prevent back navigation
-          if (userProfile.role === 'Store Clerk') {
-            navigate('/dashboard/orders', { replace: true });
-          } else {
-            navigate('/dashboard', { replace: true });
-          }
-        }, 100);
+        // Navigate without setTimeout
+        const redirectPath = userProfile.role === 'Store Clerk' 
+          ? '/dashboard/orders' 
+          : '/dashboard';
         
+        navigate(redirectPath, { replace: true });
         return true;
       }
       
       return false;
     } catch (error) {
+      setError(error instanceof Error ? error.message : 'Verification failed');
       return false;
     } finally {
       setIsLoading(false);
