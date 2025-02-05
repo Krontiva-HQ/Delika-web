@@ -30,22 +30,29 @@ export const useAuth = () => {
   // Step 1: Login
   const login = async (email: string, password: string): Promise<LoginResponse> => {
     setIsLoading(true);
+    setError(null); // Clear any previous errors
+    
     try {
       const response = await api.post('/auth/login', { email, password });
       
       if (response.data.authToken) {
-        // Save auth token
-        localStorage.setItem('authToken', response.data.authToken);
-        // Remove any existing 2FA verification
+        // Clear any existing auth data first
         localStorage.removeItem('2faVerified');
+        localStorage.removeItem('userProfile');
+        
+        // Save new auth token
+        localStorage.setItem('authToken', response.data.authToken);
         
         // Get initial user profile
         const userProfile = await getAuthenticatedUser();
         localStorage.setItem('userProfile', JSON.stringify(userProfile.data));
         setUser(userProfile.data);
 
-        // Always redirect to 2FA after login
-        navigate('/2fa-login');
+        // Use setTimeout to ensure state updates are complete before navigation
+        setTimeout(() => {
+          navigate('/2fa-login', { replace: true }); // Use replace to prevent back navigation
+        }, 100);
+
         return { 
           success: true, 
           authToken: response.data.authToken
@@ -64,9 +71,12 @@ export const useAuth = () => {
   // Step 2: Verify 2FA
   const verify2FA = async (otp: string): Promise<boolean> => {
     setIsLoading(true);
+    setError(null);
+    
     try {
       const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/verify/otp/code`,        { 
+        `${import.meta.env.VITE_API_URL}/verify/otp/code`,
+        { 
           OTP: parseInt(otp),
           type: true,
           contact: email
@@ -85,12 +95,15 @@ export const useAuth = () => {
         // Get user role from stored profile
         const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
         
-        // Redirect Store Clerks directly to Orders page
-        if (userProfile.role === 'Store Clerk') {
-          navigate('/dashboard/orders');
-        } else {
-          navigate('/dashboard');
-        }
+        // Use setTimeout to ensure state updates are complete
+        setTimeout(() => {
+          // Redirect based on role with replace to prevent back navigation
+          if (userProfile.role === 'Store Clerk') {
+            navigate('/dashboard/orders', { replace: true });
+          } else {
+            navigate('/dashboard', { replace: true });
+          }
+        }, 100);
         
         return true;
       }
