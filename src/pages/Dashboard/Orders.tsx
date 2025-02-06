@@ -205,11 +205,10 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     }
   }, [selectedDate, selectedBranchId, fetchOrders]);
 
-  // Update the filteredOrders useMemo to use orderReceivedTime
+  // Update the filteredOrders useMemo
   const filteredOrders = useMemo(() => {
     return orders
       .sort((a, b) => {
-        // Sort by most recent first using orderReceivedTime
         return new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime();
       })
       .filter(order => {
@@ -218,11 +217,16 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
             order.orderNumber.toString().includes(searchQuery)
           : true;
 
+        // Update this filtering logic to handle status matching
         const matchesTab = activeTab === 'all' 
           ? true 
-          : activeTab === 'readyForPickup' 
+          : activeTab === 'onTheWay'
+          ? order.orderStatus === 'OnTheWay'
+          : activeTab === 'readyForPickup'
             ? order.orderStatus === 'ReadyForPickup'
-            : order.orderStatus.toLowerCase() === activeTab;
+            : activeTab === 'deliveryFailed'  // Add this case
+              ? order.orderStatus === 'DeliveryFailed'
+              : order.orderStatus.toLowerCase() === activeTab;
 
         return matchesSearch && matchesTab;
       });
