@@ -74,6 +74,11 @@ interface OrderPayload {
   onlyDeliveryFee: boolean;
   payNow: boolean;
   payLater: boolean;
+  scheduleDelivery?: {
+    scheduleDate: string;
+    scheduleTime: string;
+    scheduleDateTime: string;
+  };
 }
 
 interface MenuItem {
@@ -191,6 +196,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   const [batchId, setBatchId] = useState<string | null>(null);
   const [batchedOrders, setBatchedOrders] = useState<any[]>([]);
   const [showBatchSummary, setShowBatchSummary] = useState(false);
+
+  const [currentBatchId, setCurrentBatchId] = useState<string | null>(null);
 
   const handleSelectCategoryClick = (event: React.MouseEvent<HTMLElement>) => {
     setSelectCategoryAnchorEl(event.currentTarget);
@@ -311,28 +318,21 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   // Modify your handlePlaceOrder function
   const handlePlaceOrder = async (paymentType: 'now' | 'later') => {
     try {
-      // Add check for maximum orders
-      if (deliveryMethod === 'batch-delivery' && batchedOrders.length >= 5) {
-        addNotification({
-          type: 'order_status',
-          message: 'Maximum limit of 5 orders per batch reached'
-        });
-        return;
-      }
+      // Create formData instance first
+      const formData = new FormData();
 
-      if (paymentType === 'now') {
-        setIsPayNowSubmitting(true);
-      } else {
-        setIsPayLaterSubmitting(true);
-      }
-
-      // Generate batch ID if it doesn't exist and only for batch delivery
-      let currentBatchId = batchId;
-      if (deliveryMethod === 'batch-delivery') {
-        currentBatchId = batchId || Math.floor(100000 + Math.random() * 900000).toString();
-        if (!batchId) {
-          setBatchId(currentBatchId);
-        }
+      // When submitting the order, add the scheduled delivery data
+      let scheduledDeliveryData = null;
+      if (deliveryMethod === 'schedule' && scheduledDate && scheduledTime) {
+        const combinedDateTime = `${scheduledDate}T${scheduledTime}:00`;
+        scheduledDeliveryData = {
+          scheduleDate: scheduledDate,
+          scheduleTime: scheduledTime,
+          scheduleDateTime: combinedDateTime
+        };
+        formData.append('scheduleDate', scheduledDate);
+        formData.append('scheduledTime', scheduledTime);
+        formData.append('scheduledDateTime', combinedDateTime);
       }
 
       const orderData = {
@@ -361,9 +361,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           price: item.price,
           quantity: item.quantity
         })),
+        ...(scheduledDeliveryData && { scheduleDelivery: scheduledDeliveryData })
       };
-      
-      const formData = new FormData();
       
       // Use the selected branch data for Admin users, otherwise use userProfile data
       if (userProfile?.role === 'Admin') {
@@ -1186,13 +1185,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           <>
             <div className="flex items-center mb-6">
               
-              <button
-                className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent mr-4"
-                onClick={handleBackToDeliveryType}
-              >
-                <IoIosArrowBack className="w-5 h-5" />
-                <span>Back to Delivery Types</span>
-              </button>
+             
               <button
                 className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent"
                 onClick={handlePreviousStep}
@@ -1296,7 +1289,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                     className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
                               text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
                               flex flex-row items-start justify-start py-[10px] px-[12px] 
-                              min-h-[20px] resize-none w-full"
+                              min-h-[20px] resize-none w-[550px]"
                     placeholder="Add any special instructions or notes here..."
                     value={orderComment}
                     onChange={(e) => setOrderComment(e.target.value)}

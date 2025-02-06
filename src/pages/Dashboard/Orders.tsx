@@ -135,15 +135,13 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     setOrders([]); // Clear existing data
     
     try {
-      let params;
-      if (userProfile?.role === 'Admin') {
-        params = new URLSearchParams({
-          restaurantId: userProfile?.restaurantId || '',
-          branchId: branchId,
-          date: date
-        });
-      } else {
-        // For Store Clerk, use their assigned branchId
+      let params = new URLSearchParams({
+        restaurantId: userProfile?.restaurantId || '',
+        branchId: userProfile?.role === 'Admin' ? branchId : userProfile?.branchId || '',
+        date: date
+      });
+
+      if (userProfile?.role === 'Store Clerk' || userProfile?.role === 'Manager') {
         params = new URLSearchParams({
           restaurantId: userProfile?.restaurantId || '',
           branchId: userProfile?.branchId || '',
