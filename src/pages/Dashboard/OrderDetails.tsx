@@ -201,7 +201,7 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
     }
   }, [orderDetails]);
 
-  const handleDownload = async () => {
+  const generatePDF = async () => {
     if (!invoiceData) return;
 
     try {
@@ -309,10 +309,18 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
       yPos += 4;
       pdf.text('Powered by Krontiva Africa', 40, yPos, { align: 'center' });
 
-      // Download the PDF
-      pdf.save(`receipt-${invoiceData.invoiceNumber}.pdf`);
+      return pdf;
     } catch (error) {
       console.error('Error generating receipt:', error);
+      return null;
+    }
+  };
+
+  const handlePrint = async () => {
+    const pdf = await generatePDF();
+    if (pdf) {
+      pdf.autoPrint();
+      pdf.output('dataurlnewwindow');
     }
   };
 
@@ -399,12 +407,12 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
               
               <div className="flex gap-4">
                 <button 
-                  onClick={handleDownload}
+                  onClick={handlePrint}
                   data-pdf-hide
                   className="bg-[#201a18] text-white px-3 py-1 rounded-md flex items-center gap-2 font-sans text-xs"
                 >
                   <MdOutlineFileDownload className="w-4 h-4" />
-                  Download
+                  Print
                 </button>
               </div>
             </div>
