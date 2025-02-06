@@ -129,17 +129,27 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
   const open = Boolean(anchorEl);
 
-  // Update the fetchOrders function to sort by orderReceivedTime
+  // Update the fetchOrders function to handle Store Clerk role
   const fetchOrders = useCallback(async (branchId: string, date: string) => {
     setIsLoading(true);
     setOrders([]); // Clear existing data
     
     try {
-      const params = new URLSearchParams({
-        restaurantId: userProfile?.restaurantId || '',
-        branchId: userProfile?.role === 'Admin' ? branchId : userProfile?.branchId || '',       
-        date: date
-      });
+      let params;
+      if (userProfile?.role === 'Admin') {
+        params = new URLSearchParams({
+          restaurantId: userProfile?.restaurantId || '',
+          branchId: branchId,
+          date: date
+        });
+      } else {
+        // For Store Clerk, use their assigned branchId
+        params = new URLSearchParams({
+          restaurantId: userProfile?.restaurantId || '',
+          branchId: userProfile?.branchId || '',
+          date: date
+        });
+      }
 
       const response = await api.get(`/filter/orders/by/date?${params.toString()}`);
       // Sort orders by orderReceivedTime before setting state
@@ -152,7 +162,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     } finally {
       setIsLoading(false);
     }
-  }, [userProfile?.restaurantId]);
+  }, [userProfile?.restaurantId, userProfile?.role, userProfile?.branchId]);
 
   // Immediate fetch on branch selection
   const handleBranchSelect = useCallback((branchId: string) => {
