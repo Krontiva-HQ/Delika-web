@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { api, getAuthenticatedUser, UserResponse } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { useEmail } from '../context/EmailContext';
@@ -22,10 +22,34 @@ export const useAuth = () => {
     return savedUser ? JSON.parse(savedUser) : null;
   });
 
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    // Check localStorage on initial load
-    return localStorage.getItem('auth_token') ? true : null;
-  });
+  // Remove the separate isAuthenticated state since we'll compute it from user and 2faVerified
+  const isAuthenticated = useMemo(() => {
+    const has2FAVerified = localStorage.getItem('2faVerified') === 'true';
+    const hasAuthToken = !!localStorage.getItem('authToken');
+    return !!user && has2FAVerified && hasAuthToken;
+  }, [user]);
+
+  // Add initialization effect
+  useEffect(() => {
+    const initializeAuth = async () => {
+      const authToken = localStorage.getItem('authToken');
+      const has2FAVerified = localStorage.getItem('2faVerified') === 'true';
+      
+      if (authToken && !user) {
+        try {
+          await fetchUserProfile();
+        } catch (error) {
+          // If fetching user profile fails, clear all auth data
+          logout();
+        }
+      } else if (!authToken && user) {
+        // Clear user if no auth token exists
+        setUser(null);
+      }
+    };
+
+    initializeAuth();
+  }, []);
 
   // Step 1: Login
   const login = async (email: string, password: string): Promise<LoginResponse> => {
@@ -138,8 +162,7 @@ export const useAuth = () => {
     user,
     logout,
     fetchUserProfile,
-    // Only authenticated if we have user data AND 2FA is verified
-    isAuthenticated: !!user && localStorage.getItem('2faVerified') === 'true',
+    isAuthenticated, // Now computed from useMemo
   };
 };
 
