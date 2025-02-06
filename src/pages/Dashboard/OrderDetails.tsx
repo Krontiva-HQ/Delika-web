@@ -251,34 +251,37 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
       pdf.line(leftMargin, yPos, 75, yPos);
       yPos += 5;
 
-      // Items table header
-      pdf.text("Item", leftMargin, yPos);
-      pdf.text("Qty", 35, yPos);
-      pdf.text("Price", 45, yPos);
-      pdf.text("Total", 60, yPos);
-      yPos += 4;
+      // Only add items section if there are orders
+      if (invoiceData.orders.length > 0) {
+        // Items table header
+        pdf.text("Item", leftMargin, yPos);
+        pdf.text("Qty", 35, yPos);
+        pdf.text("Price", 45, yPos);
+        pdf.text("Total", 60, yPos);
+        yPos += 4;
 
-      // Separator line
-      pdf.line(leftMargin, yPos, 75, yPos);
-      yPos += 4;
+        // Separator line
+        pdf.line(leftMargin, yPos, 75, yPos);
+        yPos += 4;
 
-      // Items
-      invoiceData.orders.forEach(order => {
-        // Product name with wrapping if needed
-        const nameLines = pdf.splitTextToSize(order.productName, 30);
-        pdf.text(nameLines, leftMargin, yPos);
-        
-        // Quantity, unit price, and total aligned in columns
-        pdf.text(order.quantity.toString(), 35, yPos);
-        pdf.text(`GHS ${order.unitPrice.toFixed(2)}`, 45, yPos);
-        pdf.text(`GHS ${order.totalPrice.toFixed(2)}`, 60, yPos);
-        
-        yPos += (nameLines.length * 4) + 2;
-      });
+        // Items
+        invoiceData.orders.forEach(order => {
+          // Product name with wrapping if needed
+          const nameLines = pdf.splitTextToSize(order.productName, 30);
+          pdf.text(nameLines, leftMargin, yPos);
+          
+          // Quantity, unit price, and total aligned in columns
+          pdf.text(order.quantity.toString(), 35, yPos);
+          pdf.text(`GHS ${order.unitPrice.toFixed(2)}`, 45, yPos);
+          pdf.text(`GHS ${order.totalPrice.toFixed(2)}`, 60, yPos);
+          
+          yPos += (nameLines.length * 4) + 2;
+        });
 
-      // Separator line
-      pdf.line(leftMargin, yPos, 75, yPos);
-      yPos += 5;
+        // Separator line
+        pdf.line(leftMargin, yPos, 75, yPos);
+        yPos += 5;
+      }
 
       // Totals
       pdf.text('Subtotal:', leftMargin, yPos);
@@ -465,7 +468,9 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
 
             
               {/* Order Table */}
-              {!userProfile._restaurantTable?.[0]?.Inventory && !userProfile._restaurantTable?.[0]?.Transactions && (
+              {!userProfile._restaurantTable?.[0]?.Inventory && 
+               !userProfile._restaurantTable?.[0]?.Transactions && 
+               invoiceData.orders.length > 0 && (
                 <div className="mb-6 w-full border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden bg-white">
                   <table className="w-full border-collapse">
                     <thead>
