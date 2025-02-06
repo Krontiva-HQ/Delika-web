@@ -488,7 +488,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
               <div className="text-[12px] leading-[20px] font-sans text-[#666]">Address</div>
               <div className="text-[12px] leading-[20px] font-sans text-[#666]">Date</div>
               <div className="text-[12px] leading-[20px] font-sans text-[#666]">Price (GH₵)</div>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Status</div>
+              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Order Status</div>
             </div>
 
             {/* Table Body */}
