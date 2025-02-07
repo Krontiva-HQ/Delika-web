@@ -11,6 +11,8 @@ interface LoginResponse {
   error?: string;
 }
 
+const ALLOWED_ROLES = ['Admin', 'Manager', 'Store Clerk'];
+
 export const useAuth = () => {
   const navigate = useNavigate();
   const { email } = useEmail();
@@ -69,6 +71,12 @@ export const useAuth = () => {
         
         // Get user profile and update state
         const userProfile = await getAuthenticatedUser();
+        
+        // Check if user has allowed role
+        if (!ALLOWED_ROLES.includes(userProfile.data.role)) {
+          throw new Error('You do not have access to this application');
+        }
+
         await localStorage.setItem('userProfile', JSON.stringify(userProfile.data));
         setUser(userProfile.data);
         
@@ -83,8 +91,11 @@ export const useAuth = () => {
       
       throw new Error(response.data.error || 'Login failed');
     } catch (err) {
+      // Clear any auth data if login fails
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('userProfile');
       setError(err instanceof Error ? err.message : 'Login failed');
-      return { success: false, error: 'Login failed' };
+      return { success: false, error: err instanceof Error ? err.message : 'Login failed' };
     } finally {
       setIsLoading(false);
     }
