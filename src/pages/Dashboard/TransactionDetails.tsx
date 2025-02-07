@@ -50,6 +50,11 @@ interface InvoiceData {
   };
   payNow: boolean;
   payLater: boolean;
+  scheduledTime: string | null;
+  branch?: {
+    branchName: string;
+  };
+  orderComment?: string;
 }
 
 interface TransactionDetailsViewProps {
@@ -113,8 +118,17 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       },
       payNow: false,
       payLater: false,
+      scheduledTime: null,
+      branch: undefined,
+      orderComment: undefined,
     };
   }
+
+  const {
+    scheduledTime,
+    branch,
+    orderComment
+  } = apiResponse;
 
   return {
     invoiceNumber: apiResponse.orderNumber || 'N/A',
@@ -155,6 +169,9 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
     },
     payNow: false,
     payLater: false,
+    scheduledTime: scheduledTime || null,
+    branch,
+    orderComment
   };
 };
 
@@ -259,6 +276,14 @@ const TransactionDetailsView: FunctionComponent<TransactionDetailsViewProps> = (
                 </div>
                 <div className="flex flex-col text-gray-500 text-xs mt-2 font-sans">
                   <span>Order Date: {invoiceData.orderDate}</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-gray-600 font-medium text-xs">Order Status:</span>
+                    <span className="text-xs font-bold">{invoiceData.orderStatus || 'N/A'}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-gray-600 font-medium">Scheduled Time:</span>
+                    <span>{invoiceData.scheduledTime ? new Date(invoiceData.scheduledTime).toLocaleString() : 'no scheduled time'}</span>
+                  </div>
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-1">
                       <FaLocationDot className="w-4 h-4 text-green-600" />
@@ -403,20 +428,12 @@ const TransactionDetailsView: FunctionComponent<TransactionDetailsViewProps> = (
                   </p>
                 </div>
                 <div className="flex gap-8">
-                 {/* <div className="text-[12px] leading-[20px] font-sans">
-                    <p className="text-[#666] mb-2 font-bold">Payment Method</p>
-                    <p className="text-[#444]">
-
-                      {Boolean(invoiceData?.payNow) ? 'Momo' : 
-                       Boolean(invoiceData?.payLater) ? 'Cash' : 
-                       ''}
-                    </p>
-                  </div> */}
-                  <div className="text-[12px] leading-[20px] font-sans">
-                    <p className="text-[#666] mb-2 font-bold">Sub Total</p>
-                    <p className="text-[#444]">GH₵{invoiceData.payment.subTotal}</p>
-
-                  </div>
+                  {invoiceData.orders.length > 0 && (
+                    <div className="text-[12px] leading-[20px] font-sans">
+                      <p className="text-[#666] mb-2 font-bold">Sub Total</p>
+                      <p className="text-[#444]">GH₵{invoiceData.payment.subTotal}</p>
+                    </div>
+                  )}
                   <div className="text-[12px] leading-[20px] font-sans">
                     <p className="text-[#666] mb-2 font-bold">Delivery Cost</p>
                     <p className="text-[#444]">GH₵{invoiceData.payment.deliveryCost}</p>
@@ -426,6 +443,12 @@ const TransactionDetailsView: FunctionComponent<TransactionDetailsViewProps> = (
                     <p className="text-[#444] font-medium">GH₵{invoiceData.payment.grandTotal}</p>
                   </div>
                 </div>
+              </div>
+
+              {/* Add Order Comment section */}
+              <div className="mt-4 ml-4 text-[12px] leading-[20px] font-sans">
+                <span className="text-[#666] font-bold mr-2">Order Comment:</span>
+                <span className="text-[#444]">{invoiceData.orderComment || 'No comment available'}</span>
               </div>
 
               {/* Krontiva Footer Logo */}
