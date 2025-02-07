@@ -43,7 +43,7 @@ const LocationInput: React.FC<LocationInputProps> = ({ label, onLocationSelect, 
   useEffect(() => {
     // Initialize Google Places services
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyAdv28EbwKXqvlKo2henxsKMD-4EKB20l8&libraries=places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`;
     script.async = true;
     script.onload = () => {
       setAutocompleteService(new google.maps.places.AutocompleteService());
