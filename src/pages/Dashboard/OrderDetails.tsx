@@ -56,6 +56,7 @@ interface InvoiceData {
   branch?: {
     branchName: string;
   };
+  orderComment?: string;
 }
 
 const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
@@ -123,7 +124,8 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       orderOnmywayTime,
       orderCompletedTime,
       scheduledTime,
-      branch
+      branch,
+      orderComment
     } = apiResponse;
 
     return {
@@ -167,7 +169,8 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       payNow: false,
       payLater: false,
       scheduledTime: scheduledTime || null,
-      branch
+      branch,
+      orderComment
     };
   } catch (error) {
     throw error;
@@ -303,7 +306,10 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
       pdf.text(`Payment Status: ${invoiceData.payment.method}`, leftMargin, yPos);
       yPos += 8;
 
-      
+      // Order Comment
+      pdf.text(`Order Comment: ${invoiceData.orderComment || 'No comment available'}`, leftMargin, yPos);
+      yPos += 4;
+
       // Footer
       pdf.text('Thank you for your order!', 40, yPos, { align: 'center' });
       yPos += 4;
@@ -526,18 +532,12 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                   </p>
                 </div>
                 <div className="flex gap-8">
-                  {/*<div className="text-[12px] leading-[20px] font-sans">
-                    <p className="text-[#666] mb-2 font-bold">Payment Method</p>
-                    <p className="text-[#444]">
-                      {Boolean(invoiceData?.payNow) ? 'Momo' : 
-                       Boolean(invoiceData?.payLater) ? 'Cash' : 
-                       ''}
-                    </p>
-                  </div> */}
-                  <div className="text-[12px] leading-[20px] font-sans">
-                    <p className="text-[#666] mb-2 font-bold">Sub Total</p>
-                    <p className="text-[#444]">GHS{invoiceData.payment.subTotal}</p>
-                  </div>
+                  {invoiceData.orders.length > 0 && (
+                    <div className="text-[12px] leading-[20px] font-sans">
+                      <p className="text-[#666] mb-2 font-bold">Sub Total</p>
+                      <p className="text-[#444]">GHS{invoiceData.payment.subTotal}</p>
+                    </div>
+                  )}
                   <div className="text-[12px] leading-[20px] font-sans">
                     <p className="text-[#666] mb-2 font-bold">Delivery Cost</p>
                     <p className="text-[#444]">GHS{invoiceData.payment.deliveryCost}</p>
@@ -547,6 +547,12 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                     <p className="text-[#444] font-medium">GHS{invoiceData.payment.grandTotal}</p>
                   </div>
                 </div>
+              </div>
+
+              {/* Order Comment */}
+              <div className="mt-4 ml-4 text-[12px] leading-[20px] font-sans">
+                <span className="text-[#666] font-bold mr-2">Order Comment:</span>
+                <span className="text-[#444]">{invoiceData.orderComment || 'No comment available'}</span>
               </div>
 
               {/* Krontiva Footer Logo */}
