@@ -8,23 +8,19 @@ interface LocationInputProps {
   disabled?: boolean;
 }
  
-interface GeoapifyFeature {
-  properties: {
-    lon: number;
-    lat: number;
-    formatted: string;
-    address_line1: string;
-    address_line2: string;
-    city?: string;
-    country?: string;
-  };
+interface GooglePlace {
+  description: string;
+  place_id: string;
 }
  
 const LocationInput: React.FC<LocationInputProps> = ({ label, onLocationSelect, prefillData, disabled }) => {
   const [address, setAddress] = useState(prefillData?.address || '');
-  const [suggestions, setSuggestions] = useState<GeoapifyFeature[]>([]);
+  const [suggestions, setSuggestions] = useState<GooglePlace[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [autocompleteService, setAutocompleteService] = useState<google.maps.places.AutocompleteService | null>(null);
+  const [placesService, setPlacesService] = useState<google.maps.places.PlacesService | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
  
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -44,19 +40,45 @@ const LocationInput: React.FC<LocationInputProps> = ({ label, onLocationSelect, 
     }
   }, [prefillData]);
  
+  useEffect(() => {
+    // Initialize Google Places services
+    const script = document.createElement('script');
+    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyAdv28EbwKXqvlKo2henxsKMD-4EKB20l8&libraries=places`;
+    script.async = true;
+    script.onload = () => {
+      setAutocompleteService(new google.maps.places.AutocompleteService());
+      // We need a map div (hidden) for PlacesService
+      const map = new google.maps.Map(mapRef.current as HTMLElement);
+      setPlacesService(new google.maps.places.PlacesService(map));
+    };
+    document.head.appendChild(script);
+
+    return () => {
+      document.head.removeChild(script);
+    };
+  }, []);
+ 
   const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setAddress(value);
  
-    if (value.length > 2) {
+    if (value.length > 2 && autocompleteService) {
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_GEOAPIFY_API_URL}?text=${encodeURIComponent(value)}&apiKey=${import.meta.env.VITE_GEOAPIFY_API_KEY}&filter=countrycode:gh`
-        );
-        const data = await response.json();
-        setSuggestions(data.features || []);
-        setShowSuggestions(true);
+        const request = {
+          input: value,
+          componentRestrictions: { country: 'gh' },
+          location: new google.maps.LatLng(5.6037, -0.1870), // Accra coordinates
+          radius: 50000 // 50km radius
+        };
+
+        autocompleteService.getPlacePredictions(request, (predictions, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK && predictions) {
+            setSuggestions(predictions);
+            setShowSuggestions(true);
+          }
+        });
       } catch (error) {
+        console.error('Error fetching suggestions:', error);
       }
     } else {
       setSuggestions([]);
@@ -64,22 +86,32 @@ const LocationInput: React.FC<LocationInputProps> = ({ label, onLocationSelect, 
     }
   };
  
-  const handleSelect = (feature: GeoapifyFeature) => {
-    const locationData: LocationData = {
-      longitude: feature.properties.lon,
-      latitude: feature.properties.lat,
-      name: feature.properties.address_line1,
-      address: feature.properties.formatted
-    };
- 
-    setAddress(feature.properties.formatted);
-    setSuggestions([]);
-    setShowSuggestions(false);
-    onLocationSelect(locationData);
+  const handleSelect = (place: GooglePlace) => {
+    if (placesService) {
+      placesService.getDetails(
+        { placeId: place.place_id },
+        (result, status) => {
+          if (status === google.maps.places.PlacesServiceStatus.OK && result) {
+            const locationData: LocationData = {
+              longitude: result.geometry?.location?.lng() || 0,
+              latitude: result.geometry?.location?.lat() || 0,
+              name: result.name || '',
+              address: result.formatted_address || ''
+            };
+
+            setAddress(result.formatted_address || '');
+            setSuggestions([]);
+            setShowSuggestions(false);
+            onLocationSelect(locationData);
+          }
+        }
+      );
+    }
   };
  
   return (
     <div className="w-full" style={{ width: '100%' }} ref={wrapperRef}>
+      <div ref={mapRef} style={{ display: 'none' }}></div>
       <label className="block text-[14px] leading-[22px] font-sans text-black mb-2">{label}</label>
       <div className="relative w-full" style={{ width: '100%' }}>
         <input
@@ -104,7 +136,7 @@ const LocationInput: React.FC<LocationInputProps> = ({ label, onLocationSelect, 
                 className="font-sans px-4 py-2 hover:bg-gray-100 cursor-pointer text-sm"
                 onClick={() => handleSelect(suggestion)}
               >
-                {suggestion.properties.formatted}
+                {suggestion.description}
               </div>
             ))}
           </div>
