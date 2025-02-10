@@ -98,6 +98,12 @@ const LoginDetails: FunctionComponent<LoginDetailsProps> = ({ onSubmit }) => {
     navigate('/forgot-password');
   };
 
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSubmit();
+    }
+  };
+
   return (
     <div className="font-sans min-h-screen w-full relative bg-white overflow-hidden text-right text-[12px] text-[#fe5b18]">
       {/* Background Image - Hidden on mobile and tablet */}
@@ -139,6 +145,7 @@ const LoginDetails: FunctionComponent<LoginDetailsProps> = ({ onSubmit }) => {
                             flex items-center px-[12px] text-left"
                 value={formData.email}
                 onChange={handleInputChange}
+                onKeyPress={handleKeyPress}
                 placeholder="Email Address"
                 type="email"
                 name="email"
@@ -155,6 +162,7 @@ const LoginDetails: FunctionComponent<LoginDetailsProps> = ({ onSubmit }) => {
                   name="password"
                   value={formData.password}
                   onChange={handleInputChange}
+                  onKeyPress={handleKeyPress}
                 />
                 {showPassword ? (
                   <FaEyeSlash

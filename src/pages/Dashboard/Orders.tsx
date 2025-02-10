@@ -452,25 +452,27 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
             {/* Calendar Trigger */}
             <div 
               onClick={handleDateClick}
-              className="flex items-center gap-2 px-3 py-1 border border-[rgba(167,161,158,0.1)] rounded-md cursor-pointer hover:bg-gray-50"
+              className="flex items-center gap-2 cursor-pointer"
             >
-              <svg 
-                xmlns="http://www.w3.org/2000/svg" 
-                className="h-4 w-4 text-[#666]" 
-                fill="none" 
-                viewBox="0 0 24 24" 
-                stroke="currentColor"
-              >
-                <path 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
-                  strokeWidth={2} 
-                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
-                />
-              </svg>
-              <span className="text-[12px] font-sans text-[#666]">
-                {selectedDate ? selectedDate.format('DD MMMM YYYY') : '23 January 2024'}
-              </span>
+              <div className="border border-[#eaeaea] border-solid rounded-md px-3 py-1 flex items-center gap-2">
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  className="h-4 w-4 text-[#666]" 
+                  fill="none" 
+                  viewBox="0 0 24 24" 
+                  stroke="currentColor"
+                >
+                  <path 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    strokeWidth={2} 
+                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
+                  />
+                </svg>
+                <span className="text-[12px] font-sans text-[#666]">
+                  {selectedDate ? selectedDate.format('DD MMMM YYYY') : '23 January 2024'}
+                </span>
+              </div>
             </div>
 
             {/* Calendar Popover */}
