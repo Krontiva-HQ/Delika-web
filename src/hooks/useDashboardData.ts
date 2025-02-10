@@ -23,7 +23,7 @@ export const useDashboardData = ({ restaurantId, branchId }: UseDashboardDataPro
     setError(null);
     try {
       const response = await axios.post(
-        'https://api-server.krontiva.africa/api:uEBBwbSs/get/dashboard/data',
+        `${import.meta.env.VITE_API_URL}/get/dashboard/data`,
         { restaurantId, branchId }
       );
       setData(response.data);

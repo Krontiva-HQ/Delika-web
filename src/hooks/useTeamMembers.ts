@@ -67,7 +67,7 @@ export const useTeamMembers = ({ restaurantId, branchId }: UseTeamMembersProps) 
       if (userProfile?.role === 'Admin') {
         // Use admin endpoint
         response = await axios.post(
-          'https://api-server.krontiva.africa/api:uEBBwbSs/get/team/members/admin',
+          `${import.meta.env.VITE_API_URL}/get/team/members/admin`,
           { restaurantId }
         );
       } else {
