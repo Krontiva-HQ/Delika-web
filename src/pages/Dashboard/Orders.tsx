@@ -1,5 +1,5 @@
 import { FunctionComponent, useState, useEffect, useCallback, useMemo } from "react";
-import { IoMdAdd } from "react-icons/io";
+import { IoMdAdd, IoIosArrowBack, IoIosArrowForward } from "react-icons/io";
 import { SlOptionsVertical } from "react-icons/sl";
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -114,6 +114,10 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     return localStorage.getItem('selectedBranchId') || '';
   });
 
+  // Add pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const ordersPerPage = 10;
+
   const handleDateClick = (event: React.MouseEvent<HTMLDivElement>) => {
     setAnchorEl(event.currentTarget);
   };
@@ -205,9 +209,9 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     }
   }, [selectedDate, selectedBranchId, fetchOrders]);
 
-  // Update the filteredOrders useMemo
-  const filteredOrders = useMemo(() => {
-    return orders
+  // Update the filteredOrders useMemo to include pagination
+  const paginatedOrders = useMemo(() => {
+    const filtered = orders
       .sort((a, b) => {
         return new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime();
       })
@@ -217,20 +221,47 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
             order.orderNumber.toString().includes(searchQuery)
           : true;
 
-        // Update this filtering logic to handle status matching
         const matchesTab = activeTab === 'all' 
           ? true 
           : activeTab === 'onTheWay'
           ? order.orderStatus === 'OnTheWay'
           : activeTab === 'readyForPickup'
             ? order.orderStatus === 'ReadyForPickup'
-            : activeTab === 'deliveryFailed'  // Add this case
+            : activeTab === 'deliveryFailed'
               ? order.orderStatus === 'DeliveryFailed'
               : order.orderStatus.toLowerCase() === activeTab;
 
         return matchesSearch && matchesTab;
       });
-  }, [orders, searchQuery, activeTab]);
+
+    // Calculate pagination
+    const indexOfLastOrder = currentPage * ordersPerPage;
+    const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
+    
+    return {
+      orders: filtered.slice(indexOfFirstOrder, indexOfLastOrder),
+      totalOrders: filtered.length,
+      totalPages: Math.ceil(filtered.length / ordersPerPage)
+    };
+  }, [orders, searchQuery, activeTab, currentPage]);
+
+  // Add pagination handlers
+  const handleNextPage = () => {
+    if (currentPage < paginatedOrders.totalPages) {
+      setCurrentPage(prev => prev + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(prev => prev - 1);
+    }
+  };
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery, selectedDate]);
 
   // Update the New Order button click handler
   const handleNewOrderClick = () => {
@@ -506,49 +537,86 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
             {/* Table Body */}
             {isLoading ? (
               <div className="p-4 text-center text-gray-500 font-sans">Loading orders...</div>
-            ) : orders.length === 0 ? (
+            ) : paginatedOrders.orders.length === 0 ? (
               <div className="p-4 text-center text-gray-500 font-sans">No orders found</div>
             ) : (
-              filteredOrders.map((order) => (
-                <div 
-                  key={order.id} 
-                  style={{ borderBottom: '1px solid #eaeaea' }}
-                  className="grid grid-cols-6 p-3 hover:bg-[#f9f9f9] cursor-pointer"
-                  onClick={() => handleOrderClick(order.orderNumber)}
-                >
-                  <div className="text-[12px] leading-[20px] font-sans text-[#444]">{order.orderNumber}</div>
+              <>
+                {/* Map through paginatedOrders.orders instead of filteredOrders */}
+                {paginatedOrders.orders.map((order) => (
+                  <div 
+                    key={order.id} 
+                    style={{ borderBottom: '1px solid #eaeaea' }}
+                    className="grid grid-cols-6 p-3 hover:bg-[#f9f9f9] cursor-pointer"
+                    onClick={() => handleOrderClick(order.orderNumber)}
+                  >
+                    <div className="text-[12px] leading-[20px] font-sans text-[#444]">{order.orderNumber}</div>
+                    <div className="flex items-center gap-2">
+                      <img 
+                        src={order.customerImage || '/default-profile.jpg'} 
+                        alt={order.customerName} 
+                        className="w-6 h-6 rounded-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = '/default-profile.jpg';
+                        }}
+                      />
+                      <span className="text-[12px] leading-[20px] font-sans text-[#444]">{order.customerName}</span>
+                    </div>
+                    <div className="text-[12px] leading-[20px] font-sans text-[#666]">
+                      {order.dropOff[0]?.toAddress || 'N/A'}
+                    </div>
+                    <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.orderDate}</div>
+                    <div className="text-[12px] leading-[20px] font-sans text-[#444]">
+                      {Number(order.totalPrice).toFixed(2)}
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans ${getStatusStyle(order.orderStatus)}`}>
+                        {formatOrderStatus(order.orderStatus)}
+                      </span>
+                      <button 
+                        className="p-1 border-[1px] border-solid border-[#eaeaea] rounded-[4px] bg-white hover:bg-gray-50"
+                        onClick={(e) => handleEditClick(e, order)}
+                      >
+                        <CiEdit className="w-[14px] h-[14px] text-[#666]" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Pagination Controls */}
+                <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-[rgba(167,161,158,0.1)]">
+                  <div className="text-[12px] text-gray-500 font-sans">
+                    Showing {((currentPage - 1) * ordersPerPage) + 1} to {Math.min(currentPage * ordersPerPage, paginatedOrders.totalOrders)} of {paginatedOrders.totalOrders} orders
+                  </div>
                   <div className="flex items-center gap-2">
-                    <img 
-                      src={order.customerImage || '/default-profile.jpg'} 
-                      alt={order.customerName} 
-                      className="w-6 h-6 rounded-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = '/default-profile.jpg';
-                      }}
-                    />
-                    <span className="text-[12px] leading-[20px] font-sans text-[#444]">{order.customerName}</span>
-                  </div>
-                  <div className="text-[12px] leading-[20px] font-sans text-[#666]">
-                    {order.dropOff[0]?.toAddress || 'N/A'}
-                  </div>
-                  <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.orderDate}</div>
-                  <div className="text-[12px] leading-[20px] font-sans text-[#444]">
-                    {Number(order.totalPrice).toFixed(2)}
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans ${getStatusStyle(order.orderStatus)}`}>
-                      {formatOrderStatus(order.orderStatus)}
-                    </span>
-                    <button 
-                      className="p-1 border-[1px] border-solid border-[#eaeaea] rounded-[4px] bg-white hover:bg-gray-50"
-                      onClick={(e) => handleEditClick(e, order)}
+                    <button
+                      onClick={handlePrevPage}
+                      disabled={currentPage === 1}
+                      className={`p-2 rounded-md ${
+                        currentPage === 1
+                          ? 'text-gray-300 cursor-not-allowed'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
                     >
-                      <CiEdit className="w-[14px] h-[14px] text-[#666]" />
+                      <IoIosArrowBack className="w-4 h-4" />
+                    </button>
+                    <span className="text-[12px] font-sans">
+                      Page {currentPage} of {paginatedOrders.totalPages}
+                    </span>
+                    <button
+                      onClick={handleNextPage}
+                      disabled={currentPage === paginatedOrders.totalPages}
+                      className={`p-2 rounded-md ${
+                        currentPage === paginatedOrders.totalPages
+                          ? 'text-gray-300 cursor-not-allowed'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <IoIosArrowForward className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
-              ))
+              </>
             )}
           </div>
 

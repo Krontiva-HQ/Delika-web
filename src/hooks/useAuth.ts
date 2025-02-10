@@ -59,7 +59,10 @@ export const useAuth = () => {
     setError(null);
     
     try {
-      const response = await api.post('/auth/login', { email, password });
+      const response = await api.post(
+        `${import.meta.env.VITE_API_URL}/auth/login`, 
+        { email, password }
+      );
       
       if (response.data.authToken) {
         // Handle state updates before navigation

@@ -169,7 +169,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   const selectCategoryOpen = Boolean(selectCategoryAnchorEl);
   const selectItemOpen = Boolean(selectItemAnchorEl);
 
-  // Add this to your state declarations at the top of the component
+  // Add these loading states near your other state declarations
   const [isPayLaterSubmitting, setIsPayLaterSubmitting] = useState(false);
   const [isPayNowSubmitting, setIsPayNowSubmitting] = useState(false);
 
@@ -318,6 +318,13 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   // Modify your handlePlaceOrder function
   const handlePlaceOrder = async (paymentType: 'now' | 'later') => {
     try {
+      // Set the appropriate loading state
+      if (paymentType === 'now') {
+        setIsPayNowSubmitting(true);
+      } else {
+        setIsPayLaterSubmitting(true);
+      }
+
       // Create formData instance first
       const formData = new FormData();
 
@@ -450,10 +457,11 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     } catch (error) {
       addNotification({
         type: 'order_status',
-        message: 'Failed to send payment request SMS'
+        message: 'Unable to send payment request SMS'
       });
       throw error;
     } finally {
+      // Reset both loading states
       setIsPayLaterSubmitting(false);
       setIsPayNowSubmitting(false);
     }

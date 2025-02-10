@@ -1,5 +1,5 @@
-import { FunctionComponent, useState, useEffect, useCallback } from "react";
-import { IoMdAdd } from "react-icons/io";
+import { FunctionComponent, useState, useEffect, useCallback, useMemo } from "react";
+import { IoMdAdd, IoIosArrowBack, IoIosArrowForward } from "react-icons/io";
 import { SlOptionsVertical } from "react-icons/sl";
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -35,6 +35,10 @@ const Transactions: FunctionComponent = () => {
   const [selectedBranchId, setSelectedBranchId] = useState<string>(() => {
     return localStorage.getItem('selectedBranchId') || '';
   });
+
+  // Add pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const ordersPerPage = 10;
 
   // Update the fetchTransactions function to include sorting
   const fetchTransactions = useCallback(async (branchId: string, date: string) => {
@@ -104,26 +108,55 @@ const Transactions: FunctionComponent = () => {
     setSelectedOrderNumber(null);
   };
 
-  // Update the filteredOrders to maintain the sorting
-  const filteredOrders = orders
-    .sort((a, b) => {
-      // Sort by most recent first using orderReceivedTime
-      return new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime();
-    })
-    .filter(order => {
-      switch (activeTab) {
-        case 'pending':
-          return order.paymentStatus === 'Pending';
-        case 'paid':
-          return order.paymentStatus === 'Paid';
-        case 'cancelled':
-          return order.paymentStatus === 'Abandoned';
-        case 'not-paid':
-          return order.paymentStatus === 'Not Paid';
-        default:
-          return true; // 'all' tab shows everything
-      }
-    });
+  // Update the filteredOrders to include pagination
+  const paginatedOrders = useMemo(() => {
+    const filtered = orders
+      .sort((a, b) => {
+        return new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime();
+      })
+      .filter(order => {
+        switch (activeTab) {
+          case 'pending':
+            return order.paymentStatus === 'Pending';
+          case 'paid':
+            return order.paymentStatus === 'Paid';
+          case 'cancelled':
+            return order.paymentStatus === 'Abandoned';
+          case 'not-paid':
+            return order.paymentStatus === 'Not Paid';
+          default:
+            return true;
+        }
+      });
+
+    // Calculate pagination
+    const indexOfLastOrder = currentPage * ordersPerPage;
+    const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
+    
+    return {
+      orders: filtered.slice(indexOfFirstOrder, indexOfLastOrder),
+      totalOrders: filtered.length,
+      totalPages: Math.ceil(filtered.length / ordersPerPage)
+    };
+  }, [orders, activeTab, currentPage]);
+
+  // Add pagination handlers
+  const handleNextPage = () => {
+    if (currentPage < paginatedOrders.totalPages) {
+      setCurrentPage(prev => prev + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(prev => prev - 1);
+    }
+  };
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, selectedDate]);
 
   // Add this handler for edit click
   const handleEditClick = (e: React.MouseEvent, order: Order) => {
@@ -304,50 +337,87 @@ const Transactions: FunctionComponent = () => {
             {/* Table Body */}
             {isLoading ? (
               <div className="p-4 text-center text-gray-500 font-sans">Loading transactions...</div>
-            ) : filteredOrders.length === 0 ? (
+            ) : paginatedOrders.orders.length === 0 ? (
               <div className="p-4 text-center text-gray-500 font-sans">No transactions found</div>
             ) : (
-              filteredOrders.map((order) => (
-                <div 
-                  key={order.id} 
-                  style={{ borderBottom: '1px solid #eaeaea' }}
-                  className="grid grid-cols-6 p-3 hover:bg-[#f9f9f9] cursor-pointer"
-                  onClick={() => handleTransactionClick(order.orderNumber.toString())}
-                >
-                  <div className="text-[12px] leading-[20px] font-sans text-[#444]">{order.orderNumber}</div>
-                  <div className="flex items-center gap-2">
-                    <img 
-                      src={order.customerImage || '/default-profile.jpg'} 
-                      alt={order.customerName} 
-                      className="w-6 h-6 rounded-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = '/default-profile.jpg';
-                      }}
-                    />
-                    <span className="text-[12px] leading-[20px] font-sans text-[#444]">{order.customerName}</span>
+              <>
+                {/* Map through paginatedOrders.orders instead of filteredOrders */}
+                {paginatedOrders.orders.map((order) => (
+                  <div 
+                    key={order.id} 
+                    style={{ borderBottom: '1px solid #eaeaea' }}
+                    className="grid grid-cols-6 p-3 hover:bg-[#f9f9f9] cursor-pointer"
+                    onClick={() => handleTransactionClick(order.orderNumber.toString())}
+                  >
+                    <div className="text-[12px] leading-[20px] font-sans text-[#444]">{order.orderNumber}</div>
+                    <div className="flex items-center gap-2">
+                      <img 
+                        src={order.customerImage || '/default-profile.jpg'} 
+                        alt={order.customerName} 
+                        className="w-6 h-6 rounded-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = '/default-profile.jpg';
+                        }}
+                      />
+                      <span className="text-[12px] leading-[20px] font-sans text-[#444]">{order.customerName}</span>
+                    </div>
+                    <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.dropOff[0]?.toAddress || 'N/A'}</div>
+                    <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.orderDate}</div>
+                    <div className="text-[12px] leading-[20px] font-sans text-[#444]">{order.orderPrice}</div>
+                    <div className="flex items-center justify-between">
+                      <span className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans ${
+                        order.status === 'Paid' ? 'bg-green-100 text-green-800' :
+                        order.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                        order.status === 'Not Paid' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {order.paymentStatus}
+                      </span>
+                      <button 
+                        className="p-1 border-[1px] border-solid border-[#eaeaea] rounded-[4px] bg-white hover:bg-gray-50"
+                        onClick={(e) => handleEditClick(e, order)}
+                      >
+                        <CiEdit className="w-[14px] h-[14px] text-[#666]" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.dropOff[0]?.toAddress || 'N/A'}</div>
-                  <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.orderDate}</div>
-                  <div className="text-[12px] leading-[20px] font-sans text-[#444]">{order.orderPrice}</div>
-                  <div className="flex items-center justify-between">
-                    <span className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans ${
-                      order.status === 'Paid' ? 'bg-green-100 text-green-800' :
-                      order.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                      order.status === 'Not Paid' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {order.paymentStatus}
-                    </span>
-                    <button 
-                      className="p-1 border-[1px] border-solid border-[#eaeaea] rounded-[4px] bg-white hover:bg-gray-50"
-                      onClick={(e) => handleEditClick(e, order)}
+                ))}
+
+                {/* Add Pagination Controls */}
+                <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-[rgba(167,161,158,0.1)]">
+                  <div className="text-[12px] text-gray-500 font-sans">
+                    Showing {((currentPage - 1) * ordersPerPage) + 1} to {Math.min(currentPage * ordersPerPage, paginatedOrders.totalOrders)} of {paginatedOrders.totalOrders} transactions
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handlePrevPage}
+                      disabled={currentPage === 1}
+                      className={`p-2 rounded-md ${
+                        currentPage === 1
+                          ? 'text-gray-300 cursor-not-allowed'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
                     >
-                      <CiEdit className="w-[14px] h-[14px] text-[#666]" />
+                      <IoIosArrowBack className="w-4 h-4" />
+                    </button>
+                    <span className="text-[12px] font-sans">
+                      Page {currentPage} of {paginatedOrders.totalPages}
+                    </span>
+                    <button
+                      onClick={handleNextPage}
+                      disabled={currentPage === paginatedOrders.totalPages}
+                      className={`p-2 rounded-md ${
+                        currentPage === paginatedOrders.totalPages
+                          ? 'text-gray-300 cursor-not-allowed'
+                          : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      <IoIosArrowForward className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
-              ))
+              </>
             )}
           </div>
         </div>
