@@ -315,6 +315,18 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     fetchUserData();
   }, []);
 
+  // Add this function to generate a 6-digit batch ID
+  const generateBatchId = () => {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  };
+
+  // Add this useEffect to generate batch ID when delivery method is selected
+  useEffect(() => {
+    if (deliveryMethod === 'batch-delivery' && !currentBatchId) {
+      setCurrentBatchId(generateBatchId());
+    }
+  }, [deliveryMethod]);
+
   // Modify your handlePlaceOrder function
   const handlePlaceOrder = async (paymentType: 'now' | 'later') => {
     try {
@@ -436,7 +448,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
       const result = await response.json();
       
-      // Only show batch summary for batch delivery
+      // For batch delivery, add to batched orders and show summary
       if (deliveryMethod === 'batch-delivery') {
         setBatchedOrders(prev => [...prev, { ...orderData, id: result.id }]);
         setShowBatchSummary(true);
@@ -2400,21 +2412,15 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   };
 
   const handleCompleteBatch = () => {
-    // Reset all states including batch ID
-    setBatchId(null);
+    // Clear batch-related states for next batch
+    setCurrentBatchId(null);
     setBatchedOrders([]);
     setShowBatchSummary(false);
+    onClose();
     
-    // Call onOrderPlaced to trigger refresh in parent
-    onOrderPlaced();
-    
-    // Close the place order modal
-    onClose?.();
-    
-    // Show completion notification
     addNotification({
-      type: 'order_created',
-      message: `Batch order completed successfully`
+      type: 'batch_completed',
+      message: `Batch #${currentBatchId} has been completed with ${batchedOrders.length} orders`
     });
   };
 

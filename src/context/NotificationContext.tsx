@@ -2,7 +2,7 @@ import { createContext, useContext, useState, ReactNode, useEffect, FC } from 'r
 
 type NotificationType = 'order_created' | 'order_status' | 'inventory_update' | 'transaction_status' | 
                        'employee_update' | 'profile_update' | 'password_change' | 'user_deleted' | 
-                       'user_added' | 'order_edited';
+                       'user_added' | 'order_edited' | 'batch_completed';
 
 export interface Notification {
   id: string;
@@ -19,7 +19,7 @@ interface NotificationContextType {
   addNotification: (notification: {
     type: 'order_created' | 'order_status' | 'inventory_update' | 'transaction_status' | 
           'employee_update' | 'profile_update' | 'password_change' | 'user_deleted' | 
-          'user_added' | 'order_edited';
+          'user_added' | 'order_edited' | 'batch_completed';
     message: string;
   }) => void;
   deleteNotification: (id: string) => void;
@@ -63,7 +63,7 @@ export const NotificationProvider: FC<{ children: ReactNode }> = ({ children }) 
 
   const addNotification = (notification: {
     type: 'order_created' | 'order_status' | 'inventory_update' | 'transaction_status' | 
-           'employee_update' | 'profile_update' | 'password_change' | 'user_deleted' | 'user_added' | 'order_edited';
+           'employee_update' | 'profile_update' | 'password_change' | 'user_deleted' | 'user_added' | 'order_edited' | 'batch_completed';
     message: string;
   }) => {
     const newNotification: Notification = {

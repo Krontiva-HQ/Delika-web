@@ -133,19 +133,22 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
   const open = Boolean(anchorEl);
 
-  // Update the fetchOrders function to handle Store Clerk role
+  // Update the fetchOrders function to handle Store Clerk and Manager roles
   const fetchOrders = useCallback(async (branchId: string, date: string) => {
     setIsLoading(true);
     setOrders([]); // Clear existing data
     
     try {
-      let params = new URLSearchParams({
-        restaurantId: userProfile?.restaurantId || '',
-        branchId: userProfile?.role === 'Admin' ? branchId : userProfile?.branchId || '',
-        date: date
-      });
+      let params = new URLSearchParams();
 
-      if (userProfile?.role === 'Store Clerk' || userProfile?.role === 'Manager') {
+      // Handle different roles
+      if (userProfile?.role === 'Admin') {
+        params = new URLSearchParams({
+          restaurantId: userProfile?.restaurantId || '',
+          branchId: branchId,
+          date: date
+        });
+      } else if (userProfile?.role === 'Store Clerk' || userProfile?.role === 'Manager') {
         params = new URLSearchParams({
           restaurantId: userProfile?.restaurantId || '',
           branchId: userProfile?.branchId || '',
