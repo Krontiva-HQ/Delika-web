@@ -454,7 +454,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         setShowBatchSummary(true);
         addNotification({
           type: 'order_created',
-          message: `Order number **#${Math.floor(Math.random() * 1000000)}** has been added to batch **#${currentBatchId}**`
+          message: `Order number **#${Math.floor(Math.random() * 1000000)}** has been created as a part of batch order`
         });
       } else {
         // Regular notification for other delivery types
