@@ -479,18 +479,23 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     }
   };
 
+  const calculateDeliveryFee = (distance: number): number => {
+    if (distance <= 2) {
+        return 10; // Fixed fee for distances up to 2km
+    } else if (distance <= 4) {
+        return 20; // Fixed fee for distances between 2km and 4km
+    } else {
+        // For distances > 4km: 20 cedis base price + 2.5 cedis per additional km beyond 4km
+        const additionalDistance = distance - 4;
+        return 20 + (additionalDistance * 2.5);
+    }
+};
 
   // Update the delivery price calculation in the useEffect
   useEffect(() => {
     if (distance !== null) {
-      let calculatedPrice;
-      if (distance <= 2) {
-        calculatedPrice = 10; // Fixed price for distances up to 2km
-      } else {
-        const updatedDistance = Math.max(0, distance - 1); // Ensure we don't go below 0
-        calculatedPrice = Math.round(15 + (updatedDistance * 2.5)); // Round to nearest whole number
-      }
-      setDeliveryPrice(`${calculatedPrice}.00`); // Add .00 to the number
+        const calculatedPrice = Math.round(calculateDeliveryFee(distance));
+        setDeliveryPrice(`${calculatedPrice}.00`);
     }
   }, [distance]);
 
