@@ -141,17 +141,18 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     try {
       let params = new URLSearchParams();
 
-      // Handle different roles
-      if (userProfile?.role === 'Admin') {
+      // For Store Clerk and Manager, always use their assigned branchId from userProfile
+      if (userProfile?.role === 'Store Clerk' || userProfile?.role === 'Manager') {
+        params = new URLSearchParams({
+          restaurantId: userProfile?.restaurantId || '',
+          branchId: userProfile?.branchId || '', // Always use their assigned branchId
+          date: date
+        });
+      } else if (userProfile?.role === 'Admin') {
+        // Admin can select different branches
         params = new URLSearchParams({
           restaurantId: userProfile?.restaurantId || '',
           branchId: branchId,
-          date: date
-        });
-      } else if (userProfile?.role === 'Store Clerk' || userProfile?.role === 'Manager') {
-        params = new URLSearchParams({
-          restaurantId: userProfile?.restaurantId || '',
-          branchId: userProfile?.branchId || '',
           date: date
         });
       }
@@ -169,16 +170,18 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     }
   }, [userProfile?.restaurantId, userProfile?.role, userProfile?.branchId]);
 
-  // Immediate fetch on branch selection
-  const handleBranchSelect = useCallback((branchId: string) => {
-    localStorage.setItem('selectedBranchId', branchId);
-    setSelectedBranchId(branchId);
-    
-    if (selectedDate) {
-      // Immediate fetch with new branch
-      fetchOrders(branchId, selectedDate.format('YYYY-MM-DD'));
+  // Update useEffect to handle branch selection based on role
+  useEffect(() => {
+    if (userProfile?.role === 'Admin' && branches.length > 0 && !selectedBranchId) {
+      // Only Admin can select different branches
+      const firstBranchId = branches[0].id;
+      localStorage.setItem('selectedBranchId', firstBranchId);
+      setSelectedBranchId(firstBranchId);
+    } else if ((userProfile?.role === 'Store Clerk' || userProfile?.role === 'Manager') && userProfile?.branchId) {
+      // For Store Clerk and Manager, always use their assigned branchId
+      setSelectedBranchId(userProfile.branchId);
     }
-  }, [selectedDate, fetchOrders]);
+  }, [branches, userProfile?.role, userProfile?.branchId]);
 
   // Fetch when date changes
   useEffect(() => {
@@ -310,19 +313,19 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     setShowEditOrder(true);
   };
 
-  // Add useEffect to set initial branch if none selected
-  useEffect(() => {
-    if (userProfile?.role === 'Admin' && branches.length > 0 && !selectedBranchId) {
-      const firstBranchId = branches[0].id;
-      localStorage.setItem('selectedBranchId', firstBranchId);
-      setSelectedBranchId(firstBranchId);
-    }
-  }, [branches, userProfile?.role]);
-
   useEffect(() => {
     // Update parent component when selectedOrderId changes
     onOrderDetailsView(!!selectedOrderId);
   }, [selectedOrderId, onOrderDetailsView]);
+
+  const handleBranchSelect = useCallback((branchId: string) => {
+    localStorage.setItem('selectedBranchId', branchId);
+    setSelectedBranchId(branchId);
+    
+    if (selectedDate) {
+      fetchOrders(branchId, selectedDate.format('YYYY-MM-DD'));
+    }
+  }, [selectedDate, fetchOrders]);
 
   return (
     <div className="h-full w-full bg-white m-0 p-0">
