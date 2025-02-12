@@ -459,16 +459,19 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         {/* Categories Section */}
         <section className="mb-[15px] overflow-hidden relative">
           <div className="flex items-center">
-            <button 
-              className="bg-white rounded-full shadow-md p-2 z-10 flex-shrink-0"
-              onClick={() => {
-                if (scrollContainerRef.current) {
-                  scrollContainerRef.current.scrollBy({ left: -200, behavior: 'smooth' });
-                }
-              }}
-            >
-              <FaArrowAltCircleLeft className="w-4 h-4" />
-            </button>
+            {/* Only show arrows if there are items */}
+            {filteredItems.length > 0 && (
+              <button 
+                className="bg-white rounded-full shadow-md p-2 z-10 flex-shrink-0"
+                onClick={() => {
+                  if (scrollContainerRef.current) {
+                    scrollContainerRef.current.scrollBy({ left: -200, behavior: 'smooth' });
+                  }
+                }}
+              >
+                <FaArrowAltCircleLeft className="w-4 h-4" />
+              </button>
+            )}
             
             <div
               ref={scrollContainerRef}
@@ -531,16 +534,19 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
               </div>
             </div>
 
-            <button 
-              className="bg-white rounded-full shadow-md p-2 z-10 flex-shrink-0"
-              onClick={() => {
-                if (scrollContainerRef.current) {
-                  scrollContainerRef.current.scrollBy({ left: 200, behavior: 'smooth' });
-                }
-              }}
-            >
-              <FaArrowAltCircleRight className="w-4 h-4" />
-            </button>
+            {/* Only show arrows if there are items */}
+            {filteredItems.length > 0 && (
+              <button 
+                className="bg-white rounded-full shadow-md p-2 z-10 flex-shrink-0"
+                onClick={() => {
+                  if (scrollContainerRef.current) {
+                    scrollContainerRef.current.scrollBy({ left: 200, behavior: 'smooth' });
+                  }
+                }}
+              >
+                <FaArrowAltCircleRight className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </section>
 
@@ -586,7 +592,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
             ))
           ) : (
             <div className="col-span-full text-center py-4 text-gray-500 font-sans">
-              No items found matching "{searchQuery}"
+              No items found matching 
             </div>
           )}
         </div>
