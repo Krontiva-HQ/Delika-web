@@ -95,12 +95,18 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
       );
       setDistance(newDistance);
       
-      // Calculate delivery price based on distance (adjust formula as needed)
-      const newDeliveryPrice = Math.round(newDistance * 2); // Example: $2 per km
-      setDeliveryPrice(newDeliveryPrice);
+      // Calculate delivery price based on distance
+      let calculatedPrice;
+      if (newDistance <= 2) {
+        calculatedPrice = 10; // Fixed price for distances up to 2km
+      } else {
+        const updatedDistance = Math.max(0, newDistance - 1); // Ensure we don't go below 0
+        calculatedPrice = Math.round(15 + (updatedDistance * 2.5)); // Round to nearest whole number
+      }
+      setDeliveryPrice(calculatedPrice);
       
       // Update total price
-      setTotalPrice(orderPrice + newDeliveryPrice);
+      setTotalPrice(orderPrice + calculatedPrice);
     }
   }, [pickupLocation, dropoffLocation, orderPrice]);
 

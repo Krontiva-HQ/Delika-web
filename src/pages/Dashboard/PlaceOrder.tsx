@@ -483,9 +483,14 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   // Update the delivery price calculation in the useEffect
   useEffect(() => {
     if (distance !== null) {
-      const updatedDistance = Math.max(0, distance - 1); // Ensure we don't go below 0
-      const calculatedPrice = Math.round(15 + (updatedDistance * 2.5)); // Round to nearest whole number
-      setDeliveryPrice(`${calculatedPrice}.00`); // Add .00 to the rounded number
+      let calculatedPrice;
+      if (distance <= 2) {
+        calculatedPrice = 10; // Fixed price for distances up to 2km
+      } else {
+        const updatedDistance = Math.max(0, distance - 1); // Ensure we don't go below 0
+        calculatedPrice = Math.round(15 + (updatedDistance * 2.5)); // Round to nearest whole number
+      }
+      setDeliveryPrice(`${calculatedPrice}.00`); // Add .00 to the number
     }
   }, [distance]);
 
