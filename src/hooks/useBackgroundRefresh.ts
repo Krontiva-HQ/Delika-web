@@ -33,7 +33,7 @@ export const useBackgroundRefresh = () => {
       });
       await api.get(`/filter/orders/by/date?${params.toString()}`);
     } catch (error) {
-      // Silent fail for background refresh
+      console.error('Background refresh failed for orders:', error);
     }
   };
 
@@ -44,7 +44,7 @@ export const useBackgroundRefresh = () => {
         branchId: getBranchId()
       });
     } catch (error) {
-      // Silent fail for background refresh
+      console.error('Background refresh failed for menu:', error);
     }
   };
 
@@ -91,7 +91,7 @@ export const useBackgroundRefresh = () => {
         }
       });
     } catch (error) {
-      // Silent fail for background refresh
+      console.error('Background refresh failed for audit:', error);
     }
   };
 
