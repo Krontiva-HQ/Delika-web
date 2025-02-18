@@ -5,7 +5,7 @@ interface RateLimitInfo {
 }
 
 export class RateLimiter {
-  private static readonly MAX_ATTEMPTS = 10;
+  private static readonly MAX_ATTEMPTS = 8;
   private static readonly INITIAL_WAIT = 30; // 30 minutes
   private static readonly MAX_WAIT = 100; // 100 minutes
 
