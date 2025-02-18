@@ -38,12 +38,7 @@ const EditTeamMemberModal: FunctionComponent<EditTeamMemberModalProps> = ({
   const options = useMemo(() => countryList().getData(), []);
   const { updateTeamMember, isLoading, error } = useUpdateTeamMember();
 
-  // For debugging - remove this after confirming data
-  useEffect(() => {
-    console.log('Member data:', member);
-    console.log('Edited member:', editedMember);
-    console.log('Country:', country);
-  }, [member, editedMember, country]);
+  
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
