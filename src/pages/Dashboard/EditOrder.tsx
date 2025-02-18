@@ -85,16 +85,16 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
   }, [order]);
 
   const calculateDeliveryFee = (distance: number): number => {
-    if (distance <= 2) {
-      return 10; // Fixed fee for distances up to 2km
-    } else if (distance <= 4) {
-      return 20; // Fixed fee for distances between 2km and 4km
+    if (distance <= 1) {
+        return 10; // Fixed fee for distances up to 2km
+    } else if (distance <= 2) {
+        return 17; // Fixed fee for distances between 2km and 4km
     } else {
-      // For distances > 4km: 20 cedis base price + 2.5 cedis per additional km beyond 4km
-      const additionalDistance = distance - 4;
-      return 20 + (additionalDistance * 2.5);
+        // For distances > 4km: 20 cedis base price + 2.5 cedis per additional km beyond 4km
+        const additionalDistance = distance - 2;
+        return 17 + (additionalDistance * 2.5);
     }
-  };
+};
 
   useEffect(() => {
     if (pickupLocation && dropoffLocation) {
