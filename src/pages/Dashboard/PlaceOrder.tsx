@@ -481,13 +481,15 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
   const calculateDeliveryFee = (distance: number): number => {
     if (distance <= 1) {
-        return 10; // Fixed fee for distances up to 2km
+        return 15; // Fixed fee for distances up to 1km
     } else if (distance <= 2) {
-        return 17; // Fixed fee for distances between 2km and 4km
+        return 20; // Fixed fee for distances between 1km and 2km
+    } else if (distance <= 10) {
+        // For distances > 2km and <= 10km: 17 cedis base price + 2.5 cedis per km beyond 2km
+        return 17 + ((distance - 2) * 2.5);
     } else {
-        // For distances > 4km: 20 cedis base price + 2.5 cedis per additional km beyond 4km
-        const additionalDistance = distance - 2;
-        return 17 + (additionalDistance * 2.5);
+        // For distances above 10km: 3.5 * distance + 20
+        return (3.5 * distance) + 20;
     }
 };
 
