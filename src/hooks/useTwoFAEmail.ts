@@ -1,29 +1,48 @@
-import axios from 'axios';
-
-interface TwoFAEmailResponse {
-  success: boolean;
-  message?: string;
-}
+import { useState } from 'react';
+import { verifyOTP, resetPassword } from '../services/api';
 
 export const useTwoFAEmail = () => {
-  const sendTwoFAEmail = async (email: string): Promise<TwoFAEmailResponse> => {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const sendTwoFAEmail = async (email: string) => {
+    setIsLoading(true);
+    setError(null);
+    
     try {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/reset/user/password/email`,
-        { email }
-      );
-      
-      return {
-        success: true,
-        message: response.data.message
-      };
-    } catch (error: any) {
-      return {
-        success: false,
-        message: error.response?.data?.message || 'Failed to send 2FA email'
-      };
+      await resetPassword(email);
+      return true;
+    } catch (err: any) {
+      setError(err.message || 'Failed to send verification email');
+      return false;
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  return { sendTwoFAEmail };
+  const verifyTwoFACode = async (otp: string, email: string) => {
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      const response = await verifyOTP({
+        OTP: parseInt(otp),
+        type: true,
+        contact: email
+      });
+      return response.data;
+    } catch (err: any) {
+      setError(err.message || 'Failed to verify code');
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return {
+    sendTwoFAEmail,
+    verifyTwoFACode,
+    isLoading,
+    error
+  };
 }; 

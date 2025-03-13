@@ -112,8 +112,18 @@ export const useAuth = () => {
     setIsLoading(true);
     setError(null);
     
+    if (!email) {
+      setError('Email not found. Please try logging in again.');
+      setIsLoading(false);
+      return false;
+    }
+    
     try {
-      const response = await verifyOTP(otp, email);
+      const response = await verifyOTP({
+        OTP: parseInt(otp),
+        type: true,
+        contact: email
+      });
       
       if (response.data.otpValidate === 'otpFound') {
         await localStorage.setItem('2faVerified', 'true');
@@ -129,8 +139,8 @@ export const useAuth = () => {
       }
       
       return false;
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Verification failed');
+    } catch (err: any) {
+      setError(err.message || 'Verification failed');
       return false;
     } finally {
       setIsLoading(false);

@@ -63,11 +63,12 @@ api.interceptors.response.use(
   }
 );
 
-// API endpoints configuration
+// Add the auth endpoint
 export const AUTH_ENDPOINTS = { 
   ME: '/auth/me',
   LOGIN: '/auth/login',
-  VERIFY_OTP: '/verify/otp/code'
+  VERIFY_OTP: '/verify/otp/code',
+  RESET_PASSWORD: '/reset/user/password/email'
 } as const;
 
 // Auth service functions
@@ -75,12 +76,16 @@ export const login = async (credentials: { email: string; password: string }) =>
   return api.post(AUTH_ENDPOINTS.LOGIN, credentials);
 };
 
-export const verifyOTP = async (otp: string, email: string) => {
-  return api.post(AUTH_ENDPOINTS.VERIFY_OTP, {
-    OTP: parseInt(otp),
-    type: true,
-    contact: email
-  });
+export const verifyOTP = async (data: { 
+  OTP: number, 
+  type: boolean, 
+  contact: string 
+}) => {
+  return api.post(AUTH_ENDPOINTS.VERIFY_OTP, data);
+};
+
+export const resetPassword = async (email: string) => {
+  return api.post(AUTH_ENDPOINTS.RESET_PASSWORD, { email });
 };
 
 // Add type for the response (adjust according to your actual user data structure)
