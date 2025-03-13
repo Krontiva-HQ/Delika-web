@@ -2,27 +2,86 @@
 
 import axios from 'axios';
 
+// Create API instance with environment-specific configuration
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: import.meta.env.VITE_API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Add interceptor to include auth token in requests
+// Add request interceptor for logging and headers
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('authToken');
   if (token) {
     config.headers['X-Xano-Authorization'] = token;
     config.headers['X-Xano-Authorization-Only'] = 'true';
   }
+
+  // Log request in development
+  if (import.meta.env.VITE_ENV === 'development') {
+    console.log('API Request:', {
+      method: config.method,
+      url: config.url,
+      headers: config.headers
+    });
+  }
+
   return config;
 });
 
-// Add the auth endpoint
+// Add response interceptor for error handling and logging
+api.interceptors.response.use(
+  (response) => {
+    // Log successful response in development
+    if (import.meta.env.VITE_ENV === 'development') {
+      console.log('API Response:', {
+        status: response.status,
+        url: response.config.url
+      });
+    }
+    return response;
+  },
+  (error) => {
+    // Create a sanitized error object
+    const sanitizedError = {
+      status: error.response?.status || 500,
+      message: error.response?.data?.message || 'An error occurred',
+      code: error.code || 'UNKNOWN_ERROR'
+    };
+    
+    // Log error in development
+    if (import.meta.env.VITE_ENV === 'development') {
+      console.error('API Error:', sanitizedError.message);
+    }
+    
+    // Remove sensitive information
+    error.response = undefined;
+    error.config = undefined;
+    
+    return Promise.reject(sanitizedError);
+  }
+);
+
+// API endpoints configuration
 export const AUTH_ENDPOINTS = { 
-  ME: '/auth/me'
+  ME: '/auth/me',
+  LOGIN: '/auth/login',
+  VERIFY_OTP: '/verify/otp/code'
 } as const;
+
+// Auth service functions
+export const login = async (credentials: { email: string; password: string }) => {
+  return api.post(AUTH_ENDPOINTS.LOGIN, credentials);
+};
+
+export const verifyOTP = async (otp: string, email: string) => {
+  return api.post(AUTH_ENDPOINTS.VERIFY_OTP, {
+    OTP: parseInt(otp),
+    type: true,
+    contact: email
+  });
+};
 
 // Add type for the response (adjust according to your actual user data structure)
 export interface UserResponse {
@@ -66,7 +125,6 @@ export interface UserResponse {
   password?: string;
 }
 
-// Add auth service function
 export const getAuthenticatedUser = () => {
   return api.get<UserResponse>(AUTH_ENDPOINTS.ME);
 };

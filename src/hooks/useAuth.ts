@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { api, getAuthenticatedUser, UserResponse } from '../services/api';
+import { api, getAuthenticatedUser, UserResponse, login as apiLogin, verifyOTP } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { useEmail } from '../context/EmailContext';
 import axios from 'axios';
@@ -59,10 +59,7 @@ export const useAuth = () => {
     setError(null);
     
     try {
-      const response = await api.post(
-        `${import.meta.env.VITE_API_URL}/auth/login`, 
-        { email, password }
-      );
+      const response = await apiLogin({ email, password });
       
       if (response.data.authToken) {
         // Handle state updates before navigation
@@ -93,12 +90,18 @@ export const useAuth = () => {
       }
       
       throw new Error(response.data.error || 'Login failed');
-    } catch (err) {
+    } catch (err: any) {
       // Clear any auth data if login fails
       localStorage.removeItem('authToken');
       localStorage.removeItem('userProfile');
-      setError(err instanceof Error ? err.message : 'Login failed');
-      return { success: false, error: err instanceof Error ? err.message : 'Login failed' };
+      
+      // Use sanitized error message
+      const errorMessage = err.message === 'Invalid Credentials.' 
+        ? 'Invalid email or password. Please try again.'
+        : 'Login failed. Please try again.';
+      
+      setError(errorMessage);
+      return { success: false, error: errorMessage };
     } finally {
       setIsLoading(false);
     }
@@ -110,27 +113,13 @@ export const useAuth = () => {
     setError(null);
     
     try {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/verify/otp/code`,
-        { 
-          OTP: parseInt(otp),
-          type: true,
-          contact: email
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-          }
-        }
-      );
+      const response = await verifyOTP(otp, email);
       
       if (response.data.otpValidate === 'otpFound') {
         await localStorage.setItem('2faVerified', 'true');
         
         const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
         
-        // Navigate without setTimeout
         const redirectPath = userProfile.role === 'Store Clerk' 
           ? '/dashboard/orders' 
           : '/dashboard';
