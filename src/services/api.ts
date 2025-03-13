@@ -75,6 +75,9 @@ export const API_ENDPOINTS = {
   },
   DASHBOARD: {
     GET_DATA: '/get/dashboard/data'
+  },
+  ORDERS: {
+    GET_DETAILS: (orderNumber: string) => `/get/order/id/${orderNumber}`,
   }
 } as const;
 
@@ -159,4 +162,65 @@ export const getDashboardData = async (data: {
   branchId: string 
 }) => {
   return api.post(API_ENDPOINTS.DASHBOARD.GET_DATA, data);
-}; 
+};
+
+// Add order service function
+export const getOrderDetails = (orderNumber: string) => {
+  return api.get<OrderDetails>(API_ENDPOINTS.ORDERS.GET_DETAILS(orderNumber));
+};
+
+// Add the OrderDetails interface
+export interface OrderDetails {
+  id: string;
+  payNow: boolean;
+  pickup: Array<{
+    fromAddress: string;
+    fromLatitude: number;
+    fromLongitude: number;
+    pickupName: string;
+  }>;
+  dropOff: Array<{
+    toAddress: string;
+    toLatitude: number;
+    toLongitude: number;
+  }>;
+  branchId: string;
+  payLater: boolean;
+  products: Array<{
+    name: string;
+    image: {
+      url: string;
+      meta: any;
+      mime: string;
+      name: string;
+      path: string;
+      size: number;
+      type: string;
+      access: string;
+    };
+    price: number;
+    quantity: number;
+  }>;
+  orderDate: string;
+  created_at: number;
+  orderPrice: number;
+  pickupName: string;
+  totalPrice: number;
+  courierName: string;
+  dropoffName: string;
+  orderNumber: number;
+  orderStatus: string;
+  trackingUrl: string;
+  customerName: string;
+  restaurantId: string;
+  deliveryPrice: number;
+  paymentStatus: string;
+  onlyDeliveryFee: boolean;
+  deliveryDistance: number;
+  courierPhoneNumber: string;
+  foodAndDeliveryFee: boolean;
+  customerPhoneNumber: string;
+  branch: {
+    branchName: string;
+  };
+} 
