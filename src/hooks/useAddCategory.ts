@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createCategory } from '../services/api';
 
 interface AddCategoryParams {
   foodType: string;
@@ -48,16 +49,13 @@ export const useAddCategory = () => {
         formData.append('foodsPhoto', foodsPhoto);
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/create/new/category`, {
-        method: 'POST',
-        body: formData,
-      });
+      const response = await createCategory(formData);
 
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error('Failed to add category');
       }
 
-      const data = await response.json();
+      const data = response.data;
       onSuccess?.();
       return data;
     } catch (error) {

@@ -78,6 +78,10 @@ export const API_ENDPOINTS = {
   },
   ORDERS: {
     GET_DETAILS: (orderNumber: string) => `/get/order/id/${orderNumber}`,
+  },
+  CATEGORY: {
+    CREATE: '/create/new/category',
+    ADD_ITEM: '/add/item/to/category'
   }
 } as const;
 
@@ -223,4 +227,21 @@ export interface OrderDetails {
   branch: {
     branchName: string;
   };
-} 
+}
+
+// Add the service functions
+export const addItemToCategory = (formData: FormData) => {
+  return api.patch<{data: any; status: number}>(API_ENDPOINTS.CATEGORY.ADD_ITEM, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+};
+
+export const createCategory = (formData: FormData) => {
+  return api.post(API_ENDPOINTS.CATEGORY.CREATE, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
+}; 

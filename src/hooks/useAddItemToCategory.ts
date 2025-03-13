@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { addItemToCategory } from '../services/api';
 
 interface AddItemParams {
   categoryId: string;
@@ -10,18 +11,24 @@ interface AddItemParams {
   onSuccess?: () => void;
 }
 
+interface AddItemResponse {
+  data: any;
+  status: number;
+}
+
 export const useAddItemToCategory = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const addItemToCategory = async ({
+  const addItem = async ({
     categoryId,
     name,
     price,
     description,
     quantity,
-    foodPhoto
-  }: AddItemParams) => {
+    foodPhoto,
+    onSuccess
+  }: AddItemParams): Promise<AddItemResponse> => {
     setIsLoading(true);
     setError(null);
 
@@ -29,41 +36,20 @@ export const useAddItemToCategory = () => {
       const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
       
       const formData = new FormData();
-      
-      // Add categoryId
       formData.append('categoryId', categoryId);
+      formData.append('foods', JSON.stringify({ name, price, description, quantity }));
+      formData.append('restaurantName', userProfile.restaurantId || '');
+      formData.append('branchName', userProfile.branchId || '');
       
-      // Add foods object as JSON string
-      const foods = {
-        name,
-        price,
-        description,
-        quantity
-      };
-      formData.append('foods', JSON.stringify(foods));
-      
-      // Add foodPhoto if exists
       if (foodPhoto) {
         formData.append('foodPhoto', foodPhoto);
       } else {
         throw new Error('Missing file resource.');
       }
-      
-      // Add restaurant and branch IDs from userProfile
-      formData.append('restaurantName', userProfile.restaurantId || '');
-      formData.append('branchName', userProfile.branchId || '');
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/add/item/to/category`, {
-        method: 'PATCH',
-        body: formData
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(errorData?.message || 'Failed to add item to category');
-      }
-
-      return await response.json();
+      const response = await addItemToCategory(formData);
+      onSuccess?.();
+      return response;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred';
       setError(message);
@@ -73,5 +59,5 @@ export const useAddItemToCategory = () => {
     }
   };
 
-  return { addItemToCategory, isLoading, error };
+  return { addItem, isLoading, error };
 }; 
