@@ -71,17 +71,41 @@ export const API_ENDPOINTS = {
     ME: '/auth/me',
     LOGIN: '/auth/login',
     VERIFY_OTP: '/verify/otp/code',
-    RESET_PASSWORD: '/reset/user/password/email'
+    RESET_PASSWORD: '/reset/user/password/email',
+    CHANGE_PASSWORD: '/change/password'
   },
   DASHBOARD: {
     GET_DATA: '/get/dashboard/data'
   },
   ORDERS: {
     GET_DETAILS: (orderNumber: string) => `/get/order/id/${orderNumber}`,
+    FILTER_BY_DATE: '/filter/orders/by/date',
+    GET_ALL_PER_BRANCH: '/get/all/orders/per/branch',
+    EDIT: '/edit/order'
   },
   CATEGORY: {
     CREATE: '/create/new/category',
     ADD_ITEM: '/add/item/to/category'
+  },
+  TEAM: {
+    ADD_MEMBER: '/add/member/to/restaurant',
+    GET_MEMBERS: '/get/team/members',
+    GET_MEMBERS_ADMIN: '/get/team/members/admin',
+    UPDATE_MEMBER: (userId: string) => `/delikaquickshipper_user_table/${userId}`
+  },
+  MENU: {
+    GET_ALL: '/get/all/menu',
+    UPDATE_INVENTORY: '/update/inventory/price/quantity'
+  },
+  AUDIT: {
+    GET_ALL: '/delikaquickshipper_audit_table'
+  },
+  BRANCHES: {
+    GET_BY_RESTAURANT: (restaurantId: string) => `/delikaquickshipper_branches_table/${restaurantId}`
+  },
+  USER: {
+    DELETE: (userId: string) => `/delikaquickshipper_user_table/${userId}`,
+    UPDATE: (userId: string) => `/delikaquickshipper_user_table/${userId}`
   }
 } as const;
 
@@ -100,6 +124,10 @@ export const verifyOTP = async (data: {
 
 export const resetPassword = async (email: string) => {
   return api.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, { email });
+};
+
+export const changePassword = async (email: string, password: string) => {
+  return api.post(API_ENDPOINTS.AUTH.CHANGE_PASSWORD, { email, password });
 };
 
 // Add type for the response (adjust according to your actual user data structure)
@@ -149,15 +177,16 @@ export const getAuthenticatedUser = () => {
 };
 
 export const deleteUser = async (userId: string) => {
-  try {
-    const response = await axios.delete(
-      `${import.meta.env.VITE_API_URL}/delikaquickshipper_user_table/${userId}`
-    );
-    return response.data;
-  } catch (error) {
-    console.error('Error deleting user:', error);
-    throw error;
-  }
+  return api.delete(API_ENDPOINTS.USER.DELETE(userId), {
+    data: { delikaquickshipper_user_table_id: userId }
+  });
+};
+
+export const updateUser = async (data: FormData | Record<string, any>) => {
+  const userId = data instanceof FormData ? data.get('userId') : data.userId;
+  return api.patch(API_ENDPOINTS.USER.UPDATE(userId as string), data, {
+    headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined
+  });
 };
 
 // Add dashboard service function
@@ -244,4 +273,99 @@ export const createCategory = (formData: FormData) => {
       'Content-Type': 'multipart/form-data'
     }
   });
+};
+
+// Team service functions
+export interface AddMemberParams {
+  restaurantId: string | null;
+  branchId: string | null;
+  email: string;
+  role: string;
+  fullName: string;
+  phoneNumber: string;
+  Status: boolean;
+}
+
+export const addMember = (params: AddMemberParams) => {
+  return api.post(API_ENDPOINTS.TEAM.ADD_MEMBER, params);
+};
+
+export const getTeamMembers = (data: { restaurantId: string; branchId: string }) => {
+  return api.post(API_ENDPOINTS.TEAM.GET_MEMBERS, data);
+};
+
+export const getTeamMembersAdmin = (data: { restaurantId: string }) => {
+  return api.post(API_ENDPOINTS.TEAM.GET_MEMBERS_ADMIN, data);
+};
+
+export const updateTeamMember = async (data: FormData) => {
+  const userId = data.get('userId');
+  return api.patch(API_ENDPOINTS.TEAM.UPDATE_MEMBER(userId as string), data);
+};
+
+// Background refresh operations
+export const filterOrdersByDate = (params: { restaurantId: string; branchId: string; date: string }) => {
+  return api.get(API_ENDPOINTS.ORDERS.FILTER_BY_DATE, { params });
+};
+
+export const getAllOrdersPerBranch = (params: { restaurantId: string; branchId: string }) => {
+  return api.get(API_ENDPOINTS.ORDERS.GET_ALL_PER_BRANCH, { params });
+};
+
+export const getAuditLogs = (params: { restaurantId: string; branchId: string }) => {
+  return api.get(API_ENDPOINTS.AUDIT.GET_ALL, { params });
+};
+
+// Branch interfaces and functions
+export interface Branch {
+  id: string;
+  created_at: number;
+  branchName: string;
+  restaurantID: string;
+  branchLocation: string;
+  branchPhoneNumber: string;
+  branchCity: string;
+  branchLongitude: string;
+  branchLatitude: string;
+}
+
+export const getBranchesByRestaurant = (restaurantId: string) => {
+  return api.get<Branch[]>(API_ENDPOINTS.BRANCHES.GET_BY_RESTAURANT(restaurantId));
+};
+
+export interface EditOrderParams {
+  dropOff: {
+    toAddress: string;
+    toLatitude: string;
+    toLongitude: string;
+  }[];
+  orderNumber: number;
+  deliveryDistance: string;
+  trackingUrl: string;
+  orderStatus: string;
+  deliveryPrice: string;
+  totalPrice: string;
+  paymentStatus: string;
+  dropOffCity: string;
+}
+
+export const editOrder = async (params: EditOrderParams) => {
+  return api.patch(API_ENDPOINTS.ORDERS.EDIT, params);
+};
+
+export interface UpdateInventoryParams {
+  menuId: string | null;
+  newPrice: string;
+  name: string;
+  description: string;
+  newQuantity: number;
+}
+
+export const updateInventory = async (params: UpdateInventoryParams) => {
+  return api.patch(API_ENDPOINTS.MENU.UPDATE_INVENTORY, params);
+};
+
+// Menu service functions
+export const getAllMenu = (data: { restaurantId: string; branchId: string }) => {
+  return api.post(API_ENDPOINTS.MENU.GET_ALL, data);
 }; 

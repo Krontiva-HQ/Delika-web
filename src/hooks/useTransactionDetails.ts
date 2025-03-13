@@ -1,29 +1,7 @@
 import { useState, useEffect } from 'react';
-import { api } from '../services/api';
+import { getOrderDetails, type OrderDetails } from '../services/api';
 
-export interface TransactionDetails {
-  id: string;
-  orderNumber: string;
-  orderDate: string;
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  deliveryType: string;
-  paymentStatus: string;
-  products: {
-    id: string;
-    name: string;
-    image: { url: string };
-    price: string;
-    quantity: string;
-  }[];
-  orderPrice: string;
-  deliveryPrice: string;
-  totalPrice: string;
-  pickup: {
-    fromAddress: string;
-  }[];
-}
+export interface TransactionDetails extends OrderDetails {}
 
 const useTransactionDetails = (orderNumber: string | null) => {
   const [transactionDetails, setTransactionDetails] = useState<TransactionDetails | null>(null);
@@ -38,7 +16,7 @@ const useTransactionDetails = (orderNumber: string | null) => {
       setError(null);
 
       try {
-        const response = await api.get(`${import.meta.env.VITE_API_URL}/get/order/id/${orderNumber}`);
+        const response = await getOrderDetails(orderNumber);
         setTransactionDetails(response.data);
       } catch (err) {
         setError('Failed to fetch transaction details');

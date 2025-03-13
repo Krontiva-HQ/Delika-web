@@ -5,7 +5,6 @@ import { MdOutlineRemoveRedEye } from "react-icons/md";
 import useMonthlyOrderData from '../../hooks/useMonthlyOrderData';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import { api } from '../../services/api';
-import { useAuditData } from '../../hooks/useAuditData';
 import dayjs from 'dayjs';
 import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
@@ -163,7 +162,6 @@ const Reports: FunctionComponent = () => {
   const { userProfile, restaurantData } = useUserProfile();
   const { branches, isLoading: branchesLoading } = useBranches(userProfile?.restaurantId ?? null);
   const { categories } = useMenuCategories();
-  const { data } = useAuditData(userProfile?.restaurantId ?? null);
 
   // Check if all special permissions are true
   const hasAllSpecialPermissions = restaurantData.Reports && 

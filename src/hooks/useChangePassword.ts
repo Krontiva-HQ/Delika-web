@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { changePassword as changePasswordApi } from '../services/api';
 
 interface ChangePasswordResponse {
   success: boolean;
@@ -15,24 +16,7 @@ const useChangePassword = () => {
     setError(null);
 
     try {
-      const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/change/password`, {
-        method: "POST",
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          password
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to reset password');
-      }
-
+      await changePasswordApi(email, password);
       return { success: true };
     } catch (error) {
       return {

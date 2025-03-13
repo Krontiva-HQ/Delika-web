@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { updateInventory as updateInventoryApi } from '../services/api';
 
 interface UpdateInventoryParams {
   menuId: string | null;
@@ -19,21 +20,9 @@ export const useUpdateInventory = () => {
     setError(null);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/update/inventory/price/quantity`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestParams)
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update inventory');
-      }
-
-      const data = await response.json();
+      const response = await updateInventoryApi(requestParams);
       onSuccess?.();
-      return data;
+      return response.data;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred';
       setError(message);

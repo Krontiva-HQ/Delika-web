@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { deleteUser as deleteUserApi } from '../services/api';
 
 interface UseDeleteUserReturn {
   deleteUser: (userId: string) => Promise<boolean>;
@@ -15,24 +16,7 @@ export const useDeleteUser = (): UseDeleteUserReturn => {
     setError(null);
 
     try {
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/delikaquickshipper_user_table/${userId}`,
-        {
-          method: 'DELETE',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            delikaquickshipper_user_table_id: userId
-          })
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error('Failed to delete user');
-      }
-
+      await deleteUserApi(userId);
       return true;
     } catch (err) {
       setError(err instanceof Error ? err : new Error('Failed to delete user'));

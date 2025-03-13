@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { updateTeamMember as updateTeamMemberApi } from '../services/api';
 
 interface UpdateTeamMemberParams {
   userId: string;
@@ -25,17 +26,8 @@ export const useUpdateTeamMember = () => {
     setError(null);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/delikaquickshipper_user_table/${data.get('userId')}`, {
-        method: 'PATCH',
-        body: data,
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update team member');
-      }
-
-      const result = await response.json();
-      return result;
+      const response = await updateTeamMemberApi(data);
+      return response.data;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       throw err;

@@ -33,7 +33,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   const [shortDetails, setShortDetails] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [newCategoryFile, setNewCategoryFile] = useState<File | null>(null);
-  const { addItemToCategory, isLoading: isAddingItem } = useAddItemToCategory();
+  const { addItem, isLoading: isAddingItem } = useAddItemToCategory();
   const { addCategory, isLoading: isAddingCategory } = useAddCategory();
 
   const handleTextfieldClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -146,7 +146,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
           return;
         }
 
-        await addItemToCategory({
+        await addItem({
           categoryId: selectedCategoryData.id,
           name: itemName,
           price,

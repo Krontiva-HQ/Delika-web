@@ -1,20 +1,5 @@
 import { useState } from 'react';
-
-interface EditOrderParams {
-  dropOff: {
-    toAddress: string;
-    toLatitude: string;
-    toLongitude: string;
-  }[];
-  orderNumber: number;
-  deliveryDistance: string;
-  trackingUrl: string;
-  orderStatus: string;
-  deliveryPrice: string;
-  totalPrice: string;
-  paymentStatus: string;
-  dropOffCity: string;
-}
+import { editOrder as editOrderApi, type EditOrderParams } from '../services/api';
 
 export const useEditOrder = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -25,20 +10,8 @@ export const useEditOrder = () => {
     setError(null);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/edit/order`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(params),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to edit order');
-      }
-
-      const data = await response.json();
-      return data;
+      const response = await editOrderApi(params);
+      return response.data;
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);

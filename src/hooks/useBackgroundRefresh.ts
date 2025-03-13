@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useUserProfile } from './useUserProfile';
-import { api } from '../services/api';
+import { filterOrdersByDate, getAllMenu, getTeamMembers, getAllOrdersPerBranch, getDashboardData, getAuditLogs } from '../services/api';
 
 // Define the refresh intervals (in milliseconds)
 const REFRESH_INTERVALS = {
@@ -27,11 +27,11 @@ export const useBackgroundRefresh = () => {
 
   const refreshOrders = async () => {
     try {
-      const params = new URLSearchParams({
+      await filterOrdersByDate({
         restaurantId: userProfile?.restaurantId || '',
-        branchId: getBranchId()
+        branchId: getBranchId(),
+        date: new Date().toISOString().split('T')[0] // Current date in YYYY-MM-DD format
       });
-      await api.get(`/filter/orders/by/date?${params.toString()}`);
     } catch (error) {
       console.error('Background refresh failed for orders:', error);
     }
@@ -39,8 +39,8 @@ export const useBackgroundRefresh = () => {
 
   const refreshMenu = async () => {
     try {
-      await api.post('/get/all/menu', {
-        restaurantId: userProfile?.restaurantId,
+      await getAllMenu({
+        restaurantId: userProfile?.restaurantId || '',
         branchId: getBranchId()
       });
     } catch (error) {
@@ -50,8 +50,8 @@ export const useBackgroundRefresh = () => {
 
   const refreshTeam = async () => {
     try {
-      await api.post('/get/team/members', {
-        restaurantId: userProfile?.restaurantId,
+      await getTeamMembers({
+        restaurantId: userProfile?.restaurantId || '',
         branchId: getBranchId()
       });
     } catch (error) {
@@ -61,11 +61,10 @@ export const useBackgroundRefresh = () => {
 
   const refreshTransactions = async () => {
     try {
-      const params = new URLSearchParams({
+      await getAllOrdersPerBranch({
         restaurantId: userProfile?.restaurantId || '',
         branchId: getBranchId()
       });
-      await api.get(`/get/all/orders/per/branch?${params.toString()}`);
     } catch (error) {
       // Silent fail for background refresh
     }
@@ -73,8 +72,8 @@ export const useBackgroundRefresh = () => {
 
   const refreshDashboard = async () => {
     try {
-      await api.post('/get/dashboard/data', {
-        restaurantId: userProfile?.restaurantId,
+      await getDashboardData({
+        restaurantId: userProfile?.restaurantId || '',
         branchId: getBranchId()
       });
     } catch (error) {
@@ -84,11 +83,9 @@ export const useBackgroundRefresh = () => {
 
   const refreshAudit = async () => {
     try {
-      await api.get('/delikaquickshipper_audit_table', {
-        params: {
-          restaurantId: userProfile?.restaurantId,
-          branchId: getBranchId()
-        }
+      await getAuditLogs({
+        restaurantId: userProfile?.restaurantId || '',
+        branchId: getBranchId()
       });
     } catch (error) {
       console.error('Background refresh failed for audit:', error);

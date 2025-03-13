@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { getTeamMembers, getTeamMembersAdmin } from '../services/api';
 import { useUserProfile } from './useUserProfile';
 
 interface TeamMemberResponse {
@@ -65,17 +65,9 @@ export const useTeamMembers = ({ restaurantId, branchId }: UseTeamMembersProps) 
       let response;
       
       if (userProfile?.role === 'Admin') {
-        // Use admin endpoint
-        response = await axios.post(
-          `${import.meta.env.VITE_API_URL}/get/team/members/admin`,
-          { restaurantId }
-        );
+        response = await getTeamMembersAdmin({ restaurantId });
       } else {
-        // Use regular endpoint
-        response = await axios.post(
-          `${import.meta.env.VITE_API_URL}/get/team/members`,
-          { restaurantId, branchId }
-        );
+        response = await getTeamMembers({ restaurantId, branchId });
       }
       
       setTeamMembers(response.data);

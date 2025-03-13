@@ -1,17 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api } from '../services/api';
-
-interface Branch {
-  id: string;
-  created_at: number;
-  branchName: string;
-  restaurantID: string;
-  branchLocation: string;
-  branchPhoneNumber: string;
-  branchCity: string;
-  branchLongitude: string;
-  branchLatitude: string;
-}
+import { getBranchesByRestaurant, Branch } from '../services/api';
 
 export const useBranches = (restaurantId: string | null) => {
   const [branches, setBranches] = useState<Branch[]>(() => {
@@ -35,20 +23,11 @@ export const useBranches = (restaurantId: string | null) => {
     if (!force && branches.length > 0 && (now - lastFetched) < oneHour) {
       return;
     }
-    
-
 
     setIsLoading(true);
     
     try {
-      const response = await api.get(
-        `/delikaquickshipper_branches_table/${restaurantId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`
-          }
-        }
-      );
+      const response = await getBranchesByRestaurant(restaurantId);
       
       // Update state and cache
       setBranches(response.data);
