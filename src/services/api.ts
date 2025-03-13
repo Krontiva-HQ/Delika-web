@@ -10,6 +10,9 @@ export const api = axios.create({
   },
 });
 
+// Add a debug flag (you can control this via env variable)
+const DEBUG_API = false;
+
 // Add request interceptor for logging and headers
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('authToken');
@@ -18,12 +21,11 @@ api.interceptors.request.use((config) => {
     config.headers['X-Xano-Authorization-Only'] = 'true';
   }
 
-  // Log request in development
-  if (import.meta.env.VITE_ENV === 'development') {
+  // Only log if debug is enabled
+  if (DEBUG_API && import.meta.env.DEV) {
     console.log('API Request:', {
       method: config.method,
       url: config.url,
-      headers: config.headers
     });
   }
 
@@ -33,8 +35,8 @@ api.interceptors.request.use((config) => {
 // Add response interceptor for error handling and logging
 api.interceptors.response.use(
   (response) => {
-    // Log successful response in development
-    if (import.meta.env.VITE_ENV === 'development') {
+    // Only log if debug is enabled
+    if (DEBUG_API && import.meta.env.DEV) {
       console.log('API Response:', {
         status: response.status,
         url: response.config.url
@@ -50,9 +52,9 @@ api.interceptors.response.use(
       code: error.code || 'UNKNOWN_ERROR'
     };
     
-    // Log error in development
-    if (import.meta.env.VITE_ENV === 'development') {
-      console.error('API Error:', sanitizedError.message);
+    // Only log errors (these are important)
+    if (import.meta.env.DEV) {
+      console.error('Error:', sanitizedError.message);
     }
     
     // Remove sensitive information
@@ -63,17 +65,22 @@ api.interceptors.response.use(
   }
 );
 
-// Add the auth endpoint
-export const AUTH_ENDPOINTS = { 
-  ME: '/auth/me',
-  LOGIN: '/auth/login',
-  VERIFY_OTP: '/verify/otp/code',
-  RESET_PASSWORD: '/reset/user/password/email'
+// Add all API endpoints
+export const API_ENDPOINTS = {
+  AUTH: {
+    ME: '/auth/me',
+    LOGIN: '/auth/login',
+    VERIFY_OTP: '/verify/otp/code',
+    RESET_PASSWORD: '/reset/user/password/email'
+  },
+  DASHBOARD: {
+    GET_DATA: '/get/dashboard/data'
+  }
 } as const;
 
 // Auth service functions
 export const login = async (credentials: { email: string; password: string }) => {
-  return api.post(AUTH_ENDPOINTS.LOGIN, credentials);
+  return api.post(API_ENDPOINTS.AUTH.LOGIN, credentials);
 };
 
 export const verifyOTP = async (data: { 
@@ -81,11 +88,11 @@ export const verifyOTP = async (data: {
   type: boolean, 
   contact: string 
 }) => {
-  return api.post(AUTH_ENDPOINTS.VERIFY_OTP, data);
+  return api.post(API_ENDPOINTS.AUTH.VERIFY_OTP, data);
 };
 
 export const resetPassword = async (email: string) => {
-  return api.post(AUTH_ENDPOINTS.RESET_PASSWORD, { email });
+  return api.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, { email });
 };
 
 // Add type for the response (adjust according to your actual user data structure)
@@ -131,7 +138,7 @@ export interface UserResponse {
 }
 
 export const getAuthenticatedUser = () => {
-  return api.get<UserResponse>(AUTH_ENDPOINTS.ME);
+  return api.get<UserResponse>(API_ENDPOINTS.AUTH.ME);
 };
 
 export const deleteUser = async (userId: string) => {
@@ -144,4 +151,12 @@ export const deleteUser = async (userId: string) => {
     console.error('Error deleting user:', error);
     throw error;
   }
+};
+
+// Add dashboard service function
+export const getDashboardData = async (data: { 
+  restaurantId: string; 
+  branchId: string 
+}) => {
+  return api.post(API_ENDPOINTS.DASHBOARD.GET_DATA, data);
 }; 

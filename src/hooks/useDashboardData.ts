@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import { getDashboardData } from '../services/api';
 
 interface DashboardDataResponse {
   totalOrders: number;
@@ -22,10 +22,7 @@ export const useDashboardData = ({ restaurantId, branchId }: UseDashboardDataPro
     setIsLoading(true);
     setError(null);
     try {
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/get/dashboard/data`,
-        { restaurantId, branchId }
-      );
+      const response = await getDashboardData({ restaurantId, branchId });
       setData(response.data);
     } catch (err) {
       setError('Failed to fetch dashboard data');

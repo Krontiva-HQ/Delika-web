@@ -59,14 +59,7 @@ export const useAuth = () => {
     setError(null);
     
     try {
-<<<<<<< HEAD
       const response = await apiLogin({ email, password });
-=======
-      const response = await api.post(
-        `/api/auth/login`,  // Remove import.meta.env and use the proxy
-        { email, password }
-      );
->>>>>>> 3019f086b3219c365e584c6fb4423d3a2bb75cb6
       
       if (response.data.authToken) {
         // Handle state updates before navigation
