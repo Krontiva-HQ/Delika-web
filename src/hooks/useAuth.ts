@@ -60,7 +60,7 @@ export const useAuth = () => {
     
     try {
       const response = await api.post(
-        `${import.meta.env.VITE_API_URL}/auth/login`, 
+        `/api/auth/login`,  // Remove import.meta.env and use the proxy
         { email, password }
       );
       
