@@ -64,13 +64,11 @@ const LoginDetails: FunctionComponent<LoginDetailsProps> = ({ onSubmit }) => {
         // Reset rate limit on successful login
         RateLimiter.resetAttempts(formData.email);
         
-        // Store email before sending 2FA
-        setEmail(formData.email);
-        
         const twoFAResponse = await sendTwoFAEmail(formData.email);
         
-        if (twoFAResponse.success) {
-          // Navigate to 2FA page with email already stored in context
+        if (twoFAResponse) {
+          setEmail(formData.email);
+          onSubmit?.(formData);
           navigate('/2fa-login');
         } else {
           setValidationError('Failed to send 2FA email. Please try again.');

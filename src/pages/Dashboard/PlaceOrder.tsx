@@ -1,6 +1,6 @@
 import React, { useState, useEffect, FunctionComponent } from "react";
 import { Button } from "@mui/material";
-import { getAuthenticatedUser, UserResponse } from "../../services/api";
+import { getAuthenticatedUser, UserResponse, placeOrder } from "../../services/api";
 import LocationInput from '../../components/LocationInput';
 import { LocationData } from "../../types/location";
 import { calculateDistance } from "../../utils/distance";
@@ -125,8 +125,8 @@ const StyledDateInput = styled('input')({
     display: 'none'
   },
   appearance: 'textfield',
-  '-webkit-appearance': 'textfield',
-  '-moz-appearance': 'textfield',
+  WebkitAppearance: 'textfield',
+  MozAppearance: 'textfield',
 });
 
 
@@ -437,16 +437,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         formData.append('batchID', currentBatchId);
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/delikaquickshipper_orders_table`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to place order');
-      }
-
-      const result = await response.json();
+      const response = await placeOrder(formData);
+      const result = response.data;
       
       // For batch delivery, add to batched orders and show summary
       if (deliveryMethod === 'batch-delivery') {
@@ -460,18 +452,13 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         // Regular notification for other delivery types
         addNotification({
           type: 'order_created',
-          message: `Order placed successfully!`
+          message: 'Order has been created successfully'
         });
-        onOrderPlaced(); // Make sure this is called
-        onClose(); // Close the modal
       }
 
     } catch (error) {
-      addNotification({
-        type: 'order_status',
-        message: 'Unable to send payment request SMS'
-      });
-      throw error;
+      console.error('Error placing order:', error);
+      throw new Error('Failed to place order');
     } finally {
       // Reset both loading states
       setIsPayLaterSubmitting(false);

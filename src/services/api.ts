@@ -81,7 +81,8 @@ export const API_ENDPOINTS = {
     GET_DETAILS: (orderNumber: string) => `/get/order/id/${orderNumber}`,
     FILTER_BY_DATE: '/filter/orders/by/date',
     GET_ALL_PER_BRANCH: '/get/all/orders/per/branch',
-    EDIT: '/edit/order'
+    EDIT: '/edit/order',
+    PLACE_ORDER: '/delikaquickshipper_orders_table'
   },
   CATEGORY: {
     CREATE: '/create/new/category',
@@ -368,4 +369,13 @@ export const updateInventory = async (params: UpdateInventoryParams) => {
 // Menu service functions
 export const getAllMenu = (data: { restaurantId: string; branchId: string }) => {
   return api.post(API_ENDPOINTS.MENU.GET_ALL, data);
+};
+
+// Add the place order service function
+export const placeOrder = async (formData: FormData) => {
+  return api.post(API_ENDPOINTS.ORDERS.PLACE_ORDER, formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  });
 }; 
