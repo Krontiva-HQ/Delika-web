@@ -10,16 +10,37 @@ const api = axios.create({
   }
 });
 
+export { api };
+
 console.log('API Base URL:', import.meta.env.VITE_API_BASE_URL);
+
+// Add this at the top of your api.ts
+console.log('Environment Variables:', {
+  VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
+  VITE_ENV: import.meta.env.VITE_ENV,
+  // Don't log sensitive keys in production
+  HAS_API_KEY: !!import.meta.env.VITE_API_KEY
+});
 
 // Add a debug flag (you can control this via env variable)
 const DEBUG_API = false;
+
+// Add this helper function at the top of the file
+const safebtoa = (str: string) => {
+  try {
+    return btoa(str);
+  } catch (e) {
+    // For environments where btoa isn't available
+    return Buffer.from(str).toString('base64');
+  }
+};
 
 // Add request interceptor for logging and headers
 api.interceptors.request.use((config) => {
   // For login endpoint, use Basic Auth
   if (config.url === API_ENDPOINTS.AUTH.LOGIN) {
-    config.headers['Authorization'] = `Basic ${btoa(import.meta.env.VITE_API_KEY || 'api:uEBBwbSs')}`;
+    const apiKey = import.meta.env.VITE_API_KEY || 'api:uEBBwbSs';
+    config.headers['Authorization'] = `Basic ${safebtoa(apiKey)}`;
   } else {
     // For all other endpoints, use token auth
     const token = localStorage.getItem('authToken');
