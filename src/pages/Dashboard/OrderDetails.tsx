@@ -1,7 +1,7 @@
 import { FunctionComponent, useState, useEffect, useRef } from "react";
 import { FaLocationDot } from "react-icons/fa6";
 import { useParams, useNavigate } from 'react-router-dom';
-import { OrderDetails as OrderDetailsType } from '../../hooks/useOrderDetails';
+import type { OrderDetails } from '../../services/api';
 import useOrderDetails from '../../hooks/useOrderDetails';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
@@ -180,7 +180,7 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
 interface OrderDetailsViewProps {
   orderId: string;
   onBack: () => void;
-  orderDetails: OrderDetailsType | null;
+  orderDetails: OrderDetails | null;
   isLoading: boolean;
   error: string | null;
 }
