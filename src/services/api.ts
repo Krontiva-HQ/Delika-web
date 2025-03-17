@@ -3,30 +3,36 @@
 import axios from 'axios';
 
 // Create API instance with environment-specific configuration
-export const api = axios.create({
+const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-  },
+  }
 });
+
+console.log('API Base URL:', import.meta.env.VITE_API_BASE_URL);
 
 // Add a debug flag (you can control this via env variable)
 const DEBUG_API = false;
 
 // Add request interceptor for logging and headers
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken');
-  if (token) {
-    config.headers['X-Xano-Authorization'] = token;
-    config.headers['X-Xano-Authorization-Only'] = 'true';
+  // For login endpoint, use Basic Auth
+  if (config.url === API_ENDPOINTS.AUTH.LOGIN) {
+    config.headers['Authorization'] = `Basic ${btoa(import.meta.env.VITE_API_KEY || 'api:uEBBwbSs')}`;
+  } else {
+    // For all other endpoints, use token auth
+    const token = localStorage.getItem('authToken');
+    if (token) {
+      config.headers['X-Xano-Authorization'] = token;
+      config.headers['X-Xano-Authorization-Only'] = 'true';
+    }
   }
 
-  // Only log if debug is enabled
-  if (DEBUG_API && import.meta.env.DEV) {
-    console.log('API Request:', {
-      method: config.method,
-      url: config.url,
-    });
+  // Add debug logging
+  if (import.meta.env.DEV) {
+    console.log('Request URL:', config.url);
+    console.log('Base URL:', config.baseURL);
   }
 
   return config;
@@ -34,33 +40,23 @@ api.interceptors.request.use((config) => {
 
 // Add response interceptor for error handling and logging
 api.interceptors.response.use(
-  (response) => {
-    // Only log if debug is enabled
-    if (DEBUG_API && import.meta.env.DEV) {
-      console.log('API Response:', {
-        status: response.status,
-        url: response.config.url
-      });
-    }
-    return response;
-  },
+  (response) => response,
   (error) => {
-    // Create a sanitized error object
+    // Enhanced error logging
+    console.error('API Error:', {
+      url: error.config?.url,
+      baseURL: error.config?.baseURL,
+      status: error.response?.status,
+      message: error.response?.data?.message || error.message,
+      fullError: import.meta.env.DEV ? error : undefined
+    });
+
     const sanitizedError = {
       status: error.response?.status || 500,
       message: error.response?.data?.message || 'An error occurred',
       code: error.code || 'UNKNOWN_ERROR'
     };
-    
-    // Only log errors (these are important)
-    if (import.meta.env.DEV) {
-      console.error('Error:', sanitizedError.message);
-    }
-    
-    // Remove sensitive information
-    error.response = undefined;
-    error.config = undefined;
-    
+
     return Promise.reject(sanitizedError);
   }
 );
@@ -112,7 +108,13 @@ export const API_ENDPOINTS = {
 
 // Auth service functions
 export const login = async (credentials: { email: string; password: string }) => {
-  return api.post(API_ENDPOINTS.AUTH.LOGIN, credentials);
+  try {
+    const response = await api.post(API_ENDPOINTS.AUTH.LOGIN, credentials);
+    return response;
+  } catch (error) {
+    console.error('Login Error:', error);
+    throw error;
+  }
 };
 
 export const verifyOTP = async (data: { 

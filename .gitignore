@@ -37,3 +37,11 @@ pids
 .DS_Store
 Thumbs.db
   
+.vercel
+
+VITE_API_BASE_URL=https://api-server.krontiva.africa
+VITE_ENV=production
+VITE_WPP_SERVER_URL=http://localhost:21465
+VITE_GEOAPIFY_API_KEY=...
+VITE_GOOGLE_MAPS_API_KEY=...
+VITE_API_KEY=api:uEBBwbSs

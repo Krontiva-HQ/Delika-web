@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { api, getAuthenticatedUser, UserResponse, login as apiLogin, verifyOTP } from '../services/api';
+import { getAuthenticatedUser, UserResponse, login as apiLogin, verifyOTP } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { useEmail } from '../context/EmailContext';
 import axios from 'axios';
