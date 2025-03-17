@@ -19,6 +19,7 @@ import TransactionDetailsView from './pages/Dashboard/TransactionDetails';
 import OrderDetailsView from './pages/Dashboard/OrderDetails';
 import LoadingSpinner from './components/LoadingSpinner';
 import { checkAuthStatus } from './services/auth';
+import { initGoogleMaps } from './utils/googleMaps';
 import 'react-toastify/dist/ReactToastify.css';
 
 
@@ -71,18 +72,23 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const init = async () => {
       try {
+        // Initialize Google Maps
+        await initGoogleMaps();
+        
+        // Check authentication
         const authStatus = await checkAuthStatus();
         setIsAuthenticated(authStatus);
       } catch (error) {
+        console.error('Initialization error:', error);
         setIsAuthenticated(false);
       } finally {
         setIsLoading(false);
       }
     };
 
-    checkAuth();
+    init();
   }, []);
 
   if (isLoading) {

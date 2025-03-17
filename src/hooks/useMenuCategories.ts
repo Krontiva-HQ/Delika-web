@@ -124,9 +124,7 @@ export const useMenuCategories = () => {
     // Prefetch the data
     const prefetchData = async () => {
       try {
-        const response = await axios.get('/api/categories');
         // Cache the response
-        localStorage.setItem('menuCategories', JSON.stringify(response.data));
         localStorage.setItem('menuCategoriesTimestamp', Date.now().toString());
       } catch (error) {
         // Handle error silently

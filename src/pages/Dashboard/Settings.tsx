@@ -8,7 +8,7 @@ import { IoMdAdd } from "react-icons/io";
 import { SlOptionsVertical } from "react-icons/sl";
 import { FaCamera } from "react-icons/fa";
 import AddTeamMember from './AddTeamMembers';
-import { getAuthenticatedUser, UserResponse, deleteUser } from "../../services/api";
+import { getAuthenticatedUser, UserResponse, deleteUser, verifyOTP } from "../../services/api";
 import { useUpdateUser } from '../../hooks/useUpdateUser';
 import { useTeamMembers, TeamMember } from '../../hooks/useTeamMembers';
 import useChangePassword from '../../hooks/useChangePassword';
@@ -382,33 +382,31 @@ const Settings: FunctionComponent = () => {
 
   // Handle OTP verification with proper error handling
   const handleVerifyOTP = async (e: React.MouseEvent<HTMLButtonElement>) => {
-    // Prevent default form submission
     e.preventDefault();
     e.stopPropagation();
     
     try {
-        const otpString = otp.join('');
-        
-        if (otpString.length !== 4) {
-            alert('Please enter all 4 digits of the OTP');
-            return;
-        }
+      const otpString = otp.join('');
+      
+      if (otpString.length !== 4) {
+        alert('Please enter all 4 digits of the OTP');
+        return;
+      }
 
-        const response = await axios.post(`${import.meta.env.VITE_API_URL}/verify/otp/code`, {
-            OTP: otpString,
-            type: true,
-            contact: userProfile.email
-        });
+      const response = await verifyOTP({
+        OTP: parseInt(otpString),
+        type: true,
+        contact: userProfile.email
+      });
 
-
-        if (response.data.otpValidate === 'otpFound') {
-            setPasswordChangeStep('newPassword');
-            setOtp(['', '', '', '']);
-        } else {
-            alert('Invalid OTP. Please try again.');
-        }
+      if (response.data.otpValidate === 'otpFound') {
+        setPasswordChangeStep('newPassword');
+        setOtp(['', '', '', '']);
+      } else {
+        alert('Invalid OTP. Please try again.');
+      }
     } catch (error) {
-        alert('An error occurred. Please try again.');
+      alert('An error occurred. Please try again.');
     }
   };
 
@@ -720,6 +718,7 @@ const Settings: FunctionComponent = () => {
                           type="email"
                           value={userData?.email || ''}
                           onChange={(e) => handleInputChange('email', e.target.value)}
+                          disabled
                         />
                       </div>
                       <div className="w-[350px] bg-transparent flex flex-col items-start justify-start gap-[1px]">
