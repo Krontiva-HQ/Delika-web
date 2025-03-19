@@ -1,17 +1,16 @@
 export default async function handler(req, res) {
-  // Real API URL is only accessible server-side
-  const API_URL = process.env.API_BASE_URL;
+  // Use the correct API_BASE_URL from environment variables
+  const API_URL = 'https://api-server.krontiva.africa/api:uEBBwbSs';
   
   try {
-    // Remove /api/proxy from the path
-    const endpoint = req.url.replace("/api/proxy", "");
+    const endpoint = req.url.replace("/api", "");
     
-    // Clone and clean headers
     const headers = new Headers(req.headers);
     headers.delete('host');
     headers.set('Content-Type', 'application/json');
 
-    // The actual API call happens here, hidden from client
+    console.log('Proxying request to:', `${API_URL}${endpoint}`); // Debug log
+
     const response = await fetch(`${API_URL}${endpoint}`, {
       method: req.method,
       headers: headers,
