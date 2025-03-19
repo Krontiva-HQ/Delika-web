@@ -11,7 +11,7 @@ interface ImportMetaEnv {
   readonly GEOAPIFY_API_URL: string
   readonly ORDERS_TABLE_ENDPOINT: string
   readonly VERIFY_OTP_ENDPOINT: string
-  readonly GOOGLE_MAPS_API_KEY: string
+  readonly VITE_GOOGLE_MAPS_API_KEY: string
   readonly PROXY_URL: string
 }
 

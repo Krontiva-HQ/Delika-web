@@ -25,7 +25,8 @@ export default defineConfig(({ mode }) => {
     },
     define: {
       // Ensure environment variables are properly defined
-      'process.env': process.env
+      'process.env': process.env,
+      'process.env.VITE_GOOGLE_MAPS_API_KEY': JSON.stringify(process.env.VITE_GOOGLE_MAPS_API_KEY)
     },
     envPrefix: '', // This allows all env variables to be exposed
   };

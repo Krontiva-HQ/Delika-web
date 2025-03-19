@@ -13,6 +13,11 @@ interface GooglePlace {
   place_id: string;
 }
  
+// Add this outside the component to avoid multiple declarations
+let googleScriptLoaded = false;
+ 
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.GOOGLE_MAPS_API_KEY;
+ 
 const LocationInput: React.FC<LocationInputProps> = ({ label, onLocationSelect, prefillData, disabled }) => {
   const [address, setAddress] = useState(prefillData?.address || '');
   const [suggestions, setSuggestions] = useState<GooglePlace[]>([]);
@@ -21,6 +26,67 @@ const LocationInput: React.FC<LocationInputProps> = ({ label, onLocationSelect, 
   const [placesService, setPlacesService] = useState<google.maps.places.PlacesService | null>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<HTMLDivElement>(null);
+ 
+  useEffect(() => {
+    if (prefillData) {
+      setAddress(prefillData.address);
+      onLocationSelect(prefillData);
+    }
+  }, [prefillData, onLocationSelect]);
+ 
+  useEffect(() => {
+    if (googleScriptLoaded) return;
+
+    const initGoogleMaps = () => {
+      if (!mapRef.current) return;
+      
+      try {
+        const map = new google.maps.Map(mapRef.current);
+        setAutocompleteService(new google.maps.places.AutocompleteService());
+        setPlacesService(new google.maps.places.PlacesService(map));
+      } catch (error) {
+        console.error('Error initializing Google Maps:', error);
+      }
+    };
+
+    // Check if the script is already loaded
+    if (window.google?.maps) {
+      initGoogleMaps();
+      return;
+    }
+
+    // Load the script only once
+    const script = document.createElement('script');
+    
+    // Add error handling for API key
+    if (!GOOGLE_MAPS_API_KEY) {
+      console.error('Google Maps API key is not defined');
+      return;
+    }
+
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
+    script.async = true;
+    script.defer = true;
+    
+    script.onerror = (error) => {
+      console.error('Error loading Google Maps script:', error);
+      googleScriptLoaded = false;
+    };
+
+    script.onload = () => {
+      googleScriptLoaded = true;
+      initGoogleMaps();
+    };
+
+    document.head.appendChild(script);
+
+    return () => {
+      if (script.parentNode) {
+        script.parentNode.removeChild(script);
+        googleScriptLoaded = false;
+      }
+    };
+  }, []);
  
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -33,31 +99,6 @@ const LocationInput: React.FC<LocationInputProps> = ({ label, onLocationSelect, 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
  
-  useEffect(() => {
-    if (prefillData) {
-      setAddress(prefillData.address);
-      onLocationSelect(prefillData);
-    }
-  }, [prefillData]);
- 
-  useEffect(() => {
-    // Initialize Google Places services
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}&libraries=places`;
-    script.async = true;
-    script.onload = () => {
-      setAutocompleteService(new google.maps.places.AutocompleteService());
-      // We need a map div (hidden) for PlacesService
-      const map = new google.maps.Map(mapRef.current as HTMLElement);
-      setPlacesService(new google.maps.places.PlacesService(map));
-    };
-    document.head.appendChild(script);
-
-    return () => {
-      document.head.removeChild(script);
-    };
-  }, []);
- 
   const handleInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setAddress(value);
@@ -67,8 +108,11 @@ const LocationInput: React.FC<LocationInputProps> = ({ label, onLocationSelect, 
         const request = {
           input: value,
           componentRestrictions: { country: 'gh' },
-          location: new google.maps.LatLng(5.6037, -0.1870), // Accra coordinates
-          radius: 50000 // 50km radius
+          // Update to use new locationBias instead of deprecated options
+          locationBias: {
+            center: { lat: 5.6037, lng: -0.1870 }, // Accra coordinates
+            radius: 50000 // 50km radius
+          }
         };
 
         autocompleteService.getPlacePredictions(request, (predictions, status) => {
