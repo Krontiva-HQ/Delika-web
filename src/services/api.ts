@@ -2,9 +2,9 @@
 
 import axios from 'axios';
 
-// Create API instance with environment-specific configuration
+// Create API instance with simplified configuration
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  baseURL: import.meta.env.API_BASE_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
   }
@@ -12,14 +12,14 @@ const api = axios.create({
 
 export { api };
 
-console.log('API Base URL:', import.meta.env.VITE_API_BASE_URL);
+console.log('API Base URL:', import.meta.env.API_BASE_URL);
 
-// Add this at the top of your api.ts
+// Update environment variables logging
 console.log('Environment Variables:', {
-  VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
-  VITE_ENV: import.meta.env.VITE_ENV,
+  API_BASE_URL: import.meta.env.API_BASE_URL,
+  ENV: import.meta.env.ENV,
   // Don't log sensitive keys in production
-  HAS_API_KEY: !!import.meta.env.VITE_API_KEY
+  HAS_API_KEY: !!import.meta.env.API_KEY
 });
 
 // Add a debug flag (you can control this via env variable)
@@ -35,49 +35,30 @@ const safebtoa = (str: string) => {
   }
 };
 
-// Add request interceptor for logging and headers
+// Add request interceptor for auth
 api.interceptors.request.use((config) => {
-  // For login endpoint, use Basic Auth
   if (config.url === API_ENDPOINTS.AUTH.LOGIN) {
-    const apiKey = import.meta.env.VITE_API_KEY || 'api:uEBBwbSs';
+    const apiKey = import.meta.env.API_KEY || 'api:uEBBwbSs';
     config.headers['Authorization'] = `Basic ${safebtoa(apiKey)}`;
   } else {
-    // For all other endpoints, use token auth
     const token = localStorage.getItem('authToken');
     if (token) {
       config.headers['X-Xano-Authorization'] = token;
       config.headers['X-Xano-Authorization-Only'] = 'true';
     }
   }
-
-  // Add debug logging
-  if (import.meta.env.DEV) {
-    console.log('Request URL:', config.url);
-    console.log('Base URL:', config.baseURL);
-  }
-
   return config;
 });
 
-// Add response interceptor for error handling and logging
+// Simplified error handling without logging
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    // Enhanced error logging
-    console.error('API Error:', {
-      url: error.config?.url,
-      baseURL: error.config?.baseURL,
-      status: error.response?.status,
-      message: error.response?.data?.message || error.message,
-      fullError: import.meta.env.DEV ? error : undefined
-    });
-
     const sanitizedError = {
       status: error.response?.status || 500,
-      message: error.response?.data?.message || 'An error occurred',
-      code: error.code || 'UNKNOWN_ERROR'
+      message: 'An error occurred',
+      code: 'ERROR'
     };
-
     return Promise.reject(sanitizedError);
   }
 );
@@ -127,13 +108,12 @@ export const API_ENDPOINTS = {
   }
 } as const;
 
-// Auth service functions
+// Example of updated login function
 export const login = async (credentials: { email: string; password: string }) => {
   try {
     const response = await api.post(API_ENDPOINTS.AUTH.LOGIN, credentials);
     return response;
   } catch (error) {
-    console.error('Login Error:', error);
     throw error;
   }
 };
