@@ -4,7 +4,7 @@ import axios from 'axios';
 
 // Create API instance with simplified configuration
 const api = axios.create({
-  baseURL: import.meta.env.API_BASE_URL || '/api',
+  baseURL: import.meta.env.PROXY_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
   }

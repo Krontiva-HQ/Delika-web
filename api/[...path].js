@@ -3,8 +3,8 @@ export default async function handler(req, res) {
   const API_URL = process.env.API_BASE_URL;
   
   try {
-    // Get the actual endpoint from the request path
-    const endpoint = req.url.replace("/api", "");
+    // Remove /api/proxy from the path
+    const endpoint = req.url.replace("/api/proxy", "");
     
     // Clone and clean headers
     const headers = new Headers(req.headers);
@@ -23,6 +23,7 @@ export default async function handler(req, res) {
     const data = await response.json();
     res.status(response.status).json(data);
   } catch (error) {
+    console.error('Proxy Error:', error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 } 
