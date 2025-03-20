@@ -13,16 +13,9 @@ const api = axios.create({
 
 export { api };
 
-// Remove console.logs of sensitive information
-console.log('API Base URL:', import.meta.env.API_BASE_URL);
 
-// Update environment variables logging
-console.log('Environment Variables:', {
-  API_BASE_URL: import.meta.env.API_BASE_URL,
-  ENV: import.meta.env.ENV,
-  // Don't log sensitive keys in production
-  HAS_API_KEY: !!import.meta.env.API_KEY
-});
+
+
 
 // Add a debug flag (you can control this via env variable)
 const DEBUG_API = false;
