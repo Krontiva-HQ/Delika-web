@@ -124,24 +124,24 @@ export const login = async (credentials: { email: string; password: string }) =>
   try {
     const response = await api.post(API_ENDPOINTS.AUTH.LOGIN, credentials);
     if (response.data?.authToken) {
-      // Store the auth token temporarily
-      localStorage.setItem('authToken', response.data.authToken);
+      // Store token in memory (not localStorage) for immediate /auth/me call
+      const authToken = response.data.authToken;
       
-      // Fetch user data with the token
-      const userResponse = await getAuthenticatedUser();
+      // Make immediate /auth/me call with token
+      const userResponse = await api.get(API_ENDPOINTS.AUTH.ME, {
+        headers: {
+          'X-Xano-Authorization': authToken,
+          'X-Xano-Authorization-Only': 'true'
+        }
+      });
       
-      // After successful /auth/me call, store user ID
+      // Store user ID if needed
       if (userResponse.data) {
         localStorage.setItem('userId', userResponse.data.id);
       }
-      
-      // Clean up the temporary auth token
-      localStorage.removeItem('authToken');
     }
     return response;
   } catch (error) {
-    // Clean up in case of error
-    localStorage.removeItem('authToken');
     throw error;
   }
 };
