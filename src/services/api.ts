@@ -7,11 +7,13 @@ const api = axios.create({
   baseURL: import.meta.env.PROXY_URL || '/api',
   headers: {
     'Content-Type': 'application/json',
-  }
+  },
+  withCredentials: true // Enable cookie handling
 });
 
 export { api };
 
+// Remove console.logs of sensitive information
 console.log('API Base URL:', import.meta.env.API_BASE_URL);
 
 // Update environment variables logging
@@ -35,18 +37,27 @@ const safebtoa = (str: string) => {
   }
 };
 
-// Add request interceptor for auth
+// Update the request interceptor
 api.interceptors.request.use((config) => {
   if (config.url === API_ENDPOINTS.AUTH.LOGIN) {
+    // Login endpoint doesn't need auth headers
     const apiKey = import.meta.env.API_KEY || 'api:uEBBwbSs';
     config.headers['Authorization'] = `Basic ${safebtoa(apiKey)}`;
-  } else {
-    const token = localStorage.getItem('authToken');
-    if (token) {
-      config.headers['X-Xano-Authorization'] = token;
+  } else if (config.url === API_ENDPOINTS.AUTH.ME) {
+    // For /auth/me, use the auth token
+    const authToken = localStorage.getItem('authToken');
+    if (authToken) {
+      config.headers['X-Xano-Authorization'] = authToken;
       config.headers['X-Xano-Authorization-Only'] = 'true';
     }
+  } else {
+    // For all other authenticated requests
+    const userId = localStorage.getItem('userId');
+    if (userId) {
+      config.headers['x-auth-session-id'] = userId;
+    }
   }
+  
   return config;
 });
 
@@ -108,12 +119,29 @@ export const API_ENDPOINTS = {
   }
 } as const;
 
-// Example of updated login function
+// Update the login function
 export const login = async (credentials: { email: string; password: string }) => {
   try {
     const response = await api.post(API_ENDPOINTS.AUTH.LOGIN, credentials);
+    if (response.data?.authToken) {
+      // Store the auth token temporarily
+      localStorage.setItem('authToken', response.data.authToken);
+      
+      // Fetch user data with the token
+      const userResponse = await getAuthenticatedUser();
+      
+      // After successful /auth/me call, store user ID
+      if (userResponse.data) {
+        localStorage.setItem('userId', userResponse.data.id);
+      }
+      
+      // Clean up the temporary auth token
+      localStorage.removeItem('authToken');
+    }
     return response;
   } catch (error) {
+    // Clean up in case of error
+    localStorage.removeItem('authToken');
     throw error;
   }
 };
@@ -176,8 +204,17 @@ export interface UserResponse {
   password?: string;
 }
 
-export const getAuthenticatedUser = () => {
-  return api.get<UserResponse>(API_ENDPOINTS.AUTH.ME);
+// Update getAuthenticatedUser
+export const getAuthenticatedUser = async () => {
+  try {
+    const response = await api.get<UserResponse>(API_ENDPOINTS.AUTH.ME);
+    return response;
+  } catch (error) {
+    // If auth fails, clean up
+    localStorage.removeItem('userId');
+    localStorage.removeItem('authToken');
+    throw error;
+  }
 };
 
 export const deleteUser = async (userId: string) => {
@@ -381,4 +418,12 @@ export const placeOrder = async (formData: FormData) => {
       'Content-Type': 'multipart/form-data'
     }
   });
+};
+
+// Update logout to clean up all storage
+export const logout = () => {
+  localStorage.removeItem('userId');
+  localStorage.removeItem('authToken');
+  // Make a call to server to invalidate session
+  return api.post('/auth/logout');
 }; 
