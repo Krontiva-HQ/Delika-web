@@ -9,47 +9,48 @@ export default async function handler(req, res) {
     const forwardHeaders = new Headers();
     forwardHeaders.set('Content-Type', 'application/json');
 
-    if (endpoint.includes('/auth/login')) {
-      // Handle login request
-      const response = await fetch(`${API_URL}${endpoint}`, {
-        method: req.method,
-        headers: forwardHeaders,
-        body: JSON.stringify(req.body)
-      });
-
-      const data = await response.json();
-      
-      if (response.ok && data.authToken) {
-        // Set HTTP-only cookie with the auth token
-        res.setHeader('Set-Cookie', `auth_token=${data.authToken}; HttpOnly; Secure; SameSite=Strict; Path=/`);
-        
-        // Return response without exposing token
-        const sanitizedData = { ...data };
-        delete sanitizedData.authToken;
-        return res.status(response.status).json(sanitizedData);
-      }
-      
-      return res.status(response.status).json(data);
-    } else {
-      // For all other requests
-      const authToken = req.headers['x-xano-authorization'] || req.cookies.auth_token;
-      
-      if (authToken) {
-        forwardHeaders.set('X-Xano-Authorization', authToken);
-        forwardHeaders.set('X-Xano-Authorization-Only', 'true');
-      }
-
-      const response = await fetch(`${API_URL}${endpoint}`, {
-        method: req.method,
-        headers: forwardHeaders,
-        body: ['POST', 'PUT', 'PATCH'].includes(req.method) 
-          ? JSON.stringify(req.body) 
-          : undefined,
-      });
-
-      const data = await response.json();
-      return res.status(response.status).json(data);
+    // Forward authorization header for login
+    if (endpoint === '/auth/login' && req.headers.authorization) {
+      forwardHeaders.set('Authorization', req.headers.authorization);
     }
+
+    // Forward X-Xano headers if present
+    if (req.headers['x-xano-authorization']) {
+      forwardHeaders.set('X-Xano-Authorization', req.headers['x-xano-authorization']);
+      forwardHeaders.set('X-Xano-Authorization-Only', 'true');
+    }
+
+    const response = await fetch(`${API_URL}${endpoint}`, {
+      method: req.method,
+      headers: forwardHeaders,
+      body: ['POST', 'PUT', 'PATCH'].includes(req.method) 
+        ? JSON.stringify(req.body) 
+        : undefined,
+    });
+
+    // Get response data
+    const data = await response.json();
+
+    // Set basic response headers
+    res.setHeader('Content-Type', 'application/json');
+    
+    // Forward specific headers we want to keep
+    const headersToForward = [
+      'access-control-allow-credentials',
+      'access-control-allow-origin',
+      'access-control-allow-methods',
+      'access-control-allow-headers',
+      'access-control-max-age'
+    ];
+
+    // Safely forward headers
+    for (const [key, value] of response.headers) {
+      if (headersToForward.includes(key.toLowerCase())) {
+        res.setHeader(key, value);
+      }
+    }
+
+    return res.status(response.status).json(data);
   } catch (error) {
     console.error('Proxy Error:', error);
     return res.status(500).json({ message: "Internal Server Error" });
