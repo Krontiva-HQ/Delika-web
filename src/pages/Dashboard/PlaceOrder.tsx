@@ -111,7 +111,7 @@ const StyledSelect = styled(Select)({
 });
 
 // Add new type for delivery method
-type DeliveryMethod = 'on-demand' | 'full-service' | 'schedule' | 'batch-delivery' | null;
+type DeliveryMethod = 'on-demand' | 'full-service' | 'schedule' | 'batch-delivery' | 'walk-in' | null;
 
 // Add this CSS class near your other styled components
 const StyledDateInput = styled('input')({
@@ -456,6 +456,9 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         });
       }
 
+      // Notify the parent component to refresh orders
+      onOrderPlaced(); // Call this to refresh orders
+
     } catch (error) {
       console.error('Error placing order:', error);
       throw new Error('Failed to place order');
@@ -537,12 +540,194 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       case 'full-service':
         return renderFullServiceContent();
         
+      case 'walk-in':
+        switch (currentStep) {
+          case 1:
+            return (
+              <>
+                <b className="font-sans text-lg font-semibold">Add Menu Item</b>
+                {/* Add this scrollable container */}
+                <div className="flex-1 overflow-y-auto max-h-[75vh] pr-2">
+                  {/* Menu Items Section */}
+                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-4">
+                    <div className="self-stretch relative leading-[20px] font-sans">Menu</div>
+                    <div className="w-full">
+                      <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
+                        Select Category
+                      </div>
+                      <StyledSelect
+                        fullWidth
+                        value={selectedCategory}
+                        onChange={(event: SelectChangeEvent<unknown>, child: React.ReactNode) => {
+                          setSelectedCategory(event.target.value as string);
+                        }}
+                        variant="outlined"
+                        size="small"
+                        className="mb-2"
+                        displayEmpty
+                      >
+                        <MenuItem value="" disabled>
+                          Select Category
+                        </MenuItem>
+                        {categories.map((category) => (
+                          <MenuItem key={category.value} value={category.label}>
+                            {category.label}
+                          </MenuItem>
+                        ))}
+                      </StyledSelect>
+                    </div>
+                  </div>
+                  <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] text-[#6f7070] pt-4">
+                    <div className="flex-1 flex flex-col items-start justify-start gap-[6px]">
+                      <div className="self-stretch relative leading-[20px] font-sans text-black">Items</div>
+                      <div className="relative w-full">
+                        <button
+                          onClick={() => setIsItemsDropdownOpen(!isItemsDropdownOpen)}
+                          className="w-full p-2 text-left border-[#efefef] border-[1px] border-solid rounded-md bg-white"
+                        >
+                          <div className="text-[14px] leading-[22px] font-sans">
+                            {selectedItem || "Select Item"}
+                          </div>
+                        </button>
+                        
+                        {isItemsDropdownOpen && (
+                          <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
+                            {categoryItems.map((item) => (
+                              <div
+                                key={item.name}
+                                className={`p-2 ${
+                                  item.quantity > 0 
+                                    ? 'hover:bg-gray-100 cursor-pointer'
+                                    : 'cursor-not-allowed opacity-100'
+                                }`}
+                                onClick={() => {
+                                  if (item.quantity > 0) {
+                                    setSelectedItem(item.name);
+                                    setIsItemsDropdownOpen(false);
+                                    addItem(item);
+                                  }
+                                }}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <span className="text-[14px] leading-[22px] font-sans">
+                                      {item.name}
+                                    </span>
+                                    {item.quantity === 0 && (
+                                      <span className="ml-2 text-[12px] text-red-500">
+                                        Out of stock
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-[14px] leading-[22px] font-sans">
+                                    GH₵ {item.price}
+                                  </span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
+                    <div className="self-stretch relative leading-[20px] font-sans text-black">Selected Items</div>
+                    {selectedItems.map((item, index) => (
+                      <div 
+                        key={`${item.name}-${index}`}
+                        className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-start justify-between p-[1px]"
+                      >
+                        <div className="w-[61px] rounded-[6px] bg-[#f6f6f6] box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[20px] gap-[7px]">
+                          <div className="flex flex-row items-center gap-1">
+                            <button 
+                              onClick={() => updateQuantity(item.name, item.quantity - 1)}
+                              disabled={item.quantity <= 1}
+                              className={`w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center 
+                                     ${item.quantity <= 1 ? 'text-gray-400 cursor-not-allowed' : 'text-black cursor-pointer'} 
+                                     font-sans`}
+                            >
+                              -
+                            </button>
+                            <div className="w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center text-black font-sans">
+                              {item.quantity}
+                            </div>
+                            <button 
+                              onClick={() => {
+                                const menuItem = categoryItems.find(mi => mi.name === item.name);
+                                if (menuItem && item.quantity < menuItem.quantity) {
+                                  updateQuantity(item.name, item.quantity + 1);
+                                } else {
+                                  toast.error(`Maximum available quantity is ${menuItem?.quantity}`);
+                                }
+                              }}
+                              disabled={!categoryItems.find(mi => mi.name === item.name)?.quantity || 
+                                        item.quantity >= (categoryItems.find(mi => mi.name === item.name)?.quantity || 0)}
+                              className={`w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center 
+                                     ${!categoryItems.find(mi => mi.name === item.name)?.quantity || 
+                                       item.quantity >= (categoryItems.find(mi => mi.name === item.name)?.quantity || 0)
+                                       ? 'text-gray-400 cursor-not-allowed' 
+                                       : 'text-black cursor-pointer'} 
+                                     font-sans`}
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-between py-[15px] px-[20px] text-[#858a89]">
+                          <div className="relative leading-[20px] text-black font-sans">{item.name}</div>
+                          <div className="flex items-center gap-3">
+                            <div className="relative leading-[20px] text-black font-sans">{item.price * item.quantity} GHS</div>
+                            <RiDeleteBinLine 
+                              className="cursor-pointer text-red-500 hover:text-red-600" 
+                              onClick={() => removeItem(item.name)}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {selectedItems.length === 0 && (
+                      <div className="text-[#b1b4b3] text-[13px] italic font-sans">No items selected</div>
+                    )}
+                  </div>
+                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
+                    <div className="self-stretch relative leading-[20px] font-sans text-black">
+                      Total Price
+                    </div>
+                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
+                      <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
+                        <div className="relative leading-[20px] text-black font-sans">GH₵</div>
+                      </div>
+                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
+                        <div className="relative leading-[20px] text-black font-sans">{calculateTotal()}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Navigation Button */}
+                <div className="flex justify-between mt-8 pt-4 border-t">
+                  <button
+                    className="flex-1 font-sans cursor-pointer bg-[#fd683e] border-[#fd683e] border-[1px] border-solid 
+                              py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center"
+                    onClick={() => handlePlaceOrder("now")} // Update to handle place order
+                    disabled={!isWalkInValid()} // Disable if validation fails
+                  >
+                    Place Order
+                  </button>
+                </div>
+              </>
+            );
+         
       default:
+            return null;
+        }
+      default:
+        // Redirect to step 1 if somehow we get to an invalid step
+        setCurrentStep(1);
         return null;
     }
   };
 
-  // Then define separate render functions for each delivery method
   const renderOnDemandContent = () => {
     switch (currentStep) {
       case 1:
@@ -1176,25 +1361,15 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               </div>
             </div>
 
-            {/* Navigation Buttons - Keep outside scrollable area */}
+            {/* Navigation Button - Keep outside scrollable area */}
             <div className="flex justify-between mt-8 pt-4 border-t">
               <button
-                className="flex-1 font-sans cursor-pointer bg-[#201a18] border-[#201a18] border-[1px] border-solid 
+                className="flex-1 font-sans cursor-pointer bg-[#fd683e] border-[#fd683e] border-[1px] border-solid 
                           py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center"
-                onClick={handlePreviousStep}
-                disabled={isSubmitting}
+                onClick={() => handlePlaceOrder("now")} // Update to handle place order
+                disabled={selectedItems.length === 0} // Disable if no items selected
               >
-                Back
-              </button>
-              <div className="mx-2" /> {/* Add space between buttons */}
-              <button
-                className={`flex-1 font-sans cursor-pointer border-[#fd683e] border-[1px] border-solid 
-                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                          ${selectedItems.length === 0 ? 'bg-[#fd683e] cursor-not-allowed' : 'bg-[#fd683e] cursor-pointer'}`}
-                onClick={handleNextStep}
-                disabled={selectedItems.length === 0}
-              >
-                Next
+                Place Order
               </button>
             </div>
           </>
@@ -1492,18 +1667,17 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 </div>
               )}
             </div>
-            <button
-              onClick={handleNextStep}
-              disabled={!isStep1Valid}
-              className={`self-stretch rounded-[4px] border-[1px] border-solid overflow-hidden 
-                         flex flex-row items-center justify-center py-[9px] px-[90px] 
-                         cursor-pointer text-[10px] text-[#fff] mt-4
-                         ${isStep1Valid 
-                           ? 'bg-[#fd683e] border-[#f5fcf8] hover:opacity-90' 
-                           : 'bg-gray-400 border-gray-300 cursor-not-allowed'}`}
-            >
-              <div className="relative leading-[16px] font-sans text-[#fff]">Next</div>
-            </button>
+            {/* Navigation Button */}
+            <div className="flex justify-between mt-8 pt-4 border-t">
+              <button
+                className="flex-1 font-sans cursor-pointer bg-[#fd683e] border-[#fd683e] border-[1px] border-solid 
+                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center"
+                onClick={() => handlePlaceOrder("now")} // Update to handle place order
+                disabled={selectedItems.length === 0} // Disable if no items selected
+              >
+                Place Order
+              </button>
+            </div>
           </>
         );
       case 3:
@@ -1794,18 +1968,17 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 </div>
               )}
             </div>
-            <button
-              onClick={handleNextStep}
-              disabled={!isStep1Valid}
-              className={`self-stretch rounded-[4px] border-[1px] border-solid overflow-hidden 
-                         flex flex-row items-center justify-center py-[9px] px-[90px] 
-                         cursor-pointer text-[10px] text-[#fff] mt-4
-                         ${isStep1Valid 
-                           ? 'bg-[#fd683e] border-[#f5fcf8] hover:opacity-90' 
-                           : 'bg-gray-400 border-gray-300 cursor-not-allowed'}`}
-            >
-              <div className="relative leading-[16px] font-sans text-[#fff]">Next</div>
-            </button>
+            {/* Navigation Button */}
+            <div className="flex justify-between mt-8 pt-4 border-t">
+              <button
+                className="flex-1 font-sans cursor-pointer bg-[#fd683e] border-[#fd683e] border-[1px] border-solid 
+                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center"
+                onClick={() => handlePlaceOrder("now")} // Update to handle place order
+                disabled={selectedItems.length === 0} // Disable if no items selected
+              >
+                Place Order
+              </button>
+            </div>
           </>
         );
         case 2:
@@ -1983,25 +2156,15 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 </div>
               </div>
 
-              {/* Navigation Buttons - Keep outside scrollable area */}
+              {/* Navigation Button - Keep outside scrollable area */}
               <div className="flex justify-between mt-8 pt-4 border-t">
                 <button
-                  className="flex-1 font-sans cursor-pointer bg-[#201a18] border-[#201a18] border-[1px] border-solid 
+                  className="flex-1 font-sans cursor-pointer bg-[#fd683e] border-[#fd683e] border-[1px] border-solid 
                             py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center"
-                  onClick={handlePreviousStep}
-                  disabled={isSubmitting}
+                  onClick={() => handlePlaceOrder("now") } // Update to handle place order
+                  disabled={selectedItems.length === 0} // Disable if no items selected
                 >
-                  Back
-                </button>
-                <div className="mx-2" /> {/* Add space between buttons */}
-                <button
-                  className={`flex-1 font-sans cursor-pointer border-[#fd683e] border-[1px] border-solid 
-                            py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                            ${selectedItems.length === 0 ? 'bg-[#fd683e] cursor-not-allowed' : 'bg-[#fd683e] cursor-pointer'}`}
-                  onClick={handleNextStep}
-                  disabled={selectedItems.length === 0}
-                >
-                  Next
+                  Place Order
                 </button>
               </div>
             </>
@@ -2447,6 +2610,16 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     resetFormState();
   };
 
+  const isWalkInValid = () => {
+    return (
+        customerName.trim() !== '' &&
+        customerPhone.length === 10 &&
+        pickupLocation !== null &&
+        dropoffLocation !== null &&
+        selectedItems.length > 0
+    );
+};
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-8 rounded-lg w-[600px] relative flex flex-col">
@@ -2461,7 +2634,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           // Initial delivery method selection modal
           <div className="flex flex-col items-center">
             <h2 className="text-2xl font-semibold mb-8 font-sans">Select Delivery Type</h2>
-            <div className="flex gap-4 w-full justify-center">
+            <div className="flex gap-4 w-full justify-center flex-nowrap"> {/* Change here */}
               {/* On-Demand Delivery */}
               <div
                 onClick={() => handleDeliveryMethodSelect('on-demand')}
@@ -2511,6 +2684,17 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                   <img src="/batch-delivery.svg" alt="Batch" className="w-full h-full" />
                 </div>
                 <span className="text-center font-medium font-sans">Batch<br/>Delivery</span>
+              </div>
+
+              {/* Walk-In Service */}
+              <div
+                onClick={() => handleDeliveryMethodSelect('walk-in')}
+                className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[200px]"
+              >
+                <div className="w-14 h-14 mb-4">
+                  <img src="/dining-out.png" alt="Walk-In" className="w-full h-full" />
+                </div>
+                <span className="text-center font-medium font-sans">Walk-In<br/>Service</span>
               </div>
             </div>
           </div>
