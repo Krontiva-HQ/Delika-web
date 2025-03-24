@@ -12,6 +12,14 @@ interface AddInventoryProps {
   branchId: string | null;
 }
 
+interface AddItemParams {
+  name: string;
+  price: string;
+  description: string;
+  available: boolean;
+  // ... other properties ...
+}
+
 const AddInventory: FunctionComponent<AddInventoryProps> = ({ 
   onClose,
   onInventoryUpdated,
@@ -29,7 +37,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   const [newCategoryImage, setNewCategoryImage] = useState<string | null>(null);
   const [itemName, setItemName] = useState('');
   const [price, setPrice] = useState('');
-  const [quantity, setQuantity] = useState('');
+  const [available, setAvailable] = useState(true);
   const [shortDetails, setShortDetails] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [newCategoryFile, setNewCategoryFile] = useState<File | null>(null);
@@ -101,7 +109,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
       shortDetails.trim() !== '' &&
       selectedImage !== null &&
       price.trim() !== '' &&
-      quantity.trim() !== '';
+      available !== null;
 
     if (showCategoryForm) {
       return baseValidation && 
@@ -132,7 +140,8 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
             name: itemName,
             price: price,
             description: shortDetails,
-            quantity: quantity
+            quantity: "0",
+            available: available
           }],
           onSuccess: () => {
             onInventoryUpdated?.();
@@ -151,7 +160,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
           name: itemName,
           price,
           description: shortDetails,
-          quantity,
+          available,
           foodPhoto: photoFile,
           onSuccess: () => {
             onInventoryUpdated?.();
@@ -162,7 +171,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
 
       setItemName('');
       setPrice('');
-      setQuantity('');
+      setAvailable(true);
       setShortDetails('');
       setSelectedImage(null);
       setSelectedCategory('');
@@ -500,19 +509,12 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
               </div>
             </div>
             <div className="self-stretch flex flex-col items-start justify-start gap-[8px]">
-              <div className="self-stretch relative leading-[22px] font-sans">Quantity</div>
-              <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
-                <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
-                  <div className="relative leading-[20px] font-sans">Qty</div>
-                </div>
-                <input
-                  className="border-[#fff] border-[1px] border-solid [outline:none] font-sans text-[13px] bg-[#fff] flex-1 rounded-[6px] flex flex-row items-center justify-start py-[15px] px-[20px] text-black [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  placeholder="0"
-                  type="number"
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                />
-              </div>
+              <div className="self-stretch relative leading-[22px] font-sans">Available</div>
+              <input
+                type="checkbox"
+                checked={available}
+                onChange={(e) => setAvailable(e.target.checked)}
+              />
             </div>
             <button
               className={`cursor-pointer border-[#f5fcf8] border-[1px] border-solid py-[9px] px-[90px] 

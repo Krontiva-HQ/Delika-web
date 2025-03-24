@@ -22,14 +22,13 @@ interface MenuItem {
   name: string;
   price: number;
   description?: string;
-  quantity: number;
-  remainingItems: number;
+  available: boolean;
 }
 
 interface EditInventoryModalProps {
   item: MenuItem | null;
   onClose: () => void;
-  onSave: (id: string, newPrice: number, newQuantity: number) => void;
+  onSave: (id: string, newPrice: number, available: boolean) => void;
   isUpdating: boolean;
   updateError: string | null;
   branchId: string;
@@ -42,8 +41,9 @@ interface CategoryFood {
   foodImage: {
     url: string;
   };
-  quantity?: number;
   description?: string;
+  quantity?: number;
+  available?: boolean;
 }
 
 interface Category {
@@ -193,7 +193,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
     setSelectedItem(item);
   };
 
-  const handleUpdateItem = async (id: string, newPrice: number, newQuantity: number) => {
+  const handleUpdateItem = async (id: string, newPrice: number, available: boolean) => {
     if (!selectedItem) return;
 
     try {
@@ -202,13 +202,13 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         newPrice: newPrice.toString(),
         name: selectedItem.name,
         description: selectedItem.description || '',
-        newQuantity: newQuantity
+        available: available
       });
 
       // Add notification
       addNotification({
         type: 'inventory_update',
-        message: `${selectedItem.name} has been updated (Price: ${newPrice}, Quantity: ${newQuantity})`
+        message: `${selectedItem.name} has been updated (Price: ${newPrice})`
       });
 
       // Close modal
@@ -225,10 +225,10 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
   };
 
   const EditInventoryModal: FunctionComponent<EditInventoryModalProps> = ({ item, onClose, onSave, isUpdating, updateError, branchId }) => {
-    const [quantity, setQuantity] = useState(item?.remainingItems || 0);
-    const [price, setPrice] = useState(item?.price || 0);
-
     if (!item) return null;
+    
+    const [price, setPrice] = useState(item.price);
+    const [available, setAvailable] = useState(item.available);
 
     return (
       <Modal
@@ -247,6 +247,9 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
             <div className="flex flex-col gap-1">
               <h2 className="text-xl font-semibold font-sans">{item.name}</h2>
               <p className="text-sm text-black font-sans">{item.description}</p>
+              <div className={`text-sm font-sans ${item.available ? 'text-green-600' : 'text-red-600'}`}>
+                {item.available ? 'In Stock' : 'Out of Stock'}
+              </div>
             </div>
           </div>
           <div className="flex gap-4">
@@ -261,28 +264,19 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
               />
             </div>
 
-            {/* Quantity Control */}
-            <div className="flex flex-col gap-2 flex-1">
-              <label className="text-sm text-gray-600 font-sans">Quantity</label>
+            {/* Availability Control */}
+            <div className="flex flex-col gap-2">
+              <label className="text-sm text-gray-600 font-sans">Available</label>
               <div className="flex items-center gap-2">
-                <IconButton 
-                  onClick={() => setQuantity(prev => Math.max(0, prev - 1))}
-                  className="border rounded-full"
-                >
-                  <IoMdRemove />
-                </IconButton>
                 <input
-                  type="number"
-                  value={quantity}
-                  onChange={(e) => setQuantity(Number(e.target.value))}
-                  className="border rounded p-2 w-20 text-center font-sans [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  type="checkbox"
+                  checked={available}
+                  onChange={(e) => setAvailable(e.target.checked)}
+                  className="w-5 h-5"
                 />
-                <IconButton 
-                  onClick={() => setQuantity(prev => prev + 1)}
-                  className="border rounded-full"
-                >
-                  <IoMdAdd />
-                </IconButton>
+                <span className="text-sm font-sans">
+                  {available ? 'In Stock' : 'Out of Stock'}
+                </span>
               </div>
             </div>
           </div>
@@ -306,7 +300,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
               Cancel
             </Button>
             <Button
-              onClick={() => onSave(item.id, price, quantity)}
+              onClick={() => onSave(item.id, price, available)}
               variant="contained"
               className="font-sans !font-sans"
               style={{
@@ -367,8 +361,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
             name: food.name,
             price: Number(food.price),
             description: food.description,
-            quantity: food.quantity || 0,
-            remainingItems: food.quantity || 0
+            available: food.available ?? false
           }))
         );
       }
@@ -378,13 +371,11 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
   // Filter items across all categories
   const filteredItems = useMemo(() => {
     if (!searchQuery) {
-      // When no search query, return the active category's foods
       return activeCategoryFoods;
     }
 
     const lowerQuery = searchQuery.toLowerCase();
     
-    // Get all items from all categories when searching
     const allItems = remoteCategories.flatMap(category => 
       category.foods.map((food: CategoryFood) => ({
         id: food.name,
@@ -392,12 +383,10 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         name: food.name,
         price: Number(food.price),
         description: food.description || '',
-        quantity: food.quantity || 0,
-        remainingItems: food.quantity || 0
+        available: food.available ?? false
       }))
     );
 
-    // Filter items by name
     return allItems.filter(item =>
       item.name.toLowerCase().includes(lowerQuery)
     );
@@ -568,10 +557,10 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                     sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                   />
                   <div className={`absolute top-2 right-2 text-[12px] px-2 py-1 rounded-full font-sans
-                    ${(item.quantity ?? 0) > 0 
+                    ${item.available 
                       ? 'bg-green-100 text-green-800' 
                       : 'bg-red-100 text-red-800'}`}>
-                    {(item.quantity ?? 0) > 0 ? 'In Stock' : 'Out of Stock'}
+                    {item.available ? 'In Stock' : 'Out of Stock'}
                   </div>
                 </div>
                 <div className="p-4 flex flex-col gap-1">
@@ -585,7 +574,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                   </div>
                   <div className="flex items-center text-[13px] text-[#a2a2a2] mt-1 font-sans">
                     <FiShoppingCart className="mr-1" />
-                    {item.quantity || 0}
+                    {item.available ? 'In Stock' : 'Out of Stock'}
                   </div>
                 </div>
               </div>

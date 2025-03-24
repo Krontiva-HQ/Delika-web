@@ -12,6 +12,7 @@ interface AddCategoryParams {
     price: string;
     description: string;
     quantity: string;
+    available: boolean;
   }>;
   onSuccess?: () => void;
 }

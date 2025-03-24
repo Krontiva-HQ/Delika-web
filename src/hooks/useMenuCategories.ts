@@ -15,6 +15,8 @@ export interface CategoryCard {
     foodImage: {
       url: string;
     };
+    description?: string;
+    available: boolean;
   }[];
 }
 
@@ -29,7 +31,7 @@ interface FoodItem {
     url: string;
   };
   description?: string;
-  quantity?: number;
+  available: boolean;
 }
 
 interface APICategory {
@@ -55,7 +57,7 @@ export interface CategoryDetails {
       url: string;
     };
     description?: string;
-    quantity?: number;
+    available: boolean;
   }[];
 }
 
@@ -66,7 +68,7 @@ interface CategoryFood {
     url: string;
   };
   description?: string;
-  quantity?: number;
+  available: boolean;
 }
 
 export const useMenuCategories = () => {
@@ -104,7 +106,7 @@ export const useMenuCategories = () => {
                 url: food.foodImage.url,
               },
               description: food.description,
-              quantity: food.quantity
+              available: food.available ?? false
             }))
           }))
           .sort((a, b) => a.name.localeCompare(b.name));

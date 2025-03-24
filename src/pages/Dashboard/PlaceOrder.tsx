@@ -84,9 +84,8 @@ interface OrderPayload {
 interface MenuItem {
   name: string;
   price: number;
-  quantity: number;
-  stockQuantity: number;
-  image?: string;  // Add this line
+  available: boolean;
+  image?: string;
 }
 
 // Style the Select component to match LocationInput
@@ -613,7 +612,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                                     <span className="text-[14px] leading-[22px] font-sans">
                                       {item.name}
                                     </span>
-                                    {item.quantity === 0 && (
+                                    {item.quantity <= 0 && (
                                       <span className="ml-2 text-[12px] text-red-500">
                                         Out of stock
                                       </span>
@@ -1270,7 +1269,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                                 <span className="text-[14px] leading-[22px] font-sans">
                                   {item.name}
                                 </span>
-                                {item.quantity === 0 && (
+                                {item.quantity <= 0 && (
                                   <span className="ml-2 text-[12px] text-red-500">
                                     Out of stock
                                   </span>
@@ -1968,17 +1967,18 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 </div>
               )}
             </div>
-            {/* Navigation Button */}
-            <div className="flex justify-between mt-8 pt-4 border-t">
-              <button
-                className="flex-1 font-sans cursor-pointer bg-[#fd683e] border-[#fd683e] border-[1px] border-solid 
-                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center"
-                onClick={() => handlePlaceOrder("now")} // Update to handle place order
-                disabled={selectedItems.length === 0} // Disable if no items selected
-              >
-                Place Order
-              </button>
-            </div>
+            <button
+              onClick={handleNextStep}
+              disabled={!isStep1Valid}
+              className={`self-stretch rounded-[4px] border-[1px] border-solid overflow-hidden 
+                         flex flex-row items-center justify-center py-[9px] px-[90px] 
+                         cursor-pointer text-[10px] text-[#fff] mt-4
+                         ${isStep1Valid 
+                           ? 'bg-[#fd683e] border-[#f5fcf8] hover:opacity-90' 
+                           : 'bg-gray-400 border-gray-300 cursor-not-allowed'}`}
+            >
+              <div className="relative leading-[16px] font-sans text-[#fff]">Next</div>
+            </button>
           </>
         );
         case 2:
@@ -2053,7 +2053,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                                   : 'cursor-not-allowed opacity-100'
                               }`}
                               onClick={() => {
-                                if (item.quantity > 0) {
+                                if (item.quantity > 0) {   
                                   setSelectedItem(item.name);
                                   setIsItemsDropdownOpen(false);
                                   addItem(item);
@@ -2065,7 +2065,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                                   <span className="text-[14px] leading-[22px] font-sans">
                                     {item.name}
                                   </span>
-                                  {item.quantity === 0 && (
+                                  {item.quantity <= 0 && (
                                     <span className="ml-2 text-[12px] text-red-500">
                                       Out of stock
                                     </span>
@@ -2156,15 +2156,25 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 </div>
               </div>
 
-              {/* Navigation Button - Keep outside scrollable area */}
+              {/* Navigation Buttons - Keep outside scrollable area */}
               <div className="flex justify-between mt-8 pt-4 border-t">
                 <button
-                  className="flex-1 font-sans cursor-pointer bg-[#fd683e] border-[#fd683e] border-[1px] border-solid 
+                  className="flex-1 font-sans cursor-pointer bg-[#201a18] border-[#201a18] border-[1px] border-solid 
                             py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center"
-                  onClick={() => handlePlaceOrder("now") } // Update to handle place order
-                  disabled={selectedItems.length === 0} // Disable if no items selected
+                  onClick={handlePreviousStep}
+                  disabled={isSubmitting}
                 >
-                  Place Order
+                  Back
+                </button>
+                <div className="mx-2" /> {/* Add space between buttons */}
+                <button
+                  className={`flex-1 font-sans cursor-pointer border-[#fd683e] border-[1px] border-solid 
+                            py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
+                            ${selectedItems.length === 0 ? 'bg-[#fd683e] cursor-not-allowed' : 'bg-[#fd683e] cursor-pointer'}`}
+                  onClick={handleNextStep}
+                  disabled={selectedItems.length === 0}
+                >
+                  Next
                 </button>
               </div>
             </>
@@ -2523,15 +2533,15 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     
     if (existingItem) {
       // Check if adding one more would exceed stock
-      if (existingItem.quantity >= item.stockQuantity) {
-        toast.error(`Cannot add more. Only ${item.stockQuantity} items available in stock`);
+      if (!item.available) {
+        toast.error(`Cannot add more. Item is out of stock`);
         return;
       }
       
       updateQuantity(item.name, existingItem.quantity + 1);
     } else {
       // Adding new item
-      if (item.stockQuantity <= 0) {
+      if (!item.available) {
         toast.error('This item is out of stock');
         return;
       }

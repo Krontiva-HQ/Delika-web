@@ -353,7 +353,7 @@ export interface UpdateInventoryParams {
   newPrice: string;
   name: string;
   description: string;
-  newQuantity: number;
+  available: boolean;
 }
 
 export const updateInventory = async (params: UpdateInventoryParams) => {

@@ -6,7 +6,7 @@ interface AddItemParams {
   name: string;
   price: string;
   description: string;
-  quantity: string;
+  available: boolean;
   foodPhoto: File | null;
   onSuccess?: () => void;
 }
@@ -25,7 +25,7 @@ export const useAddItemToCategory = () => {
     name,
     price,
     description,
-    quantity,
+    available,
     foodPhoto,
     onSuccess
   }: AddItemParams): Promise<AddItemResponse> => {
@@ -37,7 +37,7 @@ export const useAddItemToCategory = () => {
       
       const formData = new FormData();
       formData.append('categoryId', categoryId);
-      formData.append('foods', JSON.stringify({ name, price, description, quantity }));
+      formData.append('foods', JSON.stringify({ name, price, description, available }));
       formData.append('restaurantName', userProfile.restaurantId || '');
       formData.append('branchName', userProfile.branchId || '');
       
