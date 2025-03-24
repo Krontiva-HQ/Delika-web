@@ -405,10 +405,14 @@ export const placeOrder = async (formData: FormData) => {
     products: Array.isArray(jsonData.products) ? jsonData.products : []
   };
 
-  // Send the orderPayload directly without wrapping it
-  return api.post('/delikaquickshipper_orders_table', orderPayload, {
+  return axios({
+    method: 'post',
+    url: `${api.defaults.baseURL}/delikaquickshipper_orders_table`,
+    data: orderPayload,
     headers: {
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'X-Xano-Authorization': localStorage.getItem('authToken'),
+      'X-Xano-Authorization-Only': 'true'
     }
   });
 }; 
