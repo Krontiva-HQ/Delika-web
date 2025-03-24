@@ -372,47 +372,39 @@ export const placeOrder = async (formData: FormData) => {
   
   // Format the data to match the expected structure
   const orderPayload = {
+    branchId: jsonData.branchId,
+    courierName: jsonData.courierName || '',
+    customerName: jsonData.customerName,
+    customerPhoneNumber: jsonData.customerPhoneNumber,
+    deliveryDistance: jsonData.deliveryDistance,
+    deliveryPrice: jsonData.deliveryPrice,
+    dropOff: [{
+      toAddress: jsonData['dropOff[0][toAddress]'],
+      toLatitude: jsonData['dropOff[0][toLatitude]'],
+      toLongitude: jsonData['dropOff[0][toLongitude]']
+    }],
+    dropoffName: jsonData.dropoffName,
+    foodAndDeliveryFee: jsonData.foodAndDeliveryFee === 'true',
+    onlyDeliveryFee: jsonData.onlyDeliveryFee === 'true',
+    orderComment: jsonData.orderComment || '',
+    orderDate: jsonData.orderDate,
+    orderNumber: jsonData.orderNumber,
+    orderPrice: jsonData.orderPrice,
+    orderStatus: jsonData.orderStatus,
+    payLater: jsonData.payLater === 'true',
     payNow: jsonData.payNow === 'true',
     pickup: [{
       fromAddress: jsonData['pickup[0][fromAddress]'],
       fromLatitude: jsonData['pickup[0][fromLatitude]'],
       fromLongitude: jsonData['pickup[0][fromLongitude]']
     }],
-    dropOff: [{
-      toAddress: jsonData['dropOff[0][toAddress]'],
-      toLatitude: jsonData['dropOff[0][toLatitude]'],
-      toLongitude: jsonData['dropOff[0][toLongitude]']
-    }],
-    branchId: jsonData.branchId,
-    payLater: jsonData.payLater === 'true',
-    orderDate: jsonData.orderDate,
-    orderPrice: jsonData.orderPrice,
     pickupName: jsonData.pickupName,
-    totalPrice: jsonData.totalPrice,
-    courierName: jsonData.courierName || '',
-    dropoffName: jsonData.dropoffName,
-    orderNumber: jsonData.orderNumber,
-    orderStatus: jsonData.orderStatus,
-    trackingUrl: jsonData.trackingUrl || '',
-    customerName: jsonData.customerName,
-    orderComment: jsonData.orderComment || '',
+    products: Array.isArray(jsonData.products) ? jsonData.products : [],
     restaurantId: jsonData.restaurantId,
-    deliveryPrice: jsonData.deliveryPrice,
-    onlyDeliveryFee: jsonData.onlyDeliveryFee === 'true',
-    deliveryDistance: jsonData.deliveryDistance,
-    foodAndDeliveryFee: jsonData.foodAndDeliveryFee === 'true',
-    customerPhoneNumber: jsonData.customerPhoneNumber,
-    products: Array.isArray(jsonData.products) ? jsonData.products : []
+    totalPrice: jsonData.totalPrice,
+    trackingUrl: jsonData.trackingUrl || ''
   };
 
-  return axios({
-    method: 'post',
-    url: `${api.defaults.baseURL}/delikaquickshipper_orders_table`,
-    data: orderPayload,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Xano-Authorization': localStorage.getItem('authToken'),
-      'X-Xano-Authorization-Only': 'true'
-    }
-  });
+  // Use the api instance directly with the correct endpoint
+  return api.post('/delikaquickshipper_orders_table', orderPayload);
 }; 
