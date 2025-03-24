@@ -57,6 +57,7 @@ interface InvoiceData {
     branchName: string;
   };
   orderComment?: string;
+  Walkin: boolean;
 }
 
 const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
@@ -99,6 +100,7 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       payNow: false,
       payLater: false,
       scheduledTime: null,
+      Walkin: false,
     };
   }
 
@@ -125,7 +127,8 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       orderCompletedTime,
       scheduledTime,
       branch,
-      orderComment
+      orderComment,
+      Walkin = false
     } = apiResponse;
 
     return {
@@ -170,7 +173,8 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       payLater: false,
       scheduledTime: scheduledTime || null,
       branch,
-      orderComment
+      orderComment,
+      Walkin
     };
   } catch (error) {
     throw error;
@@ -387,6 +391,12 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                     <span className="text-gray-600 font-medium text-xs">Order Status:</span>
                     <span className="text-xs font-bold">{invoiceData.orderStatus || 'N/A'}</span>
                   </div>
+                  {invoiceData.Walkin && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-gray-600 font-medium">Service Type:</span>
+                      <span className="text-xs font-bold">Walk-In</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-1">
                     <span className="text-gray-600 font-medium">Scheduled Time:</span>
                     <span>{invoiceData.scheduledTime ? new Date(invoiceData.scheduledTime).toLocaleString() : 'no scheduled time'}</span>
