@@ -365,11 +365,45 @@ export const getAllMenu = (data: { restaurantId: string; branchId: string }) => 
   return api.post(API_ENDPOINTS.MENU.GET_ALL, data);
 };
 
-// Add the place order service function
+// Update the placeOrder function
 export const placeOrder = async (formData: FormData) => {
-  return api.post(API_ENDPOINTS.ORDERS.PLACE_ORDER, formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
-  });
+  // Convert FormData to JSON object
+  const jsonData = Object.fromEntries(formData.entries());
+  
+  // Format the data to match the expected structure
+  const orderPayload = {
+    payNow: jsonData.payNow === 'true',
+    pickup: [{
+      fromAddress: jsonData['pickup[0][fromAddress]'],
+      fromLatitude: jsonData['pickup[0][fromLatitude]'],
+      fromLongitude: jsonData['pickup[0][fromLongitude]']
+    }],
+    dropOff: [{
+      toAddress: jsonData['dropOff[0][toAddress]'],
+      toLatitude: jsonData['dropOff[0][toLatitude]'],
+      toLongitude: jsonData['dropOff[0][toLongitude]']
+    }],
+    branchId: jsonData.branchId,
+    payLater: jsonData.payLater === 'true',
+    orderDate: jsonData.orderDate,
+    orderPrice: jsonData.orderPrice,
+    pickupName: jsonData.pickupName,
+    totalPrice: jsonData.totalPrice,
+    courierName: jsonData.courierName || '',
+    dropoffName: jsonData.dropoffName,
+    orderNumber: jsonData.orderNumber,
+    orderStatus: jsonData.orderStatus,
+    trackingUrl: jsonData.trackingUrl || '',
+    customerName: jsonData.customerName,
+    orderComment: jsonData.orderComment || '',
+    restaurantId: jsonData.restaurantId,
+    deliveryPrice: jsonData.deliveryPrice,
+    onlyDeliveryFee: jsonData.onlyDeliveryFee === 'true',
+    deliveryDistance: jsonData.deliveryDistance,
+    foodAndDeliveryFee: jsonData.foodAndDeliveryFee === 'true',
+    customerPhoneNumber: jsonData.customerPhoneNumber,
+    products: Array.isArray(jsonData.products) ? jsonData.products : []
+  };
+
+  return api.post(API_ENDPOINTS.ORDERS.PLACE_ORDER, orderPayload);
 }; 
