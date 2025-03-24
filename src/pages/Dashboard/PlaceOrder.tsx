@@ -19,6 +19,9 @@ import { SelectChangeEvent } from '@mui/material/Select';
 import { toast } from 'react-toastify';
 import BatchSummaryModal from '../../components/BatchSummaryModal';
 
+// Add the API key directly if needed
+const GOOGLE_MAPS_API_KEY = 'AIzaSyAdv28EbwKXqvlKo2henxsKMD-4EKB20l8';
+
 interface PlaceOrderProps {
   onClose: () => void;
   onOrderPlaced: () => void;
