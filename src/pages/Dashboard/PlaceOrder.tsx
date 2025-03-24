@@ -83,6 +83,7 @@ interface OrderPayload {
     scheduleTime: string;
     scheduleDateTime: string;
   };
+  Walkin: boolean; // Add this line
 }
 
 interface MenuItemData {
@@ -349,136 +350,70 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       // Create formData instance first
       const formData = new FormData();
 
-      // When submitting the order, add the scheduled delivery data
-      let scheduledDeliveryData = null;
-      if (deliveryMethod === 'schedule' && scheduledDate && scheduledTime) {
-        const combinedDateTime = `${scheduledDate}T${scheduledTime}:00`;
-        scheduledDeliveryData = {
-          scheduleDate: scheduledDate,
-          scheduleTime: scheduledTime,
-          scheduleDateTime: combinedDateTime
-        };
-        formData.append('scheduleDate', scheduledDate);
-        formData.append('scheduledTime', scheduledTime);
-        formData.append('scheduledDateTime', combinedDateTime);
-      }
-
-      const orderData = {
-        customerName,
-        customerPhone,
-        restaurantId: userProfile?.restaurantId,
-        branchId: selectedBranchId || userProfile?.branchId,
-        deliveryType: deliveryMethod,
-        deliveryPrice,
-        orderPrice: totalFoodPrice,
-        totalPrice: calculateTotal(),
-        orderComment,
-        batchID: currentBatchId, // Only included for batch delivery
-        pickup: [{
-          fromLatitude: pickupLocation?.latitude.toString(),
-          fromLongitude: pickupLocation?.longitude.toString(),
-          fromAddress: pickupLocation?.address,
-        }],
-        dropOff: [{
-          toLatitude: dropoffLocation?.latitude.toString(),
-          toLongitude: dropoffLocation?.longitude.toString(),
-          toAddress: dropoffLocation?.address,
-        }],
-        products: selectedItems.map(item => ({
-          name: item.name,
-          price: item.price.toString(),
-          quantity: item.quantity.toString(),
-          foodImage: {
-            url: item.image,
-            filename: '',
-            type: '',
-            size: 0
-          }
-        })),
-        ...(scheduledDeliveryData && { scheduleDelivery: scheduledDeliveryData })
-      };
-      
-      // Use the selected branch data for Admin users, otherwise use userProfile data
-      if (userProfile?.role === 'Admin') {
-        formData.append('branchId', pickupData.branchId);
-        formData.append('pickup[0][fromAddress]', pickupData.fromAddress);
-        formData.append('pickup[0][fromLatitude]', pickupData.fromLatitude);
-        formData.append('pickup[0][fromLongitude]', pickupData.fromLongitude);
-        formData.append('pickupName', pickupData.fromAddress); // Admin-specific branch name
-      } else {
-        formData.append('branchId', userProfile?.branchId || '');
-        formData.append('pickup[0][fromAddress]', userProfile?.branchesTable?.branchLocation || '');
-        formData.append('pickup[0][fromLatitude]', userProfile?.branchesTable?.branchLatitude || '');
-        formData.append('pickup[0][fromLongitude]', userProfile?.branchesTable?.branchLongitude || '');
-        formData.append('pickupName', userProfile?.branchesTable?.branchName || ''); // Non-Admin branch name
-      }
-      
-
-      // Structured dropOff array
-      formData.append('dropOff[0][toAddress]', dropoffLocation?.address || '');
-      formData.append('dropOff[0][toLatitude]', dropoffLocation?.latitude.toString() || '');
-      formData.append('dropOff[0][toLongitude]', dropoffLocation?.longitude.toString() || '');
-
-      // Rest of the fields
-      formData.append('deliveryDistance', distance ? distance.toString() : '');
-      formData.append('orderNumber', Math.floor(Math.random() * 1000000).toString());
-      formData.append('orderPrice', totalFoodPrice);
-      formData.append('trackingUrl', '');
-      formData.append('courierName', '');
-      formData.append('customerName', customerName);
-      formData.append('customerPhoneNumber', customerPhone);
-      formData.append('restaurantId', userProfile?.restaurantId || '');
-      formData.append('orderStatus', 'ReadyForPickup');
-      formData.append('orderComment', orderComment);
-      
-      // Products array without foodImage
+      // Add products to formData
       selectedItems.forEach((item, index) => {
         formData.append(`products[${index}][name]`, item.name);
         formData.append(`products[${index}][price]`, item.price.toString());
         formData.append(`products[${index}][quantity]`, item.quantity.toString());
+        if (item.image) {
+          formData.append(`products[${index}][foodImage][url]`, item.image);
+        }
       });
 
-      formData.append('orderDate', new Date().toISOString());
+      // Add other fields to formData
+      formData.append('customerName', customerName);
+      formData.append('customerPhoneNumber', customerPhone);
+      formData.append('restaurantId', userProfile?.restaurantId || '');
+      formData.append('branchId', selectedBranchId || userProfile?.branchId || '');
       formData.append('deliveryPrice', deliveryPrice);
-      formData.append('dropoffName', dropoffLocation?.name || '');
+      formData.append('orderPrice', totalFoodPrice);
       formData.append('totalPrice', calculateTotal());
+      formData.append('orderComment', orderComment);
+      
+      // Set orderStatus based on delivery method
+      const orderStatus = deliveryMethod === 'walk-in' ? 'Delivered' : 'ReadyForPickup';
+      formData.append('orderStatus', orderStatus);
+
+      formData.append('orderDate', new Date().toISOString());
       formData.append('foodAndDeliveryFee', 'true');
       formData.append('onlyDeliveryFee', 'false');
       formData.append('payNow', (paymentType === 'now').toString());
       formData.append('payLater', (paymentType === 'later').toString());
+      formData.append('Walkin', (deliveryMethod === 'walk-in').toString());
 
-      // Only append batchID for batch delivery
-      if (deliveryMethod === 'batch-delivery' && currentBatchId) {
-        formData.append('batchID', currentBatchId);
+      // Add pickup and dropoff locations
+      if (pickupLocation) {
+        formData.append('pickup[0][fromLatitude]', pickupLocation.latitude.toString());
+        formData.append('pickup[0][fromLongitude]', pickupLocation.longitude.toString());
+        formData.append('pickup[0][fromAddress]', pickupLocation.address);
+      }
+      if (dropoffLocation) {
+        formData.append('dropOff[0][toLatitude]', dropoffLocation.latitude.toString());
+        formData.append('dropOff[0][toLongitude]', dropoffLocation.longitude.toString());
+        formData.append('dropOff[0][toAddress]', dropoffLocation.address);
       }
 
-      console.log('Order payload with products:', orderData); // Debug log
+      // Debug log to check the formData
+      formData.forEach((value, key) => {
+        console.log(key, value);
+      });
 
+      // Inside handlePlaceOrder function, add this before the formData.append:
+      console.log('Selected delivery method:', deliveryMethod);
+
+      // Use the placeOrder function from api.ts
       const response = await placeOrder(formData);
-      const result = response.data;
-      
-      // For batch delivery, add to batched orders and show summary
-      if (deliveryMethod === 'batch-delivery') {
-        setBatchedOrders(prev => [...prev, { ...orderData, id: result.id }]);
-        setShowBatchSummary(true);
-        addNotification({
-          type: 'order_created',
-          message: `Order number **#${Math.floor(Math.random() * 1000000)}** has been created as a part of batch order`
-        });
-      } else {
-        // Regular notification for other delivery types
-        addNotification({
-          type: 'order_created',
-          message: 'Order has been created successfully'
-        });
+
+      if (!response.data) {
+        throw new Error('Failed to place order');
       }
 
-      // Notify the parent component to refresh orders
-      onOrderPlaced(); // Call this to refresh orders
-
+      const result = response.data;
+      onOrderPlaced();
+      // ... handle success ...
     } catch (error) {
       console.error('Error placing order:', error);
-      throw new Error('Failed to place order');
+      // ... handle error ...
     } finally {
       // Reset both loading states
       setIsPayLaterSubmitting(false);
@@ -2521,10 +2456,15 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   // Modify the handleDeliveryMethodSelect function
   const handleDeliveryMethodSelect = (method: DeliveryMethod) => {
     setDeliveryMethod(method);
-    // For schedule and on-demand, start at step 1
-    if (method === 'schedule' || method === 'on-demand') {
-      setCurrentStep(1);
+    
+    // If walk-in is selected, ensure Walkin is set to true
+    if (method === 'walk-in') {
+      // Add any additional logic needed for walk-in orders
+      console.log('Walk-in service selected');
     }
+    
+    // Reset any other delivery-specific states if needed
+    // ... existing code ...
   };
 
   // Add this function to handle date changes with validation
@@ -2645,7 +2585,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         {!deliveryMethod ? (
           // Initial delivery method selection modal
           <div className="flex flex-col items-center">
-            <h2 className="text-2xl font-semibold mb-8 font-sans">Select Delivery Type</h2>
+            <h2 className="text-2xl font-semibold mb-8 font-sans">Select Service Type</h2>
             <div className="flex gap-4 w-full justify-center flex-nowrap"> {/* Change here */}
               {/* On-Demand Delivery */}
               <div

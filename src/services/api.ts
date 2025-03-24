@@ -418,7 +418,8 @@ export const placeOrder = async (formData: FormData) => {
     products: products, // Use the extracted products array
     restaurantId: jsonData.restaurantId,
     totalPrice: jsonData.totalPrice,
-    trackingUrl: jsonData.trackingUrl || ''
+    trackingUrl: jsonData.trackingUrl || '',
+    walkIn: jsonData.walkIn === 'true' || jsonData.Walkin === 'true' // Handle both cases
   };
 
   // Use the api instance directly with the correct endpoint
