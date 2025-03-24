@@ -405,5 +405,10 @@ export const placeOrder = async (formData: FormData) => {
     products: Array.isArray(jsonData.products) ? jsonData.products : []
   };
 
-  return api.post(API_ENDPOINTS.ORDERS.PLACE_ORDER, orderPayload);
+  // Send the orderPayload directly without wrapping it
+  return api.post('/delikaquickshipper_orders_table', orderPayload, {
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
 }; 
