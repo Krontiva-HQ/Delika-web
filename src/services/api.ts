@@ -369,7 +369,23 @@ export const getAllMenu = (data: { restaurantId: string; branchId: string }) => 
 export const placeOrder = async (formData: FormData) => {
   // Convert FormData to JSON object
   const jsonData = Object.fromEntries(formData.entries());
-  
+
+  // Extract products from FormData
+  const products = [];
+  let index = 0;
+  while (true) {
+    const productName = jsonData[`products[${index}][name]`];
+    if (!productName) break; // Exit loop if no more products
+
+    const product = {
+      name: productName,
+      price: jsonData[`products[${index}][price]`],
+      quantity: jsonData[`products[${index}][quantity]`]
+    };
+    products.push(product);
+    index++;
+  }
+
   // Format the data to match the expected structure
   const orderPayload = {
     branchId: jsonData.branchId,
@@ -399,7 +415,7 @@ export const placeOrder = async (formData: FormData) => {
       fromLongitude: jsonData['pickup[0][fromLongitude]']
     }],
     pickupName: jsonData.pickupName,
-    products: Array.isArray(jsonData.products) ? jsonData.products : [],
+    products: products, // Use the extracted products array
     restaurantId: jsonData.restaurantId,
     totalPrice: jsonData.totalPrice,
     trackingUrl: jsonData.trackingUrl || ''

@@ -18,6 +18,7 @@ import { styled } from '@mui/material/styles';
 import { SelectChangeEvent } from '@mui/material/Select';
 import { toast } from 'react-toastify';
 import BatchSummaryModal from '../../components/BatchSummaryModal';
+import { ArrowLeftIcon } from '@heroicons/react/24/solid';
 
 // Add the API key directly if needed
 const GOOGLE_MAPS_API_KEY = 'AIzaSyAdv28EbwKXqvlKo2henxsKMD-4EKB20l8';
@@ -84,11 +85,17 @@ interface OrderPayload {
   };
 }
 
-interface MenuItem {
+interface MenuItemData {
   name: string;
-  price: number;
+  price: string | number;
   available: boolean;
   image?: string;
+  foodImage?: {
+    url: string;
+    filename: string;
+    type: string;
+    size: number;
+  };
 }
 
 // Style the Select component to match LocationInput
@@ -139,7 +146,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   const [selectedBranchId, setSelectedBranchId] = useState(initialBranchId || '');
   const [selectCategoryAnchorEl, setSelectCategoryAnchorEl] = useState<null | HTMLElement>(null);
   const [selectItemAnchorEl, setSelectItemAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedItem, setSelectedItem] = useState("");
+  const [selectedItem, setSelectedItem] = useState<string>("");
   const [isItemsDropdownOpen, setIsItemsDropdownOpen] = useState(false);
   const [deliveryPrice, setDeliveryPrice] = useState<string>("");  // Change initial state type
   const [totalFoodPrice, setTotalFoodPrice] = useState("0.00");
@@ -379,8 +386,14 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         }],
         products: selectedItems.map(item => ({
           name: item.name,
-          price: item.price,
-          quantity: item.quantity
+          price: item.price.toString(),
+          quantity: item.quantity.toString(),
+          foodImage: {
+            url: item.image,
+            filename: '',
+            type: '',
+            size: 0
+          }
         })),
         ...(scheduledDeliveryData && { scheduleDelivery: scheduledDeliveryData })
       };
@@ -438,6 +451,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       if (deliveryMethod === 'batch-delivery' && currentBatchId) {
         formData.append('batchID', currentBatchId);
       }
+
+      console.log('Order payload with products:', orderData); // Debug log
 
       const response = await placeOrder(formData);
       const result = response.data;
@@ -541,188 +556,11 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         
       case 'full-service':
         return renderFullServiceContent();
-        
-      case 'walk-in':
-        switch (currentStep) {
-          case 1:
-            return (
-              <>
-                <b className="font-sans text-lg font-semibold">Add Menu Item</b>
-                {/* Add this scrollable container */}
-                <div className="flex-1 overflow-y-auto max-h-[75vh] pr-2">
-                  {/* Menu Items Section */}
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-4">
-                    <div className="self-stretch relative leading-[20px] font-sans">Menu</div>
-                    <div className="w-full">
-                      <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                        Select Category
-                      </div>
-                      <StyledSelect
-                        fullWidth
-                        value={selectedCategory}
-                        onChange={(event: SelectChangeEvent<unknown>, child: React.ReactNode) => {
-                          setSelectedCategory(event.target.value as string);
-                        }}
-                        variant="outlined"
-                        size="small"
-                        className="mb-2"
-                        displayEmpty
-                      >
-                        <MenuItem value="" disabled>
-                          Select Category
-                        </MenuItem>
-                        {categories.map((category) => (
-                          <MenuItem key={category.value} value={category.label}>
-                            {category.label}
-                          </MenuItem>
-                        ))}
-                      </StyledSelect>
-                    </div>
-                  </div>
-                  <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] text-[#6f7070] pt-4">
-                    <div className="flex-1 flex flex-col items-start justify-start gap-[6px]">
-                      <div className="self-stretch relative leading-[20px] font-sans text-black">Items</div>
-                      <div className="relative w-full">
-                        <button
-                          onClick={() => setIsItemsDropdownOpen(!isItemsDropdownOpen)}
-                          className="w-full p-2 text-left border-[#efefef] border-[1px] border-solid rounded-md bg-white"
-                        >
-                          <div className="text-[14px] leading-[22px] font-sans">
-                            {selectedItem || "Select Item"}
-                          </div>
-                        </button>
-                        
-                        {isItemsDropdownOpen && (
-                          <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
-                            {categoryItems.map((item) => (
-                              <div
-                                key={item.name}
-                                className={`p-2 ${
-                                  item.quantity > 0 
-                                    ? 'hover:bg-gray-100 cursor-pointer'
-                                    : 'cursor-not-allowed opacity-100'
-                                }`}
-                                onClick={() => {
-                                  if (item.quantity > 0) {
-                                    setSelectedItem(item.name);
-                                    setIsItemsDropdownOpen(false);
-                                    addItem(item);
-                                  }
-                                }}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div>
-                                    <span className="text-[14px] leading-[22px] font-sans">
-                                      {item.name}
-                                    </span>
-                                    {item.quantity <= 0 && (
-                                      <span className="ml-2 text-[12px] text-red-500">
-                                        Out of stock
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="text-[14px] leading-[22px] font-sans">
-                                    GH₵ {item.price}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
-                    <div className="self-stretch relative leading-[20px] font-sans text-black">Selected Items</div>
-                    {selectedItems.map((item, index) => (
-                      <div 
-                        key={`${item.name}-${index}`}
-                        className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-start justify-between p-[1px]"
-                      >
-                        <div className="w-[61px] rounded-[6px] bg-[#f6f6f6] box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[20px] gap-[7px]">
-                          <div className="flex flex-row items-center gap-1">
-                            <button 
-                              onClick={() => updateQuantity(item.name, item.quantity - 1)}
-                              disabled={item.quantity <= 1}
-                              className={`w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center 
-                                     ${item.quantity <= 1 ? 'text-gray-400 cursor-not-allowed' : 'text-black cursor-pointer'} 
-                                     font-sans`}
-                            >
-                              -
-                            </button>
-                            <div className="w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center text-black font-sans">
-                              {item.quantity}
-                            </div>
-                            <button 
-                              onClick={() => {
-                                const menuItem = categoryItems.find(mi => mi.name === item.name);
-                                if (menuItem && item.quantity < menuItem.quantity) {
-                                  updateQuantity(item.name, item.quantity + 1);
-                                } else {
-                                  toast.error(`Maximum available quantity is ${menuItem?.quantity}`);
-                                }
-                              }}
-                              disabled={!categoryItems.find(mi => mi.name === item.name)?.quantity || 
-                                        item.quantity >= (categoryItems.find(mi => mi.name === item.name)?.quantity || 0)}
-                              className={`w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center 
-                                     ${!categoryItems.find(mi => mi.name === item.name)?.quantity || 
-                                       item.quantity >= (categoryItems.find(mi => mi.name === item.name)?.quantity || 0)
-                                       ? 'text-gray-400 cursor-not-allowed' 
-                                       : 'text-black cursor-pointer'} 
-                                     font-sans`}
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
-                        <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-between py-[15px] px-[20px] text-[#858a89]">
-                          <div className="relative leading-[20px] text-black font-sans">{item.name}</div>
-                          <div className="flex items-center gap-3">
-                            <div className="relative leading-[20px] text-black font-sans">{item.price * item.quantity} GHS</div>
-                            <RiDeleteBinLine 
-                              className="cursor-pointer text-red-500 hover:text-red-600" 
-                              onClick={() => removeItem(item.name)}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    {selectedItems.length === 0 && (
-                      <div className="text-[#b1b4b3] text-[13px] italic font-sans">No items selected</div>
-                    )}
-                  </div>
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
-                    <div className="self-stretch relative leading-[20px] font-sans text-black">
-                      Total Price
-                    </div>
-                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
-                      <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
-                        <div className="relative leading-[20px] text-black font-sans">GH₵</div>
-                      </div>
-                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
-                        <div className="relative leading-[20px] text-black font-sans">{calculateTotal()}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+       
+        case 'walk-in':
+        return renderWalkInContent();
 
-                {/* Navigation Button */}
-                <div className="flex justify-between mt-8 pt-4 border-t">
-                  <button
-                    className="flex-1 font-sans cursor-pointer bg-[#fd683e] border-[#fd683e] border-[1px] border-solid 
-                              py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center"
-                    onClick={() => handlePlaceOrder("now")} // Update to handle place order
-                    disabled={!isWalkInValid()} // Disable if validation fails
-                  >
-                    Place Order
-                  </button>
-                </div>
-              </>
-            );
-         
-      default:
-            return null;
-        }
+     
       default:
         // Redirect to step 1 if somehow we get to an invalid step
         setCurrentStep(1);
@@ -1255,12 +1093,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                           <div
                             key={item.name}
                             className={`p-2 ${
-                              item.quantity > 0 
+                              item.available 
                                 ? 'hover:bg-gray-100 cursor-pointer'
                                 : 'cursor-not-allowed opacity-100'
                             }`}
                             onClick={() => {
-                              if (item.quantity > 0) {
+                              if (item.available) {
                                 setSelectedItem(item.name);
                                 setIsItemsDropdownOpen(false);
                                 addItem(item);
@@ -1272,7 +1110,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                                 <span className="text-[14px] leading-[22px] font-sans">
                                   {item.name}
                                 </span>
-                                {item.quantity <= 0 && (
+                                {!item.available && (
                                   <span className="ml-2 text-[12px] text-red-500">
                                     Out of stock
                                   </span>
@@ -1311,19 +1149,10 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                           {item.quantity}
                         </div>
                         <button 
-                          onClick={() => {
-                            const menuItem = categoryItems.find(mi => mi.name === item.name);
-                            if (menuItem && item.quantity < menuItem.quantity) {
-                              updateQuantity(item.name, item.quantity + 1);
-                            } else {
-                              toast.error(`Maximum available quantity is ${menuItem?.quantity}`);
-                            }
-                          }}
-                          disabled={!categoryItems.find(mi => mi.name === item.name)?.quantity || 
-                                    item.quantity >= (categoryItems.find(mi => mi.name === item.name)?.quantity || 0)}
+                          onClick={() => updateQuantity(item.name, item.quantity + 1)}
+                          disabled={!categoryItems.find(mi => mi.name === item.name)?.available}
                           className={`w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center 
-                                 ${!categoryItems.find(mi => mi.name === item.name)?.quantity || 
-                                   item.quantity >= (categoryItems.find(mi => mi.name === item.name)?.quantity || 0)
+                                 ${!categoryItems.find(mi => mi.name === item.name)?.available
                                    ? 'text-gray-400 cursor-not-allowed' 
                                    : 'text-black cursor-pointer'} 
                                  font-sans`}
@@ -1366,12 +1195,22 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             {/* Navigation Button - Keep outside scrollable area */}
             <div className="flex justify-between mt-8 pt-4 border-t">
               <button
-                className="flex-1 font-sans cursor-pointer bg-[#fd683e] border-[#fd683e] border-[1px] border-solid 
-                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center"
-                onClick={() => handlePlaceOrder("now")} // Update to handle place order
-                disabled={selectedItems.length === 0} // Disable if no items selected
+                className="flex-1 font-sans cursor-pointer bg-[#201a18] border-[#201a18] border-[1px] border-solid 
+                            py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center"
+                onClick={handlePreviousStep}
+                disabled={isSubmitting}
               >
-                Place Order
+                Back
+              </button>
+              <div className="mx-2" /> {/* Add space between buttons */}
+              <button
+                className={`flex-1 font-sans cursor-pointer border-[#fd683e] border-[1px] border-solid 
+                            py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
+                            ${selectedItems.length === 0 ? 'bg-[#fd683e] cursor-not-allowed' : 'bg-[#fd683e] cursor-pointer'}`}
+                onClick={handleNextStep}
+                disabled={selectedItems.length === 0}
+              >
+                Next
               </button>
             </div>
           </>
@@ -2051,12 +1890,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                             <div
                               key={item.name}
                               className={`p-2 ${
-                                item.quantity > 0 
+                                item.available 
                                   ? 'hover:bg-gray-100 cursor-pointer'
                                   : 'cursor-not-allowed opacity-100'
                               }`}
                               onClick={() => {
-                                if (item.quantity > 0) {   
+                                if (item.available) {   
                                   setSelectedItem(item.name);
                                   setIsItemsDropdownOpen(false);
                                   addItem(item);
@@ -2068,7 +1907,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                                   <span className="text-[14px] leading-[22px] font-sans">
                                     {item.name}
                                   </span>
-                                  {item.quantity <= 0 && (
+                                  {!item.available && (
                                     <span className="ml-2 text-[12px] text-red-500">
                                       Out of stock
                                     </span>
@@ -2107,19 +1946,10 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                             {item.quantity}
                           </div>
                           <button 
-                            onClick={() => {
-                              const menuItem = categoryItems.find(mi => mi.name === item.name);
-                              if (menuItem && item.quantity < menuItem.quantity) {
-                                updateQuantity(item.name, item.quantity + 1);
-                              } else {
-                                toast.error(`Maximum available quantity is ${menuItem?.quantity}`);
-                              }
-                            }}
-                            disabled={!categoryItems.find(mi => mi.name === item.name)?.quantity || 
-                                      item.quantity >= (categoryItems.find(mi => mi.name === item.name)?.quantity || 0)}
+                            onClick={() => updateQuantity(item.name, item.quantity + 1)}
+                            disabled={!categoryItems.find(mi => mi.name === item.name)?.available}
                             className={`w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center 
-                                   ${!categoryItems.find(mi => mi.name === item.name)?.quantity || 
-                                     item.quantity >= (categoryItems.find(mi => mi.name === item.name)?.quantity || 0)
+                                   ${!categoryItems.find(mi => mi.name === item.name)?.available
                                      ? 'text-gray-400 cursor-not-allowed' 
                                      : 'text-black cursor-pointer'} 
                                    font-sans`}
@@ -2295,7 +2125,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                     placeholder="Add any special instructions or notes here..."
                     value={orderComment}
                     onChange={(e) => setOrderComment(e.target.value)}
-
                   />
                 </div>
               </div>
@@ -2345,6 +2174,196 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       default:
         // Redirect to step 1 if somehow we get to an invalid step
         setCurrentStep(1);
+        return null;
+    }
+  };
+
+  const renderWalkInContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <>
+            <b className="font-sans text-lg font-semibold">Add Menu Item</b>
+            {/* Add this scrollable container */}
+            <div className="flex-1 overflow-y-auto max-h-[75vh] pr-2">
+              {/* Menu Items Section */}
+              <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-4">
+                <div className="self-stretch relative leading-[20px] font-sans">Menu</div>
+                <div className="w-full">
+                  <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
+                    Select Category
+                  </div>
+                  <StyledSelect
+                    fullWidth
+                    value={selectedCategory}
+                    onChange={(event: SelectChangeEvent<unknown>, child: React.ReactNode) => {
+                      setSelectedCategory(event.target.value as string);
+                    }}
+                    variant="outlined"
+                    size="small"
+                    className="mb-2"
+                    displayEmpty
+                  >
+                    <MenuItem value="" disabled>
+                      Select Category
+                    </MenuItem>
+                    {categories.map((category) => (
+                      <MenuItem key={category.value} value={category.label}>
+                        {category.label}
+                      </MenuItem>
+                    ))}
+                  </StyledSelect>
+                </div>
+              </div>
+              <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] text-[#6f7070] pt-4">
+                <div className="flex-1 flex flex-col items-start justify-start gap-[6px]">
+                  <div className="self-stretch relative leading-[20px] font-sans text-black">Items</div>
+                  <div className="relative w-full">
+                    <button
+                      onClick={() => setIsItemsDropdownOpen(!isItemsDropdownOpen)}
+                      className="w-full p-2 text-left border-[#efefef] border-[1px] border-solid rounded-md bg-white"
+                    >
+                      <div className="text-[14px] leading-[22px] font-sans">
+                        {selectedItem || "Select Item"}
+                      </div>
+                    </button>
+                    
+                    {isItemsDropdownOpen && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
+                        {categoryItems.map((item) => (
+                          <div
+                            key={item.name}
+                            className={`p-2 ${
+                              item.available 
+                                ? 'hover:bg-gray-100 cursor-pointer'
+                                : 'cursor-not-allowed opacity-100'
+                            }`}
+                            onClick={() => {
+                              if (item.available) {
+                                setSelectedItem(item.name);
+                                setIsItemsDropdownOpen(false);
+                                // Add the item to selected items with initial quantity of 1
+                                const newItem: SelectedItem = {
+                                  name: item.name,
+                                  quantity: 1,
+                                  price: parseFloat(item.price as string),
+                                  image: item.image || ''
+                                };
+                                setSelectedItems(prev => [...prev, newItem]);
+                              }
+                            }}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <span className="text-[14px] leading-[22px] font-sans">
+                                  {item.name}
+                                </span>
+                                {!item.available && (
+                                  <span className="ml-2 text-[12px] text-red-500">
+                                    Out of stock
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[14px] leading-[22px] font-sans">
+                                GH₵ {item.price}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
+                <div className="self-stretch relative leading-[20px] font-sans text-black">Selected Items</div>
+                {selectedItems.map((item, index) => (
+                  <div 
+                    key={`${item.name}-${index}`}
+                    className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-start justify-between p-[1px]"
+                  >
+                    <div className="w-[61px] rounded-[6px] bg-[#f6f6f6] box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[20px] gap-[7px]">
+                      <div className="flex flex-row items-center gap-1">
+                        <button 
+                          onClick={() => updateQuantity(item.name, item.quantity - 1)}
+                          disabled={item.quantity <= 1}
+                          className={`w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center 
+                                 ${item.quantity <= 1 ? 'text-gray-400 cursor-not-allowed' : 'text-black cursor-pointer'} 
+                                 font-sans`}
+                        >
+                          -
+                        </button>
+                        <div className="w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center text-black font-sans">
+                          {item.quantity}
+                        </div>
+                        <button 
+                          onClick={() => updateQuantity(item.name, item.quantity + 1)}
+                          disabled={!categoryItems.find(mi => mi.name === item.name)?.available}
+                          className={`w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center 
+                                 ${!categoryItems.find(mi => mi.name === item.name)?.available
+                                   ? 'text-gray-400 cursor-not-allowed' 
+                                   : 'text-black cursor-pointer'} 
+                                 font-sans`}
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-between py-[15px] px-[20px] text-[#858a89]">
+                      <div className="relative leading-[20px] text-black font-sans">{item.name}</div>
+                      <div className="flex items-center gap-3">
+                        <div className="relative leading-[20px] text-black font-sans">{item.price * item.quantity} GHS</div>
+                        <RiDeleteBinLine 
+                          className="cursor-pointer text-red-500 hover:text-red-600" 
+                          onClick={() => removeItem(item.name)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {selectedItems.length === 0 && (
+                  <div className="text-[#b1b4b3] text-[13px] italic font-sans">No items selected</div>
+                )}
+              </div>
+              <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
+                <div className="self-stretch relative leading-[20px] font-sans text-black">
+                  Total Price
+                </div>
+                <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
+                  <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
+                    <div className="relative leading-[20px] text-black font-sans">GH₵</div>
+                  </div>
+                  <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
+                    <div className="relative leading-[20px] text-black font-sans">{calculateTotal()}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Navigation Button */}
+            <div className="flex justify-between mt-8 pt-4 border-t">
+              <button
+                className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
+                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
+                          ${isPayLaterSubmitting || isPayNowSubmitting
+                            ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
+                            : 'bg-[#fd683e] border-[#fd683e]'}`}
+                onClick={() => handlePlaceOrder("now")}
+                disabled={isPayLaterSubmitting || isPayNowSubmitting}
+              >
+                {isPayNowSubmitting ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Processing...
+                  </div>
+                ) : (
+                  'Place Order'
+                )}
+              </button>
+            </div>
+          </>
+        );
+      default:
         return null;
     }
   };
@@ -2530,32 +2549,15 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     return null;
   };
 
-  const handleAddItem = (item: MenuItem) => {
-    // Check if item already exists in selected items
-    const existingItem = selectedItems.find(i => i.name === item.name);
-    
-    if (existingItem) {
-      // Check if adding one more would exceed stock
-      if (!item.available) {
-        toast.error(`Cannot add more. Item is out of stock`);
-        return;
-      }
-      
-      updateQuantity(item.name, existingItem.quantity + 1);
-    } else {
-      // Adding new item
-      if (!item.available) {
-        toast.error('This item is out of stock');
-        return;
-      }
-      
-      setSelectedItems([...selectedItems, { 
-        name: item.name, 
-        price: item.price, 
-        quantity: 1,
-        image: item.image || '' // Add this line
-      }]);
-    }
+  const handleAddItem = (item: MenuItemData) => {
+    const newItem: SelectedItem = {
+      name: item.name,
+      quantity: 1,
+      price: parseFloat(item.price as string),
+      image: item.foodImage?.url || ''
+    };
+    setSelectedItems(prev => [...prev, newItem]);
+    console.log('Added item:', newItem); // Debug log
   };
 
   // Add these functions inside the PlaceOrder component
@@ -2627,12 +2629,9 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     return (
         customerName.trim() !== '' &&
         customerPhone.length === 10 &&
-        pickupLocation !== null &&
-        dropoffLocation !== null &&
         selectedItems.length > 0
     );
 };
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-8 rounded-lg w-[600px] relative flex flex-col">

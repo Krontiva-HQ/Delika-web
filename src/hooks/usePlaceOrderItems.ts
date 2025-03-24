@@ -4,10 +4,14 @@ import { useUserProfile } from './useUserProfile';
 
 interface MenuItem {
   name: string;
-  price: string;
-  quantity: number;
-  foodImage: {
+  price: string | number;
+  available: boolean;
+  image?: string;
+  foodImage?: {
     url: string;
+    filename: string;
+    type: string;
+    size: number;
   };
 }
 
@@ -119,7 +123,7 @@ export const usePlaceOrderItems = (selectedBranchId?: string): PlaceOrderItemsHo
 
   const addItem = async (item: MenuItem) => {
     try {
-      const imageFile = await convertUrlToFile(item.foodImage.url);
+      const imageFile = await convertUrlToFile(item.foodImage?.url || '');
       
       setSelectedItems(prev => {
         const existingItem = prev.find(i => i.name === item.name);
@@ -133,8 +137,8 @@ export const usePlaceOrderItems = (selectedBranchId?: string): PlaceOrderItemsHo
         return [...prev, { 
           name: item.name, 
           quantity: 1, 
-          price: parseFloat(item.price),
-          image: item.foodImage.url,
+          price: parseFloat(item.price as string),
+          image: item.foodImage?.url || '',
           imageFile
         }];
       });
