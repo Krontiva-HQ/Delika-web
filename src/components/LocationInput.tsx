@@ -16,7 +16,8 @@ interface GooglePlace {
 // Add this outside the component to avoid multiple declarations
 let googleScriptLoaded = false;
  
-const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY || import.meta.env.GOOGLE_MAPS_API_KEY;
+// Add the API key directly
+const GOOGLE_MAPS_API_KEY = 'AIzaSyAdv28EbwKXqvlKo2henxsKMD-4EKB20l8';
  
 const LocationInput: React.FC<LocationInputProps> = ({ label, onLocationSelect, prefillData, disabled }) => {
   const [address, setAddress] = useState(prefillData?.address || '');
@@ -57,14 +58,7 @@ const LocationInput: React.FC<LocationInputProps> = ({ label, onLocationSelect, 
 
     // Load the script only once
     const script = document.createElement('script');
-    
-    // Add error handling for API key
-    if (!GOOGLE_MAPS_API_KEY) {
-      console.error('Google Maps API key is not defined');
-      return;
-    }
-
-    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyAdv28EbwKXqvlKo2henxsKMD-4EKB20l8&libraries=places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
     script.async = true;
     script.defer = true;
     
