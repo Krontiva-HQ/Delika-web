@@ -27,7 +27,7 @@ interface PlaceOrderProps {
 
 interface SelectedItem {
   name: string;
-  quantity: number;
+  quantity: number; 
   price: number;
   image: string;
 }

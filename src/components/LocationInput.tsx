@@ -64,7 +64,7 @@ const LocationInput: React.FC<LocationInputProps> = ({ label, onLocationSelect, 
       return;
     }
 
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${GOOGLE_MAPS_API_KEY}&libraries=places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyAdv28EbwKXqvlKo2henxsKMD-4EKB20l8&libraries=places`;
     script.async = true;
     script.defer = true;
     
