@@ -148,18 +148,20 @@ interface DeliveryReport {
   dropOffName?: string;
 }
 
-// Add new interface for transaction report
+// Update the interface
+interface TransactionBreakdown {
+  date: string;
+  amount: number;
+  orderId: string;
+}
+
 interface TransactionReport {
   paymentMethod: string;
   totalTransactions: number;
   totalAmount: number;
   averageAmount: number;
   lastTransactionDate: string;
-  transactionBreakdown: Array<{
-    date: string;
-    amount: number;
-    orderId: string;
-  }>;
+  transactionBreakdown: TransactionBreakdown[];
 }
 
 const Reports: FunctionComponent = () => {
@@ -386,15 +388,17 @@ const Reports: FunctionComponent = () => {
             totalTransactions: number;
             totalAmount: number;
             lastTransactionDate: string;
-            transactions: Array<{
-              date: string;
-              amount: number;
-              orderId: string;
-            }>;
+            transactions: TransactionBreakdown[];
           }>();
 
-          filteredData.forEach((order: any) => {
-            // Determine payment method based on payment flags
+          filteredData.forEach((order: {
+            orderDate: string;
+            orderPrice: string;
+            orderNumber: number;
+            payNow: boolean;
+            payLater: boolean;
+            payVisaCard: boolean;
+          }) => {
             let paymentMethod = 'Unknown';
             if (order.payNow) {
               paymentMethod = 'Cash';
@@ -408,7 +412,7 @@ const Reports: FunctionComponent = () => {
               totalTransactions: 0,
               totalAmount: 0,
               lastTransactionDate: order.orderDate,
-              transactions: []
+              transactions: [] as TransactionBreakdown[]
             };
 
             const amount = parseFloat(order.orderPrice || '0');
@@ -419,16 +423,18 @@ const Reports: FunctionComponent = () => {
               ? order.orderDate
               : existing.lastTransactionDate;
             
-            existing.transactions.push({
+            const transaction: TransactionBreakdown = {
               date: order.orderDate,
               amount: amount,
               orderId: order.orderNumber?.toString() || 'N/A'
-            });
+            };
+            
+            existing.transactions.push(transaction);
 
             transactionMap.set(paymentMethod, existing);
           });
 
-          const transactionStats = Array.from(transactionMap.entries())
+          const transactionStats: TransactionReport[] = Array.from(transactionMap.entries())
             .map(([paymentMethod, data]) => ({
               paymentMethod,
               totalTransactions: data.totalTransactions,
