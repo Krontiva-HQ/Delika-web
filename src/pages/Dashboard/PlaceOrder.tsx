@@ -84,6 +84,7 @@ interface OrderPayload {
     scheduleDateTime: string;
   };
   Walkin: boolean; // Add this line
+  payVisaCard: boolean;  // Add this new field
 }
 
 interface MenuItemData {
@@ -338,18 +339,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   }, [deliveryMethod]);
 
   // Modify your handlePlaceOrder function
-  const handlePlaceOrder = async (paymentType: 'now' | 'later') => {
+  const handlePlaceOrder = async (paymentType: 'cash' | 'momo' | 'visa') => {
     try {
-      // Set the appropriate loading state
-      if (paymentType === 'now') {
-        setIsPayNowSubmitting(true);
-      } else {
-        setIsPayLaterSubmitting(true);
-      }
+      setIsSubmitting(true);
 
-      // Create formData instance first
       const formData = new FormData();
-
+      
       // Add products to formData
       selectedItems.forEach((item, index) => {
         formData.append(`products[${index}][name]`, item.name);
@@ -377,8 +372,9 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       formData.append('orderDate', new Date().toISOString());
       formData.append('foodAndDeliveryFee', 'true');
       formData.append('onlyDeliveryFee', 'false');
-      formData.append('payNow', (paymentType === 'now').toString());
-      formData.append('payLater', (paymentType === 'later').toString());
+      formData.append('payNow', (paymentType === 'cash').toString());
+      formData.append('payLater', (paymentType === 'momo').toString());
+      formData.append('payVisaCard', (paymentType === 'visa').toString());
       formData.append('Walkin', (deliveryMethod === 'walk-in').toString());
 
       // Add pickup and dropoff locations
@@ -408,16 +404,11 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         throw new Error('Failed to place order');
       }
 
-      const result = response.data;
       onOrderPlaced();
-      // ... handle success ...
     } catch (error) {
       console.error('Error placing order:', error);
-      // ... handle error ...
     } finally {
-      // Reset both loading states
-      setIsPayLaterSubmitting(false);
-      setIsPayNowSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -766,37 +757,57 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               <button
                 className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
                           py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                          ${isPayLaterSubmitting || isPayNowSubmitting
+                          ${isSubmitting
                             ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
                             : 'bg-[#201a18] border-[#201a18]'}`}
-                onClick={() => handlePlaceOrder('later')}
-                disabled={isPayLaterSubmitting || isPayNowSubmitting}
+                onClick={() => handlePlaceOrder('cash')}
+                disabled={isSubmitting}
               >
-                {isPayLaterSubmitting ? (
+                {isSubmitting ? (
                   <div className="flex items-center justify-center gap-2">
                     <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     Processing...
                   </div>
                 ) : (
-                  'Pay on Delivery'
+                  'Cash'
                 )}
               </button>
+
               <button
                 className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
                           py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                          ${isPayLaterSubmitting || isPayNowSubmitting
+                          ${isSubmitting
                             ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
                             : 'bg-[#fd683e] border-[#fd683e]'}`}
-                onClick={() => handlePlaceOrder('now')}
-                disabled={isPayLaterSubmitting || isPayNowSubmitting}
+                onClick={() => handlePlaceOrder('momo')}
+                disabled={isSubmitting}
               >
-                {isPayNowSubmitting ? (
+                {isSubmitting ? (
                   <div className="flex items-center justify-center gap-2">
                     <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     Processing...
                   </div>
                 ) : (
-                  'Request Payment'
+                  'MoMo'
+                )}
+              </button>
+
+              <button
+                className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
+                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
+                          ${isSubmitting
+                            ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
+                            : 'bg-[#4CAF50] border-[#4CAF50]'}`}
+                onClick={() => handlePlaceOrder('visa')}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Processing...
+                  </div>
+                ) : (
+                  'Visa Card'
                 )}
               </button>
             </div>
@@ -1273,37 +1284,57 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               <button
                 className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
                           py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                          ${isPayLaterSubmitting || isPayNowSubmitting
+                          ${isSubmitting
                             ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
                             : 'bg-[#201a18] border-[#201a18]'}`}
-                onClick={() => handlePlaceOrder('later')}
-                disabled={isPayLaterSubmitting || isPayNowSubmitting}
+                onClick={() => handlePlaceOrder('cash')}
+                disabled={isSubmitting}
               >
-                {isPayLaterSubmitting ? (
+                {isSubmitting ? (
                   <div className="flex items-center justify-center gap-2">
                     <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     Processing...
                   </div>
                 ) : (
-                  'Pay on Delivery'
+                  'Cash'
                 )}
               </button>
+
               <button
                 className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
                           py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                          ${isPayLaterSubmitting || isPayNowSubmitting
+                          ${isSubmitting
                             ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
                             : 'bg-[#fd683e] border-[#fd683e]'}`}
-                onClick={() => handlePlaceOrder('now')}
-                disabled={isPayLaterSubmitting || isPayNowSubmitting}
+                onClick={() => handlePlaceOrder('momo')}
+                disabled={isSubmitting}
               >
-                {isPayNowSubmitting ? (
+                {isSubmitting ? (
                   <div className="flex items-center justify-center gap-2">
                     <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     Processing...
                   </div>
                 ) : (
-                  'Request Payment'
+                  'MoMo'
+                )}
+              </button>
+
+              <button
+                className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
+                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
+                          ${isSubmitting
+                            ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
+                            : 'bg-[#4CAF50] border-[#4CAF50]'}`}
+                onClick={() => handlePlaceOrder('visa')}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Processing...
+                  </div>
+                ) : (
+                  'Visa Card'
                 )}
               </button>
             </div>
@@ -1443,17 +1474,18 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 </div>
               )}
             </div>
-            {/* Navigation Button */}
-            <div className="flex justify-between mt-8 pt-4 border-t">
-              <button
-                className="flex-1 font-sans cursor-pointer bg-[#fd683e] border-[#fd683e] border-[1px] border-solid 
-                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center"
-                onClick={() => handlePlaceOrder("now")} // Update to handle place order
-                disabled={selectedItems.length === 0} // Disable if no items selected
-              >
-                Place Order
-              </button>
-            </div>
+            <button
+              onClick={handleNextStep}
+              disabled={!isStep1Valid}
+              className={`self-stretch rounded-[4px] border-[1px] border-solid overflow-hidden 
+                         flex flex-row items-center justify-center py-[9px] px-[90px] 
+                         cursor-pointer text-[10px] text-[#fff] mt-4
+                         ${isStep1Valid 
+                           ? 'bg-[#fd683e] border-[#f5fcf8] hover:opacity-90' 
+                           : 'bg-gray-400 border-gray-300 cursor-not-allowed'}`}
+            >
+              <div className="relative leading-[16px] font-sans text-[#fff]">Next</div>
+            </button>
           </>
         );
       case 3:
@@ -1579,37 +1611,57 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               <button
                 className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
                           py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                          ${isPayLaterSubmitting || isPayNowSubmitting
+                          ${isSubmitting
                             ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
                             : 'bg-[#201a18] border-[#201a18]'}`}
-                onClick={() => handlePlaceOrder('later')}
-                disabled={isPayLaterSubmitting || isPayNowSubmitting}
+                onClick={() => handlePlaceOrder('cash')}
+                disabled={isSubmitting}
               >
-                {isPayLaterSubmitting ? (
+                {isSubmitting ? (
                   <div className="flex items-center justify-center gap-2">
                     <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     Processing...
                   </div>
                 ) : (
-                  'Pay on Delivery'
+                  'Cash'
                 )}
               </button>
+
               <button
                 className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
                           py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                          ${isPayLaterSubmitting || isPayNowSubmitting
+                          ${isSubmitting
                             ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
                             : 'bg-[#fd683e] border-[#fd683e]'}`}
-                onClick={() => handlePlaceOrder('now')}
-                disabled={isPayLaterSubmitting || isPayNowSubmitting}
+                onClick={() => handlePlaceOrder('momo')}
+                disabled={isSubmitting}
               >
-                {isPayNowSubmitting ? (
+                {isSubmitting ? (
                   <div className="flex items-center justify-center gap-2">
                     <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     Processing...
                   </div>
                 ) : (
-                  'Request Payment'
+                  'MoMo'
+                )}
+              </button>
+
+              <button
+                className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
+                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
+                          ${isSubmitting
+                            ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
+                            : 'bg-[#4CAF50] border-[#4CAF50]'}`}
+                onClick={() => handlePlaceOrder('visa')}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Processing...
+                  </div>
+                ) : (
+                  'Visa Card'
                 )}
               </button>
             </div>
@@ -2070,37 +2122,57 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               <button
                 className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
                           py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                          ${isPayLaterSubmitting || isPayNowSubmitting
+                          ${isSubmitting
                             ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
                             : 'bg-[#201a18] border-[#201a18]'}`}
-                onClick={() => handlePlaceOrder('later')}
-                disabled={isPayLaterSubmitting || isPayNowSubmitting}
+                onClick={() => handlePlaceOrder('cash')}
+                disabled={isSubmitting}
               >
-                {isPayLaterSubmitting ? (
+                {isSubmitting ? (
                   <div className="flex items-center justify-center gap-2">
                     <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     Processing...
                   </div>
                 ) : (
-                  'Pay on Delivery'
+                  'Cash'
                 )}
               </button>
+
               <button
                 className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
                           py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                          ${isPayLaterSubmitting || isPayNowSubmitting
+                          ${isSubmitting
                             ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
                             : 'bg-[#fd683e] border-[#fd683e]'}`}
-                onClick={() => handlePlaceOrder('now')}
-                disabled={isPayLaterSubmitting || isPayNowSubmitting}
+                onClick={() => handlePlaceOrder('momo')}
+                disabled={isSubmitting}
               >
-                {isPayNowSubmitting ? (
+                {isSubmitting ? (
                   <div className="flex items-center justify-center gap-2">
                     <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     Processing...
                   </div>
                 ) : (
-                  'Request Payment'
+                  'MoMo'
+                )}
+              </button>
+
+              <button
+                className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
+                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
+                          ${isSubmitting
+                            ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
+                            : 'bg-[#4CAF50] border-[#4CAF50]'}`}
+                onClick={() => handlePlaceOrder('visa')}
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Processing...
+                  </div>
+                ) : (
+                  'Visa Card'
                 )}
               </button>
             </div>
@@ -2275,29 +2347,123 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               </div>
             </div>
 
-            {/* Navigation Button */}
-            <div className="flex justify-between mt-8 pt-4 border-t">
+              {/* Navigation Button */}
+              <div className="flex justify-between mt-8 pt-4 border-t">
               <button
                 className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
                           py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                          ${isPayLaterSubmitting || isPayNowSubmitting
-                            ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
-                            : 'bg-[#fd683e] border-[#fd683e]'}`}
-                onClick={() => handlePlaceOrder("now")}
-                disabled={isPayLaterSubmitting || isPayNowSubmitting}
+                          ${selectedItems.length === 0 ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#fd683e]'}`}
+                onClick={handleNextStep}
+                disabled={selectedItems.length === 0}
               >
-                {isPayNowSubmitting ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Processing...
-                  </div>
-                ) : (
-                  'Place Order'
-                )}
+                Next
               </button>
             </div>
           </>
         );
+        case 2:
+          return (
+            <>
+              <div className="flex items-center mb-6">
+                <button
+                  className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent"
+                  onClick={handlePreviousStep}
+                >
+                  <IoIosArrowBack className="w-5 h-5" />
+                  <span>Back</span>
+                </button>
+              </div>
+              
+              <b className="font-sans text-lg font-semibold mb-6">Customer Details</b>
+  
+              {/* Order Summary Section */}
+              <div className="mb-6 bg-[#f9fafb] rounded-lg p-4 font-sans">
+                <div className="font-sans text-lg font-semibold mb-3">Order Summary</div>
+                <div className="space-y-3">
+                  {selectedItems.map((item, index) => (
+                    <div key={index} className="flex justify-between items-center text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{item.quantity}x</span>
+                        <span>{item.name}</span>
+                      </div>
+                      <span className="text-gray-600">GH₵ {(item.price * item.quantity).toFixed(2)}</span>
+                    </div>
+                  ))}
+                  <div className="border-t border-gray-200 pt-2 mt-2">
+                    <div className="flex justify-between items-center font-medium">
+                      <span>Total Items:</span>
+                      <span>{selectedItems.reduce((sum, item) => sum + item.quantity, 0)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Customer Details Section */}
+              <div className="self-stretch flex flex-col gap-4">
+                <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
+                  <div className="self-stretch relative leading-[20px] font-sans text-black">
+                    Customer Name
+                  </div>
+                  <input
+                    className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
+                              text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-center py-[10px] px-[12px] text-black"
+                    placeholder="customer name"
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Total Price Section */}
+              <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
+                <div className="self-stretch relative leading-[20px] font-sans text-black">
+                  Total Price
+                </div>
+                <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
+                  <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
+                    <div className="relative leading-[20px] text-black font-sans">GH₵</div>
+                  </div>
+                  <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
+                    <div className="relative leading-[20px] text-black font-sans">{calculateTotal()}</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Buttons */}
+              <div className="flex gap-4 w-full mt-6">
+                <button
+                  className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
+                            py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
+                            ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#201a18] border-[#201a18]'}`}
+                  onClick={() => handlePlaceOrder('cash')}
+                  disabled={isSubmitting || !customerName.trim()}
+                >
+                  {isSubmitting ? 'Processing...' : 'Cash'}
+                </button>
+  
+                <button
+                  className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
+                            py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
+                            ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#fd683e] border-[#fd683e]'}`}
+                  onClick={() => handlePlaceOrder('momo')}
+                  disabled={isSubmitting || !customerName.trim()}
+                >
+                  {isSubmitting ? 'Processing...' : 'MoMo'}
+                </button>
+  
+                <button
+                  className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
+                            py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
+                            ${isSubmitting ? 'bg-gray-400 cursor-not-allowed' : 'bg-[#4CAF50] border-[#4CAF50]'}`}
+                  onClick={() => handlePlaceOrder('visa')}
+                  disabled={isSubmitting || !customerName.trim()}
+                >
+                  {isSubmitting ? 'Processing...' : 'Visa Card'}
+                </button>
+              </div>
+            </>
+          );
       default:
         return null;
     }

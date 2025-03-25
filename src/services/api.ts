@@ -329,19 +329,24 @@ export const getBranchesByRestaurant = (restaurantId: string) => {
 };
 
 export interface EditOrderParams {
-  dropOff: {
+  dropOff?: {
     toAddress: string;
     toLatitude: string;
     toLongitude: string;
   }[];
   orderNumber: number;
-  deliveryDistance: string;
-  trackingUrl: string;
+  customerName: string;
+  deliveryDistance?: string;
+  trackingUrl?: string;
   orderStatus: string;
-  deliveryPrice: string;
+  deliveryPrice?: string;
   totalPrice: string;
   paymentStatus: string;
-  dropOffCity: string;
+  dropOffCity?: string;
+  orderComment?: string;
+  payNow?: boolean;
+  payLater?: boolean;
+  payVisaCard?: boolean;
 }
 
 export const editOrder = async (params: EditOrderParams) => {
@@ -367,26 +372,26 @@ export const getAllMenu = (data: { restaurantId: string; branchId: string }) => 
 
 // Update the placeOrder function
 export const placeOrder = async (formData: FormData) => {
-  // Convert FormData to JSON object
   const jsonData = Object.fromEntries(formData.entries());
-
-  // Extract products from FormData
+  
+  // Extract products from form data
   const products = [];
   let index = 0;
-  while (true) {
-    const productName = jsonData[`products[${index}][name]`];
-    if (!productName) break; // Exit loop if no more products
-
-    const product = {
-      name: productName,
+  while (jsonData[`products[${index}][name]`]) {
+    products.push({
+      name: jsonData[`products[${index}][name]`],
       price: jsonData[`products[${index}][price]`],
-      quantity: jsonData[`products[${index}][quantity]`]
-    };
-    products.push(product);
+      quantity: jsonData[`products[${index}][quantity]`],
+      foodImage: jsonData[`products[${index}][foodImage][url]`] ? {
+        url: jsonData[`products[${index}][foodImage][url]`],
+        filename: '',
+        type: '',
+        size: 0
+      } : undefined
+    });
     index++;
   }
 
-  // Format the data to match the expected structure
   const orderPayload = {
     branchId: jsonData.branchId,
     courierName: jsonData.courierName || '',
@@ -409,19 +414,22 @@ export const placeOrder = async (formData: FormData) => {
     orderStatus: jsonData.orderStatus,
     payLater: jsonData.payLater === 'true',
     payNow: jsonData.payNow === 'true',
+    payVisaCard: jsonData.payVisaCard === 'true',
     pickup: [{
       fromAddress: jsonData['pickup[0][fromAddress]'],
       fromLatitude: jsonData['pickup[0][fromLatitude]'],
       fromLongitude: jsonData['pickup[0][fromLongitude]']
     }],
     pickupName: jsonData.pickupName,
-    products: products, // Use the extracted products array
+    products: products, // Add the extracted products
     restaurantId: jsonData.restaurantId,
     totalPrice: jsonData.totalPrice,
     trackingUrl: jsonData.trackingUrl || '',
-    Walkin: jsonData.Walkin === 'true' || jsonData.Walkin === 'true' // Handle both cases
+    Walkin: jsonData.Walkin === 'true' || jsonData.Walkin === 'true'
   };
 
-  // Use the api instance directly with the correct endpoint
+  // Debug log to check the payload
+  console.log('Order Payload:', orderPayload);
+
   return api.post('/delikaquickshipper_orders_table', orderPayload);
 }; 
