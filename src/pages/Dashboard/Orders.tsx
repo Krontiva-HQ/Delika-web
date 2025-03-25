@@ -50,6 +50,10 @@ interface Order {
   paymentStatus: string;
   orderComment?: string;
   orderReceivedTime: string;
+  Walkin?: boolean;
+  payLater: boolean;
+  payNow: boolean;
+  payVisaCard: boolean;
 }
 
 // Add interface for API request params

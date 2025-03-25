@@ -13,9 +13,10 @@ interface EditOrderProps {
   order: Order;
   onClose: () => void;
   onOrderEdited: () => void;
+  isFromTransactions?: boolean;
 }
 
-const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderEdited }) => {
+const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderEdited, isFromTransactions = false }) => {
   const { addNotification } = useNotifications();
   const [currentStep, setCurrentStep] = useState(1);
   const [customerName, setCustomerName] = useState(order.customerName);
@@ -40,7 +41,12 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
   const [orderPrice] = useState(parseFloat(order.orderPrice));
   const [totalPrice, setTotalPrice] = useState(parseFloat(order.totalPrice));
   const [comment, setComment] = useState(order.orderComment || '');
-  const [paymentMethod, setPaymentMethod] = useState('cash'); // Default to cash
+  const [paymentMethod, setPaymentMethod] = useState(() => {
+    if (order.payLater) return 'momo';
+    if (order.payNow) return 'cash';
+    if (order.payVisaCard) return 'visa';
+    return 'cash'; // default
+  });
   
   const { 
     selectedItems,
@@ -57,11 +63,15 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
   const [isValidPhone, setIsValidPhone] = useState(true);
   const [isValidName, setIsValidName] = useState(true);
 
+  // Add state to track modified fields
+  const [modifiedFields, setModifiedFields] = useState<Set<string>>(new Set());
+
   // Modify the customer phone input handler
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9]/g, '');
     setCustomerPhone(value);
-    setIsValidPhone(value.length === 10); // Validate phone number length
+    setIsValidPhone(value.length === 10);
+    setModifiedFields(prev => new Set(Array.from(prev).concat('customerPhoneNumber')));
   };
 
   // Add name input handler
@@ -69,6 +79,28 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
     const value = e.target.value.trim();
     setCustomerName(value);
     setIsValidName(value.length > 0);
+    setModifiedFields(prev => new Set(Array.from(prev).concat('customerName')));
+  };
+
+  // Add handlers for other fields
+  const handleOrderStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setOrderStatus(e.target.value);
+    setModifiedFields(prev => new Set(Array.from(prev).concat('orderStatus')));
+  };
+
+  const handlePaymentStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setPaymentStatus(e.target.value);
+    setModifiedFields(prev => new Set(Array.from(prev).concat('paymentStatus')));
+  };
+
+  const handlePaymentMethodChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setPaymentMethod(e.target.value);
+    setModifiedFields(prev => new Set(Array.from(prev).concat('paymentMethod')));
+  };
+
+  const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setComment(e.target.value);
+    setModifiedFields(prev => new Set(Array.from(prev).concat('orderComment')));
   };
 
   // Add validation check
@@ -127,35 +159,74 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
   }, [order]);
 
   const handleSaveChanges = async () => {
-    const params = {
+    // Start with all existing data from the order
+    const params: any = {
       orderNumber: order.orderNumber,
-      customerName: customerName,
-      customerPhoneNumber: customerPhone,
-      deliveryDistance: distance?.toString() || '',
-      trackingUrl: order.trackingUrl, // Assuming this is part of the order object
-      orderStatus,
-      deliveryPrice: deliveryPrice.toString(),
-      totalPrice: totalPrice.toString(),
-      paymentStatus: paymentStatus,
-      dropOffCity: dropoffLocation.name, // Assuming this is the city name
-      orderComment: comment,
-      payNow: paymentMethod === 'cash',
-      payLater: paymentMethod === 'momo',
-      payVisaCard: paymentMethod === 'visa'
+      customerName: order.customerName,
+      customerPhoneNumber: order.customerPhoneNumber,
+      deliveryDistance: order.deliveryDistance,
+      orderStatus: order.orderStatus,
+      deliveryPrice: order.deliveryPrice,
+      totalPrice: order.totalPrice,
+      paymentStatus: order.paymentStatus,
+      dropOffCity: order.dropoffName,
+      orderComment: order.orderComment || '',
+      payNow: order.payNow,
+      payLater: order.payLater,
+      payVisaCard: order.payVisaCard,
+      // Add array to track which fields were modified
+      modifiedFields: Array.from(modifiedFields)
     };
+
+    // Update only the modified fields with new values
+    if (modifiedFields.has('customerName')) {
+      params.customerName = customerName;
+    }
+    if (modifiedFields.has('customerPhoneNumber')) {
+      params.customerPhoneNumber = customerPhone;
+    }
+    if (modifiedFields.has('orderStatus')) {
+      params.orderStatus = orderStatus;
+    }
+    if (modifiedFields.has('paymentStatus')) {
+      params.paymentStatus = paymentStatus;
+    }
+    if (modifiedFields.has('orderComment')) {
+      params.orderComment = comment;
+    }
+    if (modifiedFields.has('paymentMethod')) {
+      params.payNow = paymentMethod === 'cash';
+      params.payLater = paymentMethod === 'momo';
+      params.payVisaCard = paymentMethod === 'visa';
+    }
+
+    // Handle delivery-related fields for non-walkin orders
+    if (!order.Walkin) {
+      if (modifiedFields.has('deliveryDistance') || modifiedFields.has('deliveryPrice')) {
+        params.deliveryDistance = distance?.toString() || order.deliveryDistance;
+        params.deliveryPrice = deliveryPrice.toString();
+      }
+      if (modifiedFields.has('totalPrice')) {
+        params.totalPrice = totalPrice.toString();
+      }
+      if (modifiedFields.has('dropOffCity')) {
+        params.dropOffCity = dropoffLocation.name;
+      }
+    } else {
+      // For walk-in orders
+      params.deliveryPrice = '0';
+      params.totalPrice = orderPrice.toString();
+    }
 
     try {
       await editOrder(params);
       onOrderEdited();
       
-      // Add a notification for successful order edit
       addNotification({
         type: 'order_edited',
         message: `Order **#${order.orderNumber}** has been successfully edited.`,
       });
     } catch (err) {
-      
-      // Add a notification for error
       addNotification({
         type: 'order_status',
         message: `Failed to edit Order #${order.orderNumber}. Please try again.`,
@@ -215,15 +286,43 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
           className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
                     text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[8px] px-[10px] text-black"
           value={orderStatus}
-          onChange={(e) => setOrderStatus(e.target.value)}
+          onChange={handleOrderStatusChange}
         >
-          <option value="ReadyForPickup">Ready For Pickup</option>
-          <option value="Assigned">Assigned</option>
-          <option value="Pickup">Pickup</option>
-          <option value="OnTheWay">On The Way</option>
-          <option value="Delivered">Delivered</option>
-          <option value="Cancelled">Cancelled</option>
-          <option value="DeliveryFailed">Delivery Failed</option>
+          {isFromTransactions ? (
+            order.Walkin ? (
+              <>
+                <option value="Delivered">Delivered</option>
+                <option value="Cancelled">Cancelled</option>
+              </>
+            ) : (
+              <>
+                <option value="ReadyForPickup">Ready For Pickup</option>
+                <option value="Assigned">Assigned</option>
+                <option value="Pickup">Pickup</option>
+                <option value="OnTheWay">On The Way</option>
+                <option value="Delivered">Delivered</option>
+                <option value="Cancelled">Cancelled</option>
+                <option value="DeliveryFailed">Delivery Failed</option>
+              </>
+            )
+          ) : (
+            order.Walkin ? (
+              <>
+                <option value="Delivered">Delivered</option>
+                <option value="Cancelled">Cancelled</option>
+              </>
+            ) : (
+              <>
+                <option value="ReadyForPickup">Ready For Pickup</option>
+                <option value="Assigned">Assigned</option>
+                <option value="Pickup">Pickup</option>
+                <option value="OnTheWay">On The Way</option>
+                <option value="Delivered">Delivered</option>
+                <option value="Cancelled">Cancelled</option>
+                <option value="DeliveryFailed">Delivery Failed</option>
+              </>
+            )
+          )}
         </select>
       </div>
 
@@ -236,7 +335,7 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
           className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
                     text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[8px] px-[10px] text-black"
           value={paymentStatus}
-          onChange={(e) => setPaymentStatus(e.target.value)}
+          onChange={handlePaymentStatusChange}
         >
           <option value="Pending">Pending</option>
           <option value="Paid">Paid</option>
@@ -252,7 +351,7 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
           className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
                     text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[8px] px-[10px] text-black"
           value={paymentMethod}
-          onChange={(e) => setPaymentMethod(e.target.value)}
+          onChange={handlePaymentMethodChange}
         >
           <option value="cash">Cash</option>
           <option value="momo">MoMo</option>
@@ -328,7 +427,7 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
       </div>
 
       {/* Order Status Dropdown */}
-      <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4 font-sans text-sm">
+      <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
         <div className="self-stretch relative leading-[20px] font-sans text-black">
           Order Status
         </div>
@@ -336,15 +435,43 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
           className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
                     text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[8px] px-[10px] text-black"
           value={orderStatus}
-          onChange={(e) => setOrderStatus(e.target.value)}
+          onChange={handleOrderStatusChange}
         >
-          <option value="ReadyForPickup">Ready For Pickup</option>
-          <option value="Assigned">Assigned</option>
-          <option value="Pickup">Pickup</option>
-          <option value="OnTheWay">On The Way</option>
-          <option value="Delivered">Delivered</option>
-          <option value="Cancelled">Cancelled</option>
-          <option value="DeliveryFailed">Delivery Failed</option>
+          {isFromTransactions ? (
+            order.Walkin ? (
+              <>
+                <option value="Delivered">Delivered</option>
+                <option value="Cancelled">Cancelled</option>
+              </>
+            ) : (
+              <>
+                <option value="ReadyForPickup">Ready For Pickup</option>
+                <option value="Assigned">Assigned</option>
+                <option value="Pickup">Pickup</option>
+                <option value="OnTheWay">On The Way</option>
+                <option value="Delivered">Delivered</option>
+                <option value="Cancelled">Cancelled</option>
+                <option value="DeliveryFailed">Delivery Failed</option>
+              </>
+            )
+          ) : (
+            order.Walkin ? (
+              <>
+                <option value="Delivered">Delivered</option>
+                <option value="Cancelled">Cancelled</option>
+              </>
+            ) : (
+              <>
+                <option value="ReadyForPickup">Ready For Pickup</option>
+                <option value="Assigned">Assigned</option>
+                <option value="Pickup">Pickup</option>
+                <option value="OnTheWay">On The Way</option>
+                <option value="Delivered">Delivered</option>
+                <option value="Cancelled">Cancelled</option>
+                <option value="DeliveryFailed">Delivery Failed</option>
+              </>
+            )
+          )}
         </select>
       </div>
 
@@ -357,7 +484,7 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
           className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
                     text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[8px] px-[10px] text-black"
           value={paymentStatus}
-          onChange={(e) => setPaymentStatus(e.target.value)}
+          onChange={handlePaymentStatusChange}
         >
           <option value="Pending">Pending</option>
           <option value="Paid">Paid</option>
@@ -373,7 +500,7 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
           className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
                     text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[8px] px-[10px] text-black"
           value={paymentMethod}
-          onChange={(e) => setPaymentMethod(e.target.value)}
+          onChange={handlePaymentMethodChange}
         >
           <option value="cash">Cash</option>
           <option value="momo">MoMo</option>
@@ -387,7 +514,7 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
         </label>
         <textarea
           value={comment}
-          onChange={(e) => setComment(e.target.value)}
+          onChange={handleCommentChange}
           className="w-[465px] h-[40px] p-2 border border-gray-300 rounded-md text-sm font-sans"
           rows={3}
           placeholder="Add any additional comments..."

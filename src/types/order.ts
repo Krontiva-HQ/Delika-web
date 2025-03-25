@@ -32,4 +32,7 @@ export interface Order {
   customerImage?: string;
   orderComment?: string;
   Walkin?: boolean;
+  payLater: boolean;
+  payNow: boolean;
+  payVisaCard: boolean;
 } 

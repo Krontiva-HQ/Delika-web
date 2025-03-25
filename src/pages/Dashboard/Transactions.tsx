@@ -455,6 +455,7 @@ const Transactions: FunctionComponent = () => {
             setEditingOrder(null);
           }}
           onOrderEdited={handleOrderEdited}
+          isFromTransactions={true}
         />
       )}
     </div>
