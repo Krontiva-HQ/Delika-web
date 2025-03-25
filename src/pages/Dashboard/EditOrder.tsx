@@ -72,7 +72,9 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
   };
 
   // Add validation check
-  const isFormValid = isValidPhone && isValidName && customerName.trim() !== '' && customerPhone.length === 10;
+  const isFormValid = order.Walkin 
+    ? isValidName && customerName.trim() !== ''  // Only validate name for walk-in orders
+    : isValidPhone && isValidName && customerName.trim() !== '' && customerPhone.length === 10;
 
   // Initialize selected items from order
   useEffect(() => {

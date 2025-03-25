@@ -120,10 +120,12 @@ const Transactions: FunctionComponent = () => {
             return order.paymentStatus === 'Pending';
           case 'paid':
             return order.paymentStatus === 'Paid';
-          case 'cancelled':
-            return order.paymentStatus === 'Abandoned';
-          case 'not-paid':
-            return order.paymentStatus === 'Not Paid';
+          case 'momo':
+            return order.payLater === true;
+          case 'cash':
+            return order.payNow === true;
+          case 'visa':
+            return order.payVisaCard === true;
           default:
             return true;
         }
@@ -239,13 +241,33 @@ const Transactions: FunctionComponent = () => {
               </div>
               <div 
                 className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
-                  ${activeTab === 'cancelled'
+                  ${activeTab === 'momo'
                     ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
                     : 'text-[#929494]'
                   }`}
-                onClick={() => setActiveTab('cancelled')}
+                onClick={() => setActiveTab('momo')}
               >
-                Abandoned
+                Momo
+              </div>
+              <div 
+                className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
+                  ${activeTab === 'cash'
+                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
+                    : 'text-[#929494]'
+                  }`}
+                onClick={() => setActiveTab('cash')}
+              >
+                Cash
+              </div>
+              <div 
+                className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
+                  ${activeTab === 'visa'
+                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
+                    : 'text-[#929494]'
+                  }`}
+                onClick={() => setActiveTab('visa')}
+              >
+                Visa Card
               </div>
             </div>
 
