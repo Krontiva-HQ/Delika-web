@@ -64,6 +64,14 @@ const reportItems: ReportItem[] = [
     format: "PDF",
     status: "Active",
     requiresPermissions: false
+  },
+  {
+    id: 5,
+    name: "Transaction Report",
+    date: "All Time",
+    format: "PDF",
+    status: "Active",
+    requiresPermissions: false
   }
 ];
 
@@ -140,6 +148,20 @@ interface DeliveryReport {
   dropOffName?: string;
 }
 
+// Add new interface for transaction report
+interface TransactionReport {
+  paymentMethod: string;
+  totalTransactions: number;
+  totalAmount: number;
+  averageAmount: number;
+  lastTransactionDate: string;
+  transactionBreakdown: {
+    date: string;
+    amount: number;
+    orderId: string;
+  }[];
+}
+
 const Reports: FunctionComponent = () => {
   // Move all hooks to the top level
   const [activeTab, setActiveTab] = useState('all');
@@ -158,6 +180,8 @@ const Reports: FunctionComponent = () => {
   const [page, setPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+  const [transactionReports, setTransactionReports] = useState<TransactionReport[]>([]);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('all');
 
   const { userProfile, restaurantData } = useUserProfile();
   const { branches, isLoading: branchesLoading } = useBranches(userProfile?.restaurantId ?? null);
@@ -355,6 +379,69 @@ const Reports: FunctionComponent = () => {
 
           setDeliveryReports(deliveryStats);
           break;
+
+        case "Transaction Report":
+          // Process orders to get transaction statistics
+          const transactionMap = new Map<string, {
+            totalTransactions: number;
+            totalAmount: number;
+            lastTransactionDate: string;
+            transactions: Array<{
+              date: string;
+              amount: number;
+              orderId: string;
+            }>;
+          }>();
+
+          filteredData.forEach((order: any) => {
+            // Determine payment method based on payment flags
+            let paymentMethod = 'Unknown';
+            if (order.payNow) {
+              paymentMethod = 'Cash';
+            } else if (order.payLater) {
+              paymentMethod = 'Momo';
+            } else if (order.payVisaCard) {
+              paymentMethod = 'Visa Card';
+            }
+
+            const existing = transactionMap.get(paymentMethod) || {
+              totalTransactions: 0,
+              totalAmount: 0,
+              lastTransactionDate: order.orderDate,
+              transactions: []
+            };
+
+            const amount = parseFloat(order.orderPrice || '0');
+            
+            existing.totalTransactions += 1;
+            existing.totalAmount += amount;
+            existing.lastTransactionDate = new Date(order.orderDate) > new Date(existing.lastTransactionDate)
+              ? order.orderDate
+              : existing.lastTransactionDate;
+            
+            existing.transactions.push({
+              date: order.orderDate,
+              amount: amount,
+              orderId: order.orderNumber || 'N/A'
+            });
+
+            transactionMap.set(paymentMethod, existing);
+          });
+
+          const transactionStats = Array.from(transactionMap.entries())
+            .map(([paymentMethod, data]) => ({
+              paymentMethod,
+              totalTransactions: data.totalTransactions,
+              totalAmount: data.totalAmount,
+              averageAmount: data.totalAmount / data.totalTransactions,
+              lastTransactionDate: new Date(data.lastTransactionDate).toLocaleDateString(),
+              transactionBreakdown: data.transactions.sort((a, b) => 
+                new Date(b.date).getTime() - new Date(a.date).getTime()
+              )
+            }));
+
+          setTransactionReports(transactionStats);
+          break;
       }
     } catch (error) {
       setOrderDetails([]);
@@ -387,9 +474,10 @@ const Reports: FunctionComponent = () => {
 
   // Update handleReportClick
   const handleReportClick = async (reportName: string) => {
-    // Always reset date range when switching reports
+    // Always reset date range and payment method filter when switching reports
     if (reportName !== selectedReport) {
       setDateRange([null, null]);
+      setSelectedPaymentMethod('all');
     }
     
     setSelectedReport(reportName);
@@ -469,6 +557,17 @@ const Reports: FunctionComponent = () => {
             report.courierName,
             report.deliveryPrice.toFixed(2),
             report.deliveryLocation
+          ]);
+          break;
+
+        case "Transaction Report":
+          headers = ["Payment Method", "Total Transactions", "Total Amount GH₵", "Average Amount GH₵", "Last Transaction"];
+          csvData = transactionReports.map(report => [
+            report.paymentMethod,
+            report.totalTransactions,
+            report.totalAmount.toFixed(2),
+            report.averageAmount.toFixed(2),
+            report.lastTransactionDate
           ]);
           break;
       }
@@ -551,6 +650,17 @@ const Reports: FunctionComponent = () => {
                 report.orderDate,
                 report.deliveryPrice.toFixed(2),
                 report.deliveryLocation
+              ]);
+              break;
+
+            case "Transaction Report":
+              headers = ["Payment Method", "Total Transactions", "Total Amount GH₵", "Average Amount GH₵", "Last Transaction"];
+              data = transactionReports.map(report => [
+                report.paymentMethod,
+                report.totalTransactions,
+                `${report.totalAmount.toFixed(2)} GH₵`,
+                `${report.averageAmount.toFixed(2)} GH₵`,
+                report.lastTransactionDate
               ]);
               break;
           }
@@ -790,6 +900,11 @@ const Reports: FunctionComponent = () => {
     setExpandedRows(newExpandedRows);
   };
 
+  // Add payment method filter handler
+  const handlePaymentMethodChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedPaymentMethod(event.target.value);
+  };
+
   const renderContent = () => {
     switch (selectedReport) {
       case "Orders Report":
@@ -946,6 +1061,100 @@ const Reports: FunctionComponent = () => {
             ))}
 
             {renderPagination(deliveryReports.length)}
+          </>
+        );
+      case "Transaction Report":
+        return (
+          <>
+            {/* Add Payment Method Filter */}
+            <div className="p-4 border-b border-gray-200">
+              <div className="flex items-center gap-2">
+                <span className="text-[14px] font-sans text-[#666]">Filter by Payment Method:</span>
+                <select
+                  value={selectedPaymentMethod}
+                  onChange={handlePaymentMethodChange}
+                  className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)]"
+                >
+                  <option value="all">All Payment Methods</option>
+                  <option value="Cash">Cash</option>
+                  <option value="Momo">Momo</option>
+                  <option value="Visa Card">Visa Card</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-5 bg-[#f9f9f9] p-4" style={{ borderBottom: '1px solid #eaeaea' }}>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Payment Method</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Transactions</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Amount GH₵</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Average Amount GH₵</div>
+              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Last Transaction</div>
+            </div>
+
+            {paginateData(
+              selectedPaymentMethod === 'all' 
+                ? transactionReports 
+                : transactionReports.filter(report => report.paymentMethod === selectedPaymentMethod)
+            ).map((report, index) => (
+              <div key={index} className="border-b border-gray-200">
+                <div 
+                  className="grid grid-cols-5 p-4 hover:bg-[#f9f9f9] cursor-pointer"
+                  onClick={() => toggleRowExpansion(index)}
+                >
+                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.paymentMethod}</div>
+                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.totalTransactions}</div>
+                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.totalAmount.toFixed(2)}</div>
+                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.averageAmount.toFixed(2)}</div>
+                  <div className="text-[14px] leading-[22px] font-sans text-[#444] flex items-center gap-2">
+                    {report.lastTransactionDate}
+                    <svg 
+                      className={`w-4 h-4 transition-transform ${expandedRows.has(index) ? 'transform rotate-180' : ''}`} 
+                      fill="none" 
+                      stroke="currentColor" 
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+
+                {expandedRows.has(index) && (
+                  <div className="bg-gray-50 p-4 border-t border-gray-100">
+                    <div className="text-sm font-medium text-gray-600 mb-2 font-sans">Transaction History:</div>
+                    <div className="grid gap-2">
+                      <div className="grid grid-cols-3 gap-4 bg-white p-2 rounded-md font-medium text-[14px] font-sans text-[#666]">
+                        <span>Date</span>
+                        <span>Order ID</span>
+                        <span>Amount (GH₵)</span>
+                      </div>
+
+                      {report.transactionBreakdown.map((transaction, idx) => (
+                        <div 
+                          key={idx} 
+                          className="grid grid-cols-3 gap-4 bg-white p-2 rounded-md items-center"
+                        >
+                          <span className="text-[14px] font-sans text-[#444]">
+                            {new Date(transaction.date).toLocaleDateString()}
+                          </span>
+                          <span className="text-[14px] font-sans text-[#666] bg-gray-100 px-2 py-1 rounded w-fit">
+                            {transaction.orderId}
+                          </span>
+                          <span className="text-[14px] font-sans text-[#444]">
+                            {transaction.amount.toFixed(2)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {renderPagination(
+              selectedPaymentMethod === 'all' 
+                ? transactionReports.length 
+                : transactionReports.filter(report => report.paymentMethod === selectedPaymentMethod).length
+            )}
           </>
         );
       default:
