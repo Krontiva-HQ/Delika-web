@@ -155,11 +155,11 @@ interface TransactionReport {
   totalAmount: number;
   averageAmount: number;
   lastTransactionDate: string;
-  transactionBreakdown: {
+  transactionBreakdown: Array<{
     date: string;
     amount: number;
     orderId: string;
-  }[];
+  }>;
 }
 
 const Reports: FunctionComponent = () => {
@@ -422,7 +422,7 @@ const Reports: FunctionComponent = () => {
             existing.transactions.push({
               date: order.orderDate,
               amount: amount,
-              orderId: order.orderNumber || 'N/A'
+              orderId: order.orderNumber?.toString() || 'N/A'
             });
 
             transactionMap.set(paymentMethod, existing);
