@@ -391,12 +391,12 @@ const Transactions: FunctionComponent = () => {
                     <div className="text-[12px] leading-[20px] font-sans text-[#444]">{order.orderPrice}</div>
                     <div className="flex items-center justify-between">
                       <span className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans ${
-                        order.status === 'Paid' ? 'bg-green-100 text-green-800' :
-                        order.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                        order.status === 'Not Paid' ? 'bg-red-100 text-red-800' :
+                        order.payLater ? 'bg-green-100 text-green-800' :
+                        order.payNow ? 'bg-yellow-100 text-yellow-800' :
+                        order.payVisaCard ? 'bg-red-100 text-red-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
-                        {order.paymentStatus}
+                        {order.payLater ? 'Momo' : order.payNow ? 'Cash' : order.payVisaCard ? 'Visa Card' : 'Unknown'}
                       </span>
                       <button 
                         className="p-1 border-[1px] border-solid border-[#eaeaea] rounded-[4px] bg-white hover:bg-gray-50"
