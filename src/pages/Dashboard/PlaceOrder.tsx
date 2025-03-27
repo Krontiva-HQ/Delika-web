@@ -210,6 +210,9 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
   const [currentBatchId, setCurrentBatchId] = useState<string | null>(null);
 
+  // Fix the check to explicitly look for false
+  const isOnDemandDisabled = restaurantData?.WalkIn === false;
+
   const handleSelectCategoryClick = (event: React.MouseEvent<HTMLElement>) => {
     setSelectCategoryAnchorEl(event.currentTarget);
   };
@@ -363,6 +366,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       formData.append('deliveryPrice', deliveryPrice);
       formData.append('orderPrice', totalFoodPrice);
       formData.append('totalPrice', calculateTotal());
+      formData.append('pickupName', pickupLocation?.address || '');
+      formData.append('dropoffName', dropoffLocation?.address || '');
       formData.append('orderComment', orderComment);
       
       // Set orderStatus based on delivery method
@@ -371,6 +376,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
       formData.append('orderDate', new Date().toISOString());
       formData.append('foodAndDeliveryFee', 'true');
+      formData.append('deliveryDistance', distance?.toString() || '');
       formData.append('onlyDeliveryFee', 'false');
       formData.append('payNow', (paymentType === 'cash').toString());
       formData.append('payLater', (paymentType === 'momo').toString());
@@ -2752,11 +2758,14 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           // Initial delivery method selection modal
           <div className="flex flex-col items-center">
             <h2 className="text-2xl font-semibold mb-8 font-sans">Select Service Type</h2>
-            <div className="flex gap-4 w-full justify-center flex-nowrap"> {/* Change here */}
+            <div className="flex gap-4 w-full justify-center flex-nowrap">
               {/* On-Demand Delivery */}
               <div
-                onClick={() => handleDeliveryMethodSelect('on-demand')}
-                className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[200px]"
+                onClick={() => !isOnDemandDisabled && handleDeliveryMethodSelect('on-demand')}
+                className={`flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg relative w-[200px]
+                  ${isOnDemandDisabled 
+                    ? 'opacity-50 cursor-not-allowed' 
+                    : 'cursor-pointer hover:bg-[#FFE5E0] transition-colors'}`}
               >
                 <div className="w-14 h-14 mb-4">
                   <img src="/on-demand-delivery.svg" alt="On-Demand" className="w-full h-full" />

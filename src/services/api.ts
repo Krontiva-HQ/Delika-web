@@ -423,7 +423,7 @@ export const placeOrder = async (formData: FormData) => {
     pickupName: jsonData.pickupName,
     products: products, // Add the extracted products
     restaurantId: jsonData.restaurantId,
-    totalPrice: jsonData.totalPrice,
+    distance: jsonData.deliveryDistance,
     trackingUrl: jsonData.trackingUrl || '',
     Walkin: jsonData.Walkin === 'true' || jsonData.Walkin === 'true'
   };
