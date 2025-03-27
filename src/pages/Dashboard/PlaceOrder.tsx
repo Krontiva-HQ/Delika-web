@@ -231,9 +231,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     onClose?.();
   };
 
-  
-  // Remove or comment out the hardcoded menuItems object
-  // const menuItems: { [key: string]: string[] } = { ... };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -361,6 +358,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       formData.append('restaurantId', userProfile?.restaurantId || '');
       formData.append('branchId', selectedBranchId || userProfile?.branchId || '');
       formData.append('deliveryPrice', deliveryPrice);
+      formData.append('pickupName', pickupLocation?.address || '');
+       formData.append('dropoffName', dropoffLocation?.address || '');
       formData.append('orderPrice', totalFoodPrice);
       formData.append('totalPrice', calculateTotal());
       formData.append('orderComment', orderComment);
@@ -371,6 +370,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
       formData.append('orderDate', new Date().toISOString());
       formData.append('foodAndDeliveryFee', 'true');
+      formData.append('deliveryDistance', distance?.toString() || '');
       formData.append('onlyDeliveryFee', 'false');
       formData.append('payNow', (paymentType === 'cash').toString());
       formData.append('payLater', (paymentType === 'momo').toString());
