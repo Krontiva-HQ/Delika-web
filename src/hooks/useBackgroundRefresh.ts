@@ -81,16 +81,7 @@ export const useBackgroundRefresh = () => {
     }
   };
 
-  const refreshAudit = async () => {
-    try {
-      await getAuditLogs({
-        restaurantId: userProfile?.restaurantId || '',
-        branchId: getBranchId()
-      });
-    } catch (error) {
-      console.error('Background refresh failed for audit:', error);
-    }
-  };
+
 
   useEffect(() => {
     // Only start background refresh if we have user profile data
@@ -102,7 +93,6 @@ export const useBackgroundRefresh = () => {
     refreshTimers.current.team = setInterval(refreshTeam, REFRESH_INTERVALS.TEAM);
     refreshTimers.current.transactions = setInterval(refreshTransactions, REFRESH_INTERVALS.TRANSACTIONS);
     refreshTimers.current.dashboard = setInterval(refreshDashboard, REFRESH_INTERVALS.DASHBOARD);
-    refreshTimers.current.audit = setInterval(refreshAudit, REFRESH_INTERVALS.AUDIT);
 
     // Initial refresh
     refreshOrders();
@@ -110,7 +100,6 @@ export const useBackgroundRefresh = () => {
     refreshTeam();
     refreshTransactions();
     refreshDashboard();
-    refreshAudit();
 
     // Cleanup function
     return () => {
@@ -128,7 +117,6 @@ export const useBackgroundRefresh = () => {
         refreshTeam();
         refreshTransactions();
         refreshDashboard();
-        refreshAudit();
       }
     };
 

@@ -164,6 +164,18 @@ interface TransactionReport {
   transactionBreakdown: TransactionBreakdown[];
 }
 
+// First, add this interface for transaction summary
+interface TransactionSummary {
+  totalTransactions: number;
+  totalRevenue: number;
+  cashTransactions: number;
+  momoTransactions: number;
+  cardTransactions: number;
+  cashAmount: number;
+  momoAmount: number;
+  cardAmount: number;
+}
+
 const Reports: FunctionComponent = () => {
   // Move all hooks to the top level
   const [activeTab, setActiveTab] = useState('all');
@@ -184,6 +196,7 @@ const Reports: FunctionComponent = () => {
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
   const [transactionReports, setTransactionReports] = useState<TransactionReport[]>([]);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('all');
+  const [selectedDate, setSelectedDate] = useState<Dayjs | null>(null);
 
   const { userProfile, restaurantData } = useUserProfile();
   const { branches, isLoading: branchesLoading } = useBranches(userProfile?.restaurantId ?? null);
@@ -753,7 +766,6 @@ const Reports: FunctionComponent = () => {
   };
 
   const renderDateFilter = () => {
-    // Only show date filter for Orders Report and Delivery Report
     if (selectedReport === "Orders Report" || selectedReport === "Delivery Report") {
       return (
         <div className="relative">
@@ -855,6 +867,78 @@ const Reports: FunctionComponent = () => {
               </div>
             </Popover>
           </LocalizationProvider>
+        </div>
+      );
+    } else if (selectedReport === "Transaction Report") {
+      return (
+        <div className="flex items-center gap-4">
+          
+
+          <div className="relative">
+            <div 
+              onClick={handleDateClick}
+              className="flex items-center gap-2 px-3 py-2 border border-[rgba(167,161,158,0.1)] rounded-md cursor-pointer hover:bg-gray-50"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-4 w-4 text-[#666]" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
+                />
+              </svg>
+              <span className="text-[14px] font-sans text-[#666]">
+                {selectedDate ? selectedDate.format('DD MMM YYYY') : 'Select Date'}
+              </span>
+            </div>
+
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <Popover
+                open={open}
+                anchorEl={anchorEl}
+                onClose={handleClose}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'right',
+                }}
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'right',
+                }}
+                sx={{
+                  '& .MuiPaper-root': {
+                    borderRadius: '8px',
+                    border: '1px solid rgba(167,161,158,0.1)',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    marginTop: '8px',
+                  },
+                }}
+              >
+                <DateCalendar
+                  value={selectedDate}
+                  onChange={(newDate) => {
+                    setSelectedDate(newDate);
+                    if (newDate) {
+                      handleDateRangeSelect([newDate, newDate]);
+                    }
+                    handleClose();
+                  }}
+                  sx={{
+                    '& .MuiPickersDay-root.Mui-selected': {
+                      backgroundColor: '#fe5b18',
+                      '&:hover': { backgroundColor: '#fe5b18' }
+                    }
+                  }}
+                />
+              </Popover>
+            </LocalizationProvider>
+          </div>
         </div>
       );
     }
@@ -1070,91 +1154,84 @@ const Reports: FunctionComponent = () => {
           </>
         );
       case "Transaction Report":
+        // Calculate summary statistics
+        const summary: TransactionSummary = transactionReports.reduce((acc, report) => {
+          acc.totalTransactions += report.totalTransactions;
+          acc.totalRevenue += report.totalAmount;
+          
+          switch (report.paymentMethod) {
+            case 'Cash':
+              acc.cashTransactions += report.totalTransactions;
+              acc.cashAmount += report.totalAmount;
+              break;
+            case 'Momo':
+              acc.momoTransactions += report.totalTransactions;
+              acc.momoAmount += report.totalAmount;
+              break;
+            case 'Visa Card':
+              acc.cardTransactions += report.totalTransactions;
+              acc.cardAmount += report.totalAmount;
+              break;
+          }
+          
+          return acc;
+        }, {
+          totalTransactions: 0,
+          totalRevenue: 0,
+          cashTransactions: 0,
+          momoTransactions: 0,
+          cardTransactions: 0,
+          cashAmount: 0,
+          momoAmount: 0,
+          cardAmount: 0
+        });
+
         return (
           <>
-            {/* Add Payment Method Filter */}
-            <div className="p-4 border-b border-gray-200">
-              <div className="flex items-center gap-2">
-                <span className="text-[14px] font-sans text-[#666]">Filter by Payment Method:</span>
-                <select
-                  value={selectedPaymentMethod}
-                  onChange={handlePaymentMethodChange}
-                  className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)]"
-                >
-                  <option value="all">All Payment Methods</option>
-                  <option value="Cash">Cash</option>
-                  <option value="Momo">Momo</option>
-                  <option value="Visa Card">Visa Card</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-5 bg-[#f9f9f9] p-4" style={{ borderBottom: '1px solid #eaeaea' }}>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Payment Method</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Transactions</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Amount GH₵</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Average Amount GH₵</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Last Transaction</div>
-            </div>
-
-            {paginateData(
-              selectedPaymentMethod === 'all' 
-                ? transactionReports 
-                : transactionReports.filter(report => report.paymentMethod === selectedPaymentMethod)
-            ).map((report, index) => (
-              <div key={index} className="border-b border-gray-200">
-                <div 
-                  className="grid grid-cols-5 p-4 hover:bg-[#f9f9f9] cursor-pointer"
-                  onClick={() => toggleRowExpansion(index)}
-                >
-                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.paymentMethod}</div>
-                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.totalTransactions}</div>
-                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.totalAmount.toFixed(2)}</div>
-                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.averageAmount.toFixed(2)}</div>
-                  <div className="text-[14px] leading-[22px] font-sans text-[#444] flex items-center gap-2">
-                    {report.lastTransactionDate}
-                    <svg 
-                      className={`w-4 h-4 transition-transform ${expandedRows.has(index) ? 'transform rotate-180' : ''}`} 
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
+            {/* Summary Statistics Cards */}
+            <div className="grid grid-cols-5 gap-4 p-4 border-b border-gray-200">
+              <div className="bg-white rounded-lg p-4 border border-[rgba(167,161,158,0.1)] shadow-sm">
+                <div className="text-[12px] font-sans text-gray-500 mb-1">Total Transactions</div>
+                <div className="text-[18px] font-sans font-semibold">{summary.totalTransactions}</div>
+                <div className="text-[14px] font-sans text-[#fe5b18] mt-1">
+                  GH₵ {summary.totalRevenue.toFixed(2)}
                 </div>
-
-                {expandedRows.has(index) && (
-                  <div className="bg-gray-50 p-4 border-t border-gray-100">
-                    <div className="text-sm font-medium text-gray-600 mb-2 font-sans">Transaction History:</div>
-                    <div className="grid gap-2">
-                      <div className="grid grid-cols-3 gap-4 bg-white p-2 rounded-md font-medium text-[14px] font-sans text-[#666]">
-                        <span>Date</span>
-                        <span>Order ID</span>
-                        <span>Amount (GH₵)</span>
-                      </div>
-
-                      {report.transactionBreakdown.map((transaction, idx) => (
-                        <div 
-                          key={idx} 
-                          className="grid grid-cols-3 gap-4 bg-white p-2 rounded-md items-center"
-                        >
-                          <span className="text-[14px] font-sans text-[#444]">
-                            {new Date(transaction.date).toLocaleDateString()}
-                          </span>
-                          <span className="text-[14px] font-sans text-[#666] bg-gray-100 px-2 py-1 rounded w-fit">
-                            {transaction.orderId}
-                          </span>
-                          <span className="text-[14px] font-sans text-[#444]">
-                            {transaction.amount.toFixed(2)}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
-            ))}
+
+              <div className="bg-white rounded-lg p-4 border border-[rgba(167,161,158,0.1)] shadow-sm">
+                <div className="text-[12px] font-sans text-gray-500 mb-1">Cash Transactions</div>
+                <div className="text-[18px] font-sans font-semibold">{summary.cashTransactions}</div>
+                <div className="text-[14px] font-sans text-yellow-600 mt-1">
+                  GH₵ {summary.cashAmount.toFixed(2)}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-4 border border-[rgba(167,161,158,0.1)] shadow-sm">
+                <div className="text-[12px] font-sans text-gray-500 mb-1">Momo Transactions</div>
+                <div className="text-[18px] font-sans font-semibold">{summary.momoTransactions}</div>
+                <div className="text-[14px] font-sans text-green-600 mt-1">
+                  GH₵ {summary.momoAmount.toFixed(2)}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-4 border border-[rgba(167,161,158,0.1)] shadow-sm">
+                <div className="text-[12px] font-sans text-gray-500 mb-1">Card Transactions</div>
+                <div className="text-[18px] font-sans font-semibold">{summary.cardTransactions}</div>
+                <div className="text-[14px] font-sans text-blue-600 mt-1">
+                  GH₵ {summary.cardAmount.toFixed(2)}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-4 border border-[rgba(167,161,158,0.1)] shadow-sm">
+                <div className="text-[12px] font-sans text-gray-500 mb-1">Total Revenue</div>
+                <div className="text-[18px] font-sans font-semibold">GH₵ {summary.totalRevenue.toFixed(2)}</div>
+                <div className="text-[14px] font-sans text-[#fe5b18] mt-1">
+                  {summary.totalTransactions} transactions
+                </div>
+              </div>
+            </div>
+
+           
 
             {renderPagination(
               selectedPaymentMethod === 'all' 

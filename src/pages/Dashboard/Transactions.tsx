@@ -30,6 +30,7 @@ const Transactions: FunctionComponent = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [editingOrder, setEditingOrder] = useState<Order | null>(null);
   const [showEditOrder, setShowEditOrder] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   
   const { branches, isLoading: branchesLoading } = useBranches(userProfile?.restaurantId ?? null);
   const [selectedBranchId, setSelectedBranchId] = useState<string>(() => {
@@ -40,34 +41,71 @@ const Transactions: FunctionComponent = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 10;
 
-  // Update the fetchTransactions function to include sorting
+  // Updated fetchTransactions function
   const fetchTransactions = useCallback(async (branchId: string, date: string) => {
     setIsLoading(true);
-    setOrders([]); // Clear existing data
     
     try {
-      const params = new URLSearchParams({
-        restaurantId: userProfile?.restaurantId || '',
-        branchId: userProfile?.role === 'Admin' ? branchId : userProfile?.branchId || '',
-        date: date
-      });
+      let params = new URLSearchParams();
+
+      // Handle different roles like in Orders.tsx
+      if (userProfile?.role === 'Store Clerk' || userProfile?.role === 'Manager') {
+        params = new URLSearchParams({
+          restaurantId: userProfile?.restaurantId || '',
+          branchId: userProfile?.branchId || '', // Use assigned branchId
+          date: date,
+          page: currentPage.toString(),
+          limit: ordersPerPage.toString()
+        });
+      } else if (userProfile?.role === 'Admin') {
+        params = new URLSearchParams({
+          restaurantId: userProfile?.restaurantId || '',
+          branchId: branchId,
+          date: date,
+          page: currentPage.toString(),
+          limit: ordersPerPage.toString()
+        });
+      }
 
       const response = await api.get(`/filter/orders/by/date?${params.toString()}`);
-      // Sort orders by orderReceivedTime before setting state
-      const sortedOrders = response.data.sort((a: Order, b: Order) => {
-        return new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime();
-      });
+
+      if (!response.data) {
+        throw new Error('No data received from server');
+      }
+
+      if (!Array.isArray(response.data)) {
+        console.error('Unexpected response format:', response.data);
+        throw new Error('Invalid response format');
+      }
+
+      const sortedOrders = Array.isArray(response.data) 
+        ? response.data.sort((a: Order, b: Order) => {
+            return new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime();
+          })
+        : [];
+        
       setOrders(sortedOrders);
     } catch (error) {
+      console.error('Error fetching transactions:', error);
       setOrders([]);
     } finally {
       setIsLoading(false);
     }
-  }, [userProfile?.restaurantId, userProfile?.role, userProfile?.branchId]);
+  }, [userProfile?.restaurantId, userProfile?.role, userProfile?.branchId, currentPage, ordersPerPage]);
 
-  const { transactionDetails, isLoading: isTransactionDetailsLoading, error } = useTransactionDetails(selectedOrderNumber);
+  const { transactionDetails, isLoading: isTransactionDetailsLoading, error: transactionDetailsError } = useTransactionDetails(selectedOrderNumber);
 
-  // Immediate fetch on branch selection
+  // Add this useEffect to handle initial branch selection
+  useEffect(() => {
+    if (userProfile?.role === 'Admin' && branches.length > 0 && !selectedBranchId) {
+      const firstBranchId = branches[0].id;
+      localStorage.setItem('selectedBranchId', firstBranchId);
+      setSelectedBranchId(firstBranchId);
+    } else if ((userProfile?.role === 'Store Clerk' || userProfile?.role === 'Manager') && userProfile?.branchId) {
+      setSelectedBranchId(userProfile.branchId);
+    }
+  }, [branches, userProfile?.role, userProfile?.branchId]);
+
   const handleBranchSelect = useCallback((branchId: string) => {
     localStorage.setItem('selectedBranchId', branchId);
     setSelectedBranchId(branchId);
@@ -78,12 +116,12 @@ const Transactions: FunctionComponent = () => {
     }
   }, [selectedDate, fetchTransactions]);
 
-  // Fetch when date changes
+  // Update your date change effect
   useEffect(() => {
-    if (selectedDate && selectedBranchId) {
+    if (selectedDate && selectedBranchId && userProfile?.restaurantId) {
       fetchTransactions(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
     }
-  }, [selectedDate, selectedBranchId]);
+  }, [selectedDate, selectedBranchId, userProfile?.restaurantId, fetchTransactions]);
 
   const handleDateClick = (event: React.MouseEvent<HTMLDivElement>) => {
     setAnchorEl(event.currentTarget);
@@ -176,6 +214,30 @@ const Transactions: FunctionComponent = () => {
     }
   }, [selectedDate, selectedBranchId, fetchTransactions]);
 
+  // Add this useMemo hook after the paginatedOrders calculation
+  const totalAmount = useMemo(() => {
+    if (!orders.length) return 0;
+    
+    const relevantOrders = orders.filter(order => {
+      switch (activeTab) {
+        case 'pending':
+          return order.paymentStatus === 'Pending';
+        case 'paid':
+          return order.paymentStatus === 'Paid';
+        case 'momo':
+          return order.payLater === true;
+        case 'cash':
+          return order.payNow === true;
+        case 'visa':
+          return order.payVisaCard === true;
+        default:
+          return true;
+      }
+    });
+
+    return relevantOrders.reduce((sum, order) => sum + (parseFloat(order.orderPrice) || 0), 0).toFixed(2);
+  }, [orders, activeTab]);
+
   return (
     <div className="h-full w-full bg-white m-0 p-0">
       {selectedOrderNumber ? (
@@ -184,7 +246,7 @@ const Transactions: FunctionComponent = () => {
           onBack={handleBackToTransactions}
           transactionDetails={transactionDetails}
           isLoading={isTransactionDetailsLoading}
-          error={error}
+          error={transactionDetailsError}
         />
       ) : (
         <div className="p-3 ml-4 mr-4">
@@ -271,29 +333,43 @@ const Transactions: FunctionComponent = () => {
               </div>
             </div>
 
-            {/* Calendar Trigger */}
-            <div 
-              onClick={handleDateClick}
-              className="flex items-center gap-2 cursor-pointer"
-            >
-              <div className="border border-[#eaeaea] border-solid rounded-md px-3 py-1 flex items-center gap-2">
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  className="h-4 w-4 text-[#666]" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
-                  />
-                </svg>
+            <div className="flex items-center gap-4">
+              {/* Total Amount Display */}
+              <div className="border border-[#eaeaea] border-solid rounded-md px-3 py-1">
                 <span className="text-[12px] font-sans text-[#666]">
-                  {selectedDate ? selectedDate.format('DD MMMM YYYY') : '23 January 2024'}
+                  Total {activeTab === 'all' ? '' : 
+                         activeTab === 'momo' ? 'Momo' :
+                         activeTab === 'cash' ? 'Cash' :
+                         activeTab === 'visa' ? 'Visa Card' :
+                         activeTab === 'pending' ? 'Pending' :
+                         activeTab === 'paid' ? 'Paid' : ''}: GH₵ {totalAmount}
                 </span>
+              </div>
+
+              {/* Calendar Trigger */}
+              <div 
+                onClick={handleDateClick}
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                <div className="border border-[#eaeaea] border-solid rounded-md px-3 py-1 flex items-center gap-2">
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className="h-4 w-4 text-[#666]" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
+                    />
+                  </svg>
+                  <span className="text-[12px] font-sans text-[#666]">
+                    {selectedDate ? selectedDate.format('DD MMMM YYYY') : '23 January 2024'}
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -361,6 +437,8 @@ const Transactions: FunctionComponent = () => {
             {/* Table Body */}
             {isLoading ? (
               <div className="p-4 text-center text-gray-500 font-sans">Loading transactions...</div>
+            ) : error ? (
+              <div className="p-4 text-center text-red-500 font-sans">Error: {error}</div>
             ) : paginatedOrders.orders.length === 0 ? (
               <div className="p-4 text-center text-gray-500 font-sans">No transactions found</div>
             ) : (

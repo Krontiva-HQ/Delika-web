@@ -579,7 +579,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                     </div>
                     <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.orderDate}</div>
                     <div className="text-[12px] leading-[20px] font-sans text-[#444]">
-                      {Number(order.totalPrice).toFixed(2)}
+                      {Number(order.orderPrice).toFixed(2)}
                     </div>
                     <div className="flex items-center justify-between">
                       <span className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans ${getStatusStyle(order.orderStatus)}`}>
