@@ -210,8 +210,18 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
   const [currentBatchId, setCurrentBatchId] = useState<string | null>(null);
 
-  // Fix the check to explicitly look for false
-  const isOnDemandDisabled = restaurantData?.WalkIn === false;
+  // Get WalkIn value with a default if it's undefined (since it's new to the schema)
+  // If WalkIn is undefined, allow On-Demand delivery by default
+  const walkInSetting = restaurantData?.WalkIn !== undefined ? restaurantData.WalkIn : true;
+
+  // Update check to use the walkInSetting variable
+  const isOnDemandDisabled = !walkInSetting;
+
+  // Debug logging
+  console.log('Restaurant Data:', restaurantData);
+  console.log('WalkIn setting (raw):', restaurantData?.WalkIn);
+  console.log('WalkIn setting (with default):', walkInSetting);
+  console.log('WalkIn type:', typeof restaurantData?.WalkIn);
 
   const handleSelectCategoryClick = (event: React.MouseEvent<HTMLElement>) => {
     setSelectCategoryAnchorEl(event.currentTarget);
@@ -475,6 +485,15 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
   // Render different sections based on current step
   const renderStepContent = () => {
+    // Check if On-Demand is selected but should be disabled based on WalkIn setting
+    if (deliveryMethod === 'on-demand' && !walkInSetting) {
+      // If On-Demand is disabled but somehow selected, redirect back to delivery selection
+      setCurrentStep(1);
+      setDeliveryMethod(null);
+      return renderDeliveryMethodSelection();
+    }
+
+    // Continue with original implementation
     switch (deliveryMethod) {
       case 'on-demand':
         return renderOnDemandContent();
@@ -488,9 +507,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       case 'full-service':
         return renderFullServiceContent();
        
-        case 'walk-in':
+      case 'walk-in':
         return renderWalkInContent();
-
      
       default:
         // Redirect to step 1 if somehow we get to an invalid step
@@ -2743,6 +2761,35 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         selectedItems.length > 0
     );
 };
+
+  const renderDeliveryMethodSelection = () => {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Only show On-Demand if walkInSetting is true */}
+        {walkInSetting && (
+          <div 
+            className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg relative cursor-pointer hover:bg-[#FFE5E0] transition-colors"
+            onClick={() => handleDeliveryMethodSelect('on-demand')}
+          >
+            <h3 className="text-lg font-medium text-[#333]">On-Demand Delivery</h3>
+            {/* ... other content ... */}
+          </div>
+        )}
+        
+        {/* Other delivery options like schedule, batch, full-service */}
+        
+        {/* Show Walk-In regardless of WalkIn setting */}
+        <div 
+          className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg relative cursor-pointer hover:bg-[#FFE5E0] transition-colors"
+          onClick={() => handleDeliveryMethodSelect('walk-in')}
+        >
+          <h3 className="text-lg font-medium text-[#333]">Walk-In Order</h3>
+          {/* ... other content ... */}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-8 rounded-lg w-[600px] relative flex flex-col">
@@ -2758,11 +2805,16 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           <div className="flex flex-col items-center">
             <h2 className="text-2xl font-semibold mb-8 font-sans">Select Service Type</h2>
             <div className="flex gap-4 w-full justify-center flex-nowrap">
-              {/* On-Demand Delivery */}
+              {/* On-Demand Delivery - Disable if walkInSetting is false */}
               <div
-                onClick={() => !isOnDemandDisabled && handleDeliveryMethodSelect('on-demand')}
+                onClick={() => {
+                  // Only allow selection if not disabled and walkInSetting is true
+                  if (!isOnDemandDisabled && walkInSetting) {
+                    handleDeliveryMethodSelect('on-demand');
+                  }
+                }}
                 className={`flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg relative w-[200px]
-                  ${isOnDemandDisabled 
+                  ${isOnDemandDisabled || !walkInSetting
                     ? 'opacity-50 cursor-not-allowed' 
                     : 'cursor-pointer hover:bg-[#FFE5E0] transition-colors'}`}
               >
