@@ -29,6 +29,13 @@ export const useAddItemToCategory = () => {
     foodPhoto,
     onSuccess
   }: AddItemParams): Promise<AddItemResponse> => {
+    console.log('🔥 useAddItemToCategory hook called - DIRECT API APPROACH 🔥', {
+      categoryId,
+      name,
+      price,
+      description
+    });
+    
     setIsLoading(true);
     setError(null);
 
@@ -52,11 +59,14 @@ export const useAddItemToCategory = () => {
         throw new Error('Missing file resource.');
       }
 
+      console.log('🔥 Calling API directly - AddItemToCategory 🔥');
       const response = await addItemToCategory(formData);
+      console.log('✅ API Response:', { status: response.status });
       onSuccess?.();
       return response;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred';
+      console.error('❌ API Error:', err);
       setError(message);
       throw err;
     } finally {

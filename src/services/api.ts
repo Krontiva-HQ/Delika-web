@@ -2,15 +2,35 @@
 
 import axios from 'axios';
 
+// Get environment variables
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.API_BASE_URL || 'https://api-server.krontiva.africa/api:uEBBwbSs';
+const PROXY_URL = import.meta.env.VITE_PROXY_URL || import.meta.env.PROXY_URL || '/api';
+const IS_PRODUCTION = import.meta.env.PROD || import.meta.env.ENV === 'production';
+
+console.log('API Configuration:', {
+  API_BASE_URL,
+  PROXY_URL,
+  IS_PRODUCTION,
+  env: import.meta.env.MODE
+});
+
 // Create API instance with simplified configuration
 const api = axios.create({
-  baseURL: import.meta.env.PROXY_URL || '/api',
+  baseURL: IS_PRODUCTION ? API_BASE_URL : PROXY_URL,
   headers: {
     'Content-Type': 'application/json',
   }
 });
 
-export { api };
+// Create a direct API instance that doesn't use the proxy
+const directApi = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  }
+});
+
+export { api, directApi };
 
 
 // Add a debug flag (you can control this via env variable)
@@ -255,8 +275,7 @@ export interface OrderDetails {
 
 // Add the service functions
 export const addItemToCategory = (formData: FormData) => {
-  // This approach doesn't work because we need the fields directly at the top level
-  // NOT nested under a 'data' field
+  console.log('📤 AddItemToCategory called, bypassing proxy');
   
   // Create a clean FormData with all fields at the top level
   const updatedFormData = new FormData();
@@ -271,7 +290,6 @@ export const addItemToCategory = (formData: FormData) => {
     
     // Handle foods JSON specially
     if (key === 'foods' && typeof value === 'string') {
-      // Just pass it through as a string - DO NOT parse and re-stringify
       updatedFormData.append(key, value);
     } else {
       updatedFormData.append(key, value);
@@ -296,16 +314,27 @@ export const addItemToCategory = (formData: FormData) => {
   });
   console.log('Values:', logData);
   
-  return api.patch<{data: any; status: number}>(API_ENDPOINTS.CATEGORY.ADD_ITEM, updatedFormData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
-  });
+  // Get auth token
+  const token = localStorage.getItem('authToken');
+  const headers: Record<string, string> = {
+    'Content-Type': 'multipart/form-data'
+  };
+  
+  if (token) {
+    headers['X-Xano-Authorization'] = token;
+    headers['X-Xano-Authorization-Only'] = 'true';
+  }
+  
+  // Use direct API call without proxy
+  return axios.patch<{data: any; status: number}>(
+    `${API_BASE_URL}/add/item/to/category`, 
+    updatedFormData, 
+    { headers }
+  );
 };
 
 export const createCategory = (formData: FormData) => {
-  // This approach doesn't work because we need the fields directly at the top level
-  // NOT nested under a 'data' field
+  console.log('📤 CreateCategory called, bypassing proxy');
   
   // Create a clean FormData with all fields at the top level
   const updatedFormData = new FormData();
@@ -339,11 +368,23 @@ export const createCategory = (formData: FormData) => {
   });
   console.log('Values:', logData);
   
-  return api.post(API_ENDPOINTS.CATEGORY.CREATE, updatedFormData, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
-  });
+  // Get auth token
+  const token = localStorage.getItem('authToken');
+  const headers: Record<string, string> = {
+    'Content-Type': 'multipart/form-data'
+  };
+  
+  if (token) {
+    headers['X-Xano-Authorization'] = token;
+    headers['X-Xano-Authorization-Only'] = 'true';
+  }
+  
+  // Use direct API call without proxy
+  return axios.post(
+    `${API_BASE_URL}/create/new/category`, 
+    updatedFormData, 
+    { headers }
+  );
 };
 
 // Team service functions
