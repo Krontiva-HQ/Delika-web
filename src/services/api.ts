@@ -255,30 +255,46 @@ export interface OrderDetails {
 
 // Add the service functions
 export const addItemToCategory = (formData: FormData) => {
-  // Create the updated FormData with the proper structure
+  // This approach doesn't work because we need the fields directly at the top level
+  // NOT nested under a 'data' field
+  
+  // Create a clean FormData with all fields at the top level
   const updatedFormData = new FormData();
   
-  // Add the path to ensure it's included in the request
-  updatedFormData.append('path', API_ENDPOINTS.CATEGORY.ADD_ITEM);
+  // Add the path field - this is required by the API
+  updatedFormData.append('path', '/add/item/to/category');
   
-  // Add all the original form data
-  // Convert to array first to avoid iteration issues
+  // Add all the other fields from the original FormData
   Array.from(formData.entries()).forEach(([key, value]) => {
+    // Skip the path if it exists in the original FormData
+    if (key === 'path') return;
+    
+    // Handle foods JSON specially
     if (key === 'foods' && typeof value === 'string') {
-      // Parse and reformat foods to ensure it's correctly structured
-      try {
-        const foodsData = JSON.parse(value);
-        updatedFormData.append('foods', JSON.stringify(foodsData));
-      } catch (e) {
-        updatedFormData.append(key, value);
-      }
+      // Just pass it through as a string - DO NOT parse and re-stringify
+      updatedFormData.append(key, value);
     } else {
       updatedFormData.append(key, value);
     }
   });
   
-  // Log payload keys for debugging
-  console.log('Add Item Payload Keys:', Array.from(updatedFormData.keys()));
+  // Log for debugging
+  console.log('📤 AddItemToCategory payload:');
+  console.log('Keys:', Array.from(updatedFormData.keys()));
+  
+  const logData: Record<string, unknown> = {};
+  Array.from(updatedFormData.entries()).forEach(([key, value]) => {
+    if (value instanceof File) {
+      logData[key] = {
+        name: value.name,
+        size: value.size,
+        type: value.type
+      };
+    } else {
+      logData[key] = value;
+    }
+  });
+  console.log('Values:', logData);
   
   return api.patch<{data: any; status: number}>(API_ENDPOINTS.CATEGORY.ADD_ITEM, updatedFormData, {
     headers: {
@@ -288,20 +304,40 @@ export const addItemToCategory = (formData: FormData) => {
 };
 
 export const createCategory = (formData: FormData) => {
-  // Create the updated FormData with the proper structure
+  // This approach doesn't work because we need the fields directly at the top level
+  // NOT nested under a 'data' field
+  
+  // Create a clean FormData with all fields at the top level
   const updatedFormData = new FormData();
   
-  // Add the path to ensure it's included in the request
-  updatedFormData.append('path', API_ENDPOINTS.CATEGORY.CREATE);
+  // Add the path field - this is required by the API
+  updatedFormData.append('path', '/create/new/category');
   
-  // Add all the original form data
-  // Convert to array first to avoid iteration issues
+  // Add all the other fields from the original FormData
   Array.from(formData.entries()).forEach(([key, value]) => {
+    // Skip the path if it exists in the original FormData
+    if (key === 'path') return;
+    
     updatedFormData.append(key, value);
   });
   
-  // Log payload keys for debugging
-  console.log('Create Category Payload Keys:', Array.from(updatedFormData.keys()));
+  // Log for debugging
+  console.log('📤 CreateCategory payload:');
+  console.log('Keys:', Array.from(updatedFormData.keys()));
+  
+  const logData: Record<string, unknown> = {};
+  Array.from(updatedFormData.entries()).forEach(([key, value]) => {
+    if (value instanceof File) {
+      logData[key] = {
+        name: value.name,
+        size: value.size,
+        type: value.type
+      };
+    } else {
+      logData[key] = value;
+    }
+  });
+  console.log('Values:', logData);
   
   return api.post(API_ENDPOINTS.CATEGORY.CREATE, updatedFormData, {
     headers: {
