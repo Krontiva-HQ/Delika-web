@@ -130,6 +130,12 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
       }
 
       if (showCategoryForm) {
+        console.log('Adding new category with item', {
+          foodType: newCategory,
+          restaurantId: userProfile.restaurantId,
+          branchId: userProfile.branchId
+        });
+        
         await addCategory({
           foodType: newCategory,
           restaurantName: userProfile.restaurantId,
@@ -155,6 +161,13 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
           return;
         }
 
+        console.log('Adding item to category', {
+          categoryId: selectedCategoryData.id,
+          name: itemName,
+          restaurantId: userProfile.restaurantId,
+          branchId: userProfile.branchId
+        });
+        
         await addItem({
           categoryId: selectedCategoryData.id,
           name: itemName,
@@ -180,6 +193,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
       setNewCategoryImage(null);
       
     } catch (error) {
+      console.error('Failed to save item:', error);
       alert('Failed to save. Please try again.');
     }
   };

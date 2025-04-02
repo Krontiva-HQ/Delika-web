@@ -41,6 +41,7 @@ export const useAddCategory = () => {
         formData.append(`foods[${index}][price]`, food.price);
         formData.append(`foods[${index}][description]`, food.description);
         formData.append(`foods[${index}][quantity]`, food.quantity);
+        formData.append(`foods[${index}][available]`, String(food.available));
       });
 
       if (foodTypePhoto) {

@@ -255,7 +255,32 @@ export interface OrderDetails {
 
 // Add the service functions
 export const addItemToCategory = (formData: FormData) => {
-  return api.patch<{data: any; status: number}>(API_ENDPOINTS.CATEGORY.ADD_ITEM, formData, {
+  // Create the updated FormData with the proper structure
+  const updatedFormData = new FormData();
+  
+  // Add the path to ensure it's included in the request
+  updatedFormData.append('path', API_ENDPOINTS.CATEGORY.ADD_ITEM);
+  
+  // Add all the original form data
+  // Convert to array first to avoid iteration issues
+  Array.from(formData.entries()).forEach(([key, value]) => {
+    if (key === 'foods' && typeof value === 'string') {
+      // Parse and reformat foods to ensure it's correctly structured
+      try {
+        const foodsData = JSON.parse(value);
+        updatedFormData.append('foods', JSON.stringify(foodsData));
+      } catch (e) {
+        updatedFormData.append(key, value);
+      }
+    } else {
+      updatedFormData.append(key, value);
+    }
+  });
+  
+  // Log payload keys for debugging
+  console.log('Add Item Payload Keys:', Array.from(updatedFormData.keys()));
+  
+  return api.patch<{data: any; status: number}>(API_ENDPOINTS.CATEGORY.ADD_ITEM, updatedFormData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     }
@@ -263,7 +288,22 @@ export const addItemToCategory = (formData: FormData) => {
 };
 
 export const createCategory = (formData: FormData) => {
-  return api.post(API_ENDPOINTS.CATEGORY.CREATE, formData, {
+  // Create the updated FormData with the proper structure
+  const updatedFormData = new FormData();
+  
+  // Add the path to ensure it's included in the request
+  updatedFormData.append('path', API_ENDPOINTS.CATEGORY.CREATE);
+  
+  // Add all the original form data
+  // Convert to array first to avoid iteration issues
+  Array.from(formData.entries()).forEach(([key, value]) => {
+    updatedFormData.append(key, value);
+  });
+  
+  // Log payload keys for debugging
+  console.log('Create Category Payload Keys:', Array.from(updatedFormData.keys()));
+  
+  return api.post(API_ENDPOINTS.CATEGORY.CREATE, updatedFormData, {
     headers: {
       'Content-Type': 'multipart/form-data'
     }
@@ -432,4 +472,4 @@ export const placeOrder = async (formData: FormData) => {
   console.log('Order Payload:', orderPayload);
 
   return api.post('/delikaquickshipper_orders_table', orderPayload);
-}; 
+};
