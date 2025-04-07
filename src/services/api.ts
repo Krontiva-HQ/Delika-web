@@ -533,7 +533,7 @@ export const placeOrder = async (formData: FormData) => {
     // Add batch ID if present
     batchID: jsonData.batchID || null,
     // Add schedule delivery information if present
-    scheduleTime: jsonData['scheduleTime[scheduleDateTime]'] ? 
+    scheduledTime: jsonData['scheduleTime[scheduleDateTime]'] ? 
       jsonData['scheduleTime[scheduleDateTime]'] : undefined
   };
 

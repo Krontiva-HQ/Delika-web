@@ -80,7 +80,7 @@ interface OrderPayload {
   payLater: boolean;
   scheduleDelivery?: {
     scheduleDate: string;
-    scheduleTime: string;
+    scheduledTime: string;
     scheduleDateTime: string;
   };
   Walkin: boolean; // Add this line
@@ -406,7 +406,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       // Add schedule information if it's a scheduled delivery
       if (deliveryMethod === 'schedule' && scheduledDate && scheduledTime) {
         const scheduleDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
-        formData.append('scheduleTime[scheduleDateTime]', scheduleDateTime.toISOString());
+        formData.append('scheduledTime[scheduleDateTime]', scheduleDateTime.toISOString());
       }
 
       // Use the placeOrder function from api.ts
