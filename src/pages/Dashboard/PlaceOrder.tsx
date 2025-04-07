@@ -217,11 +217,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   // Update check to use the walkInSetting variable
   const isOnDemandDisabled = !walkInSetting;
 
-  // Debug logging
-  console.log('Restaurant Data:', restaurantData);
-  console.log('WalkIn setting (raw):', restaurantData?.WalkIn);
-  console.log('WalkIn setting (with default):', walkInSetting);
-  console.log('WalkIn type:', typeof restaurantData?.WalkIn);
+
 
   const handleSelectCategoryClick = (event: React.MouseEvent<HTMLElement>) => {
     setSelectCategoryAnchorEl(event.currentTarget);
@@ -372,11 +368,9 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       formData.append('branchId', selectedBranchId || userProfile?.branchId || '');
       formData.append('deliveryPrice', deliveryPrice);
       formData.append('pickupName', pickupLocation?.address || '');
-       formData.append('dropoffName', dropoffLocation?.address || '');
+      formData.append('dropoffName', dropoffLocation?.address || '');
       formData.append('orderPrice', totalFoodPrice);
       formData.append('totalPrice', calculateTotal());
-      formData.append('pickupName', pickupLocation?.address || '');
-      formData.append('dropoffName', dropoffLocation?.address || '');
       formData.append('orderComment', orderComment);
       
       // Set orderStatus based on delivery method
@@ -404,13 +398,16 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         formData.append('dropOff[0][toAddress]', dropoffLocation.address);
       }
 
-      // Debug log to check the formData
-      formData.forEach((value, key) => {
-        console.log(key, value);
-      });
+      // Add batch ID if it's a batch delivery
+      if (deliveryMethod === 'batch-delivery' && currentBatchId) {
+        formData.append('batchID', currentBatchId);
+      }
 
-      // Inside handlePlaceOrder function, add this before the formData.append:
-      console.log('Selected delivery method:', deliveryMethod);
+      // Add schedule information if it's a scheduled delivery
+      if (deliveryMethod === 'schedule' && scheduledDate && scheduledTime) {
+        const scheduleDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
+        formData.append('scheduleTime[scheduleDateTime]', scheduleDateTime.toISOString());
+      }
 
       // Use the placeOrder function from api.ts
       const response = await placeOrder(formData);
@@ -419,9 +416,46 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         throw new Error('Failed to place order');
       }
 
-      onOrderPlaced();
+      // If this is a batch delivery, add the order to batchedOrders and show the modal
+      if (deliveryMethod === 'batch-delivery') {
+        const orderData = {
+          customerName,
+          customerPhoneNumber: customerPhone,
+          dropOff: [{
+            toAddress: dropoffLocation?.address || ''
+          }],
+          products: selectedItems.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price
+          })),
+          deliveryPrice,
+          totalPrice: calculateTotal()
+        };
+        
+        setBatchedOrders(prev => [...prev, orderData]);
+        setShowBatchSummary(true);
+        
+        // Show success notification
+        addNotification({
+          type: 'order_created',
+          message: 'Order added to batch successfully!'
+        });
+      } else {
+        // For non-batch orders, close the modal and show success
+        onOrderPlaced();
+        addNotification({
+          type: 'order_created',
+          message: 'Order placed successfully!'
+        });
+      }
+
     } catch (error) {
       console.error('Error placing order:', error);
+      addNotification({
+        type: 'order_status',
+        message: 'Failed to place order. Please try again.'
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -2646,14 +2680,40 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   const handleDeliveryMethodSelect = (method: DeliveryMethod) => {
     setDeliveryMethod(method);
     
-    // If walk-in is selected, ensure Walkin is set to true
-    if (method === 'walk-in') {
-      // Add any additional logic needed for walk-in orders
-      console.log('Walk-in service selected');
+    // Initialize specific data based on delivery method
+    switch (method) {
+      case 'batch-delivery':
+        // Generate a new batch ID when batch delivery is selected
+        const newBatchId = generateBatchId();
+        setCurrentBatchId(newBatchId);
+        setBatchedOrders([]); // Reset batched orders
+        break;
+        
+      case 'schedule':
+        // Initialize schedule with default values
+        setScheduledDate(new Date().toISOString().split('T')[0]);
+        setScheduledTime('');
+        break;
+        
+      case 'walk-in':
+        // Walk-in orders are handled in handlePlaceOrder
+        break;
+        
+      default:
+        // Reset any delivery-specific states
+        setCurrentBatchId(null);
+        setBatchedOrders([]);
+        setScheduledDate('');
+        setScheduledTime('');
     }
     
-    // Reset any other delivery-specific states if needed
-    // ... existing code ...
+    // Reset form fields
+    setCustomerName('');
+    setCustomerPhone('');
+    setSelectedItems([]);
+    setDeliveryPrice('');
+    setOrderComment('');
+    setCurrentStep(1);
   };
 
   // Add this function to handle date changes with validation

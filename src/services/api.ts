@@ -7,12 +7,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.API_BA
 const PROXY_URL = import.meta.env.VITE_PROXY_URL || import.meta.env.PROXY_URL || '/api';
 const IS_PRODUCTION = import.meta.env.PROD || import.meta.env.ENV === 'production';
 
-console.log('API Configuration:', {
-  API_BASE_URL,
-  PROXY_URL,
-  IS_PRODUCTION,
-  env: import.meta.env.MODE
-});
+
 
 // Create API instance with simplified configuration
 const api = axios.create({
@@ -275,7 +270,6 @@ export interface OrderDetails {
 
 // Add the service functions
 export const addItemToCategory = (formData: FormData) => {
-  console.log('📤 AddItemToCategory called, bypassing proxy');
   
   // Create a clean FormData with all fields at the top level
   const updatedFormData = new FormData();
@@ -296,9 +290,7 @@ export const addItemToCategory = (formData: FormData) => {
     }
   });
   
-  // Log for debugging
-  console.log('📤 AddItemToCategory payload:');
-  console.log('Keys:', Array.from(updatedFormData.keys()));
+
   
   const logData: Record<string, unknown> = {};
   Array.from(updatedFormData.entries()).forEach(([key, value]) => {
@@ -312,7 +304,6 @@ export const addItemToCategory = (formData: FormData) => {
       logData[key] = value;
     }
   });
-  console.log('Values:', logData);
   
   // Get auth token
   const token = localStorage.getItem('authToken');
@@ -334,7 +325,6 @@ export const addItemToCategory = (formData: FormData) => {
 };
 
 export const createCategory = (formData: FormData) => {
-  console.log('📤 CreateCategory called, bypassing proxy');
   
   // Create a clean FormData with all fields at the top level
   const updatedFormData = new FormData();
@@ -350,9 +340,7 @@ export const createCategory = (formData: FormData) => {
     updatedFormData.append(key, value);
   });
   
-  // Log for debugging
-  console.log('📤 CreateCategory payload:');
-  console.log('Keys:', Array.from(updatedFormData.keys()));
+
   
   const logData: Record<string, unknown> = {};
   Array.from(updatedFormData.entries()).forEach(([key, value]) => {
@@ -366,7 +354,6 @@ export const createCategory = (formData: FormData) => {
       logData[key] = value;
     }
   });
-  console.log('Values:', logData);
   
   // Get auth token
   const token = localStorage.getItem('authToken');
@@ -538,15 +525,19 @@ export const placeOrder = async (formData: FormData) => {
       fromLongitude: jsonData['pickup[0][fromLongitude]']
     }],
     pickupName: jsonData.pickupName,
-    products: products, // Add the extracted products
+    products: products,
     restaurantId: jsonData.restaurantId,
     distance: jsonData.deliveryDistance,
     trackingUrl: jsonData.trackingUrl || '',
-    Walkin: jsonData.Walkin === 'true' || jsonData.Walkin === 'true'
+    Walkin: jsonData.Walkin === 'true',
+    // Add batch ID if present
+    batchID: jsonData.batchID || null,
+    // Add schedule delivery information if present
+    scheduleTime: jsonData['scheduleTime[scheduleDateTime]'] ? 
+      jsonData['scheduleTime[scheduleDateTime]'] : undefined
   };
 
   // Debug log to check the payload
-  console.log('Order Payload:', orderPayload);
 
   return api.post('/delikaquickshipper_orders_table', orderPayload);
 };
