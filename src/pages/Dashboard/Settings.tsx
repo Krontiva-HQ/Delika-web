@@ -37,6 +37,9 @@ const Settings: FunctionComponent = () => {
   const [country, setCountry] = useState<{ value: string; label: string } | null>(null);
   const [activeTab, setActiveTab] = useState('edit');
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [language, setLanguage] = useState('en');
+  const [riderAssignment, setRiderAssignment] = useState<'auto' | 'manual'>('auto');
+  const [priceCalculation, setPriceCalculation] = useState<'auto' | 'manual'>('auto');
   const options = useMemo(() => countryList().getData(), []);
   const [userData, setUserData] = useState<UserResponse | null>(null);
   const { updateUser, isLoading, error } = useUpdateUser();
@@ -247,7 +250,7 @@ const Settings: FunctionComponent = () => {
                 const target = e.target as HTMLImageElement;
                 target.src = '/default-profile.jpg';
               }}
-            />
+            />z
             <span className="truncate">{member.fullName}</span>
           </div>
           <div className="text-[12px] truncate">{member.email}</div>
@@ -648,6 +651,15 @@ const Settings: FunctionComponent = () => {
                 >
                   About Restaurant
                 </div>
+                <div className={`relative text-[12px] leading-[20px] font-sans cursor-pointer ${
+                  activeTab === 'restaurant-settings' 
+                    ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' 
+                    : 'text-black dark:text-white'
+                }`}
+                onClick={() => setActiveTab('restaurant-settings')}
+                >
+                  Restaurant Settings
+                </div>
               </div>
             </section>
 
@@ -920,6 +932,107 @@ const Settings: FunctionComponent = () => {
                       </div>
                     </div>
                   </div>
+                </div>
+              ) : activeTab === 'restaurant-settings' ? (
+                <div className="self-stretch flex flex-col items-start justify-start gap-[20px] p-6">
+                  {/* Settings Grid Container */}
+                  <div className="w-full grid grid-cols-3 gap-8">
+                    {/* Language Settings Section */}
+                    <div className="bg-transparent flex flex-col items-start justify-start gap-[16px]">
+                      <div className="w-full bg-transparent flex flex-col items-start justify-start gap-[8px]">
+                        <b className="text-[14px] leading-[22px] font-sans text-black dark:text-white">
+                          Select Language
+                        </b>
+                        <select
+                          className="w-full border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[14px] bg-white dark:bg-black text-black dark:text-white rounded-[8px] h-[45px] px-[16px]"
+                          value={language}
+                          onChange={(e) => setLanguage(e.target.value)}
+                        >
+                          <option value="en">English</option>
+                          <option value="ar">Arabic</option>
+                          <option value="fr">French</option>
+                          <option value="es">Spanish</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Rider Assignment Section */}
+                    <div className="bg-transparent flex flex-col items-start justify-start gap-[16px]">
+                      <div className="w-full bg-transparent flex flex-col items-start justify-start gap-[8px]">
+                        <b className="text-[14px] leading-[22px] font-sans text-black dark:text-white">
+                          Rider Assignment Method
+                        </b>
+                        <div className="flex flex-col gap-3 mt-2">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="riderAssignment"
+                              value="auto"
+                              checked={riderAssignment === 'auto'}
+                              onChange={(e) => setRiderAssignment(e.target.value as 'auto' | 'manual')}
+                              className="w-4 h-4 text-[#fe5b18] focus:ring-[#fe5b18]"
+                            />
+                            <span className="text-[14px] text-black dark:text-white">Auto Assign Riders</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="riderAssignment"
+                              value="manual"
+                              checked={riderAssignment === 'manual'}
+                              onChange={(e) => setRiderAssignment(e.target.value as 'auto' | 'manual')}
+                              className="w-4 h-4 text-[#fe5b18] focus:ring-[#fe5b18]"
+                            />
+                            <span className="text-[14px] text-black dark:text-white">Assign Riders Manually</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Price Calculation Section */}
+                    <div className="bg-transparent flex flex-col items-start justify-start gap-[16px]">
+                      <div className="w-full bg-transparent flex flex-col items-start justify-start gap-[8px]">
+                        <b className="text-[14px] leading-[22px] font-sans text-black dark:text-white">
+                          Price Calculation Method
+                        </b>
+                        <div className="flex flex-col gap-3 mt-2">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="priceCalculation"
+                              value="auto"
+                              checked={priceCalculation === 'auto'}
+                              onChange={(e) => setPriceCalculation(e.target.value as 'auto' | 'manual')}
+                              className="w-4 h-4 text-[#fe5b18] focus:ring-[#fe5b18]"
+                            />
+                            <span className="text-[14px] text-black dark:text-white">Auto-calculate Price</span>
+                          </label>
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="radio"
+                              name="priceCalculation"
+                              value="manual"
+                              checked={priceCalculation === 'manual'}
+                              onChange={(e) => setPriceCalculation(e.target.value as 'auto' | 'manual')}
+                              className="w-4 h-4 text-[#fe5b18] focus:ring-[#fe5b18]"
+                            />
+                            <span className="text-[14px] text-black dark:text-white">Set Price Manually</span>
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Save Button */}
+                  <button
+                    className="mt-6 cursor-pointer bg-black dark:bg-[#fe5b18] text-white px-8 py-3 rounded-[8px] font-sans text-[14px] hover:bg-[#1a1a1a] dark:hover:bg-[#e54d0e]"
+                    onClick={() => {
+                      // Add your save logic here
+                      console.log('Saving settings:', { language, riderAssignment, priceCalculation });
+                    }}
+                  >
+                    Save Settings
+                  </button>
                 </div>
               ) : (
                 null
