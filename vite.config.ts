@@ -15,11 +15,15 @@ export default defineConfig(({ mode }) => {
     server: {
       proxy: {
         '/api': {
-          // Real API URL is only visible during development
-          target: 'https://api-server.krontiva.africa',
+          target: process.env.VITE_API_BASE_URL || 'https://api-server.krontiva.africa',
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, '/api:uEBBwbSs'),
-          secure: false,
+          rewrite: (path) => path.replace(/^\/api/, ''),
+          configure: (proxy, options) => {
+            // Add the auth token to the proxy headers
+            proxy.on('proxyReq', (proxyReq, req, res) => {
+              proxyReq.setHeader('Authorization', process.env.VITE_AUTH_TOKEN || '');
+            });
+          }
         },
       },
     },

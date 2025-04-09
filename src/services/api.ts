@@ -4,29 +4,26 @@ import axios from 'axios';
 
 // Get environment variables
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.API_BASE_URL || 'https://api-server.krontiva.africa/api:uEBBwbSs';
-const PROXY_URL = import.meta.env.VITE_PROXY_URL || import.meta.env.PROXY_URL || '/api';
+const PROXY_URL = '/api'; // Simplified proxy URL
 const IS_PRODUCTION = import.meta.env.PROD || import.meta.env.ENV === 'production';
-
-
 
 // Create API instance with simplified configuration
 const api = axios.create({
-  baseURL: IS_PRODUCTION ? API_BASE_URL : PROXY_URL,
+  baseURL: PROXY_URL, // Always use proxy
   headers: {
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/json'
   }
 });
 
 // Create a direct API instance that doesn't use the proxy
 const directApi = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: PROXY_URL, // Use proxy for direct API as well
   headers: {
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/json'
   }
 });
 
 export { api, directApi };
-
 
 // Add a debug flag (you can control this via env variable)
 const DEBUG_API = false;
@@ -47,7 +44,7 @@ api.interceptors.request.use((config) => {
     const apiKey = import.meta.env.API_KEY || 'api:uEBBwbSs';
     config.headers['Authorization'] = `Basic ${safebtoa(apiKey)}`;
   } else {
-    const token = localStorage.getItem('authToken');
+    const token = import.meta.env.VITE_AUTH_TOKEN || localStorage.getItem('authToken');
     if (token) {
       config.headers['X-Xano-Authorization'] = token;
       config.headers['X-Xano-Authorization-Only'] = 'true';
@@ -270,19 +267,11 @@ export interface OrderDetails {
 
 // Add the service functions
 export const addItemToCategory = (formData: FormData) => {
-  
-  // Create a clean FormData with all fields at the top level
   const updatedFormData = new FormData();
-  
-  // Add the path field - this is required by the API
   updatedFormData.append('path', '/add/item/to/category');
   
-  // Add all the other fields from the original FormData
   Array.from(formData.entries()).forEach(([key, value]) => {
-    // Skip the path if it exists in the original FormData
     if (key === 'path') return;
-    
-    // Handle foods JSON specially
     if (key === 'foods' && typeof value === 'string') {
       updatedFormData.append(key, value);
     } else {
@@ -290,87 +279,26 @@ export const addItemToCategory = (formData: FormData) => {
     }
   });
   
-
-  
-  const logData: Record<string, unknown> = {};
-  Array.from(updatedFormData.entries()).forEach(([key, value]) => {
-    if (value instanceof File) {
-      logData[key] = {
-        name: value.name,
-        size: value.size,
-        type: value.type
-      };
-    } else {
-      logData[key] = value;
-    }
-  });
-  
-  // Get auth token
-  const token = localStorage.getItem('authToken');
-  const headers: Record<string, string> = {
-    'Content-Type': 'multipart/form-data'
-  };
-  
-  if (token) {
-    headers['X-Xano-Authorization'] = token;
-    headers['X-Xano-Authorization-Only'] = 'true';
-  }
-  
-  // Use direct API call without proxy
-  return axios.patch<{data: any; status: number}>(
-    `${API_BASE_URL}/add/item/to/category`, 
+  return api.patch<{data: any; status: number}>(
+    API_ENDPOINTS.CATEGORY.ADD_ITEM, 
     updatedFormData, 
-    { headers }
+    { headers: { 'Content-Type': 'multipart/form-data' } }
   );
 };
 
 export const createCategory = (formData: FormData) => {
-  
-  // Create a clean FormData with all fields at the top level
   const updatedFormData = new FormData();
-  
-  // Add the path field - this is required by the API
   updatedFormData.append('path', '/create/new/category');
   
-  // Add all the other fields from the original FormData
   Array.from(formData.entries()).forEach(([key, value]) => {
-    // Skip the path if it exists in the original FormData
     if (key === 'path') return;
-    
     updatedFormData.append(key, value);
   });
   
-
-  
-  const logData: Record<string, unknown> = {};
-  Array.from(updatedFormData.entries()).forEach(([key, value]) => {
-    if (value instanceof File) {
-      logData[key] = {
-        name: value.name,
-        size: value.size,
-        type: value.type
-      };
-    } else {
-      logData[key] = value;
-    }
-  });
-  
-  // Get auth token
-  const token = localStorage.getItem('authToken');
-  const headers: Record<string, string> = {
-    'Content-Type': 'multipart/form-data'
-  };
-  
-  if (token) {
-    headers['X-Xano-Authorization'] = token;
-    headers['X-Xano-Authorization-Only'] = 'true';
-  }
-  
-  // Use direct API call without proxy
-  return axios.post(
-    `${API_BASE_URL}/create/new/category`, 
+  return api.post(
+    API_ENDPOINTS.CATEGORY.CREATE, 
     updatedFormData, 
-    { headers }
+    { headers: { 'Content-Type': 'multipart/form-data' } }
   );
 };
 
@@ -530,14 +458,10 @@ export const placeOrder = async (formData: FormData) => {
     distance: jsonData.deliveryDistance,
     trackingUrl: jsonData.trackingUrl || '',
     Walkin: jsonData.Walkin === 'true',
-    // Add batch ID if present
     batchID: jsonData.batchID || null,
-    // Add schedule delivery information if present
     scheduledTime: jsonData['scheduleTime[scheduleDateTime]'] ? 
       jsonData['scheduleTime[scheduleDateTime]'] : undefined
   };
 
-  // Debug log to check the payload
-
-  return api.post('/delikaquickshipper_orders_table', orderPayload);
+  return api.post(API_ENDPOINTS.ORDERS.PLACE_ORDER, orderPayload);
 };
