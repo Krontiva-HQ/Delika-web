@@ -108,6 +108,9 @@ export const API_ENDPOINTS = {
   USER: {
     DELETE: (userId: string) => `/delikaquickshipper_user_table/${userId}`,
     UPDATE: (userId: string) => `/delikaquickshipper_user_table/${userId}`
+  },
+  RESTAURANT: {
+    UPDATE_PREFERENCES: '/set/restaurant/preference'
   }
 } as const;
 
@@ -175,6 +178,9 @@ export interface UserResponse {
   _restaurantTable: Array<{
     id: string;
     restaurantName: string;
+    language: string;
+    AutoAssign: boolean;
+    AutoCalculatePrice: boolean;
   }>;
   password?: string;
 }
@@ -464,4 +470,25 @@ export const placeOrder = async (formData: FormData) => {
   };
 
   return api.post(API_ENDPOINTS.ORDERS.PLACE_ORDER, orderPayload);
+};
+
+// Add restaurant settings interface and function
+export interface RestaurantPreferences {
+  restaurantId: string | null;
+  AutoAssign: boolean;
+  AutoCalculatePrice: boolean;
+  language: string;
+}
+
+export const updateRestaurantPreferences = async (preferences: RestaurantPreferences) => {
+  try {
+    const response = await api.patch(API_ENDPOINTS.RESTAURANT.UPDATE_PREFERENCES, preferences, {
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
 };

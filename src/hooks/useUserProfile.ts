@@ -26,6 +26,9 @@ interface RestaurantData {
   Overview: boolean;
   DeliveryReport: boolean;
   WalkIn: boolean; // Add this new property
+  language: string;
+  AutoAssign: boolean;
+  AutoCalculatePrice: boolean;
 }
 
 export const useUserProfile = () => {
