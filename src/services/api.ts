@@ -111,6 +111,10 @@ export const API_ENDPOINTS = {
   },
   RESTAURANT: {
     UPDATE_PREFERENCES: '/set/restaurant/preference'
+  },
+  RIDERS: {
+    DELETE: '/remove/courier/from/branch',
+    GET_BY_BRANCH: '/get/rider/from/branch'
   }
 } as const;
 
@@ -491,4 +495,21 @@ export const updateRestaurantPreferences = async (preferences: RestaurantPrefere
   } catch (error) {
     throw error;
   }
+};
+
+// Add rider service functions
+export const getRidersByBranch = async (branchName: string) => {
+  return api.get(API_ENDPOINTS.RIDERS.GET_BY_BRANCH, { params: { branchName } });
+};
+
+export const deleteRider = async (params: { 
+  delikaquickshipper_user_table_id: string;
+  branchName: string; // This is actually expecting a branchId
+}) => {
+  return api.delete(API_ENDPOINTS.RIDERS.DELETE, { 
+    data: {
+      delikaquickshipper_user_table_id: params.delikaquickshipper_user_table_id,
+      branchName: params.branchName // We're passing branchId here
+    }
+  });
 };

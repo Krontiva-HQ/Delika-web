@@ -8,7 +8,7 @@ import { IoMdAdd } from "react-icons/io";
 import { SlOptionsVertical } from "react-icons/sl";
 import { FaCamera } from "react-icons/fa";
 import AddTeamMember from './AddTeamMembers';
-import { getAuthenticatedUser, UserResponse, deleteUser, verifyOTP, updateRestaurantPreferences } from "../../services/api";
+import { getAuthenticatedUser, UserResponse, deleteUser, verifyOTP, updateRestaurantPreferences, deleteRider } from "../../services/api";
 import { useUpdateUser } from '../../hooks/useUpdateUser';
 import { useTeamMembers, TeamMember } from '../../hooks/useTeamMembers';
 import useChangePassword from '../../hooks/useChangePassword';
@@ -21,6 +21,8 @@ import { CiEdit } from "react-icons/ci";
 import EditTeamMemberModal from '../../components/EditTeamMemberModal';
 import { useNotifications } from '../../context/NotificationContext';
 import { RiDeleteBin5Line } from "react-icons/ri";
+import RidersTable from '../../components/RidersTable';
+import { Rider } from '../../components/RidersTable';
 
 
 
@@ -230,82 +232,97 @@ const Settings: FunctionComponent = () => {
 
   // Update the renderTeamMembersTable function
   const renderTeamMembersTable = () => (
-    <div className="w-[95%] mx-auto border-[1px] border-solid border-gray-200 dark:border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden bg-white dark:bg-black">
-      {/* Table Header */}
-      <div className="flex justify-between items-center p-3 bg-white dark:bg-black text-black dark:text-white">
-        <h3 className="text-[14px] font-semibold font-sans">Team Members</h3>
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsAddMemberOpen(true);
-          }}
-          className="flex items-center gap-1 px-3 py-1.5 bg-[#fe5b18] text-white rounded-md font-sans text-[12px]"
-        >
-          <IoMdAdd className="w-4 h-4" />
-          Add Member
-        </button>
-      </div>
-
-      {/* Table Headers - Removed Status column */}
-      <div className="grid grid-cols-[200px_1fr_1fr_1fr_100px] items-center p-3 bg-white dark:bg-black text-black dark:text-white font-sans">
-        <div className="text-[12px] flex items-center">Name</div>
-        <div className="text-[12px]">Email</div>
-        <div className="text-[12px]">Branch Name</div>
-        <div className="text-[12px]">Role</div>
-        <div className="text-[12px]">Action</div>
-      </div>
-
-      {/* Table Body - Removed Status column */}
-      {teamMembers.map((member) => (
-        <div key={member.id} className="grid grid-cols-[200px_1fr_1fr_1fr_100px] items-center gap-2 p-3 border-t border-gray-200 dark:border-[#333] font-sans bg-white dark:bg-black text-black dark:text-white">
-          <div className="text-[12px] flex items-center gap-1 min-h-[24px]">
-            <img 
-              src={member.image?.url || '/default-profile.jpg'} 
-              alt={member.fullName}
-              className="w-6 h-6 rounded-full object-cover"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = '/default-profile.jpg';
-              }}
-            />z
-            <span className="truncate">{member.fullName}</span>
-          </div>
-          <div className="text-[12px] truncate">{member.email}</div>
-          <div className="text-[12px] truncate">{member.branchesTable?.branchName || 'N/A'}</div>
-          <div className="text-[12px] truncate">{member.role}</div>
-          <div className="flex items-center gap-1">
-            <button 
-              className="p-1.5 border-[1px] border-solid border-red-600 text-orange-600 rounded-[4px] hover:bg-red-50 dark:hover:bg-red-900/20 text-[11px] font-sans"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                handleDeleteMember(member.id);
-              }}
-            >
-              <RiDeleteBin5Line className="w-4 h-4" />
-            </button>
-            <button 
-              className="p-1.5 border-[1px] border-solid border-blue-600 text-blue-600 rounded-[4px] hover:bg-blue-50 dark:hover:bg-blue-900/20 text-[11px] font-sans"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setMemberToEdit({
-                  ...member,
-                  address: member.address || 'N/A',
-                  city: member.city || 'N/A',
-                  postalCode: member.postalCode || 'N/A',
-                  country: member.country || 'N/A'
-                });
-                setIsEditMemberOpen(true);
-              }}
-            >
-              <CiEdit className="w-4 h-4" />
-            </button>
-          </div>
+    <>
+      <div className="w-[95%] mx-auto border-[1px] border-solid border-gray-200 dark:border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden bg-white dark:bg-black">
+        {/* Table Header */}
+        <div className="flex justify-between items-center p-3 bg-white dark:bg-black text-black dark:text-white">
+          <h3 className="text-[14px] font-semibold font-sans">Team Members</h3>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsAddMemberOpen(true);
+            }}
+            className="flex items-center gap-1 px-3 py-1.5 bg-[#fe5b18] text-white rounded-md font-sans text-[12px]"
+          >
+            <IoMdAdd className="w-4 h-4" />
+            Add Member
+          </button>
         </div>
-      ))}
-    </div>
+
+        {/* Table Headers - Removed Status column */}
+        <div className="grid grid-cols-[200px_1fr_1fr_1fr_100px] items-center p-3 bg-white dark:bg-black text-black dark:text-white font-sans">
+          <div className="text-[12px] flex items-center">Name</div>
+          <div className="text-[12px]">Email</div>
+          <div className="text-[12px]">Branch Name</div>
+          <div className="text-[12px]">Role</div>
+          <div className="text-[12px]">Action</div>
+        </div>
+
+        {/* Table Body - Removed Status column */}
+        {teamMembers.map((member) => (
+          <div key={member.id} className="grid grid-cols-[200px_1fr_1fr_1fr_100px] items-center gap-2 p-3 border-t border-gray-200 dark:border-[#333] font-sans bg-white dark:bg-black text-black dark:text-white">
+            <div className="text-[12px] flex items-center gap-1 min-h-[24px]">
+              <img 
+                src={member.image?.url || '/default-profile.jpg'} 
+                alt={member.fullName}
+                className="w-6 h-6 rounded-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/default-profile.jpg';
+                }}
+              />z
+              <span className="truncate">{member.fullName}</span>
+            </div>
+            <div className="text-[12px] truncate">{member.email}</div>
+            <div className="text-[12px] truncate">{member.branchesTable?.branchName || 'N/A'}</div>
+            <div className="text-[12px] truncate">{member.role}</div>
+            <div className="flex items-center gap-1">
+              <button 
+                className="p-1.5 border-[1px] border-solid border-red-600 text-orange-600 rounded-[4px] hover:bg-red-50 dark:hover:bg-red-900/20 text-[11px] font-sans"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleDeleteMember(member.id);
+                }}
+              >
+                <RiDeleteBin5Line className="w-4 h-4" />
+              </button>
+              <button 
+                className="p-1.5 border-[1px] border-solid border-blue-600 text-blue-600 rounded-[4px] hover:bg-blue-50 dark:hover:bg-blue-900/20 text-[11px] font-sans"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setMemberToEdit({
+                    ...member,
+                    address: member.address || 'N/A',
+                    city: member.city || 'N/A',
+                    postalCode: member.postalCode || 'N/A',
+                    country: member.country || 'N/A'
+                  });
+                  setIsEditMemberOpen(true);
+                }}
+              >
+                <CiEdit className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+      
+      {/* Riders Section */}
+      <div className="w-[95%] mx-auto mt-8 border-[1px] border-solid border-gray-200 dark:border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden bg-white dark:bg-black">
+        <div className="flex justify-between items-center p-3 bg-white dark:bg-black text-black dark:text-white">
+          <h3 className="text-[14px] font-semibold font-sans">Riders</h3>
+        </div>
+        <RidersTable 
+          branchName={userData?.branchId || ''} 
+          onDeleteRider={handleDeleteRider}
+          onEditRider={handleEditRider}
+          key={refreshRiders ? 'refresh' : 'initial'}
+        />
+      </div>
+    </>
   );
 
   // Update the handleSave function to preserve existing image if no new one is uploaded
@@ -669,6 +686,50 @@ const Settings: FunctionComponent = () => {
       setIsSettingsSaving(false);
     }
   };
+
+  // Add state for rider deletion
+  const [riderToDelete, setRiderToDelete] = useState<string | null>(null);
+  const [deleteRiderModalOpen, setDeleteRiderModalOpen] = useState(false);
+
+  // Update the handleDeleteRider function
+  const handleDeleteRider = async (riderId: string) => {
+    setRiderToDelete(riderId);
+    setDeleteRiderModalOpen(true);
+  };
+
+  // Update the handleConfirmRiderDelete function
+  const handleConfirmRiderDelete = async () => {
+    if (!riderToDelete || !userData?.branchId) return;
+
+    try {
+      await deleteRider({
+        delikaquickshipper_user_table_id: riderToDelete,
+        branchName: userData.branchId
+      });
+
+      addNotification({
+        type: 'user_deleted',
+        message: 'Rider has been removed'
+      });
+
+      setRefreshRiders(prev => !prev);
+    } catch (error) {
+      addNotification({
+        type: 'user_deleted',
+        message: 'Failed to remove rider'
+      });
+    } finally {
+      setDeleteRiderModalOpen(false);
+      setRiderToDelete(null);
+    }
+  };
+
+  const handleEditRider = (rider: Rider) => {
+    // Add your edit rider logic here
+  };
+
+  // Add state for refreshing riders
+  const [refreshRiders, setRefreshRiders] = useState(false);
 
   return (
     <div className="h-full w-full bg-white dark:bg-black m-0 p-0 font-sans">
@@ -1134,6 +1195,19 @@ const Settings: FunctionComponent = () => {
         onConfirm={handleConfirmDelete}
         title="Delete Team Member"
         message="Are you sure you want to delete this team member? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+      
+      <ConfirmationModal
+        isOpen={deleteRiderModalOpen}
+        onClose={() => {
+          setDeleteRiderModalOpen(false);
+          setRiderToDelete(null);
+        }}
+        onConfirm={handleConfirmRiderDelete}
+        title="Delete Rider"
+        message="Are you sure you want to delete this rider? This action cannot be undone."
         confirmText="Delete"
         cancelText="Cancel"
       />
