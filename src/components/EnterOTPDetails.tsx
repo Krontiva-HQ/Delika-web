@@ -1,7 +1,7 @@
 import { FunctionComponent, useRef, KeyboardEvent, ChangeEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useEmail } from '../context/EmailContext';
-import axios from 'axios';
+import { verifyOTP } from '../services/api';
 
 const EnterOTPDetails: FunctionComponent = () => {
   const navigate = useNavigate();
@@ -71,8 +71,8 @@ const EnterOTPDetails: FunctionComponent = () => {
 
     try {
       setIsLoading(true);
-      const response = await axios.post(`${import.meta.env.VITE_API_URL}/verify/otp/code`, {
-        OTP: otp,
+      const response = await verifyOTP({
+        OTP: parseInt(otp),
         type: true,
         contact: email
       });
