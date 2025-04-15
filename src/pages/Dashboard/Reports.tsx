@@ -19,6 +19,7 @@ import 'jspdf-autotable';
 import { jsPDF as JsPDFType } from 'jspdf';
 import { useBranches } from '../../hooks/useBranches';
 import BranchFilter from '../../components/BranchFilter';
+import { getAvailableReports, hasAllSpecialPermissions } from '../../permissions/DashboardPermissions';
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -202,25 +203,11 @@ const Reports: FunctionComponent = () => {
   const { branches, isLoading: branchesLoading } = useBranches(userProfile?.restaurantId ?? null);
   const { categories } = useMenuCategories();
 
-  // Check if all special permissions are true
-  const hasAllSpecialPermissions = restaurantData.Reports && 
-                                 restaurantData.Inventory && 
-                                 restaurantData.Transactions;
+  // Replace the manual report filtering with the one from permissions
+  const availableReports = getAvailableReports(restaurantData);
 
-  // Filter reports based on permissions - MODIFIED LOGIC
-  const availableReports = reportItems.filter((report: ReportItem) => {
-    // Always show Delivery Report
-    if (report.name === "Delivery Report") {
-      return true;
-    }
-    
-    // For other reports, apply the permission logic
-    if (hasAllSpecialPermissions) {
-      return report.requiresPermissions === true;
-    } else {
-      return report.requiresPermissions === false;
-    }
-  });
+  // Remove the manual permission check and use the helper function
+  const hasAllPermissions = hasAllSpecialPermissions(restaurantData);
 
   // Effect for initial branch setup - always declare it
   useEffect(() => {

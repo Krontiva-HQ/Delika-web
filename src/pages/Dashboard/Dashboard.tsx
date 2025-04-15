@@ -1,4 +1,4 @@
-import { FunctionComponent, ReactNode, useState, useEffect } from "react";
+import React, { FunctionComponent, ReactNode, useState, useEffect } from "react";
 import { FiGrid, FiBox } from "react-icons/fi";
 import { IoFastFoodOutline, IoSettingsOutline, IoNotifications } from "react-icons/io5";
 import { HiOutlineUsers } from "react-icons/hi";
@@ -23,6 +23,8 @@ import { useNotifications } from '../../context/NotificationContext';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import { IoIosClose } from "react-icons/io";
 import { useBackgroundRefresh } from '../../hooks/useBackgroundRefresh';
+import { getAvailableMenuItems } from '../../permissions/DashboardPermissions';
+import { IconType } from 'react-icons';
 
 interface MainDashboardProps {
   children?: React.ReactNode;
@@ -31,7 +33,7 @@ interface MainDashboardProps {
 const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
   const navigate = useNavigate();
   const { fetchUserProfile } = useAuth();
-  const { userProfile } = useUserProfile();
+  const { userProfile, restaurantData } = useUserProfile();
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState(() => {
     const savedView = localStorage.getItem('activeView');
@@ -50,7 +52,6 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
   const [activeTheme] = useState('light');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const { notifications } = useNotifications();
-  const restaurantData = userProfile._restaurantTable?.[0] || {};
   const [isViewingOrderDetails, setIsViewingOrderDetails] = useState(false);
   
   useEffect(() => {
@@ -99,14 +100,7 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
     setSearchQuery('');
   };
 
-  const menuItems = [
-    ...(userProfile?.role !== 'Store Clerk' ? [{ name: "Overview", icon: <FiGrid size={24} />, id: "dashboard" }] : []),
-    { name: "My Orders", icon: <FiBox size={24} />, id: "orders" },
-    ...(!restaurantData?.Inventory ? [{ name: "Menu Items", icon: <IoFastFoodOutline size={24} />, id: "inventory" }] : []),
-    ...(!restaurantData?.Transactions ? [{ name: "Transactions", icon: <LuCircleDollarSign size={24} />, id: "transactions" }] : []),
-    { name: "Reports", icon: <LuFileSpreadsheet size={24} />, id: "reports" },
-    { name: "Settings", icon: <IoSettingsOutline size={24} style={{ fontWeight: 'bold', strokeWidth: '1.5' }}/>, id: "settings" },
-  ];
+  const menuItems = getAvailableMenuItems(restaurantData);
 
   useEffect(() => {
     const initializeDashboard = async () => {
@@ -179,39 +173,42 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
             </div>
 
             <div className="flex flex-col items-start justify-start gap-[8px]">
-              {menuItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => handleViewChange(item.id)}
-                  className={`cursor-pointer border-none p-0 w-[200px] h-[40px] flex flex-row items-center justify-start gap-[12px] rounded-tr-[8px] rounded-br-[8px] relative ${
-                    activeView === item.id 
-                      ? 'bg-[rgba(254,91,24,0.05)]'
-                      : 'bg-transparent'
-                  }`}
-                >
-                  <div className={`w-[2px] rounded-[8px] bg-[#fe5b18] h-[40px] absolute left-0 transition-opacity duration-200 ${
-                    activeView === item.id 
-                      ? 'opacity-100'
-                      : 'opacity-0'
-                  }`} />
+              {menuItems.map((item) => {
+                const IconComponent = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleViewChange(item.id)}
+                    className={`cursor-pointer border-none p-0 w-[200px] h-[40px] flex flex-row items-center justify-start gap-[12px] rounded-tr-[8px] rounded-br-[8px] relative ${
+                      activeView === item.id 
+                        ? 'bg-[rgba(254,91,24,0.05)]'
+                        : 'bg-transparent'
+                    }`}
+                  >
+                    <div className={`w-[2px] rounded-[8px] bg-[#fe5b18] h-[40px] absolute left-0 transition-opacity duration-200 ${
+                      activeView === item.id 
+                        ? 'opacity-100'
+                        : 'opacity-0'
+                    }`} />
 
-                  <span className={`pl-[12px] ${
-                    activeView === item.id 
-                      ? 'text-[#fe5b18]'
-                      : 'text-[#201a18]'
-                  }`}>
-                    {item.icon}
-                  </span>
+                    <span className={`pl-[12px] ${
+                      activeView === item.id 
+                        ? 'text-[#fe5b18]'
+                        : 'text-[#201a18]'
+                    }`}>
+                      {React.createElement(IconComponent, { size: 24 })}
+                    </span>
 
-                  <span className={`text-[14px] font-sans text-left ${
-                    activeView === item.id 
-                      ? 'text-[#fe5b18]'
-                      : 'text-[#201a18]'
-                  }`}>
-                    {item.name}
-                  </span>
-                </button>
-              ))}
+                    <span className={`text-[14px] font-sans text-left ${
+                      activeView === item.id 
+                        ? 'text-[#fe5b18]'
+                        : 'text-[#201a18]'
+                    }`}>
+                      {item.name}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -387,7 +384,7 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
                           ? 'text-[#fe5b18]'
                           : 'text-[#201a18]'
                       }`}>
-                        {item.icon}
+                        {React.createElement(item.icon, { size: 24 })}
                       </span>
 
                       <span className={`text-[14px] font-sans text-left ${

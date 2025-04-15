@@ -19,6 +19,7 @@ import { SelectChangeEvent } from '@mui/material/Select';
 import { toast } from 'react-toastify';
 import BatchSummaryModal from '../../components/BatchSummaryModal';
 import { ArrowLeftIcon } from '@heroicons/react/24/solid';
+import { getAvailableDeliveryMethods } from '../../permissions/DashboardPermissions';
 
 // Add the API key directly if needed
 const GOOGLE_MAPS_API_KEY = 'AIzaSyAdv28EbwKXqvlKo2henxsKMD-4EKB20l8';
@@ -197,8 +198,10 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   });
   const [scheduledTime, setScheduledTime] = useState('');
 
-  // Add this check
-  const isFullServiceDisabled = restaurantData?.Inventory && restaurantData?.Transactions;
+  // Replace manual delivery method checks with the centralized version
+  const deliveryMethods = getAvailableDeliveryMethods(restaurantData);
+  const isOnDemandDisabled = !deliveryMethods.onDemand;
+  const isFullServiceDisabled = !deliveryMethods.fullService;
 
   // First, add the state at the top with other states
   const [orderComment, setOrderComment] = useState<string>('');
@@ -211,13 +214,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   const [currentBatchId, setCurrentBatchId] = useState<string | null>(null);
 
   // Get WalkIn value with a default if it's undefined (since it's new to the schema)
-  // If WalkIn is undefined, allow On-Demand delivery by default
   const walkInSetting = restaurantData?.WalkIn !== undefined ? restaurantData.WalkIn : true;
-
-  // Update check to use the walkInSetting variable
-  const isOnDemandDisabled = !walkInSetting;
-
-
 
   const handleSelectCategoryClick = (event: React.MouseEvent<HTMLElement>) => {
     setSelectCategoryAnchorEl(event.currentTarget);
@@ -2870,16 +2867,15 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           <div className="flex flex-col items-center">
             <h2 className="text-2xl font-semibold mb-8 font-sans">Select Service Type</h2>
             <div className="flex gap-4 w-full justify-center flex-nowrap">
-              {/* On-Demand Delivery - Disable if walkInSetting is false */}
+              {/* On-Demand Delivery */}
               <div
                 onClick={() => {
-                  // Only allow selection if not disabled and walkInSetting is true
-                  if (!isOnDemandDisabled && walkInSetting) {
+                  if (!isOnDemandDisabled) {
                     handleDeliveryMethodSelect('on-demand');
                   }
                 }}
                 className={`flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg relative w-[200px]
-                  ${isOnDemandDisabled || !walkInSetting
+                  ${isOnDemandDisabled 
                     ? 'opacity-50 cursor-not-allowed' 
                     : 'cursor-pointer hover:bg-[#FFE5E0] transition-colors'}`}
               >

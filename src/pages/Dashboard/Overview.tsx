@@ -13,6 +13,7 @@ import useMonthlyOrderData from '../../hooks/useMonthlyOrderData';
 import { BroadcastBanner } from './BroadcastBanner';
 import BranchFilter from '../../components/BranchFilter';
 import { useUserProfile } from '../../hooks/useUserProfile';
+import { hasTransactionsAccess } from '../../permissions/DashboardPermissions';
 
 
 
@@ -77,26 +78,20 @@ interface OverviewProps {
   hideRevenue?: boolean;
 }
 
-interface DashboardPermissions {
-  canViewRevenue: boolean;
-}
-
 const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false }) => {
   const [orderTimeRange, setOrderTimeRange] = useState('6');
   const [revenueTimeRange, setRevenueTimeRange] = useState('6');
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
-  const { userProfile, isAdmin } = useUserProfile();
+  const { userProfile, isAdmin, restaurantData } = useUserProfile();
   
   const { monthlyOrderData, isLoading: isMonthlyOrderDataLoading } = useMonthlyOrderData(
     userProfile.restaurantId,
     selectedBranchId || userProfile.branchId
   );
 
-  const [permissions, setPermissions] = useState<DashboardPermissions>({
-    canViewRevenue: false
-  });
+  const shouldHideRevenue = hasTransactionsAccess(restaurantData);
 
   const getBarSize = () => {
     switch (orderTimeRange) {
@@ -232,8 +227,8 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false 
           )}
         </div>
        {/* Overview Stats */}   
-        <section className={`grid ${!hideRevenue ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2 md:grid-cols-3'} gap-3 mb-4 font-sans`}>
-          {!hideRevenue && (
+        <section className={`grid ${!shouldHideRevenue ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2 md:grid-cols-3'} gap-3 mb-4 font-sans`}>
+          {!shouldHideRevenue && (
             <div className="bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_4px_rgba(0,0,0,0.05)]">
               <div className="w-[50px] h-[50px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
                 <AiOutlineDollar className="w-5 h-5 text-[#fe5b18]" />
@@ -259,7 +254,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false 
             </div>
           </div>
 
-          {!hideRevenue && (
+          {!shouldHideRevenue && (
             <div className="bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_4px_rgba(0,0,0,0.05)]">
               <div className="w-[50px] h-[50px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
                 <IoFastFoodOutline className="w-5 h-5 text-[#fe5b18]" />
@@ -287,7 +282,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false 
         </section>
 
         <section className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 font-sans">
-          <div className={`bg-white rounded-2xl p-4 ${hideRevenue ? 'md:col-span-2' : ''}`}>
+          <div className={`bg-white rounded-2xl p-4 ${shouldHideRevenue ? 'md:col-span-2' : ''}`}>
             <div className="flex justify-between items-center mb-3">
               <h2 className="text-lg font-semibold text-gray-800 font-sans">
                 Total Orders {isMonthlyOrderDataLoading && '(Loading...)'}
@@ -353,7 +348,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false 
             )}
           </div>
 
-          {!hideRevenue && (
+          {!shouldHideRevenue && (
             <div className="bg-white rounded-2xl p-4">
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-lg font-semibold text-gray-800 font-sans">
