@@ -95,12 +95,7 @@ const RidersTable: FunctionComponent<RidersTableProps> = ({ branchName, onDelete
   }
 
   return (
-    <div className="w-[95%] mx-auto border-[1px] border-solid border-gray-200 dark:border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden bg-white dark:bg-black mt-8">
-      {/* Table Header */}
-      <div className="flex justify-between items-center p-3 bg-white dark:bg-black text-black dark:text-white">
-        <h3 className="text-[14px] font-semibold font-sans">Riders</h3>
-      </div>
-
+    <>
       {/* Table Headers */}
       <div className="grid grid-cols-[200px_1fr_1fr_1fr_100px] items-center p-3 bg-white dark:bg-black text-black dark:text-white font-sans">
         <div className="text-[12px] flex items-center">Name</div>
@@ -147,7 +142,7 @@ const RidersTable: FunctionComponent<RidersTableProps> = ({ branchName, onDelete
           </div>
         );
       })}
-    </div>
+    </>
   );
 };
 

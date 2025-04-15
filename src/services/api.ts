@@ -434,13 +434,29 @@ export const placeOrder = async (formData: FormData) => {
     index++;
   }
 
+  // Handle price calculations based on what's available
+  const deliveryPrice = jsonData.deliveryPrice ? parseFloat(jsonData.deliveryPrice as string) : 0;
+  const orderPrice = jsonData.orderPrice ? parseFloat(jsonData.orderPrice as string) : 0;
+  let totalPrice = 0;
+
+  if (deliveryPrice > 0 && orderPrice > 0) {
+    // Both prices exist - add them together
+    totalPrice = deliveryPrice + orderPrice;
+  } else if (deliveryPrice > 0 && !orderPrice) {
+    // Only delivery price exists
+    totalPrice = deliveryPrice;
+  } else if (!deliveryPrice && orderPrice > 0) {
+    // Only order price exists
+    totalPrice = orderPrice;
+  }
+
   const orderPayload = {
     branchId: jsonData.branchId,
     courierName: jsonData.courierName || '',
     customerName: jsonData.customerName,
     customerPhoneNumber: jsonData.customerPhoneNumber,
     deliveryDistance: jsonData.deliveryDistance,
-    deliveryPrice: jsonData.deliveryPrice,
+    deliveryPrice: deliveryPrice > 0 ? deliveryPrice.toString() : '',
     dropOff: [{
       toAddress: jsonData['dropOff[0][toAddress]'],
       toLatitude: jsonData['dropOff[0][toLatitude]'],
@@ -452,7 +468,7 @@ export const placeOrder = async (formData: FormData) => {
     orderComment: jsonData.orderComment || '',
     orderDate: jsonData.orderDate,
     orderNumber: jsonData.orderNumber,
-    orderPrice: jsonData.orderPrice,
+    orderPrice: orderPrice > 0 ? orderPrice.toString() : '',
     orderStatus: jsonData.orderStatus,
     payLater: jsonData.payLater === 'true',
     payNow: jsonData.payNow === 'true',
@@ -467,6 +483,7 @@ export const placeOrder = async (formData: FormData) => {
     restaurantId: jsonData.restaurantId,
     distance: jsonData.deliveryDistance,
     trackingUrl: jsonData.trackingUrl || '',
+    totalPrice: totalPrice.toString(),
     Walkin: jsonData.Walkin === 'true',
     batchID: jsonData.batchID || null,
     scheduledTime: jsonData['scheduleTime[scheduleDateTime]'] ? 
