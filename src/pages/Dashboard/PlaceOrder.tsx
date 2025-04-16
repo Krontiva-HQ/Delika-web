@@ -1,4 +1,4 @@
-import React, { useState, useEffect, FunctionComponent } from "react";
+import React, { useState, useEffect, FunctionComponent, ReactNode } from "react";
 import { Button } from "@mui/material";
 import { getAuthenticatedUser, UserResponse, placeOrder } from "../../services/api";
 import LocationInput from '../../components/LocationInput';
@@ -20,6 +20,7 @@ import { toast } from 'react-toastify';
 import BatchSummaryModal from '../../components/BatchSummaryModal';
 import { ArrowLeftIcon } from '@heroicons/react/24/solid';
 import { getAvailableDeliveryMethods } from '../../permissions/DashboardPermissions';
+import { hasAutoCalculatePrice, calculateDeliveryFee, getDeliveryPriceInfo } from '../../permissions/DashboardPermissions';
 
 // Add the API key directly if needed
 const GOOGLE_MAPS_API_KEY = 'AIzaSyAdv28EbwKXqvlKo2henxsKMD-4EKB20l8';
@@ -142,7 +143,7 @@ const StyledDateInput = styled('input')({
 });
 
 
-const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced, branchId: initialBranchId }) => {
+const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced, branchId: initialBranchId }): ReactNode => {
   const { addNotification } = useNotifications();
   const { userProfile, restaurantData } = useUserProfile();
   const { branches, isLoading: branchesLoading } = useBranches(userProfile?.restaurantId ?? null);
@@ -151,7 +152,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   const [selectItemAnchorEl, setSelectItemAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedItem, setSelectedItem] = useState<string>("");
   const [isItemsDropdownOpen, setIsItemsDropdownOpen] = useState(false);
-  const [deliveryPrice, setDeliveryPrice] = useState<string>("");  // Change initial state type
+  const [deliveryPrice, setDeliveryPrice] = useState<string>("");
   const [totalFoodPrice, setTotalFoodPrice] = useState("0.00");
   const [currentStep, setCurrentStep] = useState(1);
   const [customerName, setCustomerName] = useState("");
@@ -215,6 +216,59 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
   // Get WalkIn value with a default if it's undefined (since it's new to the schema)
   const walkInSetting = restaurantData?.WalkIn !== undefined ? restaurantData.WalkIn : true;
+
+  const { autoCalculate, suggestedPrice, showSuggestedPrice } = getDeliveryPriceInfo(restaurantData, distance);
+
+  // Update useEffect for delivery price calculation
+  useEffect(() => {
+    if (distance !== null && autoCalculate) {
+      const calculatedPrice = Math.round(calculateDeliveryFee(distance));
+      setDeliveryPrice(`${calculatedPrice}.00`);
+    } else if (!autoCalculate) {
+      setDeliveryPrice(''); // Clear the price if auto-calculate is disabled
+    }
+  }, [distance, autoCalculate]);
+
+  // Update the distance section to include suggested price when autoCalculate is false
+  const renderDistanceInfo = () => (
+    <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-4">
+      <div className="text-sm !font-sans">
+        <div className="font-medium mb-1 !font-sans">
+          Estimated Distance: {distance} km
+          {showSuggestedPrice && (
+            <div className="text-gray-600 mt-1">
+              Suggested Delivery Price: GH₵{suggestedPrice}
+            </div>
+          )}
+        </div>
+        <div className="text-gray-500 !font-sans">
+          From {pickupLocation?.address} to {dropoffLocation?.address}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Update the delivery price input section
+  const renderDeliveryPriceInput = () => (
+    <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
+      <div className="self-stretch relative leading-[20px] font-sans text-black">Delivery Price</div>
+      <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
+        <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
+          <div className="relative leading-[20px] font-sans">GH₵</div>
+        </div>
+        <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
+          <input
+            type="text"
+            value={deliveryPrice}
+            onChange={handleDeliveryPriceChange}
+            placeholder={autoCalculate ? '' : 'Enter delivery price'}
+            className="w-full bg-transparent border-none outline-none text-[14px] font-sans"
+            readOnly={autoCalculate}
+          />
+        </div>
+      </div>
+    </div>
+  );
 
   const handleSelectCategoryClick = (event: React.MouseEvent<HTMLElement>) => {
     setSelectCategoryAnchorEl(event.currentTarget);
@@ -477,14 +531,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     }
 };
 
-  // Update the delivery price calculation in the useEffect
-  useEffect(() => {
-    if (distance !== null) {
-        const calculatedPrice = Math.round(calculateDeliveryFee(distance));
-        setDeliveryPrice(`${calculatedPrice}.00`);
-    }
-  }, [distance]);
-
   // Add validation effects
   useEffect(() => {
     // Validate Step 1
@@ -576,14 +622,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             </b>
             
             {/* Add Estimated Distance section here */}
-            <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-4">
-              <div className="text-sm !font-sans">
-                <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
-                <div className="text-gray-500 !font-sans">
-                  From {pickupLocation?.address} to {dropoffLocation?.address}
-                </div>
-              </div>
-            </div>
+            {renderDistanceInfo()}
 
             {/* Customer Details Section */}
             <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4">
@@ -747,28 +786,11 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 )}
 
                 {/* Add Estimated Distance section */}
-                <div className="self-stretch bg-[#f9fafb] rounded-lg p-4">
-                  <div className="text-sm !font-sans">
-                    <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
-                    <div className="text-gray-500 !font-sans">
-                      From {pickupLocation?.address} to {dropoffLocation?.address}
-                    </div>
-                  </div>
-                </div>
+                {renderDistanceInfo()}
 
                 {/* Order Price Section */}
                 <div className="self-stretch flex flex-col items-start justify-start gap-[4px] text-[12px] text-[#686868] font-sans">
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
-                    <div className="self-stretch relative leading-[20px] font-sans">Delivery Price</div>
-                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px] mb-4">
-                      <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
-                        <div className="relative leading-[20px] font-sans">GH₵</div>
-                      </div>
-                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
-                        <div className="relative leading-[20px] font-sans">{deliveryPrice}</div>
-                      </div>
-                    </div>
-                  </div>
+                  {renderDeliveryPriceInput()}
 
                   <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
                     <div className="self-stretch relative leading-[20px] font-sans">Food Price</div>
@@ -902,14 +924,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             </b>
             
             {/* Add Estimated Distance section here */}
-            <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-4">
-              <div className="text-sm !font-sans">
-                <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
-                <div className="text-gray-500 !font-sans">
-                  From {pickupLocation?.address} to {dropoffLocation?.address}
-                </div>
-              </div>
-            </div>
+            {renderDistanceInfo()}
 
             {/* Customer Details Section */}
             <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4">
@@ -1274,28 +1289,11 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 )}
 
                 {/* Add Estimated Distance section */}
-                <div className="self-stretch bg-[#f9fafb] rounded-lg p-4">
-                  <div className="text-sm !font-sans">
-                    <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
-                    <div className="text-gray-500 !font-sans">
-                      From {pickupLocation?.address} to {dropoffLocation?.address}
-                    </div>
-                  </div>
-                </div>
+                {renderDistanceInfo()}
 
                 {/* Order Price Section */}
                 <div className="self-stretch flex flex-col items-start justify-start gap-[4px] text-[12px] text-[#686868] font-sans">
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
-                    <div className="self-stretch relative leading-[20px] font-sans">Delivery Price</div>
-                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px] mb-4">
-                      <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
-                        <div className="relative leading-[20px] font-sans">GH₵</div>
-                      </div>
-                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
-                        <div className="relative leading-[20px] font-sans">{deliveryPrice}</div>
-                      </div>
-                    </div>
-                  </div>
+                  {renderDeliveryPriceInput()}
 
                   <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
                     <div className="self-stretch relative leading-[20px] font-sans">Food Price</div>
@@ -1429,14 +1427,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             </b>
             
             {/* Add Estimated Distance section here */}
-            <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-4">
-              <div className="text-sm !font-sans">
-                <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
-                <div className="text-gray-500 !font-sans">
-                  From {pickupLocation?.address} to {dropoffLocation?.address}
-                </div>
-              </div>
-            </div>
+            {renderDistanceInfo()}
 
             {/* Customer Details Section */}
             <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4">
@@ -1601,28 +1592,11 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 )}
 
                 {/* Add Estimated Distance section */}
-                <div className="self-stretch bg-[#f9fafb] rounded-lg p-4">
-                  <div className="text-sm !font-sans">
-                    <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
-                    <div className="text-gray-500 !font-sans">
-                      From {pickupLocation?.address} to {dropoffLocation?.address}
-                    </div>
-                  </div>
-                </div>
+                {renderDistanceInfo()}
 
                 {/* Order Price Section */}
                 <div className="self-stretch flex flex-col items-start justify-start gap-[4px] text-[12px] text-[#686868] font-sans">
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
-                    <div className="self-stretch relative leading-[20px] font-sans">Delivery Price</div>
-                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px] mb-4">
-                      <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
-                        <div className="relative leading-[20px] font-sans">GH₵</div>
-                      </div>
-                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
-                        <div className="relative leading-[20px] font-sans">{deliveryPrice}</div>
-                      </div>
-                    </div>
-                  </div>
+                  {renderDeliveryPriceInput()}
 
                   <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
                     <div className="self-stretch relative leading-[20px] font-sans">Food Price</div>
@@ -1751,14 +1725,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             <b className="font-sans text-lg font-semibold gap-2 mb-4">Full Service Delivery</b>
             
             {/* Add Estimated Distance section here */}
-            <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-4">
-              <div className="text-sm !font-sans">
-                <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
-                <div className="text-gray-500 !font-sans">
-                  From {pickupLocation?.address} to {dropoffLocation?.address}
-                </div>
-              </div>
-            </div>
+            {renderDistanceInfo()}
 
             {/* Customer Details Section */}
             <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4">
@@ -1875,18 +1842,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               <b className="font-sans text-lg font-semibold">Add Menu Item</b>
               {/* Add this scrollable container */}
               <div className="flex-1 overflow-y-auto max-h-[75vh] pr-2">
-                {/* Delivery Price Section */}
-                <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
-                  <div className="self-stretch relative leading-[20px] font-sans text-black">Delivery Price</div>
-                  <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
-                    <div className="w-[60px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
-                      <div className="relative leading-[20px] font-sans">GH₵</div>
-                    </div>
-                    <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-between py-[12px] px-[16px] text-[#858a89] font-sans">
-                      <div className="relative leading-[20px]">{deliveryPrice}</div> 
-                    </div>
-                  </div>
-                </div>
+               
                
                 {/* Menu Items Section */}
                 <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-4">
@@ -2112,28 +2068,11 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 )}
 
                 {/* Add Estimated Distance section */}
-                <div className="self-stretch bg-[#f9fafb] rounded-lg p-4">
-                  <div className="text-sm !font-sans">
-                    <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
-                    <div className="text-gray-500 !font-sans">
-                      From {pickupLocation?.address} to {dropoffLocation?.address}
-                    </div>
-                  </div>
-                </div>
+                {renderDistanceInfo()}
 
                 {/* Order Price Section */}
                 <div className="self-stretch flex flex-col items-start justify-start gap-[4px] text-[12px] text-[#686868] font-sans">
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
-                    <div className="self-stretch relative leading-[20px] font-sans">Delivery Price</div>
-                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px] mb-4">
-                      <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
-                        <div className="relative leading-[20px] font-sans">GH₵</div>
-                      </div>
-                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
-                        <div className="relative leading-[20px] font-sans">{deliveryPrice}</div>
-                      </div>
-                    </div>
-                  </div>
+                  {renderDeliveryPriceInput()}
 
                   <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
                     <div className="self-stretch relative leading-[20px] font-sans">Food Price</div>

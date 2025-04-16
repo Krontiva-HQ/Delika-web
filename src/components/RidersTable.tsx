@@ -11,10 +11,12 @@ export interface Rider {
     fullName: string;
     email: string;
     role: string;
+    phoneNumber?: string;
   };
   fullName?: string;
   email?: string;
   role?: string;
+  phoneNumber?: string;
 }
 
 interface RidersTableProps {
@@ -100,7 +102,7 @@ const RidersTable: FunctionComponent<RidersTableProps> = ({ branchName, onDelete
       <div className="grid grid-cols-[200px_1fr_1fr_1fr_100px] items-center p-3 bg-white dark:bg-black text-black dark:text-white font-sans">
         <div className="text-[12px] flex items-center">Name</div>
         <div className="text-[12px]">Email</div>
-        <div className="text-[12px]">Branch Name</div>
+        <div className="text-[12px]">Courier Phone Number</div>
         <div className="text-[12px]">Role</div>
         <div className="text-[12px]">Action</div>
       </div>
@@ -122,7 +124,7 @@ const RidersTable: FunctionComponent<RidersTableProps> = ({ branchName, onDelete
               <span className="truncate">{fullName}</span>
             </div>
             <div className="text-[12px] truncate">{email}</div>
-            <div className="text-[12px] truncate">{branchName}</div>
+            <div className="text-[12px] truncate">{rider.userTable?.phoneNumber || rider.phoneNumber || 'N/A'}</div>
             <div className="text-[12px] truncate">{role}</div>
             <div className="flex items-center gap-1">
               <button 

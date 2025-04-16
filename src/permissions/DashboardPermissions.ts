@@ -9,6 +9,7 @@ export interface DashboardPermissions {
   Inventory?: boolean;    // Access to inventory management
   Transactions?: boolean; // Access to transaction details
   WalkIn?: boolean;      // Access to walk-in orders
+  AutoCalculatePrice?: boolean; // Whether to auto-calculate delivery prices
 }
 
 // Helper functions to check permissions
@@ -26,6 +27,37 @@ export const hasTransactionsAccess = (permissions: DashboardPermissions): boolea
 
 export const hasWalkInAccess = (permissions: DashboardPermissions): boolean => {
   return permissions.WalkIn !== false; // Default to true if undefined
+};
+
+export const hasAutoCalculatePrice = (permissions: DashboardPermissions): boolean => {
+  return permissions.AutoCalculatePrice ?? true; // Default to true if undefined
+};
+
+// Function to calculate delivery fee
+export const calculateDeliveryFee = (distance: number): number => {
+  if (distance <= 1) {
+    return 15; // Fixed fee for distances up to 1km
+  } else if (distance <= 2) {
+    return 20; // Fixed fee for distances between 1km and 2km
+  } else if (distance <= 10) {
+    // For distances > 2km and <= 10km: 17 cedis base price + 2.5 cedis per km beyond 2km
+    return 17 + ((distance - 2) * 2.5);
+  } else {
+    // For distances above 10km: 3.5 * distance + 20
+    return (3.5 * distance) + 20;
+  }
+};
+
+// Function to get delivery price info
+export const getDeliveryPriceInfo = (permissions: DashboardPermissions, distance: number | null) => {
+  const autoCalculate = hasAutoCalculatePrice(permissions);
+  const suggestedPrice = distance ? Math.round(calculateDeliveryFee(distance)) : null;
+
+  return {
+    autoCalculate,
+    suggestedPrice: suggestedPrice ? `${suggestedPrice}.00` : '',
+    showSuggestedPrice: !autoCalculate && suggestedPrice !== null
+  };
 };
 
 // Function to check if all special permissions are granted
