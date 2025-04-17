@@ -2209,6 +2209,19 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       case 1:
         return (
           <>
+            {/* Back to delivery type button */}
+            <div className="flex items-center mb-6">
+              <button
+                className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent"
+                onClick={handleBackToDeliveryType}
+              >
+                <IoIosArrowBack className="w-5 h-5" />
+                <span>Back to Delivery Types</span>
+              </button>
+            </div>
+            
+            <b className="font-sans text-lg font-semibold gap-2 mb-4">Walk-In Order</b>
+
             <b className="font-sans text-lg font-semibold">Add Menu Item</b>
             {/* Add this scrollable container */}
             <div className="flex-1 overflow-y-auto max-h-[75vh] pr-2">
@@ -2393,6 +2406,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 </button>
               </div>
               
+              <b className="font-sans text-lg font-semibold gap-2 mb-4">Walk-In Order</b>
+
               <b className="font-sans text-lg font-semibold mb-6">Customer Details</b>
   
               {/* Order Summary Section */}
