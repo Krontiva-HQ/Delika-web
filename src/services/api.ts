@@ -514,9 +514,13 @@ export const updateRestaurantPreferences = async (preferences: RestaurantPrefere
   }
 };
 
-// Add rider service functions
-export const getRidersByBranch = async (branchName: string) => {
-  return api.get(API_ENDPOINTS.RIDERS.GET_BY_BRANCH, { params: { branchName } });
+// Update rider service functions
+export const getRidersByBranch = async (branchId: string) => {
+  return api.get(API_ENDPOINTS.RIDERS.GET_BY_BRANCH, { 
+    params: { 
+      branchName: branchId  // API expects "branchName" even though we're sending a branch ID
+    } 
+  });
 };
 
 export const deleteRider = async (params: { 

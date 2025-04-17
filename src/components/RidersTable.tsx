@@ -55,14 +55,6 @@ const RidersTable: FunctionComponent<RidersTableProps> = ({ branchName, onDelete
     e.preventDefault();
     e.stopPropagation();
     
-    console.log('Full rider object:', rider);
-    console.log('Delete button clicked for rider:', {
-      riderId: rider.id,
-      userId: rider.userId,
-      userTableId: rider.userTable?.id,
-      name: rider.userTable?.fullName,
-      email: rider.userTable?.email
-    });
 
     // Use either userId or userTable.id, whichever is available
     const userIdToDelete = rider.userId || rider.userTable?.id;

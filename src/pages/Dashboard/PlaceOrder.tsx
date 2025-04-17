@@ -1,6 +1,6 @@
 import React, { useState, useEffect, FunctionComponent, ReactNode } from "react";
 import { Button } from "@mui/material";
-import { getAuthenticatedUser, UserResponse, placeOrder } from "../../services/api";
+import { getAuthenticatedUser, UserResponse, placeOrder, getRidersByBranch } from "../../services/api";
 import LocationInput from '../../components/LocationInput';
 import { LocationData } from "../../types/location";
 import { calculateDistance } from "../../utils/distance";
@@ -21,6 +21,7 @@ import BatchSummaryModal from '../../components/BatchSummaryModal';
 import { ArrowLeftIcon } from '@heroicons/react/24/solid';
 import { getAvailableDeliveryMethods } from '../../permissions/DashboardPermissions';
 import { hasAutoCalculatePrice, calculateDeliveryFee, getDeliveryPriceInfo } from '../../permissions/DashboardPermissions';
+import { Rider } from "../../components/RidersTable";
 
 // Add the API key directly if needed
 const GOOGLE_MAPS_API_KEY = 'AIzaSyAdv28EbwKXqvlKo2henxsKMD-4EKB20l8';
@@ -460,6 +461,11 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         formData.append('scheduleTime[scheduleDateTime]', scheduleDateTime.toISOString());
       }
 
+      // Add selected rider if manual assignment is enabled
+      if (!restaurantData?.AutoAssign && selectedRider) {
+        formData.append('riderId', selectedRider);
+      }
+
       // Debug log to check the formData
       formData.forEach((value, key) => {
       });
@@ -831,6 +837,9 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                     </div>
                   </div>
                 </div>
+
+                {/* Add Rider Selection */}
+                {renderRiderSelection()}
 
                 {/* Additional Comment Section */}
                 <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
@@ -1335,6 +1344,9 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                   </div>
                 </div>
 
+                {/* Add Rider Selection */}
+                {renderRiderSelection()}
+
                 {/* Additional Comment Section */}
                 <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
                   <div className="self-stretch relative leading-[20px] font-sans">Additional Comment</div>
@@ -1637,6 +1649,9 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                     </div>
                   </div>
                 </div>
+
+                {/* Add Rider Selection */}
+                {renderRiderSelection()}
 
                 {/* Additional Comment Section */}
                 <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
@@ -2101,6 +2116,9 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                     </div>
                   </div>
                 </div>
+
+                {/* Add Rider Selection */}
+                {renderRiderSelection()}
 
                 {/* Additional Comment Section */}
                 <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
@@ -2797,6 +2815,74 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           <h3 className="text-lg font-medium text-[#333]">Walk-In Order</h3>
           {/* ... other content ... */}
         </div>
+      </div>
+    );
+  };
+
+  const [riders, setRiders] = useState<Rider[]>([]);
+  const [selectedRider, setSelectedRider] = useState<string>('');
+  const [isLoadingRiders, setIsLoadingRiders] = useState(false);
+
+  // Update useEffect to fetch riders when component mounts
+  useEffect(() => {
+    const fetchRiders = async () => {
+      // Use the active branch ID instead of branch name
+      const activeBranchId = selectedBranchId || userProfile?.branchId;
+      if (!activeBranchId) return;
+
+      try {
+        setIsLoadingRiders(true);
+        const response = await getRidersByBranch(activeBranchId);
+        if (response.data) {
+          setRiders(response.data);
+        }
+      } catch (err) {
+        console.error('Error fetching riders:', err);
+        addNotification({
+          type: 'order_status',
+          message: 'Failed to fetch riders. Please try again.'
+        });
+      } finally {
+        setIsLoadingRiders(false);
+      }
+    };
+
+    // Only fetch riders if AutoAssign is false
+    if (restaurantData && !restaurantData.AutoAssign) {
+      fetchRiders();
+    }
+  }, [selectedBranchId, userProfile?.branchId, restaurantData?.AutoAssign]);
+
+  // Update renderRiderSelection to handle loading state
+  const renderRiderSelection = () => {
+    // Only show rider selection when AutoAssign is false
+    if (restaurantData?.AutoAssign) return null;
+
+    return (
+      <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
+        <div className="self-stretch relative leading-[20px] font-sans text-black">Assign Rider</div>
+        <select
+          className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
+                    text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
+                    flex flex-row items-center justify-start py-[10px] px-[12px]"
+          value={selectedRider}
+          onChange={(e) => setSelectedRider(e.target.value)}
+          disabled={isLoadingRiders}
+        >
+          <option value="">
+            {isLoadingRiders ? 'Loading riders...' : 'Select a rider'}
+          </option>
+          {riders.map((rider) => (
+            <option key={rider.id} value={rider.id}>
+              {rider.userTable?.fullName || rider.fullName || 'N/A'} - {rider.userTable?.phoneNumber || rider.phoneNumber || 'N/A'}
+            </option>
+          ))}
+        </select>
+        {!isLoadingRiders && riders.length === 0 && (
+          <div className="text-[12px] text-red-500 mt-1">
+            No riders available for this branch
+          </div>
+        )}
       </div>
     );
   };
