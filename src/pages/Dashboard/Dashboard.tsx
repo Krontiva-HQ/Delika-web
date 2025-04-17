@@ -100,7 +100,7 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
     setSearchQuery('');
   };
 
-  const menuItems = getAvailableMenuItems(restaurantData);
+  const availableMenuItems = getAvailableMenuItems(restaurantData);
 
   useEffect(() => {
     const initializeDashboard = async () => {
@@ -136,7 +136,6 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
       case 'dashboard':
         return <Overview 
           setActiveView={setActiveView} 
-          hideRevenue={!!restaurantData.Transactions}
         />;
       case 'orders':
         return <Orders 
@@ -173,7 +172,7 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
             </div>
 
             <div className="flex flex-col items-start justify-start gap-[8px]">
-              {menuItems.map((item) => {
+              {availableMenuItems.map((item) => {
                 const IconComponent = item.icon;
                 return (
                   <button
@@ -360,7 +359,7 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
                 </div>
 
                 <div className="flex flex-col items-start justify-start gap-[8px] mt-4">
-                  {menuItems.map((item) => (
+                  {availableMenuItems.map((item) => (
                     <button
                       key={item.id}
                       onClick={() => {

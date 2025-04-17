@@ -462,7 +462,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
       // Debug log to check the formData
       formData.forEach((value, key) => {
-        console.log('Form Data:', key, value);
       });
 
       // Use the placeOrder function from api.ts
@@ -507,7 +506,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       }
 
     } catch (error) {
-      console.error('Error placing order:', error);
       addNotification({
         type: 'order_status',
         message: 'Failed to place order. Please try again.'
@@ -567,35 +565,52 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
   // Render different sections based on current step
   const renderStepContent = () => {
-    // Check if On-Demand is selected but should be disabled based on WalkIn setting
-    if (deliveryMethod === 'on-demand' && !walkInSetting) {
-      // If On-Demand is disabled but somehow selected, redirect back to delivery selection
+    // Permission checks for each delivery method
+    if (deliveryMethod === 'on-demand' && !deliveryMethods.onDemand) {
       setCurrentStep(1);
       setDeliveryMethod(null);
       return renderDeliveryMethodSelection();
     }
 
-    // Continue with original implementation
+    if (deliveryMethod === 'full-service' && !deliveryMethods.fullService) {
+      setCurrentStep(1);
+      setDeliveryMethod(null);
+      return renderDeliveryMethodSelection();
+    }
+
+    if (deliveryMethod === 'schedule' && !deliveryMethods.schedule) {
+      setCurrentStep(1);
+      setDeliveryMethod(null);
+      return renderDeliveryMethodSelection();
+    }
+
+    if (deliveryMethod === 'batch-delivery' && !deliveryMethods.batchDelivery) {
+      setCurrentStep(1);
+      setDeliveryMethod(null);
+      return renderDeliveryMethodSelection();
+    }
+
+    if (deliveryMethod === 'walk-in' && !deliveryMethods.walkIn) {
+      setCurrentStep(1);
+      setDeliveryMethod(null);
+      return renderDeliveryMethodSelection();
+    }
+
+    // If permissions are valid, render the appropriate content
     switch (deliveryMethod) {
       case 'on-demand':
         return renderOnDemandContent();
-      
-      case 'schedule':
-        return renderScheduleContent();
-        
-      case 'batch-delivery':
-        return renderBatchContent();
-        
       case 'full-service':
         return renderFullServiceContent();
-       
+      case 'schedule':
+        return renderScheduleContent();
+      case 'batch-delivery':
+        return renderBatchContent();
       case 'walk-in':
         return renderWalkInContent();
-     
       default:
-        // Redirect to step 1 if somehow we get to an invalid step
         setCurrentStep(1);
-        return null;
+        return renderDeliveryMethodSelection();
     }
   };
 
@@ -1760,6 +1775,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 />
               </div>
             </div>
+
+            {/* Branch Selection */}
             <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4">
               {userProfile?.role === 'Admin' ? (
                 <div className="w-full">
@@ -1815,6 +1832,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 </div>
               )}
             </div>
+
+            {/* Location Input */}
             <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4">
               <LocationInput label="Drop-Off Location" onLocationSelect={handleDropoffLocationSelect} />
               {dropoffLocation && (
@@ -1822,6 +1841,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 </div>
               )}
             </div>
+
+            {/* Next Button */}
             <button
               onClick={handleNextStep}
               disabled={!isStep1Valid}
@@ -1836,14 +1857,24 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             </button>
           </>
         );
+
         case 2:
           return (
             <>
-              <b className="font-sans text-lg font-semibold">Add Menu Item</b>
-              {/* Add this scrollable container */}
-              <div className="flex-1 overflow-y-auto max-h-[75vh] pr-2">
+            <div className="flex items-center mb-6">
+              <button
+                className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent"
+                onClick={handlePreviousStep}
+              >
+                <IoIosArrowBack className="w-5 h-5" />
+                <span>Back</span>
+              </button>
+                </div>
                
-               
+            <b className="font-sans text-lg font-semibold">Add Menu Item</b>
+            
+            {/* Scrollable container */}
+            <div className="flex-1 overflow-y-auto max-h-[75vh] pr-2">
                 {/* Menu Items Section */}
                 <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-4">
                   <div className="self-stretch relative leading-[20px] font-sans">Menu</div>
@@ -1873,6 +1904,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                     </StyledSelect>
                   </div>
                 </div>
+
+              {/* Items Selection */}
                 <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] text-[#6f7070] pt-4">
                   <div className="flex-1 flex flex-col items-start justify-start gap-[6px]">
                     <div className="self-stretch relative leading-[20px] font-sans text-black">Items</div>
@@ -1926,6 +1959,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                     </div>
                   </div>
                 </div>
+
+              {/* Selected Items */}
                 <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
                   <div className="self-stretch relative leading-[20px] font-sans text-black">Selected Items</div>
                   {selectedItems.map((item, index) => (
@@ -1976,22 +2011,24 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                     <div className="text-[#b1b4b3] text-[13px] italic font-sans">No items selected</div>
                   )}
                 </div>
+
+              {/* Total Price */}
                 <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
                   <div className="self-stretch relative leading-[20px] font-sans text-black">
                     Total Price
                   </div>
                   <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
                     <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
-                      <div className="relative leading-[20px] text-black font-sans">GH₵</div>
+                    <div className="relative leading-[20px] font-sans">GH₵</div>
                     </div>
                     <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
-                      <div className="relative leading-[20px] text-black font-sans">{calculateTotal()}</div>
+                    <div className="relative leading-[20px] font-sans">{calculateTotal()}</div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Navigation Buttons - Keep outside scrollable area */}
+            {/* Navigation Buttons */}
               <div className="flex justify-between mt-8 pt-4 border-t">
                 <button
                   className="flex-1 font-sans cursor-pointer bg-[#201a18] border-[#201a18] border-[1px] border-solid 
@@ -2001,7 +2038,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 >
                   Back
                 </button>
-                <div className="mx-2" /> {/* Add space between buttons */}
+              <div className="mx-2" />
                 <button
                   className={`flex-1 font-sans cursor-pointer border-[#fd683e] border-[1px] border-solid 
                             py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
@@ -2014,12 +2051,11 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               </div>
             </>
           ); 
+
       case 3:
         return (
           <>
             <div className="flex items-center mb-6">
-              
-             
               <button
                 className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent"
                 onClick={handlePreviousStep}
@@ -2034,39 +2070,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             {/* Scrollable container */}
             <div className="flex-1 overflow-y-auto pr-2" style={{ maxHeight: 'calc(100vh - 250px)' }}>
               <div className="flex flex-col gap-4">
-                {/* Only show scheduling inputs for schedule delivery method */}
-                {deliveryMethod === 'schedule' && (
-                  <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4">
-                    <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
-                      <div className="self-stretch relative leading-[20px] font-sans text-black">
-                        Delivery Date
-                      </div>
-                      <StyledDateInput
-                        type="date"
-                        value={scheduledDate}
-                        onChange={handleDateChange}
-                        min={new Date().toISOString().split('T')[0]}
-                        className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                                  text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
-                                  flex flex-row items-center justify-start py-[10px] px-[12px]"
-                      />
-                    </div>
-                    <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
-                      <div className="self-stretch relative leading-[20px] font-sans text-black">
-                        Delivery Time
-                      </div>
-                      <input
-                        type="time"
-                        value={scheduledTime}
-                        onChange={(e) => setScheduledTime(e.target.value)}
-                        className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                                  text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
-                                  flex flex-row items-center justify-start py-[10px] px-[12px]"
-                      />
-                    </div>
-                  </div>
-                )}
-
                 {/* Add Estimated Distance section */}
                 {renderDistanceInfo()}
 
@@ -2336,10 +2339,10 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 </div>
                 <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
                   <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
-                    <div className="relative leading-[20px] text-black font-sans">GH₵</div>
+                    <div className="relative leading-[20px] font-sans">GH₵</div>
                   </div>
                   <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
-                    <div className="relative leading-[20px] text-black font-sans">{calculateTotal()}</div>
+                    <div className="relative leading-[20px] font-sans">{calculateTotal()}</div>
                   </div>
                 </div>
               </div>
@@ -2420,10 +2423,10 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 </div>
                 <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
                   <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
-                    <div className="relative leading-[20px] text-black font-sans">GH₵</div>
+                    <div className="relative leading-[20px] font-sans">GH₵</div>
                   </div>
                   <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
-                    <div className="relative leading-[20px] text-black font-sans">{calculateTotal()}</div>
+                    <div className="relative leading-[20px] font-sans">{calculateTotal()}</div>
                   </div>
                 </div>
               </div>
@@ -2639,6 +2642,14 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       case 'walk-in':
         // Walk-in orders are handled in handlePlaceOrder
         break;
+
+      case 'full-service':
+        // Initialize full service specific states
+        setCurrentBatchId(null);
+        setBatchedOrders([]);
+        setScheduledDate('');
+        setScheduledTime('');
+        break;
         
       default:
         // Reset any delivery-specific states
@@ -2687,7 +2698,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       image: item.foodImage?.url || ''
     };
     setSelectedItems(prev => [...prev, newItem]);
-    console.log('Added item:', newItem); // Debug log
   };
 
   // Add these functions inside the PlaceOrder component
@@ -2793,7 +2803,9 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-8 rounded-lg w-[600px] relative flex flex-col">
+      <div className={`bg-white p-8 rounded-lg relative flex flex-col ${
+        !deliveryMethod ? 'max-w-[900px] min-w-[400px]' : 'w-[600px]'
+      }`}>
         <button
           onClick={onClose}
           className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 bg-transparent"
@@ -2803,77 +2815,73 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
         {!deliveryMethod ? (
           // Initial delivery method selection modal
-          <div className="flex flex-col items-center">
+          <div className="flex flex-col items-center w-full">
             <h2 className="text-2xl font-semibold mb-8 font-sans">Select Service Type</h2>
-            <div className="flex gap-4 w-full justify-center flex-nowrap">
-              {/* On-Demand Delivery */}
-              <div
-                onClick={() => {
-                  if (!isOnDemandDisabled) {
-                    handleDeliveryMethodSelect('on-demand');
-                  }
-                }}
-                className={`flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg relative w-[200px]
-                  ${isOnDemandDisabled 
-                    ? 'opacity-50 cursor-not-allowed' 
-                    : 'cursor-pointer hover:bg-[#FFE5E0] transition-colors'}`}
-              >
-                <div className="w-14 h-14 mb-4">
-                  <img src="/on-demand-delivery.svg" alt="On-Demand" className="w-full h-full" />
+            <div className="flex gap-4 justify-center items-center">
+              {/* Show On-Demand section if OnDemand permission is enabled */}
+              {deliveryMethods.onDemand && (
+                <div
+                  onClick={() => handleDeliveryMethodSelect('on-demand')}
+                  className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[140px] h-[140px] justify-center"
+                >
+                  <div className="w-10 h-10 mb-4">
+                    <img src="/on-demand-delivery.svg" alt="On-Demand" className="w-full h-full" />
+                  </div>
+                  <span className="text-center font-medium text-sm font-sans">On Demand<br/>Delivery</span>
                 </div>
-                <span className="text-center font-medium font-sans">On Demand<br/>Delivery</span>
-              </div>
+              )}
 
-              {/* Full-service */}
-              <div
-                className={`flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg relative w-[200px]
-                  ${isFullServiceDisabled 
-                    ? 'opacity-50 cursor-not-allowed' 
-                    : 'cursor-pointer hover:bg-[#FFE5E0] transition-colors'}`}
-                onClick={() => {
-                  if (!isFullServiceDisabled) {
-                    handleDeliveryMethodSelect('full-service');
-                  }
-                }}
-              >
-                <div className="w-14 h-14 mb-4">
-                  <img src="/full-service.svg" alt="Full-service" className="w-full h-full" />
+              {/* Show Full Service section if FullService permission is enabled */}
+              {deliveryMethods.fullService && (
+                <div
+                  onClick={() => handleDeliveryMethodSelect('full-service')}
+                  className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[140px] h-[140px] justify-center"
+                >
+                  <div className="w-10 h-10 mb-4">
+                    <img src="/full-service.svg" alt="Full-service" className="w-full h-full" />
+                  </div>
+                  <span className="text-center font-medium text-sm font-sans">Full-service<br/>Delivery</span>
                 </div>
-                <span className="text-center font-medium font-sans">Full-service<br/>Delivery</span>
-              </div>  
+              )}
 
-              {/* Schedule Delivery */}
-              <div
-                onClick={() => handleDeliveryMethodSelect('schedule')}
-                className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[200px]"
-              >
-                <div className="w-14 h-14 mb-4">
-                  <img src="/schedule-delivery.svg" alt="Schedule" className="w-full h-full" />
+              {/* Show Schedule section if Schedule permission is enabled */}
+              {deliveryMethods.schedule && (
+                <div
+                  onClick={() => handleDeliveryMethodSelect('schedule')}
+                  className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[140px] h-[140px] justify-center"
+                >
+                  <div className="w-10 h-10 mb-4">
+                    <img src="/schedule-delivery.svg" alt="Schedule" className="w-full h-full" />
+                  </div>
+                  <span className="text-center font-medium text-sm font-sans">Schedule<br/>Delivery</span>
                 </div>
-                <span className="text-center font-medium font-sans">Schedule<br/>Delivery</span>
-              </div>
+              )}
 
-              {/* Batch Delivery */}
-              <div
-                onClick={() => handleDeliveryMethodSelect('batch-delivery')}
-                className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[200px]"
-              >
-                <div className="w-14 h-14 mb-4">
-                  <img src="/batch-delivery.svg" alt="Batch" className="w-full h-full" />
+              {/* Show Batch section if Batch permission is enabled */}
+              {deliveryMethods.batchDelivery && (
+                <div
+                  onClick={() => handleDeliveryMethodSelect('batch-delivery')}
+                  className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[140px] h-[140px] justify-center"
+                >
+                  <div className="w-10 h-10 mb-4">
+                    <img src="/batch-delivery.svg" alt="Batch" className="w-full h-full" />
+                  </div>
+                  <span className="text-center font-medium text-sm font-sans">Batch<br/>Delivery</span>
                 </div>
-                <span className="text-center font-medium font-sans">Batch<br/>Delivery</span>
-              </div>
+              )}
 
-              {/* Walk-In Service */}
-              <div
-                onClick={() => handleDeliveryMethodSelect('walk-in')}
-                className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[200px]"
-              >
-                <div className="w-14 h-14 mb-4">
-                  <img src="/dining-out.png" alt="Walk-In" className="w-full h-full" />
+              {/* Show Walk-In section if WalkIn permission is enabled */}
+              {deliveryMethods.walkIn && (
+                <div
+                  onClick={() => handleDeliveryMethodSelect('walk-in')}
+                  className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[140px] h-[140px] justify-center"
+                >
+                  <div className="w-10 h-10 mb-4">
+                    <img src="/dining-out.png" alt="Walk-In" className="w-full h-full" />
+                  </div>
+                  <span className="text-center font-medium text-sm font-sans">Walk-In<br/>Service</span>
                 </div>
-                <span className="text-center font-medium font-sans">Walk-In<br/>Service</span>
-              </div>
+              )}
             </div>
           </div>
         ) : (

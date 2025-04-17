@@ -5,18 +5,22 @@ import { IconType } from 'react-icons';
 
 // Interface for restaurant permissions
 export interface DashboardPermissions {
-  Reports?: boolean;      // Access to reports functionality
-  Inventory?: boolean;    // Access to inventory management
-  Transactions?: boolean; // Access to transaction details
-  WalkIn?: boolean;      // Access to walk-in orders
+  Inventory?: boolean;      // Access to inventory management
+  Transactions?: boolean;   // Access to transaction details
+  Reports?: boolean;        // Access to reports functionality
+  Overview?: boolean;       // Access to overview dashboard
+  DeliveryReport?: boolean; // Access to delivery reports
+  WalkIn?: boolean;        // Access to walk-in orders
+  OnDemand?: boolean;      // Access to on-demand delivery
+  Batch?: boolean;         // Access to batch orders
+  Schedule?: boolean;      // Access to scheduled orders
+  AutoAssign?: boolean;    // Whether to auto-assign riders
   AutoCalculatePrice?: boolean; // Whether to auto-calculate delivery prices
+  FullService?: boolean;   // Access to full service delivery
+  language?: string;       // Language preference
 }
 
 // Helper functions to check permissions
-export const hasReportsAccess = (permissions: DashboardPermissions): boolean => {
-  return !!permissions.Reports;
-};
-
 export const hasInventoryAccess = (permissions: DashboardPermissions): boolean => {
   return !!permissions.Inventory;
 };
@@ -25,12 +29,44 @@ export const hasTransactionsAccess = (permissions: DashboardPermissions): boolea
   return !!permissions.Transactions;
 };
 
+export const hasReportsAccess = (permissions: DashboardPermissions): boolean => {
+  return !!permissions.Reports;
+};
+
+export const hasOverviewAccess = (permissions: DashboardPermissions): boolean => {
+  return !!permissions.Overview;
+};
+
+export const hasDeliveryReportAccess = (permissions: DashboardPermissions): boolean => {
+  return !!permissions.DeliveryReport;
+};
+
 export const hasWalkInAccess = (permissions: DashboardPermissions): boolean => {
-  return permissions.WalkIn !== false; // Default to true if undefined
+  return !!permissions.WalkIn;
+};
+
+export const hasOnDemandAccess = (permissions: DashboardPermissions): boolean => {
+  return !!permissions.OnDemand;
+};
+
+export const hasBatchAccess = (permissions: DashboardPermissions): boolean => {
+  return !!permissions.Batch;
+};
+
+export const hasScheduleAccess = (permissions: DashboardPermissions): boolean => {
+  return !!permissions.Schedule;
+};
+
+export const hasFullServiceAccess = (permissions: DashboardPermissions): boolean => {
+  return !!permissions.FullService;
+};
+
+export const hasAutoAssign = (permissions: DashboardPermissions): boolean => {
+  return !!permissions.AutoAssign;
 };
 
 export const hasAutoCalculatePrice = (permissions: DashboardPermissions): boolean => {
-  return permissions.AutoCalculatePrice ?? true; // Default to true if undefined
+  return !!permissions.AutoCalculatePrice;
 };
 
 // Function to calculate delivery fee
@@ -81,44 +117,55 @@ export const getAvailableMenuItems = (permissions: DashboardPermissions): MenuIt
       name: "Overview", 
       icon: FiGrid,
       id: "dashboard", 
-      requiredPermission: null 
+      requiredPermission: "Overview"
     },
     { 
       name: "My Orders", 
       icon: FiBox,
       id: "orders", 
       requiredPermission: null 
-    },
-    { 
-      name: "Menu Items", 
-      icon: IoFastFoodOutline,
-      id: "inventory", 
-      requiredPermission: "Inventory" 
-    },
-    { 
-      name: "Transactions", 
-      icon: LuCircleDollarSign,
-      id: "transactions", 
-      requiredPermission: "Transactions" 
-    },
-    { 
-      name: "Reports", 
-      icon: LuFileSpreadsheet,
-      id: "reports", 
-      requiredPermission: null 
-    },
-    { 
-      name: "Settings", 
-      icon: IoSettingsOutline,
-      id: "settings", 
-      requiredPermission: null 
     }
   ];
 
-  return menuItems.filter(item => {
-    if (!item.requiredPermission) return true;
-    return !permissions[item.requiredPermission as keyof DashboardPermissions];
+  // Only add Menu Items if Inventory permission is granted
+  if (permissions.Inventory) {
+    menuItems.push({ 
+      name: "Menu Items", 
+      icon: IoFastFoodOutline,
+      id: "inventory", 
+      requiredPermission: "Inventory"
+    });
+  }
+
+  // Only add Transactions if Transactions permission is granted
+  if (permissions.Transactions) {
+    menuItems.push({ 
+      name: "Transactions", 
+      icon: LuCircleDollarSign,
+      id: "transactions", 
+      requiredPermission: "Transactions"
+    });
+  }
+
+  // Only add Reports if Reports permission is granted
+  if (permissions.Reports) {
+    menuItems.push({ 
+      name: "Reports", 
+      icon: LuFileSpreadsheet,
+      id: "reports", 
+      requiredPermission: "Reports"
+    });
+  }
+
+  // Settings is always available
+  menuItems.push({ 
+    name: "Settings", 
+    icon: IoSettingsOutline,
+    id: "settings", 
+    requiredPermission: null 
   });
+
+  return menuItems;
 };
 
 // Function to determine available reports based on permissions
@@ -154,7 +201,7 @@ export const getAvailableReports = (permissions: DashboardPermissions) => {
       date: "All Time",
       format: "PDF",
       status: "Active",
-      requiresPermissions: false
+      requiresDeliveryReport: true
     },
     {
       id: 5,
@@ -162,28 +209,29 @@ export const getAvailableReports = (permissions: DashboardPermissions) => {
       date: "All Time",
       format: "PDF",
       status: "Active",
-      requiresPermissions: false
+      requiresTransactions: true
     }
   ];
 
-  if (hasAllSpecialPermissions(permissions)) {
-    return allReports.filter(report => report.requiresPermissions === true);
-  }
-  
   return allReports.filter(report => {
-    // Always show Delivery Report
-    if (report.name === "Delivery Report") return true;
-    return report.requiresPermissions === false;
+    if (report.requiresDeliveryReport && !permissions.DeliveryReport) return false;
+    if (report.requiresTransactions && !permissions.Transactions) return false;
+    return true;
   });
 };
 
 // Function to determine available delivery methods based on permissions
 export const getAvailableDeliveryMethods = (permissions: DashboardPermissions) => {
   return {
-    onDemand: hasWalkInAccess(permissions),
-    fullService: !hasInventoryAccess(permissions) && !hasTransactionsAccess(permissions),
-    schedule: true, // Always available
-    batchDelivery: true, // Always available
-    walkIn: true // Always available
+    onDemand: permissions.OnDemand,
+    fullService: permissions.FullService,
+    schedule: permissions.Schedule,
+    batchDelivery: permissions.Batch,
+    walkIn: permissions.WalkIn
   };
+};
+
+// Function to determine if overview stats should show revenue
+export const shouldShowRevenue = (permissions: DashboardPermissions): boolean => {
+  return (!!(permissions.FullService || permissions.WalkIn)) && !permissions.OnDemand;
 }; 

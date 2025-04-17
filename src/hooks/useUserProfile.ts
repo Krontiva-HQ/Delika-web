@@ -25,10 +25,14 @@ interface RestaurantData {
   Reports: boolean;
   Overview: boolean;
   DeliveryReport: boolean;
-  WalkIn: boolean; // Add this new property
+  WalkIn: boolean;
+  OnDemand: boolean;
+  Batch: boolean;
+  Schedule: boolean;
   language: string;
   AutoAssign: boolean;
   AutoCalculatePrice: boolean;
+  FullService: boolean;
 }
 
 export const useUserProfile = () => {
@@ -36,6 +40,7 @@ export const useUserProfile = () => {
   
   // Extract restaurant data from _restaurantTable array
   const restaurantData = userProfile._restaurantTable?.[0] || {} as RestaurantData;
+  
   
   // Check if user is admin
   const isAdmin = userProfile.role === 'Admin';
