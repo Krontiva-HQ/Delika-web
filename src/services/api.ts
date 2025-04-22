@@ -11,7 +11,8 @@ const IS_PRODUCTION = import.meta.env.PROD || import.meta.env.ENV === 'productio
 const api = axios.create({
   baseURL: PROXY_URL, // Always use proxy
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
   }
 });
 
@@ -19,7 +20,8 @@ const api = axios.create({
 const directApi = axios.create({
   baseURL: PROXY_URL, // Use proxy for direct API as well
   headers: {
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
   }
 });
 
@@ -36,6 +38,28 @@ const safebtoa = (str: string) => {
     // For environments where btoa isn't available
     return Buffer.from(str).toString('base64');
   }
+};
+
+// Add token helper
+const getAuthToken = () => {
+  const token = import.meta.env.VITE_XANO_AUTH_TOKEN || import.meta.env.XANO_AUTH_TOKEN;
+  if (!token) {
+    console.error('No auth token found in environment variables. Please check VITE_XANO_AUTH_TOKEN or XANO_AUTH_TOKEN');
+  }
+  return token;
+};
+
+// Add debug logging for requests
+const logRequest = (method: string, url: string, headers: any, body?: any) => {
+  console.group(`🌐 API Request: ${method} ${url}`);
+  console.log('Headers:', headers);
+  if (body) {
+    console.log('Body:', body);
+  }
+  if (!headers.Authorization || headers.Authorization === 'undefined') {
+    console.warn('⚠️ Warning: Authorization token is undefined');
+  }
+  console.groupEnd();
 };
 
 // Add request interceptor for auth
@@ -80,7 +104,7 @@ export const API_ENDPOINTS = {
   },
   ORDERS: {
     GET_DETAILS: (orderNumber: string) => `/get/order/id/${orderNumber}`,
-    FILTER_BY_DATE: '/filter/orders/by/date',
+    FILTER_BY_DATE: '/filter/orders/by/date/with/auth/test',
     GET_ALL_PER_BRANCH: '/get/all/orders/per/branch',
     EDIT: '/edit/order',
     PLACE_ORDER: '/delikaquickshipper_orders_table'
@@ -289,10 +313,15 @@ export const addItemToCategory = (formData: FormData) => {
     }
   });
   
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+
   return api.patch<{data: any; status: number}>(
     API_ENDPOINTS.CATEGORY.ADD_ITEM, 
     updatedFormData, 
-    { headers: { 'Content-Type': 'multipart/form-data' } }
+    { headers }
   );
 };
 
@@ -305,10 +334,15 @@ export const createCategory = (formData: FormData) => {
     updatedFormData.append(key, value);
   });
   
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+
   return api.post(
     API_ENDPOINTS.CATEGORY.CREATE, 
     updatedFormData, 
-    { headers: { 'Content-Type': 'multipart/form-data' } }
+    { headers }
   );
 };
 
@@ -324,29 +358,65 @@ export interface AddMemberParams {
 }
 
 export const addMember = (params: AddMemberParams) => {
-  return api.post(API_ENDPOINTS.TEAM.ADD_MEMBER, params);
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  return api.post(API_ENDPOINTS.TEAM.ADD_MEMBER, params, { headers });
 };
 
-export const getTeamMembers = (data: { restaurantId: string; branchId: string }) => {
-  return api.post(API_ENDPOINTS.TEAM.GET_MEMBERS, data);
+export const getTeamMembers = async (data: { restaurantId: string; branchId: string }) => {
+  const requestParams = data;
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': token
+  };
+
+  logRequest('POST', API_ENDPOINTS.TEAM.GET_MEMBERS, headers, requestParams);
+
+  return api.post(API_ENDPOINTS.TEAM.GET_MEMBERS, JSON.stringify(requestParams), {
+    headers
+  });
 };
 
 export const getTeamMembersAdmin = (data: { restaurantId: string }) => {
-  return api.post(API_ENDPOINTS.TEAM.GET_MEMBERS_ADMIN, data);
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  return api.post(API_ENDPOINTS.TEAM.GET_MEMBERS_ADMIN, data, { headers });
 };
 
 export const updateTeamMember = async (data: FormData) => {
   const userId = data.get('userId');
-  return api.patch(API_ENDPOINTS.TEAM.UPDATE_MEMBER(userId as string), data);
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  return api.patch(API_ENDPOINTS.TEAM.UPDATE_MEMBER(userId as string), data, { headers });
 };
 
 // Background refresh operations
-export const filterOrdersByDate = (params: { restaurantId: string; branchId: string; date: string }) => {
-  return api.get(API_ENDPOINTS.ORDERS.FILTER_BY_DATE, { params });
+export const filterOrdersByDate = async (params: { restaurantId: string; branchId: string; date: string }) => {
+  const requestParams = params;
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': token
+  };
+
+  logRequest('GET', API_ENDPOINTS.ORDERS.FILTER_BY_DATE, headers, requestParams);
+
+  return api.get(API_ENDPOINTS.ORDERS.FILTER_BY_DATE, {
+    params: requestParams,
+    headers
+  });
 };
 
 export const getAllOrdersPerBranch = (params: { restaurantId: string; branchId: string }) => {
   return api.get(API_ENDPOINTS.ORDERS.GET_ALL_PER_BRANCH, { params });
+  
 };
 
 export const getAuditLogs = (params: { restaurantId: string; branchId: string }) => {
@@ -392,7 +462,18 @@ export interface EditOrderParams {
 }
 
 export const editOrder = async (params: EditOrderParams) => {
-  return api.patch(API_ENDPOINTS.ORDERS.EDIT, params);
+  const requestParams = params;
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': token
+  };
+
+  logRequest('PATCH', API_ENDPOINTS.ORDERS.EDIT, headers, requestParams);
+
+  return api.patch(API_ENDPOINTS.ORDERS.EDIT, JSON.stringify(requestParams), {
+    headers
+  });
 };
 
 export interface UpdateInventoryParams {
@@ -404,12 +485,34 @@ export interface UpdateInventoryParams {
 }
 
 export const updateInventory = async (params: UpdateInventoryParams) => {
-  return api.patch(API_ENDPOINTS.MENU.UPDATE_INVENTORY, params);
+  const requestParams = params;
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': token
+  };
+
+  logRequest('PATCH', API_ENDPOINTS.MENU.UPDATE_INVENTORY, headers, requestParams);
+
+  return api.patch(API_ENDPOINTS.MENU.UPDATE_INVENTORY, JSON.stringify(requestParams), {
+    headers
+  });
 };
 
 // Menu service functions
-export const getAllMenu = (data: { restaurantId: string; branchId: string }) => {
-  return api.post(API_ENDPOINTS.MENU.GET_ALL, data);
+export const getAllMenu = async (data: { restaurantId: string; branchId: string }) => {
+  const requestParams = data;
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': token
+  };
+
+  logRequest('POST', API_ENDPOINTS.MENU.GET_ALL, headers, requestParams);
+
+  return api.post(API_ENDPOINTS.MENU.GET_ALL, JSON.stringify(requestParams), {
+    headers
+  });
 };
 
 // Update the placeOrder function
@@ -505,7 +608,8 @@ export const updateRestaurantPreferences = async (preferences: RestaurantPrefere
   try {
     const response = await api.patch(API_ENDPOINTS.RESTAURANT.UPDATE_PREFERENCES, preferences, {
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
       }
     });
     return response.data;
@@ -516,10 +620,20 @@ export const updateRestaurantPreferences = async (preferences: RestaurantPrefere
 
 // Update rider service functions
 export const getRidersByBranch = async (branchId: string) => {
-  return api.get(API_ENDPOINTS.RIDERS.GET_BY_BRANCH, { 
-    params: { 
-      branchName: branchId  // API expects "branchName" even though we're sending a branch ID
-    } 
+  const requestParams = {
+    branchName: branchId
+  };
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': token
+  };
+
+  logRequest('GET', API_ENDPOINTS.RIDERS.GET_BY_BRANCH, headers, requestParams);
+
+  return api.get(API_ENDPOINTS.RIDERS.GET_BY_BRANCH, {
+    params: requestParams,
+    headers
   });
 };
 
