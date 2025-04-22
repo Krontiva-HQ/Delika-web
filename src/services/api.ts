@@ -44,22 +44,16 @@ const safebtoa = (str: string) => {
 const getAuthToken = () => {
   const token = import.meta.env.VITE_XANO_AUTH_TOKEN || import.meta.env.XANO_AUTH_TOKEN;
   if (!token) {
-    console.error('No auth token found in environment variables. Please check VITE_XANO_AUTH_TOKEN or XANO_AUTH_TOKEN');
   }
   return token;
 };
 
 // Add debug logging for requests
 const logRequest = (method: string, url: string, headers: any, body?: any) => {
-  console.group(`🌐 API Request: ${method} ${url}`);
-  console.log('Headers:', headers);
   if (body) {
-    console.log('Body:', body);
   }
   if (!headers.Authorization || headers.Authorization === 'undefined') {
-    console.warn('⚠️ Warning: Authorization token is undefined');
   }
-  console.groupEnd();
 };
 
 // Add request interceptor for auth
@@ -104,7 +98,7 @@ export const API_ENDPOINTS = {
   },
   ORDERS: {
     GET_DETAILS: (orderNumber: string) => `/get/order/id/${orderNumber}`,
-    FILTER_BY_DATE: '/filter/orders/by/date/with/auth/test',
+    FILTER_BY_DATE: '/filter/orders/by/date',
     GET_ALL_PER_BRANCH: '/get/all/orders/per/branch',
     EDIT: '/edit/order',
     PLACE_ORDER: '/delikaquickshipper_orders_table'
@@ -214,20 +208,31 @@ export interface UserResponse {
 }
 
 export const getAuthenticatedUser = () => {
-  return api.get<UserResponse>(API_ENDPOINTS.AUTH.ME);
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  return api.get<UserResponse>(API_ENDPOINTS.AUTH.ME, { headers });
 };
 
 export const deleteUser = async (userId: string) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
   return api.delete(API_ENDPOINTS.USER.DELETE(userId), {
-    data: { delikaquickshipper_user_table_id: userId }
+    data: { delikaquickshipper_user_table_id: userId },
+    headers
   });
 };
 
 export const updateUser = async (data: FormData | Record<string, any>) => {
   const userId = data instanceof FormData ? data.get('userId') : data.userId;
-  return api.patch(API_ENDPOINTS.USER.UPDATE(userId as string), data, {
-    headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined
-  });
+  const headers = {
+    'Content-Type': data instanceof FormData ? 'multipart/form-data' : 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  return api.patch(API_ENDPOINTS.USER.UPDATE(userId as string), data, { headers });
 };
 
 // Add dashboard service function
@@ -240,7 +245,11 @@ export const getDashboardData = async (data: {
 
 // Add order service function
 export const getOrderDetails = (orderNumber: string) => {
-  return api.get<OrderDetails>(API_ENDPOINTS.ORDERS.GET_DETAILS(orderNumber));
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  return api.get<OrderDetails>(API_ENDPOINTS.ORDERS.GET_DETAILS(orderNumber), { headers });
 };
 
 // Add the OrderDetails interface
@@ -415,12 +424,25 @@ export const filterOrdersByDate = async (params: { restaurantId: string; branchI
 };
 
 export const getAllOrdersPerBranch = (params: { restaurantId: string; branchId: string }) => {
-  return api.get(API_ENDPOINTS.ORDERS.GET_ALL_PER_BRANCH, { params });
-  
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  return api.get(API_ENDPOINTS.ORDERS.GET_ALL_PER_BRANCH, { 
+    params,
+    headers
+  });
 };
 
 export const getAuditLogs = (params: { restaurantId: string; branchId: string }) => {
-  return api.get(API_ENDPOINTS.AUDIT.GET_ALL, { params });
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  return api.get(API_ENDPOINTS.AUDIT.GET_ALL, { 
+    params,
+    headers
+  });
 };
 
 // Branch interfaces and functions
@@ -437,7 +459,11 @@ export interface Branch {
 }
 
 export const getBranchesByRestaurant = (restaurantId: string) => {
-  return api.get<Branch[]>(API_ENDPOINTS.BRANCHES.GET_BY_RESTAURANT(restaurantId));
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  return api.get<Branch[]>(API_ENDPOINTS.BRANCHES.GET_BY_RESTAURANT(restaurantId), { headers });
 };
 
 export interface EditOrderParams {
@@ -593,7 +619,12 @@ export const placeOrder = async (formData: FormData) => {
       jsonData['scheduleTime[scheduleDateTime]'] : undefined
   };
 
-  return api.post(API_ENDPOINTS.ORDERS.PLACE_ORDER, orderPayload);
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+
+  return api.post(API_ENDPOINTS.ORDERS.PLACE_ORDER, orderPayload, { headers });
 };
 
 // Add restaurant settings interface and function
@@ -639,12 +670,17 @@ export const getRidersByBranch = async (branchId: string) => {
 
 export const deleteRider = async (params: { 
   delikaquickshipper_user_table_id: string;
-  branchName: string; // This is actually expecting a branchId
+  branchName: string;
 }) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
   return api.delete(API_ENDPOINTS.RIDERS.DELETE, { 
     data: {
       delikaquickshipper_user_table_id: params.delikaquickshipper_user_table_id,
-      branchName: params.branchName // We're passing branchId here
-    }
+      branchName: params.branchName
+    },
+    headers
   });
 };

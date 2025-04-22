@@ -161,7 +161,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         });
       }
 
-      const response = await api.get(`/filter/orders/by/date/with/auth/test?${params.toString()}`);
+      const response = await api.get(`/filter/orders/by/date?${params.toString()}`);
       // Sort orders by orderReceivedTime before setting state
       const sortedOrders = response.data.sort((a: Order, b: Order) => {
         return new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime();
