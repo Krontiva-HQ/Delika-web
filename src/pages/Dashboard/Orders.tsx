@@ -375,261 +375,267 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
           </div>
 
           {/* Tabs and Calendar Section */}
-          <div className="flex flex-row items-center justify-between text-[#535353] w-full mb-4">
-            <div className="flex gap-8">
-              <div 
-                className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
-                  ${activeTab === 'all' 
-                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]' 
-                    : 'text-[#797979]'
-                  }`}
-                onClick={() => setActiveTab('all')}
-              >
-                All Orders
-              </div>
-              <div 
-                className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
-                  ${activeTab === 'readyForPickup'
-                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
-                    : 'text-[#929494]'
-                  }`}
-                onClick={() => setActiveTab('readyForPickup')}
-              >
-                Ready For Pickup
-              </div>
-              <div 
-                className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
-                  ${activeTab === 'assigned'
-                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
-                    : 'text-[#929494]'
-                  }`}
-                onClick={() => setActiveTab('assigned')}
-              >
-                Assigned
-              </div>
-              <div 
-                className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
-                  ${activeTab === 'pickup'
-                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
-                    : 'text-[#929494]'
-                  }`}
-                onClick={() => setActiveTab('pickup')}
-              >
-                Pickup
-              </div>
-              <div 
-                className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
-                  ${activeTab === 'onTheWay'
-                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
-                    : 'text-[#929494]'
-                  }`}
-                onClick={() => setActiveTab('onTheWay')}
-              >
-                On The Way
-              </div>
-              <div 
-                className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 
-                  ${activeTab === 'delivered'
-                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
-                    : 'text-[#929494]'
-                  }`}
-                onClick={() => setActiveTab('delivered')}
-              >
-                Delivered
-              </div>
-              <div 
-                className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
-                  ${activeTab === 'cancelled'
-                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
-                    : 'text-[#929494]'
-                  }`}
-                onClick={() => setActiveTab('cancelled')}
-              >
-                Cancelled
-              </div>
-              <div 
-                className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
-                  ${activeTab === 'deliveryFailed'
-                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
-                    : 'text-[#929494]'
-                  }`}
-                onClick={() => setActiveTab('deliveryFailed')}
-              >
-                Delivery Failed
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-[#535353] w-full mb-4 gap-4">
+            <div className="w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
+              <div className="flex gap-4 min-w-max">
+                <div 
+                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
+                    ${activeTab === 'all' 
+                      ? 'bg-[#fe5b18] text-white border-[#fe5b18]' 
+                      : 'text-[#797979]'
+                    }`}
+                  onClick={() => setActiveTab('all')}
+                >
+                  All Orders
+                </div>
+                <div 
+                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
+                    ${activeTab === 'readyForPickup'
+                      ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
+                      : 'text-[#929494]'
+                    }`}
+                  onClick={() => setActiveTab('readyForPickup')}
+                >
+                  Ready For Pickup
+                </div>
+                <div 
+                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
+                    ${activeTab === 'assigned'
+                      ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
+                      : 'text-[#929494]'
+                    }`}
+                  onClick={() => setActiveTab('assigned')}
+                >
+                  Assigned
+                </div>
+                <div 
+                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
+                    ${activeTab === 'pickup'
+                      ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
+                      : 'text-[#929494]'
+                    }`}
+                  onClick={() => setActiveTab('pickup')}
+                >
+                  Pickup
+                </div>
+                <div 
+                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
+                    ${activeTab === 'onTheWay'
+                      ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
+                      : 'text-[#929494]'
+                    }`}
+                  onClick={() => setActiveTab('onTheWay')}
+                >
+                  On The Way
+                </div>
+                <div 
+                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
+                    ${activeTab === 'delivered'
+                      ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
+                      : 'text-[#929494]'
+                    }`}
+                  onClick={() => setActiveTab('delivered')}
+                >
+                  Delivered
+                </div>
+                <div 
+                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
+                    ${activeTab === 'cancelled'
+                      ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
+                      : 'text-[#929494]'
+                    }`}
+                  onClick={() => setActiveTab('cancelled')}
+                >
+                  Cancelled
+                </div>
+                <div 
+                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
+                    ${activeTab === 'deliveryFailed'
+                      ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
+                      : 'text-[#929494]'
+                    }`}
+                  onClick={() => setActiveTab('deliveryFailed')}
+                >
+                  Delivery Failed
+                </div>
               </div>
             </div>
 
             {/* Calendar Trigger */}
-            <div 
-              onClick={handleDateClick}
-              className="flex items-center gap-2 cursor-pointer"
-            >
-              <div className="border border-[#eaeaea] border-solid rounded-md px-3 py-1 flex items-center gap-2">
-                <svg 
-                  xmlns="http://www.w3.org/2000/svg" 
-                  className="h-4 w-4 text-[#666]" 
-                  fill="none" 
-                  viewBox="0 0 24 24" 
-                  stroke="currentColor"
-                >
-                  <path 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round" 
-                    strokeWidth={2} 
-                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
-                  />
-                </svg>
-                <span className="text-[12px] font-sans text-[#666]">
-                  {selectedDate ? selectedDate.format('DD MMMM YYYY') : '23 January 2024'}
-                </span>
-              </div>
-            </div>
-
-            {/* Calendar Popover */}
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-              <Popover
-                open={open}
-                anchorEl={anchorEl}
-                onClose={handleClose}
-                anchorOrigin={{
-                  vertical: 'bottom',
-                  horizontal: 'right',
-                }}
-                transformOrigin={{
-                  vertical: 'top',
-                  horizontal: 'right',
-                }}
-                sx={{
-                  '& .MuiPaper-root': {
-                    borderRadius: '8px',
-                    border: '1px solid rgba(167,161,158,0.1)',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                    marginTop: '8px',
-                  },
-                  '& .MuiPickersDay-root.Mui-selected': {
-                    backgroundColor: '#fe5b18',
-                    '&:hover': {
-                      backgroundColor: '#fe5b18',
-                    }
-                  },
-                  '& .MuiPickersDay-root:hover': {
-                    backgroundColor: '#fff3e0',
-                  },
-                  '& .MuiTypography-root': {
-                    fontFamily: 'Inter',
-                  },
-                }}
+            <div className="flex-shrink-0">
+              <div 
+                onClick={handleDateClick}
+                className="flex items-center gap-2 cursor-pointer"
               >
-                <DateCalendar 
-                  value={selectedDate}
-                  onChange={handleDateChange}
+                <div className="border border-[#eaeaea] border-solid rounded-md px-3 py-1 flex items-center gap-2">
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    className="h-4 w-4 text-[#666]" 
+                    fill="none" 
+                    viewBox="0 0 24 24" 
+                    stroke="currentColor"
+                  >
+                    <path 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                      strokeWidth={2} 
+                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
+                    />
+                  </svg>
+                  <span className="text-[12px] font-sans text-[#666]">
+                    {selectedDate ? selectedDate.format('DD MMMM YYYY') : '23 January 2024'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Calendar Popover */}
+              <LocalizationProvider dateAdapter={AdapterDayjs}>
+                <Popover
+                  open={open}
+                  anchorEl={anchorEl}
+                  onClose={handleClose}
+                  anchorOrigin={{
+                    vertical: 'bottom',
+                    horizontal: 'right',
+                  }}
+                  transformOrigin={{
+                    vertical: 'top',
+                    horizontal: 'right',
+                  }}
                   sx={{
-                    fontFamily: 'Inter',
+                    '& .MuiPaper-root': {
+                      borderRadius: '8px',
+                      border: '1px solid rgba(167,161,158,0.1)',
+                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                      marginTop: '8px',
+                    },
+                    '& .MuiPickersDay-root.Mui-selected': {
+                      backgroundColor: '#fe5b18',
+                      '&:hover': {
+                        backgroundColor: '#fe5b18',
+                      }
+                    },
+                    '& .MuiPickersDay-root:hover': {
+                      backgroundColor: '#fff3e0',
+                    },
                     '& .MuiTypography-root': {
                       fontFamily: 'Inter',
                     },
                   }}
-                />
-              </Popover>
-            </LocalizationProvider>
+                >
+                  <DateCalendar 
+                    value={selectedDate}
+                    onChange={handleDateChange}
+                    sx={{
+                      fontFamily: 'Inter',
+                      '& .MuiTypography-root': {
+                        fontFamily: 'Inter',
+                      },
+                    }}
+                  />
+                </Popover>
+              </LocalizationProvider>
+            </div>
           </div>
 
           {/* Table Section */}
-          <div className="w-full border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden">
-            {/* Table Header */}
-            <div className="grid grid-cols-6 bg-[#f9f9f9] p-3" style={{ borderBottom: '1px solid #eaeaea' }}>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Order Number</div>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Name</div>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Address</div>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Date</div>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Price (GH₵)</div>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Order Status</div>
-            </div>
+          <div className="w-full overflow-x-auto">
+            <div className="min-w-[900px] border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden">
+              {/* Table Header */}
+              <div className="grid grid-cols-6 bg-[#f9f9f9] p-3" style={{ borderBottom: '1px solid #eaeaea' }}>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Order Number</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Name</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Address</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Date</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Price (GH₵)</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Order Status</div>
+              </div>
 
-            {/* Table Body */}
-            {isLoading ? (
-              <div className="p-4 text-center text-gray-500 font-sans">Loading orders...</div>
-            ) : paginatedOrders.orders.length === 0 ? (
-              <div className="p-4 text-center text-gray-500 font-sans">No orders found</div>
-            ) : (
-              <>
-                {/* Map through paginatedOrders.orders instead of filteredOrders */}
-                {paginatedOrders.orders.map((order) => (
-                  <div 
-                    key={order.id} 
-                    style={{ borderBottom: '1px solid #eaeaea' }}
-                    className="grid grid-cols-6 p-3 hover:bg-[#f9f9f9] cursor-pointer"
-                    onClick={() => handleOrderClick(order.orderNumber)}
-                  >
-                    <div className="text-[12px] leading-[20px] font-sans text-[#444]">{order.orderNumber}</div>
+              {/* Table Body */}
+              {isLoading ? (
+                <div className="p-4 text-center text-gray-500 font-sans">Loading orders...</div>
+              ) : paginatedOrders.orders.length === 0 ? (
+                <div className="p-4 text-center text-gray-500 font-sans">No orders found</div>
+              ) : (
+                <>
+                  {/* Map through paginatedOrders.orders instead of filteredOrders */}
+                  {paginatedOrders.orders.map((order) => (
+                    <div 
+                      key={order.id} 
+                      style={{ borderBottom: '1px solid #eaeaea' }}
+                      className="grid grid-cols-6 p-3 hover:bg-[#f9f9f9] cursor-pointer"
+                      onClick={() => handleOrderClick(order.orderNumber)}
+                    >
+                      <div className="text-[12px] leading-[20px] font-sans text-[#444]">{order.orderNumber}</div>
+                      <div className="flex items-center gap-2">
+                        <img 
+                          src={order.customerImage || '/default-profile.jpg'} 
+                          alt={order.customerName} 
+                          className="w-6 h-6 rounded-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/default-profile.jpg';
+                          }}
+                        />
+                        <span className="text-[12px] leading-[20px] font-sans text-[#444]">{order.customerName}</span>
+                      </div>
+                      <div className="text-[12px] leading-[20px] font-sans text-[#666]">
+                        {order.dropOff[0]?.toAddress || 'N/A'}
+                      </div>
+                      <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.orderDate}</div>
+                      <div className="text-[12px] leading-[20px] font-sans text-[#444]">
+                        {Number(order.orderPrice).toFixed(2)}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans ${getStatusStyle(order.orderStatus)}`}>
+                          {formatOrderStatus(order.orderStatus)}
+                        </span>
+                        <button 
+                          className="p-1 border-[1px] border-solid border-[#eaeaea] rounded-[4px] bg-white hover:bg-gray-50"
+                          onClick={(e) => handleEditClick(e, order)}
+                        >
+                          <CiEdit className="w-[14px] h-[14px] text-[#666]" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Pagination Controls */}
+                  <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-[rgba(167,161,158,0.1)]">
+                    <div className="text-[12px] text-gray-500 font-sans">
+                      Showing {((currentPage - 1) * ordersPerPage) + 1} to {Math.min(currentPage * ordersPerPage, paginatedOrders.totalOrders)} of {paginatedOrders.totalOrders} orders
+                    </div>
                     <div className="flex items-center gap-2">
-                      <img 
-                        src={order.customerImage || '/default-profile.jpg'} 
-                        alt={order.customerName} 
-                        className="w-6 h-6 rounded-full object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = '/default-profile.jpg';
-                        }}
-                      />
-                      <span className="text-[12px] leading-[20px] font-sans text-[#444]">{order.customerName}</span>
-                    </div>
-                    <div className="text-[12px] leading-[20px] font-sans text-[#666]">
-                      {order.dropOff[0]?.toAddress || 'N/A'}
-                    </div>
-                    <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.orderDate}</div>
-                    <div className="text-[12px] leading-[20px] font-sans text-[#444]">
-                      {Number(order.orderPrice).toFixed(2)}
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans ${getStatusStyle(order.orderStatus)}`}>
-                        {formatOrderStatus(order.orderStatus)}
-                      </span>
-                      <button 
-                        className="p-1 border-[1px] border-solid border-[#eaeaea] rounded-[4px] bg-white hover:bg-gray-50"
-                        onClick={(e) => handleEditClick(e, order)}
+                      <button
+                        onClick={handlePrevPage}
+                        disabled={currentPage === 1}
+                        className={`p-2 rounded-md ${
+                          currentPage === 1
+                            ? 'text-gray-300 cursor-not-allowed'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
                       >
-                        <CiEdit className="w-[14px] h-[14px] text-[#666]" />
+                        <IoIosArrowBack className="w-4 h-4" />
+                      </button>
+                      <span className="text-[12px] font-sans">
+                        Page {currentPage} of {paginatedOrders.totalPages}
+                      </span>
+                      <button
+                        onClick={handleNextPage}
+                        disabled={currentPage === paginatedOrders.totalPages}
+                        className={`p-2 rounded-md ${
+                          currentPage === paginatedOrders.totalPages
+                            ? 'text-gray-300 cursor-not-allowed'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        <IoIosArrowForward className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
-                ))}
-
-                {/* Pagination Controls */}
-                <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-[rgba(167,161,158,0.1)]">
-                  <div className="text-[12px] text-gray-500 font-sans">
-                    Showing {((currentPage - 1) * ordersPerPage) + 1} to {Math.min(currentPage * ordersPerPage, paginatedOrders.totalOrders)} of {paginatedOrders.totalOrders} orders
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handlePrevPage}
-                      disabled={currentPage === 1}
-                      className={`p-2 rounded-md ${
-                        currentPage === 1
-                          ? 'text-gray-300 cursor-not-allowed'
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      <IoIosArrowBack className="w-4 h-4" />
-                    </button>
-                    <span className="text-[12px] font-sans">
-                      Page {currentPage} of {paginatedOrders.totalPages}
-                    </span>
-                    <button
-                      onClick={handleNextPage}
-                      disabled={currentPage === paginatedOrders.totalPages}
-                      className={`p-2 rounded-md ${
-                        currentPage === paginatedOrders.totalPages
-                          ? 'text-gray-300 cursor-not-allowed'
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      <IoIosArrowForward className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
 
           {/* Add the PlaceOrder modal */}

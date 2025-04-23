@@ -827,7 +827,7 @@ const Settings: FunctionComponent = () => {
                         </b>
                         <input
                           className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[6px] box-border h-[40px] pt-[10px] px-[15px] pb-[10px] placeholder-gray-500"
-                          placeholder="Mohammad"
+                          placeholder=""
                           type="text"
                           value={userData?.fullName || ''}
                           onChange={(e) => handleInputChange('fullName', e.target.value)}
@@ -839,7 +839,7 @@ const Settings: FunctionComponent = () => {
                         </b>
                         <input
                           className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[6px] box-border h-[40px] pt-[10px] px-[15px] pb-[10px] placeholder-gray-500"
-                          placeholder="Noman Ali"
+                          placeholder=""
                           type="text"
                           value={userData?.userName || ''}
                           onChange={(e) => handleInputChange('userName', e.target.value)}
@@ -851,7 +851,7 @@ const Settings: FunctionComponent = () => {
                         </b>
                         <input
                           className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[6px] box-border h-[40px] pt-[10px] px-[15px] pb-[10px] placeholder-gray-500"
-                          placeholder="mohammad@gmail.com"
+                          placeholder=""
                           type="email"
                           value={userData?.email || ''}
                           onChange={(e) => handleInputChange('email', e.target.value)}
@@ -864,7 +864,7 @@ const Settings: FunctionComponent = () => {
                         </b>
                         <input
                           className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[6px] box-border h-[40px] pt-[10px] px-[15px] pb-[10px] placeholder-gray-500"
-                          placeholder="+1 (234) 567-8900"
+                          placeholder=""
                           type="tel"
                           value={userData?.phoneNumber || ''}
                           onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
@@ -876,7 +876,7 @@ const Settings: FunctionComponent = () => {
                         </b>
                         <input
                           className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[6px] box-border h-[40px] pt-[10px] px-[15px] pb-[10px] placeholder-gray-500"
-                          placeholder="User Role"
+                          placeholder=""
                           type="text"
                           value={userData?.role || ''}
                           onChange={(e) => handleInputChange('role', e.target.value)}
@@ -900,7 +900,7 @@ const Settings: FunctionComponent = () => {
                                     [&::-webkit-calendar-picker-indicator]:dark:opacity-100
                                     [&::-webkit-calendar-picker-indicator]:dark:hover:opacity-80
                                     [&::-webkit-calendar-picker-indicator]:dark:filter-none"
-                          placeholder="dd/mm/yyyy"
+                          placeholder=""
                           onChange={(e) => {
                             // Handle date change
                           }}

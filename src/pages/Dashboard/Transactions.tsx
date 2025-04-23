@@ -269,74 +269,76 @@ const Transactions: FunctionComponent = () => {
           </div>
 
           {/* Tabs and Calendar Section */}
-          <div className="flex flex-row items-center justify-between text-[#535353] w-full mb-4">
-            <div className="flex gap-8">
-              <div 
-                className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
-                  ${activeTab === 'all' 
-                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]' 
-                    : 'text-[#797979]'
-                  }`}
-                onClick={() => setActiveTab('all')}
-              >
-                All Transactions
-              </div>
-              <div 
-                className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
-                  ${activeTab === 'pending'
-                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
-                    : 'text-[#929494]'
-                  }`}
-                onClick={() => setActiveTab('pending')}
-              >
-                Pending
-              </div>
-              <div 
-                className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
-                  ${activeTab === 'paid'
-                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
-                    : 'text-[#929494]'
-                  }`}
-                onClick={() => setActiveTab('paid')}
-              >
-                Paid
-              </div>
-              <div 
-                className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
-                  ${activeTab === 'momo'
-                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
-                    : 'text-[#929494]'
-                  }`}
-                onClick={() => setActiveTab('momo')}
-              >
-                Momo
-              </div>
-              <div 
-                className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
-                  ${activeTab === 'cash'
-                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
-                    : 'text-[#929494]'
-                  }`}
-                onClick={() => setActiveTab('cash')}
-              >
-                Cash
-              </div>
-              <div 
-                className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1
-                  ${activeTab === 'visa'
-                    ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
-                    : 'text-[#929494]'
-                  }`}
-                onClick={() => setActiveTab('visa')}
-              >
-                Visa Card
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between text-[#535353] w-full mb-4 gap-4">
+            <div className="w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
+              <div className="flex gap-4 min-w-max">
+                <div 
+                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
+                    ${activeTab === 'all' 
+                      ? 'bg-[#fe5b18] text-white border-[#fe5b18]' 
+                      : 'text-[#797979]'
+                    }`}
+                  onClick={() => setActiveTab('all')}
+                >
+                  All Transactions
+                </div>
+                <div 
+                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
+                    ${activeTab === 'pending'
+                      ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
+                      : 'text-[#929494]'
+                    }`}
+                  onClick={() => setActiveTab('pending')}
+                >
+                  Pending
+                </div>
+                <div 
+                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
+                    ${activeTab === 'paid'
+                      ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
+                      : 'text-[#929494]'
+                    }`}
+                  onClick={() => setActiveTab('paid')}
+                >
+                  Paid
+                </div>
+                <div 
+                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
+                    ${activeTab === 'momo'
+                      ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
+                      : 'text-[#929494]'
+                    }`}
+                  onClick={() => setActiveTab('momo')}
+                >
+                  Momo
+                </div>
+                <div 
+                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
+                    ${activeTab === 'cash'
+                      ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
+                      : 'text-[#929494]'
+                    }`}
+                  onClick={() => setActiveTab('cash')}
+                >
+                  Cash
+                </div>
+                <div 
+                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
+                    ${activeTab === 'visa'
+                      ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
+                      : 'text-[#929494]'
+                    }`}
+                  onClick={() => setActiveTab('visa')}
+                >
+                  Visa Card
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               {/* Total Amount Display */}
-              <div className="border border-[#eaeaea] border-solid rounded-md px-3 py-1">
-                <span className="text-[12px] font-sans text-[#666]">
+              <div className="flex-shrink-0 border border-[#eaeaea] border-solid rounded-md px-3 py-1">
+                <span className="text-[12px] font-sans text-[#666] whitespace-nowrap">
                   Total {activeTab === 'all' ? '' : 
                          activeTab === 'momo' ? 'Momo' :
                          activeTab === 'cash' ? 'Cash' :
@@ -347,180 +349,184 @@ const Transactions: FunctionComponent = () => {
               </div>
 
               {/* Calendar Trigger */}
-              <div 
-                onClick={handleDateClick}
-                className="flex items-center gap-2 cursor-pointer"
-              >
-                <div className="border border-[#eaeaea] border-solid rounded-md px-3 py-1 flex items-center gap-2">
-                  <svg 
-                    xmlns="http://www.w3.org/2000/svg" 
-                    className="h-4 w-4 text-[#666]" 
-                    fill="none" 
-                    viewBox="0 0 24 24" 
-                    stroke="currentColor"
-                  >
-                    <path 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                      strokeWidth={2} 
-                      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
-                    />
-                  </svg>
-                  <span className="text-[12px] font-sans text-[#666]">
-                    {selectedDate ? selectedDate.format('DD MMMM YYYY') : '23 January 2024'}
-                  </span>
+              <div className="flex-shrink-0">
+                <div 
+                  onClick={handleDateClick}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
+                  <div className="border border-[#eaeaea] border-solid rounded-md px-3 py-1 flex items-center gap-2">
+                    <svg 
+                      xmlns="http://www.w3.org/2000/svg" 
+                      className="h-4 w-4 text-[#666]" 
+                      fill="none" 
+                      viewBox="0 0 24 24" 
+                      stroke="currentColor"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        strokeWidth={2} 
+                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
+                      />
+                    </svg>
+                    <span className="text-[12px] font-sans text-[#666]">
+                      {selectedDate ? selectedDate.format('DD MMMM YYYY') : '23 January 2024'}
+                    </span>
+                  </div>
                 </div>
+
+                {/* Calendar Popover */}
+                <LocalizationProvider dateAdapter={AdapterDayjs}>
+                  <Popover
+                    open={open}
+                    anchorEl={anchorEl}
+                    onClose={handleClose}
+                    anchorOrigin={{
+                      vertical: 'bottom',
+                      horizontal: 'right',
+                    }}
+                    transformOrigin={{
+                      vertical: 'top',
+                      horizontal: 'right',
+                    }}
+                    sx={{
+                      '& .MuiPaper-root': {
+                        borderRadius: '8px',
+                        border: '1px solid rgba(167,161,158,0.1)',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                        marginTop: '8px',
+                      },
+                      '& .MuiPickersDay-root.Mui-selected': {
+                        backgroundColor: '#fe5b18',
+                        '&:hover': {
+                          backgroundColor: '#fe5b18',
+                        }
+                      },
+                      '& .MuiPickersDay-root:hover': {
+                        backgroundColor: '#fff3e0',
+                      },
+                      '& .MuiTypography-root': {
+                        fontFamily: 'Inter',
+                      },
+                    }}
+                  >
+                    <DateCalendar 
+                      value={selectedDate}
+                      onChange={handleDateChange}
+                      sx={{
+                        fontFamily: 'Inter',
+                        '& .MuiTypography-root': {
+                          fontFamily: 'Inter',
+                        },
+                      }}
+                    />
+                  </Popover>
+                </LocalizationProvider>
               </div>
             </div>
-
-            {/* Calendar Popover */}
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-              <Popover
-                open={open}
-                anchorEl={anchorEl}
-                onClose={handleClose}
-                anchorOrigin={{
-                  vertical: 'bottom',
-                  horizontal: 'right',
-                }}
-                transformOrigin={{
-                  vertical: 'top',
-                  horizontal: 'right',
-                }}
-                sx={{
-                  '& .MuiPaper-root': {
-                    borderRadius: '8px',
-                    border: '1px solid rgba(167,161,158,0.1)',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                    marginTop: '8px',
-                  },
-                  '& .MuiPickersDay-root.Mui-selected': {
-                    backgroundColor: '#fe5b18',
-                    '&:hover': {
-                      backgroundColor: '#fe5b18',
-                    }
-                  },
-                  '& .MuiPickersDay-root:hover': {
-                    backgroundColor: '#fff3e0',
-                  },
-                  '& .MuiTypography-root': {
-                    fontFamily: 'Inter',
-                  },
-                }}
-              >
-                <DateCalendar 
-                  value={selectedDate}
-                  onChange={handleDateChange}
-                  sx={{
-                    fontFamily: 'Inter',
-                    '& .MuiTypography-root': {
-                      fontFamily: 'Inter',
-                    },
-                  }}
-                />
-              </Popover>
-            </LocalizationProvider>
           </div>
 
           {/* Table Section */}
-          <div className="w-full border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden">
-            {/* Table Header */}
-            <div className="grid grid-cols-6 bg-[#f9f9f9] p-3" style={{ borderBottom: '1px solid #eaeaea' }}>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">ID</div>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Name</div>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Address</div>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Date</div>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Price (GH₵)</div>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Status</div>
-            </div>
+          <div className="w-full overflow-x-auto">
+            <div className="min-w-[900px] border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden">
+              {/* Table Header */}
+              <div className="grid grid-cols-6 bg-[#f9f9f9] p-3" style={{ borderBottom: '1px solid #eaeaea' }}>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">ID</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Name</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Address</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Date</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Price (GH₵)</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Status</div>
+              </div>
 
-            {/* Table Body */}
-            {isLoading ? (
-              <div className="p-4 text-center text-gray-500 font-sans">Loading transactions...</div>
-            ) : error ? (
-              <div className="p-4 text-center text-red-500 font-sans">Error: {error}</div>
-            ) : paginatedOrders.orders.length === 0 ? (
-              <div className="p-4 text-center text-gray-500 font-sans">No transactions found</div>
-            ) : (
-              <>
-                {/* Map through paginatedOrders.orders instead of filteredOrders */}
-                {paginatedOrders.orders.map((order) => (
-                  <div 
-                    key={order.id} 
-                    style={{ borderBottom: '1px solid #eaeaea' }}
-                    className="grid grid-cols-6 p-3 hover:bg-[#f9f9f9] cursor-pointer"
-                    onClick={() => handleTransactionClick(order.orderNumber.toString())}
-                  >
-                    <div className="text-[12px] leading-[20px] font-sans text-[#444]">{order.orderNumber}</div>
-                    <div className="flex items-center gap-2">
-                      <img 
-                        src={order.customerImage || '/default-profile.jpg'} 
-                        alt={order.customerName} 
-                        className="w-6 h-6 rounded-full object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = '/default-profile.jpg';
-                        }}
-                      />
-                      <span className="text-[12px] leading-[20px] font-sans text-[#444]">{order.customerName}</span>
+              {/* Table Body */}
+              {isLoading ? (
+                <div className="p-4 text-center text-gray-500 font-sans">Loading transactions...</div>
+              ) : error ? (
+                <div className="p-4 text-center text-red-500 font-sans">Error: {error}</div>
+              ) : paginatedOrders.orders.length === 0 ? (
+                <div className="p-4 text-center text-gray-500 font-sans">No transactions found</div>
+              ) : (
+                <>
+                  {/* Map through paginatedOrders.orders instead of filteredOrders */}
+                  {paginatedOrders.orders.map((order) => (
+                    <div 
+                      key={order.id} 
+                      style={{ borderBottom: '1px solid #eaeaea' }}
+                      className="grid grid-cols-6 p-3 hover:bg-[#f9f9f9] cursor-pointer"
+                      onClick={() => handleTransactionClick(order.orderNumber.toString())}
+                    >
+                      <div className="text-[12px] leading-[20px] font-sans text-[#444]">{order.orderNumber}</div>
+                      <div className="flex items-center gap-2">
+                        <img 
+                          src={order.customerImage || '/default-profile.jpg'} 
+                          alt={order.customerName} 
+                          className="w-6 h-6 rounded-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/default-profile.jpg';
+                          }}
+                        />
+                        <span className="text-[12px] leading-[20px] font-sans text-[#444]">{order.customerName}</span>
+                      </div>
+                      <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.dropOff[0]?.toAddress || 'N/A'}</div>
+                      <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.orderDate}</div>
+                      <div className="text-[12px] leading-[20px] font-sans text-[#444]">{order.orderPrice}</div>
+                      <div className="flex items-center justify-between">
+                        <span className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans ${
+                          order.payLater ? 'bg-green-100 text-green-800' :
+                          order.payNow ? 'bg-yellow-100 text-yellow-800' :
+                          order.payVisaCard ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {order.payLater ? 'Momo' : order.payNow ? 'Cash' : order.payVisaCard ? 'Visa Card' : 'Unknown'}
+                        </span>
+                        <button 
+                          className="p-1 border-[1px] border-solid border-[#eaeaea] rounded-[4px] bg-white hover:bg-gray-50"
+                          onClick={(e) => handleEditClick(e, order)}
+                        >
+                          <CiEdit className="w-[14px] h-[14px] text-[#666]" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.dropOff[0]?.toAddress || 'N/A'}</div>
-                    <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.orderDate}</div>
-                    <div className="text-[12px] leading-[20px] font-sans text-[#444]">{order.orderPrice}</div>
-                    <div className="flex items-center justify-between">
-                      <span className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans ${
-                        order.payLater ? 'bg-green-100 text-green-800' :
-                        order.payNow ? 'bg-yellow-100 text-yellow-800' :
-                        order.payVisaCard ? 'bg-red-100 text-red-800' :
-                        'bg-gray-100 text-gray-800'
-                      }`}>
-                        {order.payLater ? 'Momo' : order.payNow ? 'Cash' : order.payVisaCard ? 'Visa Card' : 'Unknown'}
-                      </span>
-                      <button 
-                        className="p-1 border-[1px] border-solid border-[#eaeaea] rounded-[4px] bg-white hover:bg-gray-50"
-                        onClick={(e) => handleEditClick(e, order)}
+                  ))}
+
+                  {/* Add Pagination Controls */}
+                  <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-[rgba(167,161,158,0.1)]">
+                    <div className="text-[12px] text-gray-500 font-sans">
+                      Showing {((currentPage - 1) * ordersPerPage) + 1} to {Math.min(currentPage * ordersPerPage, paginatedOrders.totalOrders)} of {paginatedOrders.totalOrders} transactions
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handlePrevPage}
+                        disabled={currentPage === 1}
+                        className={`p-2 rounded-md ${
+                          currentPage === 1
+                            ? 'text-gray-300 cursor-not-allowed'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
                       >
-                        <CiEdit className="w-[14px] h-[14px] text-[#666]" />
+                        <IoIosArrowBack className="w-4 h-4" />
+                      </button>
+                      <span className="text-[12px] font-sans">
+                        Page {currentPage} of {paginatedOrders.totalPages}
+                      </span>
+                      <button
+                        onClick={handleNextPage}
+                        disabled={currentPage === paginatedOrders.totalPages}
+                        className={`p-2 rounded-md ${
+                          currentPage === paginatedOrders.totalPages
+                            ? 'text-gray-300 cursor-not-allowed'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        <IoIosArrowForward className="w-4 h-4" />
                       </button>
                     </div>
                   </div>
-                ))}
-
-                {/* Add Pagination Controls */}
-                <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-[rgba(167,161,158,0.1)]">
-                  <div className="text-[12px] text-gray-500 font-sans">
-                    Showing {((currentPage - 1) * ordersPerPage) + 1} to {Math.min(currentPage * ordersPerPage, paginatedOrders.totalOrders)} of {paginatedOrders.totalOrders} transactions
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={handlePrevPage}
-                      disabled={currentPage === 1}
-                      className={`p-2 rounded-md ${
-                        currentPage === 1
-                          ? 'text-gray-300 cursor-not-allowed'
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      <IoIosArrowBack className="w-4 h-4" />
-                    </button>
-                    <span className="text-[12px] font-sans">
-                      Page {currentPage} of {paginatedOrders.totalPages}
-                    </span>
-                    <button
-                      onClick={handleNextPage}
-                      disabled={currentPage === paginatedOrders.totalPages}
-                      className={`p-2 rounded-md ${
-                        currentPage === paginatedOrders.totalPages
-                          ? 'text-gray-300 cursor-not-allowed'
-                          : 'text-gray-700 hover:bg-gray-50'
-                      }`}
-                    >
-                      <IoIosArrowForward className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
