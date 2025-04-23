@@ -1351,7 +1351,42 @@ const Reports: FunctionComponent = () => {
 
         {/* Table Section */}
         <div className="w-full border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden">
-          {renderContent()}
+          {selectedReport === "Orders Report" && (
+            <div className="w-full overflow-x-auto">
+              <div className="min-w-[1000px]">
+                {renderContent()}
+              </div>
+            </div>
+          )}
+          {selectedReport === "Top Sold Items" && (
+            <div className="w-full overflow-x-auto">
+              <div className="min-w-[800px]">
+                {renderContent()}
+              </div>
+            </div>
+          )}
+          {selectedReport === "Customer Report" && (
+            <div className="w-full overflow-x-auto">
+              <div className="min-w-[900px]">
+                {renderContent()}
+              </div>
+            </div>
+          )}
+          {selectedReport === "Delivery Report" && (
+            <div className="w-full overflow-x-auto">
+              <div className="min-w-[1000px]">
+                {renderContent()}
+              </div>
+            </div>
+          )}
+          {selectedReport === "Transaction Report" && (
+            <div className="w-full overflow-x-auto">
+              <div className="min-w-[1000px]">
+                {renderContent()}
+              </div>
+            </div>
+          )}
+          {!selectedReport && renderContent()}
         </div>
       </div>
     </div>

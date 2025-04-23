@@ -462,51 +462,53 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
             <h2 className="text-lg font-bold font-sans">Current Orders</h2>
           </div>
 
-          <div className="w-full border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden">
-            <div className="grid grid-cols-6 bg-[#f9f9f9] p-3" style={{ borderBottom: '1px solid #eaeaea' }}>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Order Number</div>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Name</div>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Address</div>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Date</div>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Price (GH₵)</div>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Status</div>
-            </div>
+          <div className="w-full overflow-x-auto">
+            <div className="min-w-[900px] border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden">
+              <div className="grid grid-cols-6 bg-[#f9f9f9] p-3" style={{ borderBottom: '1px solid #eaeaea' }}>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Order Number</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Name</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Address</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Date</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Price (GH₵)</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Status</div>
+              </div>
 
-            {isLoading ? (
-              <div className="p-4 text-center text-gray-500">Loading orders...</div>
-            ) : recentOrders.length === 0 ? (
-              <div className="p-4 text-center text-gray-500 font-sans">No current orders found</div>
-            ) : (
-              recentOrders.map((order) => (
-                <div 
-                  key={order.id} 
-                  style={{ borderBottom: '1px solid #eaeaea' }}
-                  className="grid grid-cols-6 p-3 hover:bg-[#f9f9f9]"
-                >
-                  <div className="text-[12px] leading-[20px] font-sans text-[#444]">{order.orderNumber}</div>
-                  <div className="flex items-center gap-2">
-                    <img 
-                      src={order.customerImage || '/default-profile.jpg'} 
-                      alt={order.customerName} 
-                      className="w-6 h-6 rounded-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = '/default-profile.jpg';
-                      }}
-                    />
-                    <span className="text-[12px] leading-[20px] font-sans text-[#444]">{order.customerName}</span>
+              {isLoading ? (
+                <div className="p-4 text-center text-gray-500">Loading orders...</div>
+              ) : recentOrders.length === 0 ? (
+                <div className="p-4 text-center text-gray-500 font-sans">No current orders found</div>
+              ) : (
+                recentOrders.map((order) => (
+                  <div 
+                    key={order.id} 
+                    style={{ borderBottom: '1px solid #eaeaea' }}
+                    className="grid grid-cols-6 p-3 hover:bg-[#f9f9f9]"
+                  >
+                    <div className="text-[12px] leading-[20px] font-sans text-[#444]">{order.orderNumber}</div>
+                    <div className="flex items-center gap-2">
+                      <img 
+                        src={order.customerImage || '/default-profile.jpg'} 
+                        alt={order.customerName} 
+                        className="w-6 h-6 rounded-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = '/default-profile.jpg';
+                        }}
+                      />
+                      <span className="text-[12px] leading-[20px] font-sans text-[#444]">{order.customerName}</span>
+                    </div>
+                    <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.dropOff[0]?.toAddress || 'N/A'}</div>
+                    <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.orderDate}</div>
+                    <div className="text-[12px] leading-[20px] font-sans text-[#444]">{Number(order.totalPrice).toFixed(2)}</div>
+                    <div className="flex items-center justify-between">
+                      <span className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans ${getStatusStyle(order.orderStatus)}`}>
+                        {order.orderStatus}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.dropOff[0]?.toAddress || 'N/A'}</div>
-                  <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.orderDate}</div>
-                  <div className="text-[12px] leading-[20px] font-sans text-[#444]">{Number(order.totalPrice).toFixed(2)}</div>
-                  <div className="flex items-center justify-between">
-                    <span className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans ${getStatusStyle(order.orderStatus)}`}>
-                      {order.orderStatus}
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
 
           <div className="flex justify-end mt-4">
