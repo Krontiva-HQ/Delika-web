@@ -2904,31 +2904,31 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className={`bg-white p-8 rounded-lg relative flex flex-col ${
-        !deliveryMethod ? 'max-w-[900px] min-w-[400px]' : 'w-[600px]'
+      <div className={`bg-white p-4 sm:p-8 rounded-lg relative flex flex-col ${
+        !deliveryMethod ? 'max-w-[900px] min-w-[300px] sm:min-w-[400px]' : 'w-full sm:w-[600px] mx-4 sm:mx-0'
       }`}>
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 bg-transparent"
+          className="absolute top-2 sm:top-4 right-2 sm:right-4 text-gray-500 hover:text-gray-700 bg-transparent z-50"
         >
-          <IoIosCloseCircleOutline size={24} />
+          <IoIosCloseCircleOutline className="w-6 h-6 sm:w-8 sm:h-8" />
         </button>
 
         {!deliveryMethod ? (
           // Initial delivery method selection modal
           <div className="flex flex-col items-center w-full">
             <h2 className="text-2xl font-semibold mb-8 font-sans">Select Service Type</h2>
-            <div className="flex gap-4 justify-center items-center">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full">
               {/* Show On-Demand section if OnDemand permission is enabled */}
               {deliveryMethods.onDemand && (
                 <div
                   onClick={() => handleDeliveryMethodSelect('on-demand')}
-                  className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[140px] h-[140px] justify-center"
+                  className="flex flex-col items-center p-4 sm:p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-full sm:w-[140px] h-[100px] sm:h-[140px] justify-center"
                 >
-                  <div className="w-10 h-10 mb-4">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 mb-2 sm:mb-4">
                     <img src="/on-demand-delivery.svg" alt="On-Demand" className="w-full h-full" />
                   </div>
-                  <span className="text-center font-medium text-sm font-sans">On Demand<br/>Delivery</span>
+                  <span className="text-center font-medium text-xs sm:text-sm font-sans">On Demand<br/>Delivery</span>
                 </div>
               )}
 
@@ -2936,12 +2936,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               {deliveryMethods.fullService && (
                 <div
                   onClick={() => handleDeliveryMethodSelect('full-service')}
-                  className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[140px] h-[140px] justify-center"
+                  className="flex flex-col items-center p-4 sm:p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-full sm:w-[140px] h-[100px] sm:h-[140px] justify-center"
                 >
-                  <div className="w-10 h-10 mb-4">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 mb-2 sm:mb-4">
                     <img src="/full-service.svg" alt="Full-service" className="w-full h-full" />
                   </div>
-                  <span className="text-center font-medium text-sm font-sans">Full-service<br/>Delivery</span>
+                  <span className="text-center font-medium text-xs sm:text-sm font-sans">Full-service<br/>Delivery</span>
                 </div>
               )}
 
@@ -2949,12 +2949,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               {deliveryMethods.schedule && (
                 <div
                   onClick={() => handleDeliveryMethodSelect('schedule')}
-                  className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[140px] h-[140px] justify-center"
+                  className="flex flex-col items-center p-4 sm:p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-full sm:w-[140px] h-[100px] sm:h-[140px] justify-center"
                 >
-                  <div className="w-10 h-10 mb-4">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 mb-2 sm:mb-4">
                     <img src="/schedule-delivery.svg" alt="Schedule" className="w-full h-full" />
                   </div>
-                  <span className="text-center font-medium text-sm font-sans">Schedule<br/>Delivery</span>
+                  <span className="text-center font-medium text-xs sm:text-sm font-sans">Schedule<br/>Delivery</span>
                 </div>
               )}
 
@@ -2962,12 +2962,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               {deliveryMethods.batchDelivery && (
                 <div
                   onClick={() => handleDeliveryMethodSelect('batch-delivery')}
-                  className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[140px] h-[140px] justify-center"
+                  className="flex flex-col items-center p-4 sm:p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-full sm:w-[140px] h-[100px] sm:h-[140px] justify-center"
                 >
-                  <div className="w-10 h-10 mb-4">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 mb-2 sm:mb-4">
                     <img src="/batch-delivery.svg" alt="Batch" className="w-full h-full" />
                   </div>
-                  <span className="text-center font-medium text-sm font-sans">Batch<br/>Delivery</span>
+                  <span className="text-center font-medium text-xs sm:text-sm font-sans">Batch<br/>Delivery</span>
                 </div>
               )}
 
@@ -2975,18 +2975,18 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               {deliveryMethods.walkIn && (
                 <div
                   onClick={() => handleDeliveryMethodSelect('walk-in')}
-                  className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[140px] h-[140px] justify-center"
+                  className="flex flex-col items-center p-4 sm:p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-full sm:w-[140px] h-[100px] sm:h-[140px] justify-center"
                 >
-                  <div className="w-10 h-10 mb-4">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 mb-2 sm:mb-4">
                     <img src="/dining-out.png" alt="Walk-In" className="w-full h-full" />
                   </div>
-                  <span className="text-center font-medium text-sm font-sans">Walk-In<br/>Service</span>
+                  <span className="text-center font-medium text-xs sm:text-sm font-sans">Walk-In<br/>Service</span>
                 </div>
               )}
             </div>
           </div>
         ) : (
-          // Existing order placement modal content
+          // Existing order placement modal content 
           <>
             {/* Main content */}
             {renderStepContent()}
