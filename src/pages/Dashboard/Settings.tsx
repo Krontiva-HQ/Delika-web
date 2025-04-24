@@ -233,94 +233,98 @@ const Settings: FunctionComponent = () => {
   // Update the renderTeamMembersTable function
   const renderTeamMembersTable = () => (
     <>
-      <div className="w-[95%] mx-auto border-[1px] border-solid border-gray-200 dark:border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden bg-white dark:bg-black">
-        {/* Table Header */}
-        <div className="flex justify-between items-center p-3 bg-white dark:bg-black text-black dark:text-white">
-          <h3 className="text-[14px] font-semibold font-sans">Team Members</h3>
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setIsAddMemberOpen(true);
-            }}
-            className="flex items-center gap-1 px-3 py-1.5 bg-[#fe5b18] text-white rounded-md font-sans text-[12px]"
-          >
-            <IoMdAdd className="w-4 h-4" />
-            Add Member
-          </button>
-        </div>
-
-        {/* Table Headers - Removed Status column */}
-        <div className="grid grid-cols-[200px_1fr_1fr_1fr_100px] items-center p-3 bg-white dark:bg-black text-black dark:text-white font-sans">
-          <div className="text-[12px] flex items-center">Name</div>
-          <div className="text-[12px]">Email</div>
-          <div className="text-[12px]">Branch Name</div>
-          <div className="text-[12px]">Role</div>
-          <div className="text-[12px]">Action</div>
-        </div>
-
-        {/* Table Body - Removed Status column */}
-        {teamMembers.map((member) => (
-          <div key={member.id} className="grid grid-cols-[200px_1fr_1fr_1fr_100px] items-center gap-2 p-3 border-t border-gray-200 dark:border-[#333] font-sans bg-white dark:bg-black text-black dark:text-white">
-            <div className="text-[12px] flex items-center gap-1 min-h-[24px]">
-              <img 
-                src={member.image?.url || '/default-profile.jpg'} 
-                alt={member.fullName}
-                className="w-6 h-6 rounded-full object-cover"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = '/default-profile.jpg';
-                }}
-              />z
-              <span className="truncate">{member.fullName}</span>
-            </div>
-            <div className="text-[12px] truncate">{member.email}</div>
-            <div className="text-[12px] truncate">{member.branchesTable?.branchName || 'N/A'}</div>
-            <div className="text-[12px] truncate">{member.role}</div>
-            <div className="flex items-center gap-1">
-              <button 
-                className="p-1.5 border-[1px] border-solid border-red-600 text-orange-600 rounded-[4px] hover:bg-red-50 dark:hover:bg-red-900/20 text-[11px] font-sans"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  handleDeleteMember(member.id);
-                }}
-              >
-                <RiDeleteBin5Line className="w-4 h-4" />
-              </button>
-              <button 
-                className="p-1.5 border-[1px] border-solid border-blue-600 text-blue-600 rounded-[4px] hover:bg-blue-50 dark:hover:bg-blue-900/20 text-[11px] font-sans"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setMemberToEdit({
-                    ...member,
-                    address: member.address || 'N/A',
-                    city: member.city || 'N/A',
-                    postalCode: member.postalCode || 'N/A',
-                    country: member.country || 'N/A'
-                  });
-                  setIsEditMemberOpen(true);
-                }}
-              >
-                <CiEdit className="w-4 h-4" />
-              </button>
-            </div>
+      <div className="w-full md:w-[95%] mx-auto overflow-x-auto">
+        <div className="min-w-[800px] border-[1px] border-solid border-gray-200 dark:border-[rgba(167,161,158,0.1)] rounded-lg bg-white dark:bg-black">
+          {/* Table Header */}
+          <div className="flex justify-between items-center p-3 bg-white dark:bg-black text-black dark:text-white">
+            <h3 className="text-[12px] sm:text-[14px] font-semibold font-sans">Team Members</h3>
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsAddMemberOpen(true);
+              }}
+              className="flex items-center gap-1 px-2 sm:px-3 py-1 sm:py-1.5 bg-[#fe5b18] text-white rounded-md font-sans text-[11px] sm:text-[12px]"
+            >
+              <IoMdAdd className="w-3 h-3 sm:w-4 sm:h-4" />
+              Add Member
+            </button>
           </div>
-        ))}
+
+          {/* Table Headers */}
+          <div className="grid grid-cols-[150px_1fr_1fr_1fr_80px] sm:grid-cols-[200px_1fr_1fr_1fr_100px] items-center p-2 sm:p-3 bg-white dark:bg-black text-black dark:text-white font-sans">
+            <div className="text-[11px] sm:text-[12px] flex items-center">Name</div>
+            <div className="text-[11px] sm:text-[12px]">Email</div>
+            <div className="text-[11px] sm:text-[12px]">Branch Name</div>
+            <div className="text-[11px] sm:text-[12px]">Role</div>
+            <div className="text-[11px] sm:text-[12px]">Action</div>
+          </div>
+
+          {/* Table Body */}
+          {teamMembers.map((member) => (
+            <div key={member.id} className="grid grid-cols-[150px_1fr_1fr_1fr_80px] sm:grid-cols-[200px_1fr_1fr_1fr_100px] items-center gap-2 p-3 border-t border-gray-200 dark:border-[#333] font-sans bg-white dark:bg-black text-black dark:text-white">
+              <div className="text-[11px] sm:text-[12px] flex items-center gap-1 min-h-[24px]">
+                <img 
+                  src={member.image?.url || '/default-profile.jpg'} 
+                  alt={member.fullName}
+                  className="w-6 h-6 rounded-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = '/default-profile.jpg';
+                  }}
+                />z
+                <span className="truncate">{member.fullName}</span>
+              </div>
+              <div className="text-[11px] sm:text-[12px] truncate">{member.email}</div>
+              <div className="text-[11px] sm:text-[12px] truncate">{member.branchesTable?.branchName || 'N/A'}</div>
+              <div className="text-[11px] sm:text-[12px] truncate">{member.role}</div>
+              <div className="flex items-center gap-1">
+                <button 
+                  className="p-1.5 border-[1px] border-solid border-red-600 text-orange-600 rounded-[4px] hover:bg-red-50 dark:hover:bg-red-900/20 text-[11px] font-sans"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleDeleteMember(member.id);
+                  }}
+                >
+                  <RiDeleteBin5Line className="w-4 h-4" />
+                </button>
+                <button 
+                  className="p-1.5 border-[1px] border-solid border-blue-600 text-blue-600 rounded-[4px] hover:bg-blue-50 dark:hover:bg-blue-900/20 text-[11px] font-sans"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setMemberToEdit({
+                      ...member,
+                      address: member.address || 'N/A',
+                      city: member.city || 'N/A',
+                      postalCode: member.postalCode || 'N/A',
+                      country: member.country || 'N/A'
+                    });
+                    setIsEditMemberOpen(true);
+                  }}
+                >
+                  <CiEdit className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
       
       {/* Riders Section */}
-      <div className="w-[95%] mx-auto mt-8 border-[1px] border-solid border-gray-200 dark:border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden bg-white dark:bg-black">
-        <div className="flex justify-between items-center p-3 bg-white dark:bg-black text-black dark:text-white">
-          <h3 className="text-[14px] font-semibold font-sans">Riders</h3>
+      <div className="w-full md:w-[95%] mx-auto mt-8 overflow-x-auto">
+        <div className="min-w-[800px] border-[1px] border-solid border-gray-200 dark:border-[rgba(167,161,158,0.1)] rounded-lg bg-white dark:bg-black">
+          <div className="flex justify-between items-center p-3 bg-white dark:bg-black text-black dark:text-white">
+            <h3 className="text-[12px] sm:text-[14px] font-semibold font-sans">Riders</h3>
+          </div>
+          <RidersTable 
+            branchName={userData?.branchId || ''} 
+            onDeleteRider={handleDeleteRider}
+            onEditRider={handleEditRider}
+            key={refreshRiders ? 'refresh' : 'initial'}
+          />
         </div>
-        <RidersTable 
-          branchName={userData?.branchId || ''} 
-          onDeleteRider={handleDeleteRider}
-          onEditRider={handleEditRider}
-          key={refreshRiders ? 'refresh' : 'initial'}
-        />
       </div>
     </>
   );
@@ -740,9 +744,9 @@ const Settings: FunctionComponent = () => {
         <section className="mb-[10px] mt-[20px] max-w-[calc(100%-px)] overflow-hidden">
           <form className="self-stretch rounded-[4px] bg-white dark:bg-black border-gray-200 dark:border-[#333] border-[1px] border-solid flex flex-col items-start justify-start py-[10px] px-[10px] gap-[20px]">
             {/* Tab Navigation */}
-            <section className="self-stretch flex flex-col items-start justify-start p-[8px] border-b border-gray-200 dark:border-[#333]">
-              <div className="self-stretch flex flex-row items-center justify-start gap-[40px]">
-                <div className={`relative text-[12px] leading-[20px] font-sans cursor-pointer ${
+            <section className="self-stretch flex flex-col items-start justify-start p-[8px] border-b border-gray-200 dark:border-[#333] overflow-x-auto">
+              <div className="self-stretch flex flex-row items-center justify-start gap-[20px] md:gap-[40px] min-w-max">
+                <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
                   activeTab === 'edit' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
                 }`}
                 onClick={() => setActiveTab('edit')}
@@ -750,7 +754,7 @@ const Settings: FunctionComponent = () => {
                   Edit Profile
                 </div>
                 {!isStoreClerk && (
-                  <div className={`relative text-[12px] leading-[20px] font-sans cursor-pointer ${
+                  <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
                     activeTab === 'team' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
                   }`}
                   onClick={() => setActiveTab('team')}
@@ -758,28 +762,22 @@ const Settings: FunctionComponent = () => {
                     Team Members
                   </div>
                 )}
-                <div className={`relative text-[12px] leading-[20px] font-sans cursor-pointer ${
-                  activeTab === 'password' 
-                    ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' 
-                    : 'text-black dark:text-white'
+                <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
+                  activeTab === 'password' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
                 }`}
                 onClick={() => setActiveTab('password')}
                 >
                   Change Password
                 </div>
-                <div className={`relative text-[12px] leading-[20px] font-sans cursor-pointer ${
-                  activeTab === 'restaurant' 
-                    ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' 
-                    : 'text-black dark:text-white'
+                <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
+                  activeTab === 'restaurant' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
                 }`}
                 onClick={() => setActiveTab('restaurant')}
                 >
                   About Restaurant
                 </div>
-                <div className={`relative text-[12px] leading-[20px] font-sans cursor-pointer ${
-                  activeTab === 'restaurant-settings' 
-                    ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' 
-                    : 'text-black dark:text-white'
+                <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
+                  activeTab === 'restaurant-settings' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
                 }`}
                 onClick={() => setActiveTab('restaurant-settings')}
                 >
@@ -914,11 +912,11 @@ const Settings: FunctionComponent = () => {
                           Permanent Address
                         </b>
                         <input
-                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[6px] box-border h-[40px] pt-[10px] px-[15px] pb-[10px] placeholder-gray-500"
-                          placeholder="Olaya St 6531"
+                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[6px] box-border h-[40px] pt-[10px] px-[15px] pb-[10px]"
                           type="text"
                           value={userData?.address || ''}
                           onChange={(e) => handleInputChange('address', e.target.value)}
+                          disabled={!userData}
                         />
                       </div>
                       <div className="w-[350px] bg-transparent flex flex-col items-start justify-start gap-[1px]">
@@ -926,11 +924,11 @@ const Settings: FunctionComponent = () => {
                           City
                         </b>
                         <input
-                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[6px] box-border h-[40px] pt-[10px] px-[15px] pb-[10px] placeholder-gray-500"
-                          placeholder="Makkah"
+                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[6px] box-border h-[40px] pt-[10px] px-[15px] pb-[10px]"
                           type="text"
                           value={userData?.city || ''}
                           onChange={(e) => handleInputChange('city', e.target.value)}
+                          disabled={!userData}
                         />
                       </div>
                       <div className="w-[350px] bg-transparent flex flex-col items-start justify-start gap-[1px]">
@@ -938,11 +936,11 @@ const Settings: FunctionComponent = () => {
                           Postal Code
                         </b>
                         <input
-                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[6px] box-border h-[40px] pt-[10px] px-[15px] pb-[10px] placeholder-gray-500"
-                          placeholder="24231"
+                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[6px] box-border h-[40px] pt-[10px] px-[15px] pb-[10px]"
                           type="text"
                           value={userData?.postalCode || ''}
                           onChange={(e) => handleInputChange('postalCode', e.target.value)}
+                          disabled={!userData}
                         />
                       </div>
                       <div className="w-[350px] bg-transparent flex flex-col items-start justify-start gap-[0px]">
@@ -980,8 +978,8 @@ const Settings: FunctionComponent = () => {
                   {resetError && <div className="text-red-500 font-sans">{resetError}</div>}
                 </div>
               ) : activeTab === 'restaurant' ? (
-                <div className="self-stretch flex flex-row items-start justify-start gap-[30px]">
-                  <div className="relative rounded-[8px] bg-gray-100 dark:bg-gray-800 overflow-hidden group cursor-pointer w-[200px] h-[200px]">
+                <div className="self-stretch flex flex-col sm:flex-row items-start justify-start gap-[20px] sm:gap-[30px] p-4">
+                  <div className="relative rounded-[8px] bg-gray-100 dark:bg-gray-800 overflow-hidden group cursor-pointer w-full sm:w-[200px] h-[200px]">
                     {restaurantLogoUrl || previewImage ? (
                       <img
                         className="w-full h-full object-cover"
@@ -995,61 +993,57 @@ const Settings: FunctionComponent = () => {
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
                         <div className="text-gray-400 dark:text-gray-500 flex flex-col items-center">
-                          <FaCamera className="text-3xl mb-2" />
-                          <span className="text-sm">Upload Logo</span>
+                          <FaCamera className="text-2xl sm:text-3xl mb-2" />
+                          <span className="text-[11px] sm:text-sm">Upload Logo</span>
                         </div>
                       </div>
                     )}
                   </div>
                   
-                  <div className="flex-1 flex flex-col items-start justify-start gap-[49px]">
-                    <div className="self-stretch flex flex-row items-start justify-start flex-wrap content-start gap-x-[26px] gap-y-[24px]">
-                      <div className="w-[392px] bg-transparent flex flex-col items-start justify-start gap-[1px]">
-                        <b className="self-stretch relative text-[14px] leading-[22px] font-sans text-black dark:text-white">
+                  <div className="flex-1 flex flex-col items-start justify-start gap-[20px] sm:gap-[49px]">
+                    <div className="self-stretch grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-x-[26px] sm:gap-y-[24px]">
+                      <div className="w-full sm:w-[392px] bg-transparent flex flex-col items-start justify-start gap-[1px]">
+                        <b className="self-stretch relative text-[12px] sm:text-[14px] leading-[22px] font-sans text-black dark:text-white">
                           Restaurant Name
                         </b>
                         <input
-                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[14px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[8px] box-border h-[49px] pt-[13.5px] px-[20px] pb-[12.5px] placeholder-gray-500"
-                          placeholder="Restaurant Name"
+                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] sm:text-[14px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[8px] box-border h-[40px] sm:h-[49px] pt-[13.5px] px-[20px] pb-[12.5px]"
                           type="text"
                           value={restaurantFormData.restaurantName}
                           readOnly
                         />
                       </div>
 
-                      <div className="w-[392px] bg-transparent flex flex-col items-start justify-start gap-[1px]">
-                        <b className="self-stretch relative text-[14px] leading-[22px] font-sans text-black dark:text-white">
+                      <div className="w-full sm:w-[392px] bg-transparent flex flex-col items-start justify-start gap-[1px]">
+                        <b className="self-stretch relative text-[12px] sm:text-[14px] leading-[22px] font-sans text-black dark:text-white">
                           Restaurant Email
                         </b>
                         <input
-                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[14px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[8px] box-border h-[49px] pt-[13.5px] px-[20px] pb-[12.5px] placeholder-gray-500"
-                          placeholder="restaurant@email.com"
+                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] sm:text-[14px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[8px] box-border h-[40px] sm:h-[49px] pt-[13.5px] px-[20px] pb-[12.5px]"
                           type="email"
                           value={restaurantFormData.restaurantEmail}
                           readOnly
                         />
                       </div>
 
-                      <div className="w-[392px] bg-transparent flex flex-col items-start justify-start gap-[1px]">
-                        <b className="self-stretch relative text-[14px] leading-[22px] font-sans text-black dark:text-white">
+                      <div className="w-full sm:w-[392px] bg-transparent flex flex-col items-start justify-start gap-[1px]">
+                        <b className="self-stretch relative text-[12px] sm:text-[14px] leading-[22px] font-sans text-black dark:text-white">
                           Restaurant Phone Number
                         </b>
                         <input
-                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[14px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[8px] box-border h-[49px] pt-[13.5px] px-[20px] pb-[12.5px] placeholder-gray-500"
-                          placeholder="Phone Number"
+                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] sm:text-[14px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[8px] box-border h-[40px] sm:h-[49px] pt-[13.5px] px-[20px] pb-[12.5px]"
                           type="tel"
                           value={restaurantFormData.restaurantPhoneNumber}
                           readOnly
                         />
                       </div>
 
-                      <div className="w-[392px] bg-transparent flex flex-col items-start justify-start gap-[1px]">
-                        <b className="self-stretch relative text-[14px] leading-[22px] font-sans text-black dark:text-white">
+                      <div className="w-full sm:w-[392px] bg-transparent flex flex-col items-start justify-start gap-[1px]">
+                        <b className="self-stretch relative text-[12px] sm:text-[14px] leading-[22px] font-sans text-black dark:text-white">
                           Restaurant Address
                         </b>
                         <input
-                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[14px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[8px] box-border h-[49px] pt-[13.5px] px-[20px] pb-[12.5px] placeholder-gray-500"
-                          placeholder="Address"
+                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] sm:text-[14px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[8px] box-border h-[40px] sm:h-[49px] pt-[13.5px] px-[20px] pb-[12.5px]"
                           type="text"
                           value={restaurantFormData.restaurantAddress}
                           readOnly
@@ -1059,21 +1053,21 @@ const Settings: FunctionComponent = () => {
                   </div>
                 </div>
               ) : activeTab === 'restaurant-settings' ? (
-                <div className="self-stretch flex flex-col items-start justify-start gap-[20px] p-6">
+                <div className="self-stretch flex flex-col items-start justify-start gap-[20px] p-4 sm:p-6">
                   {!userData ? (
                     <div className="w-full text-center text-gray-500">Loading settings...</div>
                   ) : (
                     <>
                       {/* Settings Grid Container */}
-                      <div className="w-full grid grid-cols-3 gap-8">
+                      <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
                         {/* Language Settings Section */}
                         <div className="bg-transparent flex flex-col items-start justify-start gap-[16px]">
                           <div className="w-full bg-transparent flex flex-col items-start justify-start gap-[8px]">
-                            <b className="text-[14px] leading-[22px] font-sans text-black dark:text-white">
+                            <b className="text-[12px] sm:text-[14px] leading-[22px] font-sans text-black dark:text-white">
                               Select Language
                             </b>
                             <select
-                              className="w-full border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[14px] bg-white dark:bg-black text-black dark:text-white rounded-[8px] h-[45px] px-[16px]"
+                              className="w-full border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] sm:text-[14px] bg-white dark:bg-black text-black dark:text-white rounded-[8px] h-[40px] sm:h-[45px] px-[12px] sm:px-[16px]"
                               value={language}
                               onChange={(e) => setLanguage(e.target.value)}
                             >
@@ -1088,7 +1082,7 @@ const Settings: FunctionComponent = () => {
                         {/* Rider Assignment Section */}
                         <div className="bg-transparent flex flex-col items-start justify-start gap-[16px]">
                           <div className="w-full bg-transparent flex flex-col items-start justify-start gap-[8px]">
-                            <b className="text-[14px] leading-[22px] font-sans text-black dark:text-white">
+                            <b className="text-[12px] sm:text-[14px] leading-[22px] font-sans text-black dark:text-white">
                               Rider Assignment Method
                             </b>
                             <div className="flex flex-col gap-3 mt-2">
@@ -1101,7 +1095,7 @@ const Settings: FunctionComponent = () => {
                                   onChange={(e) => setRiderAssignment(e.target.value as 'auto' | 'manual')}
                                   className="w-4 h-4 text-[#fe5b18] focus:ring-[#fe5b18]"
                                 />
-                                <span className="text-[14px] text-black dark:text-white">Auto Assign Riders</span>
+                                <span className="text-[12px] sm:text-[14px] text-black dark:text-white">Auto Assign Riders</span>
                               </label>
                               <label className="flex items-center gap-2 cursor-pointer">
                                 <input
@@ -1112,7 +1106,7 @@ const Settings: FunctionComponent = () => {
                                   onChange={(e) => setRiderAssignment(e.target.value as 'auto' | 'manual')}
                                   className="w-4 h-4 text-[#fe5b18] focus:ring-[#fe5b18]"
                                 />
-                                <span className="text-[14px] text-black dark:text-white">Assign Riders Manually</span>
+                                <span className="text-[12px] sm:text-[14px] text-black dark:text-white">Assign Riders Manually</span>
                               </label>
                             </div>
                           </div>
@@ -1121,7 +1115,7 @@ const Settings: FunctionComponent = () => {
                         {/* Price Calculation Section */}
                         <div className="bg-transparent flex flex-col items-start justify-start gap-[16px]">
                           <div className="w-full bg-transparent flex flex-col items-start justify-start gap-[8px]">
-                            <b className="text-[14px] leading-[22px] font-sans text-black dark:text-white">
+                            <b className="text-[12px] sm:text-[14px] leading-[22px] font-sans text-black dark:text-white">
                               Price Calculation Method
                             </b>
                             <div className="flex flex-col gap-3 mt-2">
@@ -1134,7 +1128,7 @@ const Settings: FunctionComponent = () => {
                                   onChange={(e) => setPriceCalculation(e.target.value as 'auto' | 'manual')}
                                   className="w-4 h-4 text-[#fe5b18] focus:ring-[#fe5b18]"
                                 />
-                                <span className="text-[14px] text-black dark:text-white">Auto-calculate Price</span>
+                                <span className="text-[12px] sm:text-[14px] text-black dark:text-white">Auto-calculate Price</span>
                               </label>
                               <label className="flex items-center gap-2 cursor-pointer">
                                 <input
@@ -1145,7 +1139,7 @@ const Settings: FunctionComponent = () => {
                                   onChange={(e) => setPriceCalculation(e.target.value as 'auto' | 'manual')}
                                   className="w-4 h-4 text-[#fe5b18] focus:ring-[#fe5b18]"
                                 />
-                                <span className="text-[14px] text-black dark:text-white">Set Price Manually</span>
+                                <span className="text-[12px] sm:text-[14px] text-black dark:text-white">Set Price Manually</span>
                               </label>
                             </div>
                           </div>
@@ -1155,14 +1149,14 @@ const Settings: FunctionComponent = () => {
                       {/* Save Button and Error Message */}
                       <div className="flex flex-col gap-4 mt-6">
                         <button
-                          className="cursor-pointer bg-black dark:bg-[#fe5b18] text-white px-8 py-3 rounded-[8px] font-sans text-[14px] hover:bg-[#1a1a1a] dark:hover:bg-[#e54d0e] disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="cursor-pointer bg-black dark:bg-[#fe5b18] text-white px-6 sm:px-8 py-2 sm:py-3 rounded-[8px] font-sans text-[12px] sm:text-[14px] hover:bg-[#1a1a1a] dark:hover:bg-[#e54d0e] disabled:opacity-50 disabled:cursor-not-allowed"
                           onClick={handleSaveRestaurantSettings}
                           disabled={isSettingsSaving}
                         >
                           {isSettingsSaving ? 'Saving...' : isSaved ? 'Saved!' : 'Save Settings'}
                         </button>
                         {saveError && (
-                          <div className="text-red-500 text-sm font-sans">
+                          <div className="text-red-500 text-[11px] sm:text-sm font-sans">
                             {saveError}
                           </div>
                         )}

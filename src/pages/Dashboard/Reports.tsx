@@ -198,6 +198,7 @@ const Reports: FunctionComponent = () => {
   const [transactionReports, setTransactionReports] = useState<TransactionReport[]>([]);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('all');
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(null);
+  const [calendarMode, setCalendarMode] = useState<'start' | 'end'>('start');
 
   const { userProfile, restaurantData } = useUserProfile();
   const { branches, isLoading: branchesLoading } = useBranches(userProfile?.restaurantId ?? null);
@@ -774,9 +775,11 @@ const Reports: FunctionComponent = () => {
                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
               />
             </svg>
-            <span className="text-[14px] font-sans text-[#666]">
+            <span className="text-[14px] font-sans text-[#666] whitespace-nowrap">
               {dateRange[0] && dateRange[1] 
                 ? `${dayjs(dateRange[0]).format('DD MMM')} - ${dayjs(dateRange[1]).format('DD MMM YYYY')}`
+                : dateRange[0]
+                ? `${dayjs(dateRange[0]).format('DD MMM YYYY')} - Select End`
                 : 'Select Date Range'
               }
             </span>
@@ -801,55 +804,67 @@ const Reports: FunctionComponent = () => {
                   border: '1px solid rgba(167,161,158,0.1)',
                   boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                   marginTop: '8px',
-                },
-                '& .MuiPickersDay-root.Mui-selected': {
-                  backgroundColor: '#fe5b18',
-                  '&:hover': {
-                    backgroundColor: '#fe5b18',
-                  }
-                },
-                '& .MuiPickersDay-root.Mui-inRange': {
-                  backgroundColor: '#fff3e0',
-                  '&:hover': {
-                    backgroundColor: '#ffe0b2',
-                  }
-                },
-                '& .MuiPickersDay-root:hover': {
-                  backgroundColor: '#fff3e0',
-                },
-                '& .MuiTypography-root': {
-                  fontFamily: 'Inter',
+                  width: 'fit-content',
                 },
               }}
             >
-              <div className="flex p-4">
+              <div className="p-4">
                 <div className="flex flex-col">
-                  <div className="text-sm font-medium text-gray-600 mb-2">Start Date</div>
-                  <DateCalendar 
-                    value={dateRange[0]}
-                    onChange={(newDate) => handleDateSelect(newDate, true)}
-                    sx={{
-                      fontFamily: 'Inter',
-                      '& .MuiTypography-root': {
-                        fontFamily: 'Inter',
-                      },
-                    }}
-                  />
-                </div>
-                <div className="border-l border-gray-200" />
-                <div className="flex flex-col">
-                  <div className="text-sm font-medium text-gray-600 mb-2">End Date</div>
-                  <DateCalendar 
-                    value={dateRange[1]}
-                    minDate={dateRange[0] || undefined}
-                    onChange={(newDate) => handleDateSelect(newDate, false)}
-                    sx={{
-                      fontFamily: 'Inter',
-                      '& .MuiTypography-root': {
-                        fontFamily: 'Inter',
-                      },
-                    }}
-                  />
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="text-sm font-medium text-gray-600">
+                      {calendarMode === 'start' ? 'Select Start Date' : 'Select End Date'}
+                    </div>
+                    {dateRange[0] && calendarMode === 'end' && (
+                      <button
+                        onClick={() => setCalendarMode('start')}
+                        className="text-xs text-[#fe5b18] hover:text-[#e54d0e] font-sans"
+                      >
+                        Change Start Date
+                      </button>
+                    )}
+                  </div>
+
+                  {calendarMode === 'start' ? (
+                    <DateCalendar 
+                      value={dateRange[0]}
+                      onChange={(newDate) => {
+                        handleDateSelect(newDate, true);
+                        setCalendarMode('end');
+                      }}
+                      sx={{
+                        width: '100%',
+                        maxWidth: '320px',
+                        '& .MuiPickersDay-root.Mui-selected': {
+                          backgroundColor: '#fe5b18',
+                          '&:hover': { backgroundColor: '#fe5b18' }
+                        },
+                        '& .MuiTypography-root': {
+                          fontFamily: 'Inter',
+                        },
+                      }}
+                    />
+                  ) : (
+                    <DateCalendar 
+                      value={dateRange[1]}
+                      minDate={dateRange[0] || undefined}
+                      onChange={(newDate) => {
+                        handleDateSelect(newDate, false);
+                        handleClose();
+                        setCalendarMode('start'); // Reset for next time
+                      }}
+                      sx={{
+                        width: '100%',
+                        maxWidth: '320px',
+                        '& .MuiPickersDay-root.Mui-selected': {
+                          backgroundColor: '#fe5b18',
+                          '&:hover': { backgroundColor: '#fe5b18' }
+                        },
+                        '& .MuiTypography-root': {
+                          fontFamily: 'Inter',
+                        },
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             </Popover>
@@ -859,8 +874,6 @@ const Reports: FunctionComponent = () => {
     } else if (selectedReport === "Transaction Report") {
       return (
         <div className="flex items-center gap-4">
-          
-
           <div className="relative">
             <div 
               onClick={handleDateClick}
@@ -880,7 +893,7 @@ const Reports: FunctionComponent = () => {
                   d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
                 />
               </svg>
-              <span className="text-[14px] font-sans text-[#666]">
+              <span className="text-[14px] font-sans text-[#666] whitespace-nowrap">
                 {selectedDate ? selectedDate.format('DD MMM YYYY') : 'Select Date'}
               </span>
             </div>
@@ -904,25 +917,33 @@ const Reports: FunctionComponent = () => {
                     border: '1px solid rgba(167,161,158,0.1)',
                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                     marginTop: '8px',
+                    width: 'fit-content',
                   },
                 }}
               >
-                <DateCalendar
-                  value={selectedDate}
-                  onChange={(newDate) => {
-                    setSelectedDate(newDate);
-                    if (newDate) {
-                      handleDateRangeSelect([newDate, newDate]);
-                    }
-                    handleClose();
-                  }}
-                  sx={{
-                    '& .MuiPickersDay-root.Mui-selected': {
-                      backgroundColor: '#fe5b18',
-                      '&:hover': { backgroundColor: '#fe5b18' }
-                    }
-                  }}
-                />
+                <div className="p-4">
+                  <DateCalendar
+                    value={selectedDate}
+                    onChange={(newDate) => {
+                      setSelectedDate(newDate);
+                      if (newDate) {
+                        handleDateRangeSelect([newDate, newDate]);
+                      }
+                      handleClose();
+                    }}
+                    sx={{
+                      width: '100%',
+                      maxWidth: '320px',
+                      '& .MuiPickersDay-root.Mui-selected': {
+                        backgroundColor: '#fe5b18',
+                        '&:hover': { backgroundColor: '#fe5b18' }
+                      },
+                      '& .MuiTypography-root': {
+                        fontFamily: 'Inter',
+                      },
+                    }}
+                  />
+                </div>
               </Popover>
             </LocalizationProvider>
           </div>
@@ -1236,107 +1257,116 @@ const Reports: FunctionComponent = () => {
     <div className="h-full w-full bg-white m-0 p-0">
       <div className="p-3 ml-4 mr-4">
         {/* Header Section */}
-        <div className="flex justify-between items-center mb-4">
-          <b className="text-[18px] font-sans">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+          <b className="text-[18px] font-sans whitespace-nowrap">
             Reports Template
           </b>
           
           {/* Filter Controls */}
-          <div className="flex items-center gap-4">
-            {/* Report Type Dropdown */}
-            <div className="relative">
-              <select
-                value={selectedReport || ''}
-                onChange={(e) => handleReportClick(e.target.value)}
-                className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)]"
-              >
-                <option value="">Select Report Type</option>
-                {availableReports.map((item) => (
-                  <option key={item.id} value={item.name}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                </svg>
-              </div>
-            </div>
-
-            {/* Branch Filter - Only show for Admin */}
-            {userProfile?.role === 'Admin' && (
-              <BranchFilter 
-                restaurantId={userProfile.restaurantId || undefined}
-                onBranchSelect={handleBranchSelect}
-                selectedBranchId={selectedBranchId}
-                hideAllBranches={true}
-                className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)]"
-              />
-            )}
-
-            {/* Date Range Picker - Now using the renderDateFilter function */}
-            {renderDateFilter()}
-
-            {/* Download Button */}
-            {selectedReport && (
-              <>
-                <div
-                  className="flex items-center gap-2 px-4 py-2 rounded-[4px] bg-[#313131] border-[#737373] border-[1px] border-solid 
-                            cursor-pointer text-[13px] text-[#cbcbcb]"
-                  onClick={handleDownloadClick}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
+            <div className="flex flex-wrap items-center gap-4">
+              {/* Report Type Dropdown */}
+              <div className="relative">
+                <select
+                  value={selectedReport || ''}
+                  onChange={(e) => handleReportClick(e.target.value)}
+                  className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)] min-w-[180px]"
                 >
-                  <MdOutlineFileDownload className="w-[18px] h-[18px]" />
-                  <span className="font-sans text-white">Download</span>
+                  <option value="">Select Report Type</option>
+                  {availableReports.map((item) => (
+                    <option key={item.id} value={item.name}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                  </svg>
                 </div>
+              </div>
 
-                {/* Download Format Menu */}
-                <Menu
-                  anchorEl={downloadAnchorEl}
-                  open={Boolean(downloadAnchorEl)}
-                  onClose={handleDownloadClose}
-                  anchorOrigin={{
-                    vertical: 'bottom',
-                    horizontal: 'right',
-                  }}
-                  transformOrigin={{
-                    vertical: 'top',
-                    horizontal: 'right',
-                  }}
-                  sx={{
-                    '& .MuiPaper-root': {
-                      borderRadius: '8px',
-                      border: '1px solid rgba(167,161,158,0.1)',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                      marginTop: '8px',
-                    },
-                  }}
-                >
-                  {selectedReport !== "Orders Report" && (
+              {/* Branch Filter - Only show for Admin */}
+              {userProfile?.role === 'Admin' && (
+                <BranchFilter 
+                  restaurantId={userProfile.restaurantId || undefined}
+                  onBranchSelect={handleBranchSelect}
+                  selectedBranchId={selectedBranchId}
+                  hideAllBranches={true}
+                  className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)] min-w-[150px]"
+                />
+              )}
+
+              {/* Date Range Picker */}
+              {renderDateFilter()}
+
+              {/* Download Button - Only show when report is selected */}
+              {selectedReport && (
+                <>
+                  <div
+                    className={`flex items-center gap-2 px-4 py-2 rounded-[4px] border-[1px] border-solid 
+                              ${(!dateRange[0] || !dateRange[1]) && selectedReport !== "Transaction Report"
+                                ? 'bg-gray-300 border-gray-300 cursor-not-allowed opacity-50'
+                                : 'bg-[#313131] border-[#737373] cursor-pointer hover:bg-[#404040]'} 
+                              text-[13px] text-[#cbcbcb] whitespace-nowrap order-last sm:order-none`}
+                    onClick={(e) => {
+                      if (selectedReport === "Transaction Report" || (dateRange[0] && dateRange[1])) {
+                        handleDownloadClick(e);
+                      }
+                    }}
+                  >
+                    <MdOutlineFileDownload className="w-[18px] h-[18px]" />
+                    <span className="font-sans text-white">Download</span>
+                  </div>
+
+                  {/* Download Format Menu */}
+                  <Menu
+                    anchorEl={downloadAnchorEl}
+                    open={Boolean(downloadAnchorEl)}
+                    onClose={handleDownloadClose}
+                    anchorOrigin={{
+                      vertical: 'bottom',
+                      horizontal: 'right',
+                    }}
+                    transformOrigin={{
+                      vertical: 'top',
+                      horizontal: 'right',
+                    }}
+                    sx={{
+                      '& .MuiPaper-root': {
+                        borderRadius: '8px',
+                        border: '1px solid rgba(167,161,158,0.1)',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                        marginTop: '8px',
+                      },
+                    }}
+                  >
+                    {selectedReport !== "Orders Report" && (
+                      <MenuItem 
+                        onClick={() => handleDownloadFormat('PDF')}
+                        sx={{ 
+                          fontSize: '14px',
+                          fontFamily: 'Inter',
+                          '&:hover': { backgroundColor: '#fff3e0' }
+                        }}
+                      >
+                        Download as PDF
+                      </MenuItem>
+                    )}
                     <MenuItem 
-                      onClick={() => handleDownloadFormat('PDF')}
+                      onClick={() => handleDownloadFormat('CSV')}
                       sx={{ 
                         fontSize: '14px',
                         fontFamily: 'Inter',
                         '&:hover': { backgroundColor: '#fff3e0' }
                       }}
                     >
-                      Download as PDF
+                      Download as CSV
                     </MenuItem>
-                  )}
-                  <MenuItem 
-                    onClick={() => handleDownloadFormat('CSV')}
-                    sx={{ 
-                      fontSize: '14px',
-                      fontFamily: 'Inter',
-                      '&:hover': { backgroundColor: '#fff3e0' }
-                    }}
-                  >
-                    Download as CSV
-                  </MenuItem>
-                </Menu>
-              </>
-            )}
+                  </Menu>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
