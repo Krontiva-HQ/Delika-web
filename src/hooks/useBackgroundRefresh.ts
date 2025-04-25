@@ -1,14 +1,12 @@
 import { useEffect, useRef } from 'react';
 import { useUserProfile } from './useUserProfile';
-import { filterOrdersByDate, getAllMenu, getTeamMembers, getAllOrdersPerBranch, getDashboardData, getAuditLogs } from '../services/api';
+import { getAllMenu, getTeamMembers, getAllOrdersPerBranch, getDashboardData } from '../services/api';
 
 // Define the refresh intervals (in milliseconds)
 const REFRESH_INTERVALS = {
-  ORDERS: 30000,        // 30 seconds
   MENU: 60000,         // 1 minute
   TEAM: 300000,        // 5 minutes
   TRANSACTIONS: 60000,  // 1 minute
-  AUDIT: 300000,       // 5 minutes
   DASHBOARD: 60000     // 1 minute
 };
 
@@ -23,18 +21,6 @@ export const useBackgroundRefresh = () => {
     return userProfile?.role === 'Admin' && selectedBranchId 
       ? selectedBranchId 
       : userProfile?.branchId || '';
-  };
-
-  const refreshOrders = async () => {
-    try {
-      await filterOrdersByDate({
-        restaurantId: userProfile?.restaurantId || '',
-        branchId: getBranchId(),
-        date: new Date().toISOString().split('T')[0] // Current date in YYYY-MM-DD format
-      });
-    } catch (error) {
-      console.error('Background refresh failed for orders:', error);
-    }
   };
 
   const refreshMenu = async () => {
@@ -81,21 +67,19 @@ export const useBackgroundRefresh = () => {
     }
   };
 
-
-
   useEffect(() => {
     // Only start background refresh if we have user profile data
     if (!userProfile?.restaurantId) return;
 
+    console.log('🔄 Setting up background refresh timers (excluding Orders)');
+
     // Setup refresh timers
-    refreshTimers.current.orders = setInterval(refreshOrders, REFRESH_INTERVALS.ORDERS);
     refreshTimers.current.menu = setInterval(refreshMenu, REFRESH_INTERVALS.MENU);
     refreshTimers.current.team = setInterval(refreshTeam, REFRESH_INTERVALS.TEAM);
     refreshTimers.current.transactions = setInterval(refreshTransactions, REFRESH_INTERVALS.TRANSACTIONS);
     refreshTimers.current.dashboard = setInterval(refreshDashboard, REFRESH_INTERVALS.DASHBOARD);
 
     // Initial refresh
-    refreshOrders();
     refreshMenu();
     refreshTeam();
     refreshTransactions();
@@ -103,6 +87,7 @@ export const useBackgroundRefresh = () => {
 
     // Cleanup function
     return () => {
+      console.log('🛑 Cleaning up background refresh timers');
       Object.values(refreshTimers.current).forEach(timer => clearInterval(timer));
     };
   }, [userProfile?.restaurantId]);
@@ -111,8 +96,8 @@ export const useBackgroundRefresh = () => {
   useEffect(() => {
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'selectedBranchId') {
+        console.log('🔄 Branch changed, refreshing data (excluding Orders)');
         // Trigger immediate refresh when branch changes
-        refreshOrders();
         refreshMenu();
         refreshTeam();
         refreshTransactions();

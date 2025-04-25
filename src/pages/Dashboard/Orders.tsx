@@ -16,6 +16,7 @@ import EditOrder from '../Dashboard/EditOrder';
 import { useBranches } from '../../hooks/useBranches';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import BranchFilter from '../../components/BranchFilter';
+import { useNotifications } from '../../context/NotificationContext';
 
 interface Order {
   id: string;
@@ -88,6 +89,106 @@ interface OrdersProps {
   onOrderDetailsView: (viewing: boolean) => void;
 }
 
+interface NewOrderModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onAccept: () => void;
+  onDecline: () => void;
+  newOrders: Order[];
+}
+
+const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose, onAccept, onDecline, newOrders }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 font-sans">
+      <div className="bg-white dark:bg-black rounded-lg p-6 w-full max-w-md mx-4 sm:mx-0 font-sans">
+        <h2 className="text-lg sm:text-xl font-semibold mb-4 text-black dark:text-white">
+          New Order{newOrders.length > 1 ? 's' : ''} Received!
+        </h2>
+        
+        <div className="max-h-[300px] overflow-y-auto mb-4 font-sans">
+          {newOrders.map((order) => (
+            <div key={order.id} className="mb-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg font-sans">
+              <div className="text-sm font-medium text-black dark:text-white font-sans">
+                Order #{order.orderNumber}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-sans">
+                Customer: {order.customerName}
+              </div>
+              <div className="text-xs text-gray-500 dark:text-gray-400 font-sans">
+                Amount: GH₵{Number(order.orderPrice).toFixed(2)}
+              </div>
+              
+              {/* Products Section */}
+              <div className="mt-2 border-t border-gray-200 dark:border-gray-700 pt-2">
+                <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 font-sans">
+                  Products:
+                </div>
+                {order.products.map((product, index) => (
+                  <div 
+                    key={`${order.id}-${index}`} 
+                    className="flex justify-between items-start py-1 text-xs font-sans"
+                  >
+                    <div className="flex-1">
+                      <span className="text-black dark:text-white font-medium font-sans">
+                        {product.name}
+                      </span>
+                      <div className="text-gray-500 dark:text-gray-400 text-[10px] font-sans">
+                        GH₵{Number(product.price).toFixed(2)} × {product.quantity}
+                      </div>
+                    </div>
+                    <div className="text-black dark:text-white font-medium ml-2 font-sans">
+                      GH₵{(Number(product.price) * Number(product.quantity)).toFixed(2)}
+                    </div>
+                  </div>
+                ))}
+                <div className="mt-1 pt-1 border-t border-gray-200 dark:border-gray-700 flex justify-between text-xs font-medium font-sans">
+                  <span className="text-gray-700 dark:text-gray-300 font-sans">Delivery Fee:</span>
+                  <span className="text-black dark:text-white font-sans">GH₵{Number(order.deliveryPrice).toFixed(2)}</span>
+                </div>
+                <div className="mt-1 pt-1 border-t border-gray-200 dark:border-gray-700 flex justify-between text-xs font-medium font-sans">
+                  <span className="text-gray-700 dark:text-gray-300 font-sans">Total:</span>
+                  <span className="text-black dark:text-white font-sans">GH₵{Number(order.totalPrice).toFixed(2)}</span>
+                </div>
+              </div>
+
+              {/* Order Type Badge */}
+              <div className="mt-2 flex items-center gap-2">
+                {order.Walkin && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                    Walk-in
+                  </span>
+                )}
+                {order.payNow && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                    Paid
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+          <button
+            onClick={onAccept}
+            className="w-full sm:w-1/2 px-4 py-2 bg-[#fe5b18] text-white rounded-md text-sm font-medium hover:bg-[#e54d0e] transition-colors"
+          >
+            Accept {newOrders.length > 1 ? 'All' : ''}
+          </button>
+          <button
+            onClick={onDecline}
+            className="w-full sm:w-1/2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            Decline {newOrders.length > 1 ? 'All' : ''}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsView }) => {
   const [activeTab, setActiveTab] = useState('all');
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(dayjs());
@@ -122,6 +223,13 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 10;
 
+  const { addNotification } = useNotifications();
+
+  // Add these new states after the existing states
+  const [newOrders, setNewOrders] = useState<Order[]>([]);
+  const [showNewOrderModal, setShowNewOrderModal] = useState(false);
+  const [lastOrderIds, setLastOrderIds] = useState<Set<string>>(new Set());
+
   const handleDateClick = (event: React.MouseEvent<HTMLDivElement>) => {
     setAnchorEl(event.currentTarget);
   };
@@ -139,21 +247,21 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
   // Update the fetchOrders function to handle Store Clerk and Manager roles
   const fetchOrders = useCallback(async (branchId: string, date: string) => {
+    if (!branchId || !date) return;
+    
     setIsLoading(true);
     setOrders([]); // Clear existing data
     
     try {
       let params = new URLSearchParams();
 
-      // For Store Clerk and Manager, always use their assigned branchId from userProfile
       if (userProfile?.role === 'Store Clerk' || userProfile?.role === 'Manager') {
         params = new URLSearchParams({
           restaurantId: userProfile?.restaurantId || '',
-          branchId: userProfile?.branchId || '', // Always use their assigned branchId
+          branchId: userProfile?.branchId || '',
           date: date
         });
       } else if (userProfile?.role === 'Admin') {
-        // Admin can select different branches
         params = new URLSearchParams({
           restaurantId: userProfile?.restaurantId || '',
           branchId: branchId,
@@ -162,11 +270,13 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       }
 
       const response = await api.get(`/filter/orders/by/date?${params.toString()}`);
-      // Sort orders by orderReceivedTime before setting state
       const sortedOrders = response.data.sort((a: Order, b: Order) => {
         return new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime();
       });
       setOrders(sortedOrders);
+      
+      // Initialize lastOrderIds with current orders
+      setLastOrderIds(new Set(sortedOrders.map((order: Order) => order.id)));
     } catch (error) {
       setOrders([]);
     } finally {
@@ -330,6 +440,108 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       fetchOrders(branchId, selectedDate.format('YYYY-MM-DD'));
     }
   }, [selectedDate, fetchOrders]);
+
+  // Update the checkForNewOrders function
+  const checkForNewOrders = useCallback(async () => {
+    if (!selectedDate || !selectedBranchId) return;
+
+    try {
+      let params = new URLSearchParams();
+      
+      if (userProfile?.role === 'Store Clerk' || userProfile?.role === 'Manager') {
+        params = new URLSearchParams({
+          restaurantId: userProfile?.restaurantId || '',
+          branchId: userProfile?.branchId || '',
+          date: selectedDate.format('YYYY-MM-DD')
+        });
+      } else if (userProfile?.role === 'Admin') {
+        params = new URLSearchParams({
+          restaurantId: userProfile?.restaurantId || '',
+          branchId: selectedBranchId,
+          date: selectedDate.format('YYYY-MM-DD')
+        });
+      }
+
+      const response = await api.get(`/filter/orders/by/date?${params.toString()}`);
+      const latestOrders = response.data.sort((a: Order, b: Order) => 
+        new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime()
+      );
+
+      // Check for new orders
+      const newIncomingOrders = latestOrders.filter(
+        (order: Order) => !lastOrderIds.has(order.id)
+      );
+
+      if (newIncomingOrders.length > 0) {
+        setNewOrders(newIncomingOrders);
+        setShowNewOrderModal(true);
+        
+        const audio = new Audio('/orderRinging.mp3');
+        audio.play().catch(() => {});
+      }
+
+      // Update lastOrderIds with all current order IDs
+      setLastOrderIds(new Set(latestOrders.map((order: Order) => order.id)));
+
+    } catch (error) {
+      // Silent fail for background polling
+    }
+  }, [selectedDate, selectedBranchId, userProfile, lastOrderIds]);
+
+  // Update the polling effect
+  useEffect(() => {
+    let lastPollTime = Date.now();
+    
+    const shouldPoll = () => {
+      const now = Date.now();
+      const timeSinceLastPoll = now - lastPollTime;
+      if (timeSinceLastPoll >= 30000) {
+        lastPollTime = now;
+        return true;
+      }
+      return false;
+    };
+
+    const poll = async () => {
+      if (shouldPoll()) {
+        await checkForNewOrders();
+      }
+    };
+
+    const pollInterval = setInterval(poll, 30000);
+
+    return () => {
+      clearInterval(pollInterval);
+    };
+  }, [checkForNewOrders]);
+
+  // Add these handlers
+  const handleAcceptNewOrders = () => {
+    // Update the orders list
+    setOrders(prev => [...newOrders, ...prev]);
+    
+    // Show notification
+    addNotification({
+      type: 'order_created',
+      message: `Accepted ${newOrders.length} new order${newOrders.length > 1 ? 's' : ''}`
+    });
+    
+    // Reset new orders state
+    setNewOrders([]);
+    setShowNewOrderModal(false);
+  };
+
+  const handleDeclineNewOrders = () => {
+    // Show notification
+    addNotification({
+      type: 'order_created',
+      message: `Declined ${newOrders.length} new order${newOrders.length > 1 ? 's' : ''}`
+    });
+    
+    // Reset new orders state
+    setNewOrders([]);
+    setShowNewOrderModal(false);
+  };
 
   return (
     <div className="h-full w-full bg-white m-0 p-0">
@@ -657,6 +869,14 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
               onOrderEdited={handleOrderEdited}
             />
           )}
+
+          <NewOrderModal
+            isOpen={showNewOrderModal}
+            onClose={() => setShowNewOrderModal(false)}
+            onAccept={handleAcceptNewOrders}
+            onDecline={handleDeclineNewOrders}
+            newOrders={newOrders}
+          />
         </div>
       )}
     </div>
