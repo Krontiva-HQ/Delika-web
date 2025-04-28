@@ -291,11 +291,15 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
           {isFromTransactions ? (
             order.Walkin ? (
               <>
+                <option value="Preparing">Preparing</option>
+                <option value="Prepared">Prepared</option>
                 <option value="Delivered">Delivered</option>
                 <option value="Cancelled">Cancelled</option>
               </>
             ) : (
               <>
+                <option value="Preparing">Preparing</option>
+                <option value="Prepared">Prepared</option>
                 <option value="ReadyForPickup">Ready For Pickup</option>
                 <option value="Assigned">Assigned</option>
                 <option value="Pickup">Pickup</option>
@@ -308,11 +312,15 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
           ) : (
             order.Walkin ? (
               <>
+                <option value="Preparing">Preparing</option>
+                <option value="Prepared">Prepared</option>
                 <option value="Delivered">Delivered</option>
                 <option value="Cancelled">Cancelled</option>
               </>
             ) : (
               <>
+                <option value="Preparing">Preparing</option>
+                <option value="Prepared">Prepared</option>
                 <option value="ReadyForPickup">Ready For Pickup</option>
                 <option value="Assigned">Assigned</option>
                 <option value="Pickup">Pickup</option>
@@ -440,11 +448,15 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
           {isFromTransactions ? (
             order.Walkin ? (
               <>
+                <option value="Preparing">Preparing</option>
+                <option value="Prepared">Prepared</option>
                 <option value="Delivered">Delivered</option>
                 <option value="Cancelled">Cancelled</option>
               </>
             ) : (
               <>
+                <option value="Preparing">Preparing</option>
+                <option value="Prepared">Prepared</option>
                 <option value="ReadyForPickup">Ready For Pickup</option>
                 <option value="Assigned">Assigned</option>
                 <option value="Pickup">Pickup</option>
@@ -457,11 +469,15 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
           ) : (
             order.Walkin ? (
               <>
+                <option value="Preparing">Preparing</option>
+                <option value="Prepared">Prepared</option>
                 <option value="Delivered">Delivered</option>
                 <option value="Cancelled">Cancelled</option>
               </>
             ) : (
               <>
+                <option value="Preparing">Preparing</option>
+                <option value="Prepared">Prepared</option>
                 <option value="ReadyForPickup">Ready For Pickup</option>
                 <option value="Assigned">Assigned</option>
                 <option value="Pickup">Pickup</option>
@@ -535,18 +551,7 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
 
         {order.Walkin ? renderWalkinContent() : renderRegularContent()}
 
-        {/* Show estimated distance only for steps 1 and 2 */}
-        {currentStep !== 3 && distance && (
-          <div className="mt-4 bg-[#f9fafb] rounded-lg p-3">
-            <div className="text-xs !font-sans">
-              <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
-              <div className="text-gray-500 !font-sans">
-                From {pickupLocation?.address} to {dropoffLocation?.address}
-              </div>
-            </div>
-          </div>
-        )}
-
+        
         {/* Navigation Buttons */}
         <button
           onClick={handleSaveChanges}

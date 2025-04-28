@@ -17,6 +17,8 @@ import { useBranches } from '../../hooks/useBranches';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import BranchFilter from '../../components/BranchFilter';
 import { useNotifications } from '../../context/NotificationContext';
+import { MdOutlineRestaurant } from "react-icons/md";
+import { IoInformationCircleOutline } from "react-icons/io5";
 
 interface Order {
   id: string;
@@ -55,6 +57,8 @@ interface Order {
   payLater: boolean;
   payNow: boolean;
   payVisaCard: boolean;
+  kitchenStatus: string;
+  orderAccepted: boolean;
 }
 
 // Add interface for API request params
@@ -79,6 +83,10 @@ const formatOrderStatus = (status: string): string => {
       return 'On The Way';
     case 'DeliveryFailed':
       return 'Delivery Failed';
+    case 'Preparing':
+      return 'Preparing';
+    case 'Prepared':
+      return 'Prepared';
     default:
       return status;
   }
@@ -229,6 +237,9 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
   const [newOrders, setNewOrders] = useState<Order[]>([]);
   const [showNewOrderModal, setShowNewOrderModal] = useState(false);
   const [lastOrderIds, setLastOrderIds] = useState<Set<string>>(new Set());
+
+  // Add new state for processing menu
+  const [processingMenuAnchor, setProcessingMenuAnchor] = useState<{ [key: string]: HTMLElement | null }>({});
 
   const handleDateClick = (event: React.MouseEvent<HTMLDivElement>) => {
     setAnchorEl(event.currentTarget);
@@ -415,6 +426,10 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         return 'bg-red-100 text-red-800';
       case 'delivery failed':
         return 'bg-orange-100 text-orange-800';
+      case 'preparing':
+        return 'bg-amber-100 text-amber-800';
+      case 'prepared':
+        return 'bg-emerald-100 text-emerald-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -541,6 +556,34 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     // Reset new orders state
     setNewOrders([]);
     setShowNewOrderModal(false);
+  };
+
+  // Add handler for processing status update
+  const handleProcessingStatusUpdate = async (orderId: string, newStatus: string) => {
+    try {
+      await api.put(`/orders/${orderId}`, {
+        orderStatus: newStatus
+      });
+      
+      // Refresh orders after status update
+      if (selectedDate && selectedBranchId) {
+        fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
+      }
+      
+      // Show success notification
+      addNotification({
+        type: 'order_status',
+        message: `Order status updated to ${newStatus}`
+      });
+      
+      // Close the menu
+      setProcessingMenuAnchor(prev => ({ ...prev, [orderId]: null }));
+    } catch (error) {
+      addNotification({
+        type: 'order_status',
+        message: 'Failed to update order status'
+      });
+    }
   };
 
   return (
@@ -754,13 +797,14 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
           <div className="w-full overflow-x-auto">
             <div className="min-w-[900px] border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden">
               {/* Table Header */}
-              <div className="grid grid-cols-6 bg-[#f9f9f9] p-3" style={{ borderBottom: '1px solid #eaeaea' }}>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Order Number</div>
+              <div className="grid grid-cols-7 bg-[#f9f9f9] p-3" style={{ borderBottom: '1px solid #eaeaea' }}>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666] w-24">Order Number</div>
                 <div className="text-[12px] leading-[20px] font-sans text-[#666]">Name</div>
                 <div className="text-[12px] leading-[20px] font-sans text-[#666]">Address</div>
                 <div className="text-[12px] leading-[20px] font-sans text-[#666]">Date</div>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Price (GH₵)</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666] w-24">Price (GH₵)</div>
                 <div className="text-[12px] leading-[20px] font-sans text-[#666]">Order Status</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Kitchen Status</div>
               </div>
 
               {/* Table Body */}
@@ -775,10 +819,9 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                     <div 
                       key={order.id} 
                       style={{ borderBottom: '1px solid #eaeaea' }}
-                      className="grid grid-cols-6 p-3 hover:bg-[#f9f9f9] cursor-pointer"
-                      onClick={() => handleOrderClick(order.orderNumber)}
+                      className="grid grid-cols-7 p-3 hover:bg-[#f9f9f9]"
                     >
-                      <div className="text-[12px] leading-[20px] font-sans text-[#444]">{order.orderNumber}</div>
+                      <div className="text-[12px] leading-[20px] font-sans text-[#444] w-24">{order.orderNumber}</div>
                       <div className="flex items-center gap-2">
                         <img 
                           src={order.customerImage || '/default-profile.jpg'} 
@@ -795,19 +838,38 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                         {order.dropOff[0]?.toAddress || 'N/A'}
                       </div>
                       <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.orderDate}</div>
-                      <div className="text-[12px] leading-[20px] font-sans text-[#444]">
+                      <div className="text-[12px] leading-[20px] font-sans text-[#444] w-24">
                         {Number(order.orderPrice).toFixed(2)}
                       </div>
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
                         <span className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans ${getStatusStyle(order.orderStatus)}`}>
                           {formatOrderStatus(order.orderStatus)}
                         </span>
-                        <button 
-                          className="p-1 border-[1px] border-solid border-[#eaeaea] rounded-[4px] bg-white hover:bg-gray-50"
-                          onClick={(e) => handleEditClick(e, order)}
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans 
+                          ${order.kitchenStatus === 'preparing' 
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : order.kitchenStatus === 'prepared'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-gray-100 text-gray-800'}`}
                         >
-                          <CiEdit className="w-[14px] h-[14px] text-[#666]" />
-                        </button>
+                          {order.kitchenStatus ? order.kitchenStatus.charAt(0).toUpperCase() + order.kitchenStatus.slice(1) : 'Not Started'}
+                        </span>
+                        <div className="flex items-center gap-2">
+                          <button 
+                            className="p-1 border-[1px] border-solid border-[#eaeaea] rounded-[4px] bg-white hover:bg-gray-50"
+                            onClick={() => handleOrderClick(order.orderNumber)}
+                          >
+                            <IoInformationCircleOutline className="w-[14px] h-[14px] text-[#666]" />
+                          </button>
+                          <button 
+                            className="p-1 border-[1px] border-solid border-[#eaeaea] rounded-[4px] bg-white hover:bg-gray-50"
+                            onClick={(e) => handleEditClick(e, order)}
+                          >
+                            <CiEdit className="w-[14px] h-[14px] text-[#666]" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
