@@ -224,11 +224,10 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
 
   return (
     <main className="h-full overflow-auto">
-      <div className="p-4">
+      <div className="p-3 ml-4 mr-4">
         <BroadcastBanner restaurantId={userProfile.restaurantId || ''} />
-
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold font-sans">Dashboard</h1>
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-[18px] font-bold font-sans">Dashboard</h1>
           {isAdmin && (
             <BranchFilter 
               restaurantId={userProfile.restaurantId || null}

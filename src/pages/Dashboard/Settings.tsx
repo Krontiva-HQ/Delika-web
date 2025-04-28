@@ -737,8 +737,8 @@ const Settings: FunctionComponent = () => {
 
   return (
     <div className="h-full w-full bg-white dark:bg-black m-0 p-0 font-sans">
-      <div className="p-[20px] ml-[30px] mr-[30px]">
-        <b className="block text-[18px] mb-[8px] font-sans text-black dark:text-white">
+      <div className="p-3 ml-4 mr-4">
+        <b className="block text-[18px] mb-4 font-sans text-black dark:text-white">
           Settings
         </b>
         <section className="mb-[10px] mt-[20px] max-w-[calc(100%-px)] overflow-hidden">

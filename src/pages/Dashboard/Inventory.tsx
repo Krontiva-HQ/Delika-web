@@ -412,13 +412,12 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
 
   return (
     <div className="h-full w-full bg-white dark:bg-[#201a18] m-0 p-0">
-      <div className="p-[20px] ml-[30px] mr-[30px]">
+      <div className="p-3 ml-4 mr-4">
         {/* Title and Add Item Section */}
-        <div className="flex justify-between items-center mb-[25px]">
-          <b className="text-[20px] font-sans">
+        <div className="flex justify-between items-center mb-4">
+          <b className="text-[18px] font-sans">
             Items
           </b>
-          
           <div className="flex items-center gap-2">
             {userProfile?.role === 'Admin' && (
               <BranchFilter 
@@ -429,10 +428,8 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                 className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)]"
               />
             )}
-
             <div
-              className="flex items-center gap-2 px-3 py-1 rounded-[4px] bg-[#313131] border-[#737373] border-[1px] border-solid 
-                    cursor-pointer text-[12px] font-sans"
+              className="flex items-center gap-2 px-3 py-1 rounded-[4px] bg-[#313131] border-[#737373] border-[1px] border-solid cursor-pointer text-[12px] font-sans"
               onClick={onAddItemButtonClick}
             >
               <IoMdAdd className="w-[18px] h-[18px] text-[#cbcbcb]" />

@@ -1257,11 +1257,10 @@ const Reports: FunctionComponent = () => {
     <div className="h-full w-full bg-white m-0 p-0">
       <div className="p-3 ml-4 mr-4">
         {/* Header Section */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+        <div className="flex justify-between items-center mb-4">
           <b className="text-[18px] font-sans whitespace-nowrap">
             Reports Template
           </b>
-          
           {/* Filter Controls */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
             <div className="flex flex-wrap items-center gap-4">
