@@ -58,6 +58,7 @@ interface InvoiceData {
   };
   orderComment?: string;
   Walkin: boolean;
+  kitchenStatus?: string;
 }
 
 const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
@@ -128,7 +129,8 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       scheduledTime,
       branch,
       orderComment,
-      Walkin = false
+      Walkin = false,
+      kitchenStatus
     } = apiResponse;
 
     return {
@@ -174,7 +176,8 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       scheduledTime: scheduledTime || null,
       branch,
       orderComment,
-      Walkin
+      Walkin,
+      kitchenStatus
     };
   } catch (error) {
     throw error;
@@ -533,13 +536,29 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
 
               {/* Payment Summary */}
               <div className="flex justify-between items-start bg-white rounded-lg">
-                <div>
-                  <p className="text-[12px] leading-[20px] font-sans text-[#666] mb-2 ml-4 font-bold">
-                    Transaction Status
-                  </p>
-                  <p className="text-[12px] leading-[20px] font-sans text-[#444] ml-4">
-                    {invoiceData.payment.method}
-                  </p>
+                <div className="flex gap-8">
+                  <div>
+                    <p className="text-[12px] leading-[20px] font-sans text-[#666] mb-2 ml-4 font-bold">
+                      Transaction Status
+                    </p>
+                    <p className="text-[12px] leading-[20px] font-sans text-[#444] ml-4">
+                      {invoiceData.payment.method}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[12px] leading-[20px] font-sans text-[#666] mb-2 font-bold">
+                      Kitchen Status
+                    </p>
+                    <span className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans
+                      ${invoiceData.kitchenStatus === 'preparing' 
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : invoiceData.kitchenStatus === 'prepared'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-800'}`}
+                    >
+                      {invoiceData.kitchenStatus ? invoiceData.kitchenStatus.charAt(0).toUpperCase() + invoiceData.kitchenStatus.slice(1) : 'Order Received'}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex gap-8">
                   {invoiceData.orders.length > 0 && (

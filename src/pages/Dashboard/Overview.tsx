@@ -223,12 +223,12 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
   };
 
   return (
-    <main>
-      <div className="p-3 md:p-4">
+    <main className="h-full overflow-auto">
+      <div className="p-4">
         <BroadcastBanner restaurantId={userProfile.restaurantId || ''} />
 
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-lg md:text-xl font-bold font-sans">Dashboard</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold font-sans">Dashboard</h1>
           {isAdmin && (
             <BranchFilter 
               restaurantId={userProfile.restaurantId || null}
@@ -238,15 +238,16 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
             />
           )}
         </div>
-       {/* Overview Stats */}   
-        <section className={`grid ${showRevenue ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2 md:grid-cols-2'} gap-3 mb-4 font-sans`}>
+
+        {/* Overview Stats - Make it more compact */}
+        <section className={`grid ${showRevenue ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-2'} gap-4 mb-6`}>
           {showRevenue && (
-            <div className="bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_4px_rgba(0,0,0,0.05)]">
-              <div className="w-[50px] h-[50px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
+            <div className="bg-white rounded-xl p-4 flex items-center gap-3 shadow-sm">
+              <div className="w-[45px] h-[45px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
                 <AiOutlineDollar className="w-5 h-5 text-[#fe5b18]" />
               </div>
               <div>
-                <p className="text-gray-600 text-xs font-sans m-0">Total Revenue</p>
+                <p className="text-gray-600 text-sm font-sans m-0">Total Revenue</p>
                 <p className="text-xl font-bold font-sans m-0">
                   {isDashboardLoading ? 'Loading...' : formatCurrency(Number(data?.totalRevenue || 0))}
                 </p>
@@ -254,12 +255,12 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
             </div>
           )}
 
-          <div className="bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_4px_rgba(0,0,0,0.05)]">
-            <div className="w-[50px] h-[50px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
+          <div className="bg-white rounded-xl p-4 flex items-center gap-3 shadow-sm">
+            <div className="w-[45px] h-[45px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
               <LuBox className="w-5 h-5 text-[#fe5b18]" />
             </div>
             <div>
-              <p className="text-gray-600 text-xs font-sans m-0">Total Orders</p>
+              <p className="text-gray-600 text-sm font-sans m-0">Total Orders</p>
               <p className="text-xl font-bold font-sans m-0">
                 {isDashboardLoading ? 'Loading...' : formatNumber(Number(data?.totalOrders || 0))}
               </p>
@@ -267,12 +268,12 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
           </div>
 
           {showRevenue && (
-            <div className="bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_4px_rgba(0,0,0,0.05)]">
-              <div className="w-[50px] h-[50px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
+            <div className="bg-white rounded-xl p-4 flex items-center gap-3 shadow-sm">
+              <div className="w-[45px] h-[45px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
                 <IoFastFoodOutline className="w-5 h-5 text-[#fe5b18]" />
               </div>
               <div>
-                <p className="text-gray-600 text-xs font-sans m-0">Inventory Items</p>
+                <p className="text-gray-600 text-sm font-sans m-0">Inventory Items</p>
                 <p className="text-xl font-bold font-sans m-0">
                   {isDashboardLoading ? 'Loading...' : formatNumber(Number(data?.totalMenu || 0))}
                 </p>
@@ -280,12 +281,12 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
             </div>
           )}
 
-          <div className="bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_4px_rgba(0,0,0,0.05)]">
-            <div className="w-[50px] h-[50px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
+          <div className="bg-white rounded-xl p-4 flex items-center gap-3 shadow-sm">
+            <div className="w-[45px] h-[45px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
               <HiOutlineUsers className="w-5 h-5 text-[#fe5b18]" />
             </div>
             <div>
-              <p className="text-gray-600 text-xs font-sans m-0">Total Staff</p>
+              <p className="text-gray-600 text-sm font-sans m-0">Total Staff</p>
               <p className="text-xl font-bold font-sans m-0">
                 {isDashboardLoading ? 'Loading...' : formatNumber(Number(data?.totalStaff || 0))}
               </p>
@@ -293,8 +294,9 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
           </div>
         </section>
 
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 font-sans">
-          <div className={`bg-white rounded-2xl p-4 ${!showRevenue ? 'md:col-span-2' : ''}`}>
+        {/* Charts Section - Adjust spacing */}
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+          <div className={`bg-white rounded-xl p-4 ${!showRevenue ? 'lg:col-span-2' : ''} min-h-[300px]`}>
             <div className="flex justify-between items-center mb-3">
               <h2 className="text-lg font-semibold text-gray-800 font-sans">
                 Total Orders {isMonthlyOrderDataLoading && '(Loading...)'}
@@ -361,7 +363,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
           </div>
 
           {showRevenue && (
-            <div className="bg-white rounded-2xl p-4">
+            <div className="bg-white rounded-xl p-4 min-h-[300px]">
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-lg font-semibold text-gray-800 font-sans">
                   Total Revenue {isMonthlyOrderDataLoading && '(Loading...)'}
@@ -457,14 +459,15 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
           )}
         </section>
 
-        <section className="bg-white rounded-2xl p-4">
+        {/* Orders Table Section */}
+        <section className="bg-white rounded-xl p-4">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-bold font-sans">Current Orders</h2>
           </div>
 
-          <div className="w-full overflow-x-auto">
-            <div className="min-w-[900px] border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden">
-              <div className="grid grid-cols-6 bg-[#f9f9f9] p-3" style={{ borderBottom: '1px solid #eaeaea' }}>
+          <div className="overflow-x-auto">
+            <div className="min-w-[900px] w-full border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg">
+              <div className="sticky top-0 z-10 grid grid-cols-6 bg-[#f9f9f9] p-3" style={{ borderBottom: '1px solid #eaeaea' }}>
                 <div className="text-[12px] leading-[20px] font-sans text-[#666]">Order Number</div>
                 <div className="text-[12px] leading-[20px] font-sans text-[#666]">Name</div>
                 <div className="text-[12px] leading-[20px] font-sans text-[#666]">Address</div>
@@ -473,41 +476,43 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
                 <div className="text-[12px] leading-[20px] font-sans text-[#666]">Status</div>
               </div>
 
-              {isLoading ? (
-                <div className="p-4 text-center text-gray-500">Loading orders...</div>
-              ) : recentOrders.length === 0 ? (
-                <div className="p-4 text-center text-gray-500 font-sans">No current orders found</div>
-              ) : (
-                recentOrders.map((order) => (
-                  <div 
-                    key={order.id} 
-                    style={{ borderBottom: '1px solid #eaeaea' }}
-                    className="grid grid-cols-6 p-3 hover:bg-[#f9f9f9]"
-                  >
-                    <div className="text-[12px] leading-[20px] font-sans text-[#444]">{order.orderNumber}</div>
-                    <div className="flex items-center gap-2">
-                      <img 
-                        src={order.customerImage || '/default-profile.jpg'} 
-                        alt={order.customerName} 
-                        className="w-6 h-6 rounded-full object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = '/default-profile.jpg';
-                        }}
-                      />
-                      <span className="text-[12px] leading-[20px] font-sans text-[#444]">{order.customerName}</span>
+              <div className="overflow-y-auto max-h-[400px]">
+                {isLoading ? (
+                  <div className="p-4 text-center text-gray-500">Loading orders...</div>
+                ) : recentOrders.length === 0 ? (
+                  <div className="p-4 text-center text-gray-500 font-sans">No current orders found</div>
+                ) : (
+                  recentOrders.map((order) => (
+                    <div 
+                      key={order.id} 
+                      style={{ borderBottom: '1px solid #eaeaea' }}
+                      className="grid grid-cols-6 p-3 hover:bg-[#f9f9f9]"
+                    >
+                      <div className="text-[12px] leading-[20px] font-sans text-[#444]">{order.orderNumber}</div>
+                      <div className="flex items-center gap-2">
+                        <img 
+                          src={order.customerImage || '/default-profile.jpg'} 
+                          alt={order.customerName} 
+                          className="w-6 h-6 rounded-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/default-profile.jpg';
+                          }}
+                        />
+                        <span className="text-[12px] leading-[20px] font-sans text-[#444]">{order.customerName}</span>
+                      </div>
+                      <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.dropOff[0]?.toAddress || 'N/A'}</div>
+                      <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.orderDate}</div>
+                      <div className="text-[12px] leading-[20px] font-sans text-[#444]">{Number(order.totalPrice).toFixed(2)}</div>
+                      <div className="flex items-center justify-between">
+                        <span className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans ${getStatusStyle(order.orderStatus)}`}>
+                          {order.orderStatus}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.dropOff[0]?.toAddress || 'N/A'}</div>
-                    <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.orderDate}</div>
-                    <div className="text-[12px] leading-[20px] font-sans text-[#444]">{Number(order.totalPrice).toFixed(2)}</div>
-                    <div className="flex items-center justify-between">
-                      <span className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans ${getStatusStyle(order.orderStatus)}`}>
-                        {order.orderStatus}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
+                  ))
+                )}
+              </div>
             </div>
           </div>
 

@@ -586,6 +586,42 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     }
   };
 
+  // Add this handler function in the Orders component
+  const handleKitchenStatusUpdate = async (orderId: string, currentStatus: string) => {
+    let newStatus = currentStatus;
+    
+    // Determine the next status
+    if (!currentStatus || currentStatus === 'not started') {
+      newStatus = 'preparing';
+    } else if (currentStatus === 'preparing') {
+      newStatus = 'prepared';
+    } else {
+      // If already prepared, do nothing
+      return;
+    }
+
+    try {
+      await api.put(`/orders/${orderId}`, {
+        kitchenStatus: newStatus
+      });
+      
+      // Refresh orders after status update
+      if (selectedDate && selectedBranchId) {
+        fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
+      }
+      
+      addNotification({
+        type: 'order_status',
+        message: `Kitchen status updated to ${newStatus}`
+      });
+    } catch (error) {
+      addNotification({
+        type: 'order_status',
+        message: 'Failed to update kitchen status'
+      });
+    }
+  };
+
   return (
     <div className="h-full w-full bg-white m-0 p-0">
       {selectedOrderId ? (
@@ -797,12 +833,12 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
           <div className="w-full overflow-x-auto">
             <div className="min-w-[900px] border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden">
               {/* Table Header */}
-              <div className="grid grid-cols-7 bg-[#f9f9f9] p-3" style={{ borderBottom: '1px solid #eaeaea' }}>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666] w-24">Order Number</div>
+              <div className="grid grid-cols-7 bg-[#f9f9f9] p-3 gap-2" style={{ borderBottom: '1px solid #eaeaea', gridTemplateColumns: '80px 1fr 1.2fr 0.8fr 80px 1fr 1fr' }}>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Order Number</div>
                 <div className="text-[12px] leading-[20px] font-sans text-[#666]">Name</div>
                 <div className="text-[12px] leading-[20px] font-sans text-[#666]">Address</div>
                 <div className="text-[12px] leading-[20px] font-sans text-[#666]">Date</div>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666] w-24">Price (GH₵)</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Price (GH₵)</div>
                 <div className="text-[12px] leading-[20px] font-sans text-[#666]">Order Status</div>
                 <div className="text-[12px] leading-[20px] font-sans text-[#666]">Kitchen Status</div>
               </div>
@@ -818,15 +854,15 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                   {paginatedOrders.orders.map((order) => (
                     <div 
                       key={order.id} 
-                      style={{ borderBottom: '1px solid #eaeaea' }}
-                      className="grid grid-cols-7 p-3 hover:bg-[#f9f9f9]"
+                      style={{ borderBottom: '1px solid #eaeaea', gridTemplateColumns: '80px 1fr 1.2fr 0.8fr 80px 1fr 1fr' }}
+                      className="grid grid-cols-7 p-3 gap-2 hover:bg-[#f9f9f9]"
                     >
-                      <div className="text-[12px] leading-[20px] font-sans text-[#444] w-24">{order.orderNumber}</div>
-                      <div className="flex items-center gap-2">
+                      <div className="text-[12px] leading-[20px] font-sans text-[#444] truncate">{order.orderNumber}</div>
+                      <div className="flex items-center gap-2 min-w-0">
                         <img 
                           src={order.customerImage || '/default-profile.jpg'} 
                           alt={order.customerName} 
-                          className="w-6 h-6 rounded-full object-cover"
+                          className="w-6 h-6 rounded-full object-cover flex-shrink-0"
                           onError={(e) => {
                             const target = e.target as HTMLImageElement;
                             target.src = '/default-profile.jpg';
@@ -847,14 +883,17 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans 
-                          ${order.kitchenStatus === 'preparing' 
-                            ? 'bg-yellow-100 text-yellow-800'
-                            : order.kitchenStatus === 'prepared'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-gray-100 text-gray-800'}`}
+                        <span 
+                          className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans cursor-pointer
+                            ${order.kitchenStatus === 'preparing' 
+                              ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                              : order.kitchenStatus === 'prepared'
+                                ? 'bg-green-100 text-green-800'
+                                : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`}
+                          onClick={() => handleKitchenStatusUpdate(order.id, order.kitchenStatus || 'orderReceived')}
+                          style={{ cursor: order.kitchenStatus === 'prepared' ? 'default' : 'pointer' }}
                         >
-                          {order.kitchenStatus ? order.kitchenStatus.charAt(0).toUpperCase() + order.kitchenStatus.slice(1) : 'Not Started'}
+                          {order.kitchenStatus ? order.kitchenStatus.charAt(0).toUpperCase() + order.kitchenStatus.slice(1) : 'Order Received'}
                         </span>
                         <div className="flex items-center gap-2">
                           <button 
