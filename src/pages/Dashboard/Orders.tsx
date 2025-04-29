@@ -531,31 +531,57 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
   }, [checkForNewOrders]);
 
   // Add these handlers
-  const handleAcceptNewOrders = () => {
-    // Update the orders list
-    setOrders(prev => [...newOrders, ...prev]);
-    
-    // Show notification
-    addNotification({
-      type: 'order_created',
-      message: `Accepted ${newOrders.length} new order${newOrders.length > 1 ? 's' : ''}`
-    });
-    
-    // Reset new orders state
-    setNewOrders([]);
-    setShowNewOrderModal(false);
+  const handleAcceptNewOrders = (orderId: string) => {
+    // Find the accepted order
+    const acceptedOrder = newOrders.find(order => order.id === orderId);
+    if (acceptedOrder) {
+      // Update the orders list with just the accepted order
+      setOrders(prev => [acceptedOrder, ...prev]);
+      
+      // Show notification
+      addNotification({
+        type: 'order_created',
+        message: `Accepted order #${acceptedOrder.orderNumber}`
+      });
+      
+      // Remove the accepted order from newOrders
+      setNewOrders(prev => prev.filter(order => order.id !== orderId));
+      
+      // If no more new orders, close the modal
+      if (newOrders.length === 1) {
+        setShowNewOrderModal(false);
+      }
+
+      // Refresh the orders table
+      if (selectedDate && selectedBranchId) {
+        fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
+      }
+    }
   };
 
-  const handleDeclineNewOrders = () => {
-    // Show notification
-    addNotification({
-      type: 'order_created',
-      message: `Declined ${newOrders.length} new order${newOrders.length > 1 ? 's' : ''}`
-    });
-    
-    // Reset new orders state
-    setNewOrders([]);
-    setShowNewOrderModal(false);
+  const handleDeclineNewOrders = (orderId: string) => {
+    // Find the declined order
+    const declinedOrder = newOrders.find(order => order.id === orderId);
+    if (declinedOrder) {
+      // Show notification
+      addNotification({
+        type: 'order_created',
+        message: `Declined order #${declinedOrder.orderNumber}`
+      });
+      
+      // Remove the declined order from newOrders
+      setNewOrders(prev => prev.filter(order => order.id !== orderId));
+      
+      // If no more new orders, close the modal
+      if (newOrders.length === 1) {
+        setShowNewOrderModal(false);
+      }
+
+      // Refresh the orders table
+      if (selectedDate && selectedBranchId) {
+        fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
+      }
+    }
   };
 
   // Add handler for processing status update
@@ -974,8 +1000,8 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
           <NewOrderModal
             isOpen={showNewOrderModal}
             onClose={() => setShowNewOrderModal(false)}
-            onAccept={handleAcceptNewOrders}
-            onDecline={handleDeclineNewOrders}
+            onAccept={() => handleAcceptNewOrders(newOrders[0].id)}
+            onDecline={() => handleDeclineNewOrders(newOrders[0].id)}
             newOrders={newOrders}
           />
         </div>
