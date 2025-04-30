@@ -19,6 +19,7 @@ import BranchFilter from '../../components/BranchFilter';
 import { useNotifications } from '../../context/NotificationContext';
 import { MdOutlineRestaurant } from "react-icons/md";
 import { IoInformationCircleOutline } from "react-icons/io5";
+import { IoIosCloseCircleOutline } from "react-icons/io";
 
 interface Order {
   id: string;
@@ -100,8 +101,8 @@ interface OrdersProps {
 interface NewOrderModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAccept: () => void;
-  onDecline: () => void;
+  onAccept: (orderId: string) => void;
+  onDecline: (orderId: string) => void;
   newOrders: Order[];
 }
 
@@ -110,12 +111,19 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose, onAccept
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 font-sans">
-      <div className="bg-white dark:bg-black rounded-lg p-6 w-full max-w-md mx-4 sm:mx-0 font-sans">
+      <div className="bg-white dark:bg-black rounded-lg p-6 w-full max-w-md mx-4 sm:mx-0 font-sans relative">
+        <button
+          onClick={onClose}
+          className="absolute top-2 sm:top-4 right-2 sm:right-4 text-gray-500 hover:text-gray-700 bg-transparent z-50"
+        >
+          <IoIosCloseCircleOutline className="w-6 h-6 sm:w-8 sm:h-8" />
+        </button>
+        
         <h2 className="text-lg sm:text-xl font-semibold mb-4 text-black dark:text-white">
           New Order{newOrders.length > 1 ? 's' : ''} Received!
         </h2>
         
-        <div className="max-h-[300px] overflow-y-auto mb-4 font-sans">
+        <div className="max-h-[70vh] overflow-y-auto mb-4 font-sans">
           {newOrders.map((order) => (
             <div key={order.id} className="mb-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg font-sans">
               <div className="text-sm font-medium text-black dark:text-white font-sans">
@@ -174,23 +182,24 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose, onAccept
                   </span>
                 )}
               </div>
+
+              {/* Individual Accept/Decline buttons for each order */}
+              <div className="flex gap-2 mt-3">
+                <button
+                  onClick={() => onAccept(order.id)}
+                  className="flex-1 px-3 py-1.5 bg-[#fe5b18] text-white rounded-md text-xs font-medium hover:bg-[#e54d0e] transition-colors"
+                >
+                  Accept
+                </button>
+                <button
+                  onClick={() => onDecline(order.id)}
+                  className="flex-1 px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md text-xs font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                >
+                  Decline
+                </button>
+              </div>
             </div>
           ))}
-        </div>
-
-        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-          <button
-            onClick={onAccept}
-            className="w-full sm:w-1/2 px-4 py-2 bg-[#fe5b18] text-white rounded-md text-sm font-medium hover:bg-[#e54d0e] transition-colors"
-          >
-            Accept {newOrders.length > 1 ? 'All' : ''}
-          </button>
-          <button
-            onClick={onDecline}
-            className="w-full sm:w-1/2 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-          >
-            Decline {newOrders.length > 1 ? 'All' : ''}
-          </button>
         </div>
       </div>
     </div>
@@ -531,7 +540,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
   }, [checkForNewOrders]);
 
   // Add these handlers
-  const handleAcceptNewOrders = (orderId: string) => {
+  const handleAcceptNewOrders = useCallback((orderId: string) => {
     // Find the accepted order
     const acceptedOrder = newOrders.find(order => order.id === orderId);
     if (acceptedOrder) {
@@ -557,9 +566,9 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
       }
     }
-  };
+  }, [newOrders, addNotification, setOrders, setNewOrders, selectedDate, selectedBranchId, fetchOrders, setShowNewOrderModal]);
 
-  const handleDeclineNewOrders = (orderId: string) => {
+  const handleDeclineNewOrders = useCallback((orderId: string) => {
     // Find the declined order
     const declinedOrder = newOrders.find(order => order.id === orderId);
     if (declinedOrder) {
@@ -582,7 +591,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
       }
     }
-  };
+  }, [newOrders, addNotification, setNewOrders, selectedDate, selectedBranchId, fetchOrders, setShowNewOrderModal]);
 
   // Add handler for processing status update
   const handleProcessingStatusUpdate = async (orderId: string, newStatus: string) => {
@@ -1000,8 +1009,8 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
           <NewOrderModal
             isOpen={showNewOrderModal}
             onClose={() => setShowNewOrderModal(false)}
-            onAccept={() => handleAcceptNewOrders(newOrders[0].id)}
-            onDecline={() => handleDeclineNewOrders(newOrders[0].id)}
+            onAccept={handleAcceptNewOrders}
+            onDecline={handleDeclineNewOrders}
             newOrders={newOrders}
           />
         </div>

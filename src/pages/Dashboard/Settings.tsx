@@ -44,6 +44,21 @@ const Settings: FunctionComponent = () => {
   const [priceCalculation, setPriceCalculation] = useState<'auto' | 'manual'>('auto');
   const options = useMemo(() => countryList().getData(), []);
   const [userData, setUserData] = useState<UserResponse | null>(null);
+  
+  // Update service settings state to match API parameters
+  const [serviceSettings, setServiceSettings] = useState({
+    Inventory: false,
+    Transactions: true,
+    Reports: true,
+    Overview: true,
+    DeliveryReport: false,
+    FullService: false,
+    WalkIn: false,
+    OnDemand: false,
+    Batch: false,
+    Schedule: false
+  });
+
   const { updateUser, isLoading, error } = useUpdateUser();
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -227,8 +242,91 @@ const Settings: FunctionComponent = () => {
 
       // Set price calculation based on AutoCalculatePrice
       setPriceCalculation(restaurantSettings.AutoCalculatePrice ? 'auto' : 'manual');
+      
+      // Load service settings from restaurant settings
+      const newSettings = { ...serviceSettings };
+      
+      // Map each property if it exists in the restaurant settings
+      // Use type assertion to allow dynamic property access
+      const settingsMap = [
+        'Inventory', 'Transactions', 'Reports', 'Overview', 'DeliveryReport',
+        'FullService', 'WalkIn', 'OnDemand', 'Batch', 'Schedule'
+      ];
+      
+      settingsMap.forEach(setting => {
+        const settingValue = (restaurantSettings as any)[setting];
+        if (typeof settingValue === 'boolean') {
+          newSettings[setting as keyof typeof newSettings] = settingValue;
+        }
+      });
+      
+      setServiceSettings(newSettings);
     }
   }, [userData]);
+
+  // Function to handle service type selection with selection rules
+  const handleServiceTypeChange = (type: keyof typeof serviceSettings, checked: boolean) => {
+    const newSettings = { ...serviceSettings };
+    
+    if (type === 'OnDemand' && checked) {
+      // If On Demand is selected, disable Full Service and Walk-In
+      newSettings.OnDemand = true;
+      newSettings.FullService = false;
+      newSettings.WalkIn = false;
+      // Can select Batch and Scheduled
+    } 
+    else if (type === 'FullService' && checked) {
+      // If Full Service is selected, disable On Demand, Batch, and Scheduled
+      newSettings.FullService = true;
+      newSettings.OnDemand = false;
+      newSettings.Batch = false;
+      newSettings.Schedule = false;
+      // Can select Walk-In
+    }
+    else if (type === 'WalkIn' && checked) {
+      // If Walk-In is selected, disable On Demand, Batch, and Scheduled
+      newSettings.WalkIn = true;
+      newSettings.OnDemand = false;
+      newSettings.Batch = false;
+      newSettings.Schedule = false;
+      // Can select Full Service
+    }
+    else {
+      // For Batch and Scheduled, and toggling OFF any option
+      newSettings[type] = checked;
+    }
+    
+    // Update dependent settings based on service types
+    updateDependentSettings(newSettings);
+  };
+  
+  // Function to update dependent settings
+  const updateDependentSettings = (settings: typeof serviceSettings) => {
+    // Reset dependent settings
+    settings.Inventory = false;
+    settings.DeliveryReport = false;
+    
+    // Apply rules based on selected service types
+    if (settings.OnDemand) {
+      settings.DeliveryReport = true;
+    }
+    
+    if (settings.FullService) {
+      settings.Inventory = true;
+      settings.DeliveryReport = true;
+    }
+    
+    if (settings.WalkIn) {
+      settings.Inventory = true;
+    }
+    
+    // These are always true for all service types
+    settings.Transactions = true;
+    settings.Reports = true;
+    settings.Overview = true;
+    
+    setServiceSettings(settings);
+  };
 
   // Update the renderTeamMembersTable function
   const renderTeamMembersTable = () => (
@@ -649,7 +747,7 @@ const Settings: FunctionComponent = () => {
   const [isSaved, setIsSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Add this function to handle saving restaurant settings
+  // Update the handleSaveRestaurantSettings function
   const handleSaveRestaurantSettings = async () => {
     if (!userData?.restaurantId) {
       setSaveError('Restaurant ID not found');
@@ -663,6 +761,16 @@ const Settings: FunctionComponent = () => {
     try {
       const preferences = {
         restaurantId: userData.restaurantId,
+        Inventory: serviceSettings.Inventory,
+        Transactions: serviceSettings.Transactions,
+        Reports: serviceSettings.Reports,
+        Overview: serviceSettings.Overview,
+        DeliveryReport: serviceSettings.DeliveryReport,
+        FullService: serviceSettings.FullService,
+        WalkIn: serviceSettings.WalkIn,
+        OnDemand: serviceSettings.OnDemand,
+        Batch: serviceSettings.Batch,
+        Schedule: serviceSettings.Schedule,
         AutoAssign: riderAssignment === 'auto',
         AutoCalculatePrice: priceCalculation === 'auto',
         language: language
@@ -673,13 +781,20 @@ const Settings: FunctionComponent = () => {
       setIsSaved(true);
       addNotification({
         type: 'profile_update',
-        message: `Restaurant settings updated: Language: ${language}, ${riderAssignment === 'auto' ? 'Auto' : 'Manual'} rider assignment, ${priceCalculation === 'auto' ? 'Auto' : 'Manual'} price calculation`
+        message: `Restaurant settings updated successfully`
       });
 
-      // Reset saved state after 2 seconds
+      // Show saving message
       setTimeout(() => {
         setIsSaved(false);
-      }, 2000);
+        
+        
+        
+        // Delay and then reload the application
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      }, 1000);
     } catch (error: any) {
       setSaveError(
         error.response?.data?.message || 
@@ -1144,6 +1259,153 @@ const Settings: FunctionComponent = () => {
                                 />
                                 <span className="text-[12px] sm:text-[14px] text-black dark:text-white">Set Price Manually</span>
                               </label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Service Type Configuration Section */}
+                      <div className="w-full mt-8">
+                        <div className="border border-gray-200 dark:border-[#333] rounded-lg p-4 sm:p-6">
+                          <h3 className="text-[14px] sm:text-[16px] font-semibold mb-4 text-black dark:text-white font-sans">
+                            Service Type Configuration
+                          </h3>
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-6 gap-x-8">
+                            {/* Service Type Options */}
+                            <div className="flex flex-col gap-4">
+                              <b className="text-[12px] sm:text-[14px] font-sans text-black dark:text-white">
+                                Select Service Types:
+                              </b>
+                              
+                              <label className="flex items-start gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={serviceSettings.OnDemand}
+                                  onChange={(e) => handleServiceTypeChange('OnDemand', e.target.checked)}
+                                  className="mt-1 w-4 h-4 text-[#fe5b18] focus:ring-[#fe5b18]"
+                                />
+                                <div>
+                                  <span className="block text-[12px] sm:text-[14px] font-medium text-black dark:text-white">On Demand</span>
+                                  <span className="block text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400">Delivery only. No inventory is involved.</span>
+                                </div>
+                              </label>
+                              
+                              <label className="flex items-start gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={serviceSettings.FullService}
+                                  onChange={(e) => handleServiceTypeChange('FullService', e.target.checked)}
+                                  className="mt-1 w-4 h-4 text-[#fe5b18] focus:ring-[#fe5b18]"
+                                />
+                                <div>
+                                  <span className="block text-[12px] sm:text-[14px] font-medium text-black dark:text-white">Full Service</span>
+                                  <span className="block text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400">Both inventory management and delivery.</span>
+                                </div>
+                              </label>
+                              
+                              <label className="flex items-start gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={serviceSettings.WalkIn}
+                                  onChange={(e) => handleServiceTypeChange('WalkIn', e.target.checked)}
+                                  className="mt-1 w-4 h-4 text-[#fe5b18] focus:ring-[#fe5b18]"
+                                />
+                                <div>
+                                  <span className="block text-[12px] sm:text-[14px] font-medium text-black dark:text-white">Walk-In</span>
+                                  <span className="block text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400">Customer physically walks into restaurant to make a purchase.</span>
+                                </div>
+                              </label>
+                            </div>
+                            
+                            <div className="flex flex-col gap-4">
+                              <b className="text-[12px] sm:text-[14px] font-sans text-black dark:text-white">
+                                Additional Options:
+                              </b>
+                              
+                              <label className={`flex items-start gap-2 cursor-pointer ${(!serviceSettings.OnDemand) ? 'opacity-50 pointer-events-none' : ''}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={serviceSettings.Batch}
+                                  onChange={(e) => handleServiceTypeChange('Batch', e.target.checked)}
+                                  disabled={!serviceSettings.OnDemand}
+                                  className="mt-1 w-4 h-4 text-[#fe5b18] focus:ring-[#fe5b18]"
+                                />
+                                <div>
+                                  <span className="block text-[12px] sm:text-[14px] font-medium text-black dark:text-white">Batch Delivery</span>
+                                  <span className="block text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400">Deliver multiple orders at once. Delivery only.</span>
+                                </div>
+                              </label>
+                              
+                              <label className={`flex items-start gap-2 cursor-pointer ${(!serviceSettings.OnDemand) ? 'opacity-50 pointer-events-none' : ''}`}>
+                                <input
+                                  type="checkbox"
+                                  checked={serviceSettings.Schedule}
+                                  onChange={(e) => handleServiceTypeChange('Schedule', e.target.checked)}
+                                  disabled={!serviceSettings.OnDemand}
+                                  className="mt-1 w-4 h-4 text-[#fe5b18] focus:ring-[#fe5b18]"
+                                />
+                                <div>
+                                  <span className="block text-[12px] sm:text-[14px] font-medium text-black dark:text-white">Scheduled Delivery</span>
+                                  <span className="block text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400">Schedule deliveries ahead of time. Delivery only.</span>
+                                </div>
+                              </label>
+                            </div>
+                            
+                            {/* Active Features Based on Selection */}
+                            <div className="flex flex-col gap-4">
+                              <b className="text-[12px] sm:text-[14px] font-sans text-black dark:text-white">
+                                Active Features:
+                              </b>
+                              
+                              <div className="grid grid-cols-1 gap-2">
+                                <div className={`flex items-center gap-2 ${serviceSettings.Inventory ? 'text-black dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
+                                  <div className={`w-3 h-3 rounded-full ${serviceSettings.Inventory ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
+                                  <span className="text-[12px]">Inventory Management</span>
+                                </div>
+                                
+                                <div className={`flex items-center gap-2 ${serviceSettings.Transactions ? 'text-black dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
+                                  <div className={`w-3 h-3 rounded-full ${serviceSettings.Transactions ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
+                                  <span className="text-[12px]">Transactions</span>
+                                </div>
+                                
+                                <div className={`flex items-center gap-2 ${serviceSettings.Reports ? 'text-black dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
+                                  <div className={`w-3 h-3 rounded-full ${serviceSettings.Reports ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
+                                  <span className="text-[12px]">Reports</span>
+                                </div>
+                                
+                                <div className={`flex items-center gap-2 ${serviceSettings.Overview ? 'text-black dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
+                                  <div className={`w-3 h-3 rounded-full ${serviceSettings.Overview ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
+                                  <span className="text-[12px]">Overview</span>
+                                </div>
+                                
+                                <div className={`flex items-center gap-2 ${serviceSettings.DeliveryReport ? 'text-black dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
+                                  <div className={`w-3 h-3 rounded-full ${serviceSettings.DeliveryReport ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
+                                  <span className="text-[12px]">Delivery Reports</span>
+                                </div>
+                                
+                                <div className={`flex items-center gap-2 ${serviceSettings.Batch ? 'text-black dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
+                                  <div className={`w-3 h-3 rounded-full ${serviceSettings.Batch ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
+                                  <span className="text-[12px]">Batch Delivery</span>
+                                </div>
+                                
+                                <div className={`flex items-center gap-2 ${serviceSettings.Schedule ? 'text-black dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
+                                  <div className={`w-3 h-3 rounded-full ${serviceSettings.Schedule ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
+                                  <span className="text-[12px]">Scheduled Delivery</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Selection Rules Information */}
+                          <div className="mt-6 border-t border-gray-200 dark:border-[#333] pt-4">
+                            <div className="text-[11px] sm:text-[12px] text-gray-500 dark:text-gray-400">
+                              <p className="mb-2 font-medium">Selection Rules:</p>
+                              <ul className="list-disc ml-5 space-y-1">
+                                <li>When <b>On Demand</b> is selected: You cannot select Full Service or Walk-In.</li>
+                                <li>When <b>Full Service</b> is selected: You cannot select On Demand, Batch Delivery, or Scheduled Delivery.</li>
+                                <li>When <b>Walk-In</b> is selected: You cannot select On Demand, Batch Delivery, or Scheduled Delivery.</li>
+                              </ul>
                             </div>
                           </div>
                         </div>
