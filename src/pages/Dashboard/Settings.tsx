@@ -24,7 +24,9 @@ import { RiDeleteBin5Line } from "react-icons/ri";
 import RidersTable from '../../components/RidersTable';
 import { Rider } from '../../components/RidersTable';
 
-
+// Import i18n related imports
+import { useTranslation } from 'react-i18next';
+import i18n from '../../i18n/i18n';
 
 interface LocalUserResponse {
   id: string;
@@ -33,6 +35,7 @@ interface LocalUserResponse {
 }
 
 const Settings: FunctionComponent = () => {
+  const { t } = useTranslation();
   const [textfield4AnchorEl, setTextfield4AnchorEl] = useState<null | HTMLElement>(null);
   const [textfield9AnchorEl, setTextfield9AnchorEl] = useState<null | HTMLElement>(null);
   const [selectedCountry, setSelectedCountry] = useState('');
@@ -235,6 +238,8 @@ const Settings: FunctionComponent = () => {
       // Set language
       if (restaurantSettings.language) {
         setLanguage(restaurantSettings.language);
+        // Also set the i18n language
+        i18n.changeLanguage(restaurantSettings.language);
       }
 
       // Set rider assignment based on AutoAssign
@@ -850,11 +855,19 @@ const Settings: FunctionComponent = () => {
   // Add state for refreshing riders
   const [refreshRiders, setRefreshRiders] = useState(false);
 
+  // Update the language change handler to change the application language
+  const handleLanguageChange = (newLanguage: string) => {
+    setLanguage(newLanguage);
+    
+    // Change the application language
+    i18n.changeLanguage(newLanguage);
+  };
+
   return (
     <div className="h-full w-full bg-white dark:bg-black m-0 p-0 font-sans">
       <div className="p-3 ml-4 mr-4">
         <b className="block text-[18px] mb-4 font-sans text-black dark:text-white">
-          Settings
+          {t('settings.title')}
         </b>
         <section className="mb-[10px] mt-[20px] max-w-[calc(100%-px)] overflow-hidden">
           <form className="self-stretch rounded-[4px] bg-white dark:bg-black border-gray-200 dark:border-[#333] border-[1px] border-solid flex flex-col items-start justify-start py-[10px] px-[10px] gap-[20px]">
@@ -866,7 +879,7 @@ const Settings: FunctionComponent = () => {
                 }`}
                 onClick={() => setActiveTab('edit')}
                 >
-                  Edit Profile
+                  {t('settings.tabs.editProfile')}
                 </div>
                 {!isStoreClerk && (
                   <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
@@ -874,7 +887,7 @@ const Settings: FunctionComponent = () => {
                   }`}
                   onClick={() => setActiveTab('team')}
                   >
-                    Team Members
+                    {t('settings.tabs.teamMembers')}
                   </div>
                 )}
                 <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
@@ -882,21 +895,21 @@ const Settings: FunctionComponent = () => {
                 }`}
                 onClick={() => setActiveTab('password')}
                 >
-                  Change Password
+                  {t('settings.tabs.changePassword')}
                 </div>
                 <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
                   activeTab === 'restaurant' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
                 }`}
                 onClick={() => setActiveTab('restaurant')}
                 >
-                  About Restaurant
+                  {t('settings.tabs.aboutRestaurant')}
                 </div>
                 <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
                   activeTab === 'restaurant-settings' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
                 }`}
                 onClick={() => setActiveTab('restaurant-settings')}
                 >
-                  Restaurant Settings
+                  {t('settings.tabs.restaurantSettings')}
                 </div>
               </div>
             </section>
@@ -1173,7 +1186,7 @@ const Settings: FunctionComponent = () => {
               ) : activeTab === 'restaurant-settings' ? (
                 <div className="self-stretch flex flex-col items-start justify-start gap-[20px] p-4 sm:p-6">
                   {!userData ? (
-                    <div className="w-full text-center text-gray-500">Loading settings...</div>
+                    <div className="w-full text-center text-gray-500">{t('common.loading')}</div>
                   ) : (
                     <>
                       {/* Settings Grid Container */}
@@ -1182,17 +1195,16 @@ const Settings: FunctionComponent = () => {
                         <div className="bg-transparent flex flex-col items-start justify-start gap-[16px]">
                           <div className="w-full bg-transparent flex flex-col items-start justify-start gap-[8px]">
                             <b className="text-[12px] sm:text-[14px] leading-[22px] font-sans text-black dark:text-white">
-                              Select Language
+                              {t('settings.restaurant.language')}
                             </b>
                             <select
                               className="w-full border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] sm:text-[14px] bg-white dark:bg-black text-black dark:text-white rounded-[8px] h-[40px] sm:h-[45px] px-[12px] sm:px-[16px]"
                               value={language}
-                              onChange={(e) => setLanguage(e.target.value)}
+                              onChange={(e) => handleLanguageChange(e.target.value)}
                             >
                               <option value="en">English</option>
-                              <option value="ar">Arabic</option>
-                              <option value="fr">French</option>
-                              <option value="es">Spanish</option>
+                              <option value="fr">Français</option>
+                              <option value="es">Español</option>
                             </select>
                           </div>
                         </div>
@@ -1201,7 +1213,7 @@ const Settings: FunctionComponent = () => {
                         <div className="bg-transparent flex flex-col items-start justify-start gap-[16px]">
                           <div className="w-full bg-transparent flex flex-col items-start justify-start gap-[8px]">
                             <b className="text-[12px] sm:text-[14px] leading-[22px] font-sans text-black dark:text-white">
-                              Rider Assignment Method
+                              {t('settings.restaurant.riderAssignment')}
                             </b>
                             <div className="flex flex-col gap-3 mt-2">
                               <label className="flex items-center gap-2 cursor-pointer">
@@ -1213,7 +1225,9 @@ const Settings: FunctionComponent = () => {
                                   onChange={(e) => setRiderAssignment(e.target.value as 'auto' | 'manual')}
                                   className="w-4 h-4 text-[#fe5b18] focus:ring-[#fe5b18]"
                                 />
-                                <span className="text-[12px] sm:text-[14px] text-black dark:text-white">Auto Assign Riders</span>
+                                <span className="text-[12px] sm:text-[14px] text-black dark:text-white">
+                                  {t('settings.restaurant.autoAssign')}
+                                </span>
                               </label>
                               <label className="flex items-center gap-2 cursor-pointer">
                                 <input
@@ -1224,7 +1238,9 @@ const Settings: FunctionComponent = () => {
                                   onChange={(e) => setRiderAssignment(e.target.value as 'auto' | 'manual')}
                                   className="w-4 h-4 text-[#fe5b18] focus:ring-[#fe5b18]"
                                 />
-                                <span className="text-[12px] sm:text-[14px] text-black dark:text-white">Assign Riders Manually</span>
+                                <span className="text-[12px] sm:text-[14px] text-black dark:text-white">
+                                  {t('settings.restaurant.manualAssign')}
+                                </span>
                               </label>
                             </div>
                           </div>
@@ -1234,7 +1250,7 @@ const Settings: FunctionComponent = () => {
                         <div className="bg-transparent flex flex-col items-start justify-start gap-[16px]">
                           <div className="w-full bg-transparent flex flex-col items-start justify-start gap-[8px]">
                             <b className="text-[12px] sm:text-[14px] leading-[22px] font-sans text-black dark:text-white">
-                              Price Calculation Method
+                              {t('settings.restaurant.priceCalculation')}
                             </b>
                             <div className="flex flex-col gap-3 mt-2">
                               <label className="flex items-center gap-2 cursor-pointer">
@@ -1246,7 +1262,9 @@ const Settings: FunctionComponent = () => {
                                   onChange={(e) => setPriceCalculation(e.target.value as 'auto' | 'manual')}
                                   className="w-4 h-4 text-[#fe5b18] focus:ring-[#fe5b18]"
                                 />
-                                <span className="text-[12px] sm:text-[14px] text-black dark:text-white">Auto-calculate Price</span>
+                                <span className="text-[12px] sm:text-[14px] text-black dark:text-white">
+                                  {t('settings.restaurant.autoCalculate')}
+                                </span>
                               </label>
                               <label className="flex items-center gap-2 cursor-pointer">
                                 <input
@@ -1257,7 +1275,9 @@ const Settings: FunctionComponent = () => {
                                   onChange={(e) => setPriceCalculation(e.target.value as 'auto' | 'manual')}
                                   className="w-4 h-4 text-[#fe5b18] focus:ring-[#fe5b18]"
                                 />
-                                <span className="text-[12px] sm:text-[14px] text-black dark:text-white">Set Price Manually</span>
+                                <span className="text-[12px] sm:text-[14px] text-black dark:text-white">
+                                  {t('settings.restaurant.manualCalculate')}
+                                </span>
                               </label>
                             </div>
                           </div>
@@ -1268,14 +1288,14 @@ const Settings: FunctionComponent = () => {
                       <div className="w-full mt-8">
                         <div className="border border-gray-200 dark:border-[#333] rounded-lg p-4 sm:p-6">
                           <h3 className="text-[14px] sm:text-[16px] font-semibold mb-4 text-black dark:text-white font-sans">
-                            Service Type Configuration
+                            {t('settings.serviceTypes.title')}
                           </h3>
                           
                           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-6 gap-x-8">
                             {/* Service Type Options */}
                             <div className="flex flex-col gap-4">
                               <b className="text-[12px] sm:text-[14px] font-sans text-black dark:text-white">
-                                Select Service Types:
+                                {t('settings.serviceTypes.selectTypes')}
                               </b>
                               
                               <label className="flex items-start gap-2 cursor-pointer">
@@ -1286,8 +1306,8 @@ const Settings: FunctionComponent = () => {
                                   className="mt-1 w-4 h-4 text-[#fe5b18] focus:ring-[#fe5b18]"
                                 />
                                 <div>
-                                  <span className="block text-[12px] sm:text-[14px] font-medium text-black dark:text-white">On Demand</span>
-                                  <span className="block text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400">Delivery only. No inventory is involved.</span>
+                                  <span className="block text-[12px] sm:text-[14px] font-medium text-black dark:text-white">{t('settings.serviceTypes.onDemand.name')}</span>
+                                  <span className="block text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400">{t('settings.serviceTypes.onDemand.description')}</span>
                                 </div>
                               </label>
                               
@@ -1299,8 +1319,8 @@ const Settings: FunctionComponent = () => {
                                   className="mt-1 w-4 h-4 text-[#fe5b18] focus:ring-[#fe5b18]"
                                 />
                                 <div>
-                                  <span className="block text-[12px] sm:text-[14px] font-medium text-black dark:text-white">Full Service</span>
-                                  <span className="block text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400">Both inventory management and delivery.</span>
+                                  <span className="block text-[12px] sm:text-[14px] font-medium text-black dark:text-white">{t('settings.serviceTypes.fullService.name')}</span>
+                                  <span className="block text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400">{t('settings.serviceTypes.fullService.description')}</span>
                                 </div>
                               </label>
                               
@@ -1312,15 +1332,15 @@ const Settings: FunctionComponent = () => {
                                   className="mt-1 w-4 h-4 text-[#fe5b18] focus:ring-[#fe5b18]"
                                 />
                                 <div>
-                                  <span className="block text-[12px] sm:text-[14px] font-medium text-black dark:text-white">Walk-In</span>
-                                  <span className="block text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400">Customer physically walks into restaurant to make a purchase.</span>
+                                  <span className="block text-[12px] sm:text-[14px] font-medium text-black dark:text-white">{t('settings.serviceTypes.walkIn.name')}</span>
+                                  <span className="block text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400">{t('settings.serviceTypes.walkIn.description')}</span>
                                 </div>
                               </label>
                             </div>
                             
                             <div className="flex flex-col gap-4">
                               <b className="text-[12px] sm:text-[14px] font-sans text-black dark:text-white">
-                                Additional Options:
+                                {t('settings.serviceTypes.additionalOptions')}
                               </b>
                               
                               <label className={`flex items-start gap-2 cursor-pointer ${(!serviceSettings.OnDemand) ? 'opacity-50 pointer-events-none' : ''}`}>
@@ -1332,8 +1352,8 @@ const Settings: FunctionComponent = () => {
                                   className="mt-1 w-4 h-4 text-[#fe5b18] focus:ring-[#fe5b18]"
                                 />
                                 <div>
-                                  <span className="block text-[12px] sm:text-[14px] font-medium text-black dark:text-white">Batch Delivery</span>
-                                  <span className="block text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400">Deliver multiple orders at once. Delivery only.</span>
+                                  <span className="block text-[12px] sm:text-[14px] font-medium text-black dark:text-white">{t('settings.serviceTypes.batchDelivery.name')}</span>
+                                  <span className="block text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400">{t('settings.serviceTypes.batchDelivery.description')}</span>
                                 </div>
                               </label>
                               
@@ -1346,8 +1366,8 @@ const Settings: FunctionComponent = () => {
                                   className="mt-1 w-4 h-4 text-[#fe5b18] focus:ring-[#fe5b18]"
                                 />
                                 <div>
-                                  <span className="block text-[12px] sm:text-[14px] font-medium text-black dark:text-white">Scheduled Delivery</span>
-                                  <span className="block text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400">Schedule deliveries ahead of time. Delivery only.</span>
+                                  <span className="block text-[12px] sm:text-[14px] font-medium text-black dark:text-white">{t('settings.serviceTypes.scheduledDelivery.name')}</span>
+                                  <span className="block text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400">{t('settings.serviceTypes.scheduledDelivery.description')}</span>
                                 </div>
                               </label>
                             </div>
@@ -1355,43 +1375,43 @@ const Settings: FunctionComponent = () => {
                             {/* Active Features Based on Selection */}
                             <div className="flex flex-col gap-4">
                               <b className="text-[12px] sm:text-[14px] font-sans text-black dark:text-white">
-                                Active Features:
+                                {t('settings.serviceTypes.activeFeatures')}
                               </b>
                               
                               <div className="grid grid-cols-1 gap-2">
                                 <div className={`flex items-center gap-2 ${serviceSettings.Inventory ? 'text-black dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
                                   <div className={`w-3 h-3 rounded-full ${serviceSettings.Inventory ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
-                                  <span className="text-[12px]">Inventory Management</span>
+                                  <span className="text-[12px]">{t('settings.serviceTypes.features.inventory')}</span>
                                 </div>
                                 
                                 <div className={`flex items-center gap-2 ${serviceSettings.Transactions ? 'text-black dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
                                   <div className={`w-3 h-3 rounded-full ${serviceSettings.Transactions ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
-                                  <span className="text-[12px]">Transactions</span>
+                                  <span className="text-[12px]">{t('settings.serviceTypes.features.transactions')}</span>
                                 </div>
                                 
                                 <div className={`flex items-center gap-2 ${serviceSettings.Reports ? 'text-black dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
                                   <div className={`w-3 h-3 rounded-full ${serviceSettings.Reports ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
-                                  <span className="text-[12px]">Reports</span>
+                                  <span className="text-[12px]">{t('settings.serviceTypes.features.reports')}</span>
                                 </div>
                                 
                                 <div className={`flex items-center gap-2 ${serviceSettings.Overview ? 'text-black dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
                                   <div className={`w-3 h-3 rounded-full ${serviceSettings.Overview ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
-                                  <span className="text-[12px]">Overview</span>
+                                  <span className="text-[12px]">{t('settings.serviceTypes.features.overview')}</span>
                                 </div>
                                 
                                 <div className={`flex items-center gap-2 ${serviceSettings.DeliveryReport ? 'text-black dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
                                   <div className={`w-3 h-3 rounded-full ${serviceSettings.DeliveryReport ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
-                                  <span className="text-[12px]">Delivery Reports</span>
+                                  <span className="text-[12px]">{t('settings.serviceTypes.features.deliveryReport')}</span>
                                 </div>
                                 
                                 <div className={`flex items-center gap-2 ${serviceSettings.Batch ? 'text-black dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
                                   <div className={`w-3 h-3 rounded-full ${serviceSettings.Batch ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
-                                  <span className="text-[12px]">Batch Delivery</span>
+                                  <span className="text-[12px]">{t('settings.serviceTypes.features.batch')}</span>
                                 </div>
                                 
                                 <div className={`flex items-center gap-2 ${serviceSettings.Schedule ? 'text-black dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
                                   <div className={`w-3 h-3 rounded-full ${serviceSettings.Schedule ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
-                                  <span className="text-[12px]">Scheduled Delivery</span>
+                                  <span className="text-[12px]">{t('settings.serviceTypes.features.schedule')}</span>
                                 </div>
                               </div>
                             </div>
@@ -1400,11 +1420,11 @@ const Settings: FunctionComponent = () => {
                           {/* Selection Rules Information */}
                           <div className="mt-6 border-t border-gray-200 dark:border-[#333] pt-4">
                             <div className="text-[11px] sm:text-[12px] text-gray-500 dark:text-gray-400">
-                              <p className="mb-2 font-medium">Selection Rules:</p>
+                              <p className="mb-2 font-medium">{t('settings.serviceTypes.selectionRules.title')}</p>
                               <ul className="list-disc ml-5 space-y-1">
-                                <li>When <b>On Demand</b> is selected: You cannot select Full Service or Walk-In.</li>
-                                <li>When <b>Full Service</b> is selected: You cannot select On Demand, Batch Delivery, or Scheduled Delivery.</li>
-                                <li>When <b>Walk-In</b> is selected: You cannot select On Demand, Batch Delivery, or Scheduled Delivery.</li>
+                                <li>{t('settings.serviceTypes.selectionRules.onDemand')}</li>
+                                <li>{t('settings.serviceTypes.selectionRules.fullService')}</li>
+                                <li>{t('settings.serviceTypes.selectionRules.walkIn')}</li>
                               </ul>
                             </div>
                           </div>
@@ -1418,7 +1438,7 @@ const Settings: FunctionComponent = () => {
                           onClick={handleSaveRestaurantSettings}
                           disabled={isSettingsSaving}
                         >
-                          {isSettingsSaving ? 'Saving...' : isSaved ? 'Saved!' : 'Save Settings'}
+                          {isSettingsSaving ? t('settings.restaurant.saving') : isSaved ? t('settings.restaurant.saved') : t('settings.restaurant.saveSettings')}
                         </button>
                         {saveError && (
                           <div className="text-red-500 text-[11px] sm:text-sm font-sans">

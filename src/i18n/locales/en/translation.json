@@ -1,0 +1,199 @@
+{
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "delete": "Delete",
+    "add": "Add",
+    "search": "Search",
+    "loading": "Loading...",
+    "noResults": "No results found",
+    "settings": "Settings",
+    "poweredBy": "Powered By",
+    "back": "Back",
+    "error": "Error"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "orders": "Orders",
+    "products": "Products",
+    "customers": "Customers",
+    "reports": "Reports",
+    "inventory": "Inventory",
+    "settings": "Settings",
+    "logout": "Logout",
+    "dashboard": "Dashboard",
+    "transactions": "Transactions"
+  },
+  "overview": {
+    "totalRevenue": "Total Revenue",
+    "totalOrders": "Total Orders",
+    "totalProducts": "Inventory Items",
+    "totalCustomers": "Total Staff",
+    "orderStatistics": "Order Statistics",
+    "revenueChart": "Revenue Chart",
+    "recentOrders": "Recent Orders",
+    "currentOrders": "Current Orders",
+    "seeAll": "See All",
+    "noRecentOrders": "No recent orders found",
+    "noCurrentOrders": "No current orders found",
+    "last3Months": "Last 3 Months",
+    "last6Months": "Last 6 Months",
+    "last12Months": "Last 12 Months",
+    "orders": "Orders",
+    "revenue": "Revenue"
+  },
+  "orders": {
+    "title": "Orders",
+    "newOrder": "New Order",
+    "orderNumber": "Order Number",
+    "customer": "Customer",
+    "status": "Status",
+    "total": "Total",
+    "date": "Date",
+    "address": "Address",
+    "actions": "Actions",
+    "price": "Price",
+    "orderStatus": "Order Status",
+    "kitchenStatus": "Kitchen Status",
+    "amount": "Amount",
+    "products": "Products",
+    "deliveryFee": "Delivery Fee",
+    "noOrdersFound": "No orders found",
+    "walkIn": "Walk-in",
+    "paid": "Paid",
+    "accept": "Accept",
+    "decline": "Decline",
+    "orderReceived": "Order Received",
+    "newOrderReceived": "New Order{{count, plural, =1 {} other {s}}} Received!",
+    "noOrderDetails": "No order details available",
+    "detail": {
+      "customerInfo": "Customer Info",
+      "courierInfo": "Courier Info",
+      "name": "Name",
+      "phone": "Phone",
+      "notAssigned": "Not Assigned",
+      "orderReceived": "Order Received",
+      "orderPickedUp": "Order Picked Up",
+      "orderOnWay": "Order On Way",
+      "orderComplete": "Order Complete",
+      "pending": "Pending",
+      "serialNumber": "Serial Number",
+      "product": "Product",
+      "unitPrice": "Unit Price",
+      "quantity": "Quantity",
+      "totalPrice": "Total Price",
+      "transactionStatus": "Transaction Status",
+      "subTotal": "Sub Total",
+      "deliveryCost": "Delivery Cost",
+      "grandTotal": "Grand Total",
+      "orderComment": "Order Comment",
+      "noCommentAvailable": "No comment available",
+      "print": "Print Receipt",
+      "serviceType": "Service Type",
+      "scheduledTime": "Scheduled Time",
+      "noScheduledTime": "No scheduled time",
+      "pickup": "Pickup",
+      "dropoff": "Dropoff"
+    },
+    "tabs": {
+      "all": "All Orders"
+    },
+    "pagination": {
+      "showing": "Showing",
+      "to": "to",
+      "of": "of",
+      "orders": "orders",
+      "page": "Page"
+    },
+    "statuses": {
+      "pending": "Pending",
+      "confirmed": "Confirmed",
+      "preparing": "Preparing",
+      "readyForPickup": "Ready For Pickup",
+      "onTheWay": "On The Way",
+      "delivered": "Delivered",
+      "cancelled": "Cancelled",
+      "deliveryFailed": "Delivery Failed",
+      "pickup": "Pickup",
+      "assigned": "Assigned"
+    }
+  },
+  "settings": {
+    "title": "Settings",
+    "tabs": {
+      "editProfile": "Edit Profile",
+      "teamMembers": "Team Members",
+      "changePassword": "Change Password",
+      "aboutRestaurant": "About Restaurant",
+      "restaurantSettings": "Restaurant Settings"
+    },
+    "profile": {
+      "fullName": "Full Name",
+      "userName": "User Name",
+      "email": "Email",
+      "phoneNumber": "Phone Number",
+      "role": "Role",
+      "dateOfBirth": "Date of Birth",
+      "address": "Permanent Address",
+      "city": "City",
+      "postalCode": "Postal Code",
+      "country": "Country",
+      "save": "Save"
+    },
+    "restaurant": {
+      "language": "Select Language",
+      "riderAssignment": "Rider Assignment Method",
+      "autoAssign": "Auto Assign Riders",
+      "manualAssign": "Assign Riders Manually",
+      "priceCalculation": "Price Calculation Method",
+      "autoCalculate": "Auto-calculate Price",
+      "manualCalculate": "Set Price Manually",
+      "saveSettings": "Save Settings",
+      "saving": "Saving...",
+      "saved": "Saved!",
+      "refreshing": "Refreshing application to apply changes..."
+    },
+    "serviceTypes": {
+      "title": "Service Type Configuration",
+      "selectTypes": "Select Service Types:",
+      "additionalOptions": "Additional Options:",
+      "activeFeatures": "Active Features:",
+      "onDemand": {
+        "name": "On Demand",
+        "description": "Delivery only. No inventory is involved."
+      },
+      "fullService": {
+        "name": "Full Service",
+        "description": "Both inventory management and delivery."
+      },
+      "walkIn": {
+        "name": "Walk-In",
+        "description": "Customer physically walks into restaurant to make a purchase."
+      },
+      "batchDelivery": {
+        "name": "Batch Delivery",
+        "description": "Deliver multiple orders at once. Delivery only."
+      },
+      "scheduledDelivery": {
+        "name": "Scheduled Delivery",
+        "description": "Schedule deliveries ahead of time. Delivery only."
+      },
+      "features": {
+        "inventory": "Inventory Management",
+        "transactions": "Transactions",
+        "reports": "Reports",
+        "overview": "Overview",
+        "deliveryReport": "Delivery Reports",
+        "batch": "Batch Delivery",
+        "schedule": "Scheduled Delivery"
+      },
+      "selectionRules": {
+        "title": "Selection Rules:",
+        "onDemand": "When On Demand is selected: You cannot select Full Service or Walk-In.",
+        "fullService": "When Full Service is selected: You cannot select On Demand, Batch Delivery, or Scheduled Delivery.",
+        "walkIn": "When Walk-In is selected: You cannot select On Demand, Batch Delivery, or Scheduled Delivery."
+      }
+    }
+  }
+} 

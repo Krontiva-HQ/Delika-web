@@ -14,8 +14,7 @@ import { BroadcastBanner } from './BroadcastBanner';
 import BranchFilter from '../../components/BranchFilter';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import { hasOverviewAccess, shouldShowRevenue } from '../../permissions/DashboardPermissions';
-
-
+import { useTranslation } from 'react-i18next';
 
 interface Order {
   id: string;
@@ -78,6 +77,7 @@ interface OverviewProps {
 }
 
 const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
+  const { t } = useTranslation();
   const [orderTimeRange, setOrderTimeRange] = useState('6');
   const [revenueTimeRange, setRevenueTimeRange] = useState('6');
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
@@ -227,7 +227,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
       <div className="p-3 ml-4 mr-4">
         <BroadcastBanner restaurantId={userProfile.restaurantId || ''} />
         <div className="flex justify-between items-center mb-4">
-          <h1 className="text-[18px] font-bold font-sans">Dashboard</h1>
+          <h1 className="text-[18px] font-bold font-sans">{t('dashboard.title')}</h1>
           {isAdmin && (
             <BranchFilter 
               restaurantId={userProfile.restaurantId || null}
@@ -246,9 +246,9 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
                 <AiOutlineDollar className="w-5 h-5 text-[#fe5b18]" />
               </div>
               <div>
-                <p className="text-gray-600 text-sm font-sans m-0">Total Revenue</p>
+                <p className="text-gray-600 text-sm font-sans m-0">{t('overview.totalRevenue')}</p>
                 <p className="text-xl font-bold font-sans m-0">
-                  {isDashboardLoading ? 'Loading...' : formatCurrency(Number(data?.totalRevenue || 0))}
+                  {isDashboardLoading ? t('common.loading') : data?.totalRevenue ? formatCurrency(Number(data.totalRevenue)) : 'GH₵0'}
                 </p>
               </div>
             </div>
@@ -259,9 +259,9 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
               <LuBox className="w-5 h-5 text-[#fe5b18]" />
             </div>
             <div>
-              <p className="text-gray-600 text-sm font-sans m-0">Total Orders</p>
+              <p className="text-gray-600 text-sm font-sans m-0">{t('overview.totalOrders')}</p>
               <p className="text-xl font-bold font-sans m-0">
-                {isDashboardLoading ? 'Loading...' : formatNumber(Number(data?.totalOrders || 0))}
+                {isDashboardLoading ? t('common.loading') : formatNumber(Number(data?.totalOrders || 0))}
               </p>
             </div>
           </div>
@@ -272,9 +272,9 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
                 <IoFastFoodOutline className="w-5 h-5 text-[#fe5b18]" />
               </div>
               <div>
-                <p className="text-gray-600 text-sm font-sans m-0">Inventory Items</p>
+                <p className="text-gray-600 text-sm font-sans m-0">{t('overview.totalProducts')}</p>
                 <p className="text-xl font-bold font-sans m-0">
-                  {isDashboardLoading ? 'Loading...' : formatNumber(Number(data?.totalMenu || 0))}
+                  {isDashboardLoading ? t('common.loading') : formatNumber(Number(data?.totalMenu || 0))}
                 </p>
               </div>
             </div>
@@ -285,9 +285,9 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
               <HiOutlineUsers className="w-5 h-5 text-[#fe5b18]" />
             </div>
             <div>
-              <p className="text-gray-600 text-sm font-sans m-0">Total Staff</p>
+              <p className="text-gray-600 text-sm font-sans m-0">{t('overview.totalCustomers')}</p>
               <p className="text-xl font-bold font-sans m-0">
-                {isDashboardLoading ? 'Loading...' : formatNumber(Number(data?.totalStaff || 0))}
+                {isDashboardLoading ? t('common.loading') : formatNumber(Number(data?.totalStaff || 0))}
               </p>
             </div>
           </div>
@@ -298,7 +298,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
           <div className={`bg-white rounded-xl p-4 ${!showRevenue ? 'lg:col-span-2' : ''} min-h-[300px]`}>
             <div className="flex justify-between items-center mb-3">
               <h2 className="text-lg font-semibold text-gray-800 font-sans">
-                Total Orders {isMonthlyOrderDataLoading && '(Loading...)'}
+                {t('overview.orderStatistics')} {isMonthlyOrderDataLoading && `(${t('common.loading')})`}
               </h2>
               <div className="relative">
                 <select
@@ -306,16 +306,16 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
                   onChange={(e) => setOrderTimeRange(e.target.value)}
                   className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)]"
                 >
-                  <option value="3">Last 3 Months</option>
-                  <option value="6">Last 6 Months</option>
-                  <option value="12">Last 12 Months</option>
+                  <option value="3">{t('overview.last3Months')}</option>
+                  <option value="6">{t('overview.last6Months')}</option>
+                  <option value="12">{t('overview.last12Months')}</option>
                 </select>
               </div>
             </div>
             {isMonthlyOrderDataLoading ? (
-              <div className="h-[200px] flex items-center justify-center">Loading...</div>
+              <div className="h-[200px] flex items-center justify-center">{t('common.loading')}</div>
             ) : monthlyOrderData?.length === 0 ? (
-              <div className="h-[200px] flex items-center justify-center">No data available</div>
+              <div className="h-[200px] flex items-center justify-center">{t('common.noResults')}</div>
             ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart 
@@ -365,7 +365,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
             <div className="bg-white rounded-xl p-4 min-h-[300px]">
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-lg font-semibold text-gray-800 font-sans">
-                  Total Revenue {isMonthlyOrderDataLoading && '(Loading...)'}
+                  {t('overview.revenueChart')} {isMonthlyOrderDataLoading && `(${t('common.loading')})`}
                 </h2>
                 <div className="relative">
                   <select
@@ -373,17 +373,17 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
                     onChange={(e) => setRevenueTimeRange(e.target.value)}
                     className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)]"
                   >
-                    <option value="3">Last 3 Months</option>
-                    <option value="6">Last 6 Months</option>
-                    <option value="12">Last 12 Months</option>
+                    <option value="3">{t('overview.last3Months')}</option>
+                    <option value="6">{t('overview.last6Months')}</option>
+                    <option value="12">{t('overview.last12Months')}</option>
                   </select>
                 </div>
               </div>
               
               {isMonthlyOrderDataLoading ? (
-                <div className="h-[200px] flex items-center justify-center">Loading...</div>
+                <div className="h-[200px] flex items-center justify-center">{t('common.loading')}</div>
               ) : monthlyOrderData?.length === 0 ? (
-                <div className="h-[200px] flex items-center justify-center">No data available</div>
+                <div className="h-[200px] flex items-center justify-center">{t('common.noResults')}</div>
               ) : (
                 <ResponsiveContainer width="100%" height={200}>
                   <AreaChart
@@ -427,7 +427,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
                           return (
                             <div className="bg-white shadow-lg rounded-lg p-2 text-sm font-sans">
                               <p className="font-medium text-gray-900">
-                                  GH₵{payload[0].value}
+                                {t('overview.revenue')}: {formatCurrency(payload[0].value as number)}
                               </p>
                             </div>
                           )
@@ -461,25 +461,25 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
         {/* Orders Table Section */}
         <section className="bg-white rounded-xl p-4">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold font-sans">Current Orders</h2>
+            <h2 className="text-lg font-bold font-sans">{t('overview.currentOrders')}</h2>
           </div>
 
           <div className="overflow-x-auto">
             <div className="min-w-[900px] w-full border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg">
               <div className="sticky top-0 z-10 grid grid-cols-6 bg-[#f9f9f9] p-3" style={{ borderBottom: '1px solid #eaeaea' }}>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Order Number</div>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Name</div>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Address</div>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Date</div>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Price (GH₵)</div>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Status</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">{t('orders.orderNumber')}</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">{t('orders.customer')}</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">{t('orders.address')}</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">{t('orders.date')}</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">{t('orders.price')} (GH₵)</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">{t('orders.status')}</div>
               </div>
 
               <div className="overflow-y-auto max-h-[400px]">
                 {isLoading ? (
                   <div className="p-4 text-center text-gray-500">Loading orders...</div>
                 ) : recentOrders.length === 0 ? (
-                  <div className="p-4 text-center text-gray-500 font-sans">No current orders found</div>
+                  <div className="p-4 text-center text-gray-500 font-sans">{t('overview.noCurrentOrders')}</div>
                 ) : (
                   recentOrders.map((order) => (
                     <div 
@@ -520,7 +520,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
               onClick={handleSeeAllClick}
               className="text-[#fe5b18] text-sm font-semibold font-sans cursor-pointer hover:text-[#e54d0e]"
             >
-              See All
+              {t('overview.seeAll')}
             </span>
           </div>
         </section>

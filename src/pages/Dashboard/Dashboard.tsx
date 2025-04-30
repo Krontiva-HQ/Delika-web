@@ -25,12 +25,14 @@ import { IoIosClose } from "react-icons/io";
 import { useBackgroundRefresh } from '../../hooks/useBackgroundRefresh';
 import { getAvailableMenuItems } from '../../permissions/DashboardPermissions';
 import { IconType } from 'react-icons';
+import { useTranslation } from 'react-i18next';
 
 interface MainDashboardProps {
   children?: React.ReactNode;
 }
 
 const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { fetchUserProfile } = useAuth();
   const { userProfile, restaurantData } = useUserProfile();
@@ -216,7 +218,7 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
                           ? 'text-[#fe5b18]'
                           : 'text-[#201a18]'
                       }`}>
-                        {item.name}
+                        {t(`dashboard.${item.id}`)}
                       </span>
                     )}
                   </button>
@@ -228,7 +230,7 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
           <div className="flex flex-col gap-1 mb-4">
             {!isSidebarCollapsed && (
               <div className="text-center border-t mr-[100px] mt-4">
-                <p className="text-gray-500 text-xs mb-1 font-sans">Powered By</p>
+                <p className="text-gray-500 text-xs mb-1 font-sans">{t('common.poweredBy')}</p>
                 <img
                   src="/Krontiva-Black.png"
                   alt="Powered by Krontiva"

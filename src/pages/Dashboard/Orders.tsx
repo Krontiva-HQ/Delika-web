@@ -20,6 +20,7 @@ import { useNotifications } from '../../context/NotificationContext';
 import { MdOutlineRestaurant } from "react-icons/md";
 import { IoInformationCircleOutline } from "react-icons/io5";
 import { IoIosCloseCircleOutline } from "react-icons/io";
+import { useTranslation } from 'react-i18next';
 
 interface Order {
   id: string;
@@ -107,6 +108,8 @@ interface NewOrderModalProps {
 }
 
 const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose, onAccept, onDecline, newOrders }) => {
+  const { t } = useTranslation();
+  
   if (!isOpen) return null;
 
   return (
@@ -120,26 +123,26 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose, onAccept
         </button>
         
         <h2 className="text-lg sm:text-xl font-semibold mb-4 text-black dark:text-white">
-          New Order{newOrders.length > 1 ? 's' : ''} Received!
+          {t('orders.newOrderReceived', {count: newOrders.length})}
         </h2>
         
         <div className="max-h-[70vh] overflow-y-auto mb-4 font-sans">
           {newOrders.map((order) => (
             <div key={order.id} className="mb-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg font-sans">
               <div className="text-sm font-medium text-black dark:text-white font-sans">
-                Order #{order.orderNumber}
+                {t('orders.orderNumber')} #{order.orderNumber}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-sans">
-                Customer: {order.customerName}
+                {t('orders.customer')}: {order.customerName}
               </div>
               <div className="text-xs text-gray-500 dark:text-gray-400 font-sans">
-                Amount: GH₵{Number(order.orderPrice).toFixed(2)}
+                {t('orders.amount')}: GH₵{Number(order.orderPrice).toFixed(2)}
               </div>
               
               {/* Products Section */}
               <div className="mt-2 border-t border-gray-200 dark:border-gray-700 pt-2">
                 <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 font-sans">
-                  Products:
+                  {t('orders.products')}:
                 </div>
                 {order.products.map((product, index) => (
                   <div 
@@ -160,11 +163,11 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose, onAccept
                   </div>
                 ))}
                 <div className="mt-1 pt-1 border-t border-gray-200 dark:border-gray-700 flex justify-between text-xs font-medium font-sans">
-                  <span className="text-gray-700 dark:text-gray-300 font-sans">Delivery Fee:</span>
+                  <span className="text-gray-700 dark:text-gray-300 font-sans">{t('orders.deliveryFee')}:</span>
                   <span className="text-black dark:text-white font-sans">GH₵{Number(order.deliveryPrice).toFixed(2)}</span>
                 </div>
                 <div className="mt-1 pt-1 border-t border-gray-200 dark:border-gray-700 flex justify-between text-xs font-medium font-sans">
-                  <span className="text-gray-700 dark:text-gray-300 font-sans">Total:</span>
+                  <span className="text-gray-700 dark:text-gray-300 font-sans">{t('orders.total')}:</span>
                   <span className="text-black dark:text-white font-sans">GH₵{Number(order.totalPrice).toFixed(2)}</span>
                 </div>
               </div>
@@ -173,12 +176,12 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose, onAccept
               <div className="mt-2 flex items-center gap-2">
                 {order.Walkin && (
                   <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                    Walk-in
+                    {t('orders.walkIn')}
                   </span>
                 )}
                 {order.payNow && (
                   <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                    Paid
+                    {t('orders.paid')}
                   </span>
                 )}
               </div>
@@ -189,13 +192,13 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose, onAccept
                   onClick={() => onAccept(order.id)}
                   className="flex-1 px-3 py-1.5 bg-[#fe5b18] text-white rounded-md text-xs font-medium hover:bg-[#e54d0e] transition-colors"
                 >
-                  Accept
+                  {t('orders.accept')}
                 </button>
                 <button
                   onClick={() => onDecline(order.id)}
                   className="flex-1 px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md text-xs font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                 >
-                  Decline
+                  {t('orders.decline')}
                 </button>
               </div>
             </div>
@@ -207,6 +210,7 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose, onAccept
 };
 
 const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsView }) => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('all');
   const [selectedDate, setSelectedDate] = useState<Dayjs | null>(dayjs());
   const [anchorEl, setAnchorEl] = useState<HTMLDivElement | null>(null);
@@ -675,7 +679,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
           {/* Header Section with Orders title and New Order button */}
           <div className="flex justify-between items-center mb-4">
             <b className="text-[18px] font-sans">
-              Orders
+              {t('orders.title')}
             </b>
             <div className="flex items-center gap-2">
               {/* Branch Filter - Only show for Admin */}
@@ -695,7 +699,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                 onClick={() => setShowPlaceOrder(true)}
               >
                 <IoMdAdd className="w-[16px] h-[16px] text-white" />
-                <span className="font-sans text-white">New Order</span>
+                <span className="font-sans text-white">{t('orders.newOrder')}</span>
               </div>
             </div>
           </div>
@@ -712,7 +716,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                     }`}
                   onClick={() => setActiveTab('all')}
                 >
-                  All Orders
+                  {t('orders.tabs.all')}
                 </div>
                 <div 
                   className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
@@ -722,7 +726,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                     }`}
                   onClick={() => setActiveTab('readyForPickup')}
                 >
-                  Ready For Pickup
+                  {t('orders.statuses.readyForPickup')}
                 </div>
                 <div 
                   className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
@@ -732,7 +736,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                     }`}
                   onClick={() => setActiveTab('assigned')}
                 >
-                  Assigned
+                  {t('orders.statuses.assigned')}
                 </div>
                 <div 
                   className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
@@ -742,7 +746,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                     }`}
                   onClick={() => setActiveTab('pickup')}
                 >
-                  Pickup
+                  {t('orders.statuses.pickup')}
                 </div>
                 <div 
                   className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
@@ -752,7 +756,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                     }`}
                   onClick={() => setActiveTab('onTheWay')}
                 >
-                  On The Way
+                  {t('orders.statuses.onTheWay')}
                 </div>
                 <div 
                   className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
@@ -762,7 +766,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                     }`}
                   onClick={() => setActiveTab('delivered')}
                 >
-                  Delivered
+                  {t('orders.statuses.delivered')}
                 </div>
                 <div 
                   className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
@@ -772,7 +776,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                     }`}
                   onClick={() => setActiveTab('cancelled')}
                 >
-                  Cancelled
+                  {t('orders.statuses.cancelled')}
                 </div>
                 <div 
                   className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
@@ -782,7 +786,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                     }`}
                   onClick={() => setActiveTab('deliveryFailed')}
                 >
-                  Delivery Failed
+                  {t('orders.statuses.deliveryFailed')}
                 </div>
               </div>
             </div>
@@ -869,20 +873,20 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
             <div className="min-w-[900px] border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden">
               {/* Table Header */}
               <div className="grid grid-cols-7 bg-[#f9f9f9] p-3 gap-2" style={{ borderBottom: '1px solid #eaeaea', gridTemplateColumns: '80px 1fr 1.2fr 0.8fr 80px 1fr 1fr' }}>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Order Number</div>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Name</div>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Address</div>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Date</div>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Price (GH₵)</div>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Order Status</div>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666]">Kitchen Status</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">{t('orders.orderNumber')}</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">{t('orders.customer')}</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">{t('orders.address')}</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">{t('orders.date')}</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">{t('orders.price')} (GH₵)</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">{t('orders.orderStatus')}</div>
+                <div className="text-[12px] leading-[20px] font-sans text-[#666]">{t('orders.kitchenStatus')}</div>
               </div>
 
               {/* Table Body */}
               {isLoading ? (
-                <div className="p-4 text-center text-gray-500 font-sans">Loading orders...</div>
+                <div className="p-4 text-center text-gray-500 font-sans">{t('common.loading')}</div>
               ) : paginatedOrders.orders.length === 0 ? (
-                <div className="p-4 text-center text-gray-500 font-sans">No orders found</div>
+                <div className="p-4 text-center text-gray-500 font-sans">{t('orders.noOrdersFound')}</div>
               ) : (
                 <>
                   {/* Map through paginatedOrders.orders instead of filteredOrders */}
@@ -928,7 +932,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                           onClick={() => handleKitchenStatusUpdate(order.id, order.kitchenStatus || 'orderReceived')}
                           style={{ cursor: order.kitchenStatus === 'prepared' ? 'default' : 'pointer' }}
                         >
-                          {order.kitchenStatus ? order.kitchenStatus.charAt(0).toUpperCase() + order.kitchenStatus.slice(1) : 'Order Received'}
+                          {order.kitchenStatus ? order.kitchenStatus.charAt(0).toUpperCase() + order.kitchenStatus.slice(1) : t('orders.orderReceived')}
                         </span>
                         <div className="flex items-center gap-2">
                           <button 
@@ -951,7 +955,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                   {/* Pagination Controls */}
                   <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-[rgba(167,161,158,0.1)]">
                     <div className="text-[12px] text-gray-500 font-sans">
-                      Showing {((currentPage - 1) * ordersPerPage) + 1} to {Math.min(currentPage * ordersPerPage, paginatedOrders.totalOrders)} of {paginatedOrders.totalOrders} orders
+                      {t('orders.pagination.showing')} {((currentPage - 1) * ordersPerPage) + 1} {t('orders.pagination.to')} {Math.min(currentPage * ordersPerPage, paginatedOrders.totalOrders)} {t('orders.pagination.of')} {paginatedOrders.totalOrders} {t('orders.pagination.orders')}
                     </div>
                     <div className="flex items-center gap-2">
                       <button
@@ -966,7 +970,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                         <IoIosArrowBack className="w-4 h-4" />
                       </button>
                       <span className="text-[12px] font-sans">
-                        Page {currentPage} of {paginatedOrders.totalPages}
+                        {t('orders.pagination.page')} {currentPage} {t('orders.pagination.of')} {paginatedOrders.totalPages}
                       </span>
                       <button
                         onClick={handleNextPage}

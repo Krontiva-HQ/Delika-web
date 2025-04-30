@@ -7,6 +7,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { MdOutlineFileDownload } from 'react-icons/md';
 import { useUserProfile } from '../../hooks/useUserProfile';
+import { useTranslation } from 'react-i18next';
 
 interface InvoiceData {
   invoiceNumber: string;
@@ -193,6 +194,7 @@ interface OrderDetailsViewProps {
 }
 
 const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, onBack }) => {
+  const { t } = useTranslation();
   const { id: orderIdFromUrl } = useParams();
   const navigate = useNavigate();
   const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
@@ -338,15 +340,15 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div>{t('common.loading')}</div>;
   }
 
   if (error) {
-    return <div>Error: {error}</div>;
+    return <div>{t('common.error')}: {error}</div>;
   }
 
   if (!invoiceData) {
-    return <div>No order details available.</div>;
+    return <div>{t('orders.noOrderDetails')}</div>;
   }
 
   return (
@@ -361,7 +363,7 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
             alt=""
             src="/vuesaxlineararrowleft.svg"
           />
-          <div className="relative text-sm">Back</div>
+          <div className="relative text-sm">{t('common.back')}</div>
         </button>
       </div>
 
@@ -384,31 +386,31 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                       {invoiceData.restaurant.name}
                     </h2>
                     <p className="text-gray-500 text-xs font-sans mt-[1px]">
-                      Order Number #{invoiceData.invoiceNumber || 'N/A'}
+                      {t('orders.orderNumber')} #{invoiceData.invoiceNumber || 'N/A'}
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-col text-gray-500 text-xs mt-2 font-sans">
-                  <span>Order Date: {invoiceData.orderDate}</span>
+                  <span>{t('orders.date')}: {invoiceData.orderDate}</span>
                   <div className="flex items-center gap-1">
-                    <span className="text-gray-600 font-medium text-xs">Order Status:</span>
+                    <span className="text-gray-600 font-medium text-xs">{t('orders.orderStatus')}:</span>
                     <span className="text-xs font-bold">{invoiceData.orderStatus || 'N/A'}</span>
                   </div>
                   {invoiceData.Walkin && (
                     <div className="flex items-center gap-1">
-                      <span className="text-gray-600 font-medium">Service Type:</span>
-                      <span className="text-xs font-bold">Walk-In</span>
+                      <span className="text-gray-600 font-medium">{t('orders.detail.serviceType')}:</span>
+                      <span className="text-xs font-bold">{t('orders.walkIn')}</span>
                     </div>
                   )}
                   <div className="flex items-center gap-1">
-                    <span className="text-gray-600 font-medium">Scheduled Time:</span>
-                    <span>{invoiceData.scheduledTime ? new Date(invoiceData.scheduledTime).toLocaleString() : 'no scheduled time'}</span>
+                    <span className="text-gray-600 font-medium">{t('orders.detail.scheduledTime')}:</span>
+                    <span>{invoiceData.scheduledTime ? new Date(invoiceData.scheduledTime).toLocaleString() : t('orders.detail.noScheduledTime')}</span>
                   </div>
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-1">
                       <FaLocationDot className="w-4 h-4 text-green-600" />
                       <div className="flex gap-1">
-                        <span className="text-gray-600 font-medium">Pickup:</span>
+                        <span className="text-gray-600 font-medium">{t('orders.detail.pickup')}:</span>
                         <span>{invoiceData.pickup?.[0]?.fromAddress || 'N/A'}</span>
                       </div>
                     </div>
@@ -416,7 +418,7 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                     <div className="flex items-center gap-1">
                       <FaLocationDot className="w-4 h-4 text-red-600" />
                       <div className="flex gap-1">
-                        <span className="text-gray-600 font-medium">Dropoff:</span>
+                        <span className="text-gray-600 font-medium">{t('orders.detail.dropoff')}:</span>
                         <span>{invoiceData.dropOff?.[0]?.toAddress || 'N/A'}</span>
                       </div>  
                     </div>
@@ -431,7 +433,7 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                   className="bg-[#201a18] text-white px-3 py-1 rounded-md flex items-center gap-2 font-sans text-xs"
                 >
                   <MdOutlineFileDownload className="w-4 h-4" />
-                  Print
+                  {t('orders.detail.print')}
                 </button>
               </div>
             </div>
@@ -441,14 +443,14 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
               <div className="flex gap-4">
                 {/* Customer Info */}
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold mb-4 font-sans">Customer Info</h3>
+                  <h3 className="text-lg font-semibold mb-4 font-sans">{t('orders.detail.customerInfo')}</h3>
                   <div className="flex flex-col gap-2 font-sans text-xs">
                     <div className="flex">
-                      <span className="text-gray-500 w-11">Name:</span>
+                      <span className="text-gray-500 w-11">{t('orders.detail.name')}:</span>
                       <span>{invoiceData.customer.name}</span>
                     </div>
                     <div className="flex">
-                      <span className="text-gray-500 w-11">Phone:</span>
+                      <span className="text-gray-500 w-11">{t('orders.detail.phone')}:</span>
                       <span>{invoiceData.customer.phone}</span>
                     </div>
                   </div>
@@ -456,38 +458,38 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
 
                 {/* Courier Info */}
                 <div className="flex-1">
-                  <h3 className="text-lg font-semibold mb-4 font-sans">Courier Info</h3>
+                  <h3 className="text-lg font-semibold mb-4 font-sans">{t('orders.detail.courierInfo')}</h3>
                   <div className="flex flex-col gap-2 font-sans text-xs">
                     <div className="flex">
-                      <span className="text-gray-500 w-11">Name:</span>
-                      <span>{invoiceData.courierName || 'not assigned'}</span>
+                      <span className="text-gray-500 w-11">{t('orders.detail.name')}:</span>
+                      <span>{invoiceData.courierName || t('orders.detail.notAssigned')}</span>
                     </div>
                     <div className="flex">
-                      <span className="text-gray-500 w-11">Phone:</span>
-                      <span>{invoiceData.courierPhoneNumber || 'not assigned'}</span>
+                      <span className="text-gray-500 w-11">{t('orders.detail.phone')}:</span>
+                      <span>{invoiceData.courierPhoneNumber || t('orders.detail.notAssigned')}</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Order Status Info */}
                 <div className="flex-1 -ml-24">
-                  <h3 className="text-lg font-semibold mb-2 font-sans mr-24">Order Status</h3>
+                  <h3 className="text-lg font-semibold mb-2 font-sans mr-24">{t('orders.orderStatus')}</h3>
                   <ul className="list-none font-sans text-xs -ml-10">
                     <li className="flex items-center mb-[2px]">
                       <span className={`${invoiceData.timeline.received ? 'text-red-500' : 'text-gray-400'} mr-1 w-2`}>•</span>
-                      <span>Order Received | <strong>{invoiceData.timeline.received || ''}</strong></span>
+                      <span>{t('orders.detail.orderReceived')} | <strong>{invoiceData.timeline.received || ''}</strong></span>
                     </li>
                     <li className="flex items-center mb-[2px]">
                       <span className={`${invoiceData.timeline.pickedUp ? 'text-red-500' : 'text-gray-400'} mr-1 w-2`}>•</span>
-                      <span>Order Picked Up | <strong>{invoiceData.timeline.pickedUp || 'pending'}</strong></span>
+                      <span>{t('orders.detail.orderPickedUp')} | <strong>{invoiceData.timeline.pickedUp || t('orders.detail.pending')}</strong></span>
                     </li>
                     <li className="flex items-center mb-[2px]">
                       <span className={`${invoiceData.timeline.onWay ? 'text-red-500' : 'text-gray-400'} mr-1 w-2`}>•</span>
-                      <span>Order On Way | <strong>{invoiceData.timeline.onWay || 'pending'}</strong></span>
+                      <span>{t('orders.detail.orderOnWay')} | <strong>{invoiceData.timeline.onWay || t('orders.detail.pending')}</strong></span>
                     </li>
                     <li className="flex items-center">
                       <span className={`${invoiceData.timeline.completed ? 'text-red-500' : 'text-gray-400'} mr-1 w-2`}>•</span>
-                      <span>Order Complete | <strong>{invoiceData.timeline.completed || 'pending'}</strong></span>
+                      <span>{t('orders.detail.orderComplete')} | <strong>{invoiceData.timeline.completed || t('orders.detail.pending')}</strong></span>
                     </li>
                   </ul>
                 </div>
@@ -502,11 +504,11 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                   <table className="w-full border-collapse">
                     <thead>
                       <tr className="bg-[#ffffff]" style={{ borderBottom: '1px solid #eaeaea' }}>
-                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">S/L</th>
-                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Product</th>
-                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Unit price</th>
-                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">QTY</th>
-                        <th className="text-right p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Total price</th>
+                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">{t('orders.detail.serialNumber')}</th>
+                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">{t('orders.detail.product')}</th>
+                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">{t('orders.detail.unitPrice')}</th>
+                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">{t('orders.detail.quantity')}</th>
+                        <th className="text-right p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">{t('orders.detail.totalPrice')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -539,7 +541,7 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                 <div className="flex gap-8">
                   <div>
                     <p className="text-[12px] leading-[20px] font-sans text-[#666] mb-2 ml-4 font-bold">
-                      Transaction Status
+                      {t('orders.detail.transactionStatus')}
                     </p>
                     <p className="text-[12px] leading-[20px] font-sans text-[#444] ml-4">
                       {invoiceData.payment.method}
@@ -547,7 +549,7 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                   </div>
                   <div>
                     <p className="text-[12px] leading-[20px] font-sans text-[#666] mb-2 font-bold">
-                      Kitchen Status
+                      {t('orders.kitchenStatus')}
                     </p>
                     <span className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans
                       ${invoiceData.kitchenStatus === 'preparing' 
@@ -556,23 +558,23 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                           ? 'bg-green-100 text-green-800'
                           : 'bg-gray-100 text-gray-800'}`}
                     >
-                      {invoiceData.kitchenStatus ? invoiceData.kitchenStatus.charAt(0).toUpperCase() + invoiceData.kitchenStatus.slice(1) : 'Order Received'}
+                      {invoiceData.kitchenStatus ? invoiceData.kitchenStatus.charAt(0).toUpperCase() + invoiceData.kitchenStatus.slice(1) : t('orders.orderReceived')}
                     </span>
                   </div>
                 </div>
                 <div className="flex gap-8">
                   {invoiceData.orders.length > 0 && (
                     <div className="text-[12px] leading-[20px] font-sans">
-                      <p className="text-[#666] mb-2 font-bold">Sub Total</p>
+                      <p className="text-[#666] mb-2 font-bold">{t('orders.detail.subTotal')}</p>
                       <p className="text-[#444]">GHS{invoiceData.payment.subTotal}</p>
                     </div>
                   )}
                   <div className="text-[12px] leading-[20px] font-sans">
-                    <p className="text-[#666] mb-2 font-bold">Delivery Cost</p>
+                    <p className="text-[#666] mb-2 font-bold">{t('orders.detail.deliveryCost')}</p>
                     <p className="text-[#444]">GHS{invoiceData.payment.deliveryCost}</p>
                   </div>
                   <div className="text-[12px] leading-[20px] font-sans">
-                    <p className="text-[#666] mb-2 font-bold">Grand Total</p>
+                    <p className="text-[#666] mb-2 font-bold">{t('orders.detail.grandTotal')}</p>
                     <p className="text-[#444] font-medium">GHS{invoiceData.payment.grandTotal}</p>
                   </div>
                 </div>
@@ -580,13 +582,13 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
 
               {/* Order Comment */}
               <div className="mt-4 ml-4 text-[12px] leading-[20px] font-sans">
-                <span className="text-[#666] font-bold mr-2">Order Comment:</span>
-                <span className="text-[#444]">{invoiceData.orderComment || 'No comment available'}</span>
+                <span className="text-[#666] font-bold mr-2">{t('orders.detail.orderComment')}:</span>
+                <span className="text-[#444]">{invoiceData.orderComment || t('orders.detail.noCommentAvailable')}</span>
               </div>
 
               {/* Krontiva Footer Logo */}
               <div className="mt-6 text-center border-t pt-4">
-                <p className="text-gray-500 text-xs mb-2 font-sans">Powered By</p>
+                <p className="text-gray-500 text-xs mb-2 font-sans">{t('common.poweredBy')}</p>
                 <img
                   src="/Krontiva-Black.png"
                   alt="Powered by Krontiva"

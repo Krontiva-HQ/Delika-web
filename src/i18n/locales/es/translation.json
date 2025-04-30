@@ -1,0 +1,167 @@
+{
+  "common": {
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "add": "Agregar",
+    "search": "Buscar",
+    "loading": "Cargando...",
+    "noResults": "No se encontraron resultados",
+    "settings": "Configuración",
+    "poweredBy": "Desarrollado por"
+  },
+  "dashboard": {
+    "title": "Panel de control",
+    "orders": "Pedidos",
+    "products": "Productos",
+    "customers": "Clientes",
+    "reports": "Informes",
+    "inventory": "Inventario",
+    "settings": "Configuración",
+    "logout": "Cerrar sesión",
+    "dashboard": "Panel de control",
+    "transactions": "Transacciones"
+  },
+  "overview": {
+    "totalRevenue": "Ingresos totales",
+    "totalOrders": "Total de pedidos",
+    "totalProducts": "Artículos de inventario",
+    "totalCustomers": "Personal total",
+    "orderStatistics": "Estadísticas de pedidos",
+    "revenueChart": "Gráfico de ingresos",
+    "recentOrders": "Pedidos recientes",
+    "currentOrders": "Pedidos actuales",
+    "seeAll": "Ver todos",
+    "noRecentOrders": "No se encontraron pedidos recientes",
+    "noCurrentOrders": "No se encontraron pedidos actuales",
+    "last3Months": "Últimos 3 meses",
+    "last6Months": "Últimos 6 meses",
+    "last12Months": "Últimos 12 meses",
+    "orders": "Pedidos",
+    "revenue": "Ingresos"
+  },
+  "orders": {
+    "title": "Pedidos",
+    "newOrder": "Nuevo pedido",
+    "orderNumber": "Número de pedido",
+    "customer": "Cliente",
+    "status": "Estado",
+    "total": "Total",
+    "date": "Fecha",
+    "address": "Dirección",
+    "actions": "Acciones",
+    "price": "Precio",
+    "orderStatus": "Estado del pedido",
+    "kitchenStatus": "Estado de la cocina",
+    "amount": "Importe",
+    "products": "Productos",
+    "deliveryFee": "Costo de envío",
+    "noOrdersFound": "No se encontraron pedidos",
+    "walkIn": "En tienda",
+    "paid": "Pagado",
+    "accept": "Aceptar",
+    "decline": "Rechazar",
+    "orderReceived": "Pedido recibido",
+    "newOrderReceived": "¡Nuevo{{count, plural, =1 {} other {s}}} pedido{{count, plural, =1 {} other {s}}} recibido{{count, plural, =1 {} other {s}}}!",
+    "tabs": {
+      "all": "Todos los pedidos"
+    },
+    "pagination": {
+      "showing": "Mostrando",
+      "to": "a",
+      "of": "de",
+      "orders": "pedidos",
+      "page": "Página"
+    },
+    "statuses": {
+      "pending": "Pendiente",
+      "confirmed": "Confirmado",
+      "preparing": "En preparación",
+      "readyForPickup": "Listo para recoger",
+      "onTheWay": "En camino",
+      "delivered": "Entregado",
+      "cancelled": "Cancelado",
+      "deliveryFailed": "Entrega fallida",
+      "pickup": "Recogida",
+      "assigned": "Asignado"
+    }
+  },
+  "settings": {
+    "title": "Configuración",
+    "tabs": {
+      "editProfile": "Editar perfil",
+      "teamMembers": "Miembros del equipo",
+      "changePassword": "Cambiar contraseña",
+      "aboutRestaurant": "Acerca del restaurante",
+      "restaurantSettings": "Configuración del restaurante"
+    },
+    "profile": {
+      "fullName": "Nombre completo",
+      "userName": "Nombre de usuario",
+      "email": "Correo electrónico",
+      "phoneNumber": "Número de teléfono",
+      "role": "Rol",
+      "dateOfBirth": "Fecha de nacimiento",
+      "address": "Dirección permanente",
+      "city": "Ciudad",
+      "postalCode": "Código postal",
+      "country": "País",
+      "save": "Guardar"
+    },
+    "restaurant": {
+      "language": "Seleccionar idioma",
+      "riderAssignment": "Método de asignación de repartidores",
+      "autoAssign": "Asignación automática de repartidores",
+      "manualAssign": "Asignar repartidores manualmente",
+      "priceCalculation": "Método de cálculo de precios",
+      "autoCalculate": "Calcular precio automáticamente",
+      "manualCalculate": "Establecer precio manualmente",
+      "saveSettings": "Guardar configuración",
+      "saving": "Guardando...",
+      "saved": "¡Guardado!",
+      "refreshing": "Actualizando la aplicación para aplicar los cambios..."
+    },
+    "serviceTypes": {
+      "title": "Configuración del tipo de servicio",
+      "selectTypes": "Seleccionar tipos de servicio:",
+      "additionalOptions": "Opciones adicionales:",
+      "activeFeatures": "Funciones activas:",
+      "onDemand": {
+        "name": "Bajo demanda",
+        "description": "Solo entrega. No involucra inventario."
+      },
+      "fullService": {
+        "name": "Servicio completo",
+        "description": "Gestión de inventario y entrega."
+      },
+      "walkIn": {
+        "name": "En tienda",
+        "description": "El cliente entra físicamente al restaurante para realizar una compra."
+      },
+      "batchDelivery": {
+        "name": "Entrega por lotes",
+        "description": "Entregar múltiples pedidos a la vez. Solo entrega."
+      },
+      "scheduledDelivery": {
+        "name": "Entrega programada",
+        "description": "Programar entregas con anticipación. Solo entrega."
+      },
+      "features": {
+        "inventory": "Gestión de inventario",
+        "transactions": "Transacciones",
+        "reports": "Informes",
+        "overview": "Vista general",
+        "deliveryReport": "Informes de entrega",
+        "batch": "Entrega por lotes",
+        "schedule": "Entrega programada"
+      },
+      "selectionRules": {
+        "title": "Reglas de selección:",
+        "onDemand": "Cuando se selecciona Bajo demanda: No puede seleccionar Servicio completo o En tienda.",
+        "fullService": "Cuando se selecciona Servicio completo: No puede seleccionar Bajo demanda, Entrega por lotes o Entrega programada.",
+        "walkIn": "Cuando se selecciona En tienda: No puede seleccionar Bajo demanda, Entrega por lotes o Entrega programada."
+      }
+    }
+  }
+} 
