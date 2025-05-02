@@ -21,6 +21,10 @@ import { MdOutlineRestaurant } from "react-icons/md";
 import { IoInformationCircleOutline } from "react-icons/io5";
 import { IoIosCloseCircleOutline } from "react-icons/io";
 import { useTranslation } from 'react-i18next';
+import { formatDate, translateOrderStatus, translateKitchenStatus } from '../../i18n/i18n';
+import i18n from '../../i18n/i18n';
+import 'dayjs/locale/es';
+import 'dayjs/locale/fr';
 
 interface Order {
   id: string;
@@ -78,20 +82,8 @@ interface PlaceOrderProps {
 
 // Add this helper function before the Orders component
 const formatOrderStatus = (status: string): string => {
-  switch (status) {
-    case 'ReadyForPickup':
-      return 'Ready For Pickup';
-    case 'OnTheWay':
-      return 'On The Way';
-    case 'DeliveryFailed':
-      return 'Delivery Failed';
-    case 'Preparing':
-      return 'Preparing';
-    case 'Prepared':
-      return 'Prepared';
-    default:
-      return status;
-  }
+  if (!status) return translateOrderStatus('');
+  return translateOrderStatus(status);
 };
 
 interface OrdersProps {
@@ -819,7 +811,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
               </div>
 
               {/* Calendar Popover */}
-              <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale={i18n.language}>
                 <Popover
                   open={open}
                   anchorEl={anchorEl}
@@ -912,7 +904,9 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                       <div className="text-[12px] leading-[20px] font-sans text-[#666]">
                         {order.dropOff[0]?.toAddress || 'N/A'}
                       </div>
-                      <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.orderDate}</div>
+                      <div className="text-[12px] leading-[20px] font-sans text-[#666]">
+                        {order.orderDate ? formatDate(order.orderDate, 'DD MMM YYYY') : ''}
+                      </div>
                       <div className="text-[12px] leading-[20px] font-sans text-[#444] w-24">
                         {Number(order.orderPrice).toFixed(2)}
                       </div>
@@ -929,10 +923,10 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                               : order.kitchenStatus === 'prepared'
                                 ? 'bg-green-100 text-green-800'
                                 : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`}
-                          onClick={() => handleKitchenStatusUpdate(order.id, order.kitchenStatus || 'orderReceived')}
+                          onClick={() => handleKitchenStatusUpdate(order.id, order.kitchenStatus || 'notStarted')}
                           style={{ cursor: order.kitchenStatus === 'prepared' ? 'default' : 'pointer' }}
                         >
-                          {order.kitchenStatus ? order.kitchenStatus.charAt(0).toUpperCase() + order.kitchenStatus.slice(1) : t('orders.orderReceived')}
+                          {translateKitchenStatus(order.kitchenStatus || '')}
                         </span>
                         <div className="flex items-center gap-2">
                           <button 

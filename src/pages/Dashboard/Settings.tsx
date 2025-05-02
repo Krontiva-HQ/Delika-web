@@ -27,6 +27,7 @@ import { Rider } from '../../components/RidersTable';
 // Import i18n related imports
 import { useTranslation } from 'react-i18next';
 import i18n from '../../i18n/i18n';
+import useLanguageChange from '../../hooks/useLanguageChange';
 
 interface LocalUserResponse {
   id: string;
@@ -42,7 +43,7 @@ const Settings: FunctionComponent = () => {
   const [country, setCountry] = useState<{ value: string; label: string } | null>(null);
   const [activeTab, setActiveTab] = useState('edit');
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
-  const [language, setLanguage] = useState('en');
+  const { currentLanguage } = useLanguageChange();
   const [riderAssignment, setRiderAssignment] = useState<'auto' | 'manual'>('auto');
   const [priceCalculation, setPriceCalculation] = useState<'auto' | 'manual'>('auto');
   const options = useMemo(() => countryList().getData(), []);
@@ -575,7 +576,7 @@ const Settings: FunctionComponent = () => {
             <button
               onClick={handleSendOTP}
               disabled={resetLoading}
-              className="cursor-pointer border-gray-200 dark:border-[#333] border-[1px] border-solid py-[13px] px-[20px] bg-black dark:bg-[#fe5b18] text-black dark:text-white rounded-[8px] box-border overflow-hidden flex flex-row items-center justify-center hover:bg-orange-500 dark:hover:bg-[#e54d0e]"
+              className="cursor-pointer border-gray-200 dark:border-[#333] border-[1px] border-solid py-[13px] px-[20px] bg-black dark:bg-[#fe5b18] text-white rounded-[8px] box-border overflow-hidden flex flex-row items-center justify-center hover:bg-orange-500 dark:hover:bg-[#e54d0e]"
             >
               <div className="flex-1 relative text-[14px] leading-[22px] font-sans text-white dark:text-white text-left">
                 {resetLoading ? 'Sending OTP...' : 'Send OTP'}
@@ -862,6 +863,16 @@ const Settings: FunctionComponent = () => {
     // Change the application language
     i18n.changeLanguage(newLanguage);
   };
+
+  // Update the initial language state to use the current language
+  const [language, setLanguage] = useState(() => {
+    // If the user has stored a language preference in their userData, use that
+    if (userProfile._restaurantTable?.[0]?.language) {
+      return userProfile._restaurantTable[0].language;
+    }
+    // Otherwise use the current app language
+    return currentLanguage || 'en';
+  });
 
   return (
     <div className="h-full w-full bg-white dark:bg-black m-0 p-0 font-sans">

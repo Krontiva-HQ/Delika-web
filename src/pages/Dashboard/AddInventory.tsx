@@ -5,6 +5,8 @@ import { useMenuCategories } from '../../hooks/useMenuCategories';
 import { useAddItemToCategory } from '../../hooks/useAddItemToCategory';
 import { useAddCategory } from '../../hooks/useAddCategory';
 import { IoIosCloseCircleOutline } from "react-icons/io";
+import { useTranslation } from 'react-i18next';
+import { useLanguageChange } from '../../hooks/useLanguageChange';
 
 interface AddInventoryProps {
   onClose: () => void;
@@ -43,6 +45,8 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   const [newCategoryFile, setNewCategoryFile] = useState<File | null>(null);
   const { addItem, isLoading: isAddingItem } = useAddItemToCategory();
   const { addCategory, isLoading: isAddingCategory } = useAddCategory();
+  const { t } = useTranslation();
+  useLanguageChange();
 
   const handleTextfieldClick = (event: React.MouseEvent<HTMLElement>) => {
     setTextfieldAnchorEl(event.currentTarget);
@@ -259,9 +263,9 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
 
           {/* Modal content */}
           <div className="flex flex-col items-start justify-start gap-[19px] text-[13px] text-[#686868] font-sans">
-            <b className="relative text-[25px] text-[#201a18] font-sans">Add New Item</b>
+            <b className="relative text-[25px] text-[#201a18] font-sans">{t('inventory.addNewItem')}</b>
             <div className="self-stretch flex flex-col items-start justify-start gap-[1px]">
-              <b className="self-stretch relative leading-[20px] font-sans text-black">Category</b>
+              <b className="self-stretch relative leading-[20px] font-sans text-black">{t('inventory.category')}</b>
               {!showCategoryForm ? (
                 <div
                   ref={dropdownRef}
@@ -271,7 +275,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                            flex flex-row items-center justify-between py-[14px] px-[20px] 
                            text-black cursor-pointer hover:border-[#e0e0e0]"
                 >
-                  <span>{selectedCategory || "Select Category"}</span>
+                  <span>{selectedCategory || t('inventory.selectCategory')}</span>
                   <FaChevronDown className="text-black text-[12px]" />
                 </div>
               ) : (
@@ -280,7 +284,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                     type="text"
                     value={newCategory}
                     onChange={handleNewCategoryChange}
-                    placeholder="Enter new category"
+                    placeholder={t('inventory.newCategoryName')}
                     className="flex-1 border-[#efefef] border-[1px] border-solid [outline:none] 
                              font-sans text-[13px] bg-[#fff] rounded-[8px] 
                              py-[14px] px-[20px]"
@@ -294,7 +298,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                                text-[13px] font-sans hover:bg-gray-200 
                                transition-colors whitespace-nowrap"
                     >
-                      Cancel
+                      {t('common.cancel')}
                     </button>
                   </div>
                 </div>
@@ -342,7 +346,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                             onClick={() => setNewCategoryImage(null)}
                             className="opacity-0 group-hover:opacity-100 bg-white text-gray-700 px-3 py-1 rounded-md text-sm"
                           >
-                            Remove
+                            {t('common.delete')}
                           </button>
                         </div>
                       </div>
@@ -360,8 +364,8 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                         />
                         <div className="text-gray-400 text-center text-sm font-sans">
-                          <p>Drag and drop category image here</p>
-                          <p>or click to select</p>
+                          <p>{t('inventory.dragAndDrop')}</p>
+                          <p>{t('inventory.or')} {t('inventory.browseFiles')}</p>
                         </div>
                       </div>
                     )}
@@ -406,7 +410,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                 }}
               >
                 {isLoading ? (
-                  <MenuItem disabled>Loading categories...</MenuItem>
+                  <MenuItem disabled>{t('common.loading')}</MenuItem>
                 ) : (
                   [
                     ...categories.map((category) => (
@@ -431,17 +435,17 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                         setCategoryAnchorEl(null);
                       }}
                     >
-                      + Add New Category
+                      + {t('inventory.addCategory')}
                     </MenuItem>
                   ]
                 )}
               </Menu>
             </div>
             <div className="self-stretch flex flex-col items-start justify-start gap-[1px]">
-              <b className="self-stretch relative leading-[20px] font-sans">Name</b>
+              <b className="self-stretch relative leading-[20px] font-sans">{t('inventory.name')}</b>
               <input
                 className="border-[#efefef] border-[1px] border-solid [outline:none] bg-[#fff] self-stretch rounded-[8px] flex flex-row items-center justify-start py-[14px] px-[20px] text-black font-sans"
-                placeholder="Enter Item Name"
+                placeholder={t('inventory.name')}
                 type="text"
                 value={itemName}
                 onChange={(e) => setItemName(e.target.value)}
@@ -450,11 +454,11 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
             <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[23px]">
               <div className="flex-1 flex flex-col items-start justify-start gap-[6px]">
                 <div className="self-stretch relative leading-[22px] font-sans font-bold">
-                  Short Details
+                  {t('inventory.description')}
                 </div>
                 <input
                   className="border-[#f6f6f6] border-[1px] border-solid [outline:none] font-sans text-[13px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[12px] px-[20px] text-black"
-                  placeholder="Charlene Reed"
+                  placeholder={t('inventory.description')}
                   type="text"
                   value={shortDetails}
                   onChange={(e) => setShortDetails(e.target.value)}
@@ -462,7 +466,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
               </div>
               <div className="flex-1 flex flex-col items-start justify-start gap-[6px]">
                 <div className="self-stretch relative leading-[22px] font-sans font-bold">
-                  Add Image
+                  {t('inventory.uploadImage')}
                 </div>
                 <div
                   onDrop={handleDrop}
@@ -486,7 +490,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                           onClick={() => setSelectedImage(null)}
                           className="opacity-0 group-hover:opacity-100 bg-white text-gray-700 px-3 py-1 rounded-md text-sm"
                         >
-                          Remove
+                          {t('common.delete')}
                         </button>
                       </div>
                     </div>
@@ -499,8 +503,8 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                       />
                       <div className="text-gray-400 text-center font-sans">
-                        <p>Drag and drop an image here</p>
-                        <p>or click to select</p>
+                        <p>{t('inventory.dragAndDrop')}</p>
+                        <p>{t('inventory.or')} {t('inventory.browseFiles')}</p>
                       </div>
                     </div>
                   )}
@@ -508,7 +512,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
               </div>
             </div>
             <div className="self-stretch flex flex-col items-start justify-start gap-[8px]">
-              <div className="self-stretch relative leading-[22px] font-sans font-bold">Price</div>
+              <div className="self-stretch relative leading-[22px] font-sans font-bold">{t('inventory.price')}</div>
               <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
                 <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
                   <div className="relative leading-[20px] font-sans text-black">GHS</div>
@@ -523,7 +527,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
               </div>
             </div>
             <div className="self-stretch flex flex-col items-start justify-start gap-[8px]">
-              <div className="self-stretch relative leading-[22px] font-sans">Available</div>
+              <div className="self-stretch relative leading-[22px] font-sans">{t('inventory.availability')}</div>
               <input
                 type="checkbox"
                 checked={available}
@@ -540,7 +544,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
               disabled={!isFormValid()}
             >
               <div className="relative text-[10px] leading-[16px] text-[#fff] text-left font-sans">
-                {isLoading ? 'Saving...' : 'Save'}
+                {isLoading ? t('settings.restaurant.saving') : t('common.save')}
               </div>
             </button>
           </div>

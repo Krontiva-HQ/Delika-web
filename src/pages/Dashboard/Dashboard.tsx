@@ -26,6 +26,7 @@ import { useBackgroundRefresh } from '../../hooks/useBackgroundRefresh';
 import { getAvailableMenuItems } from '../../permissions/DashboardPermissions';
 import { IconType } from 'react-icons';
 import { useTranslation } from 'react-i18next';
+import useLanguageChange from '../../hooks/useLanguageChange';
 
 interface MainDashboardProps {
   children?: React.ReactNode;
@@ -56,6 +57,7 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
   const { notifications } = useNotifications();
   const [isViewingOrderDetails, setIsViewingOrderDetails] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const { currentLanguage } = useLanguageChange();
   
   useEffect(() => {
     document.documentElement.classList.remove('dark');

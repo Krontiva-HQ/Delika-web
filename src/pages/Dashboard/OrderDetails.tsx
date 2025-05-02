@@ -8,6 +8,8 @@ import jsPDF from 'jspdf';
 import { MdOutlineFileDownload } from 'react-icons/md';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import { useTranslation } from 'react-i18next';
+import { formatDate, translateOrderStatus, translateKitchenStatus } from '../../i18n/i18n';
+import dayjs from 'dayjs';
 
 interface InvoiceData {
   invoiceNumber: string;
@@ -136,7 +138,7 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
 
     return {
       invoiceNumber: orderNumber.toString(),
-      orderDate: orderDate ? new Date(orderDate).toLocaleDateString() : 'N/A',
+      orderDate: orderDate ? formatDate(new Date(orderDate)) : 'N/A',
       location: pickup[0]?.fromAddress || 'N/A',
       pickup,
       dropOff,
@@ -163,10 +165,10 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       courierName,
       courierPhoneNumber,
       timeline: {
-        received: orderReceivedTime ? new Date(orderReceivedTime).toLocaleString() : null,
-        pickedUp: orderPickedUpTime ? new Date(orderPickedUpTime).toLocaleString() : null,
-        onWay: orderOnmywayTime ? new Date(orderOnmywayTime).toLocaleString() : null,
-        completed: orderCompletedTime ? new Date(orderCompletedTime).toLocaleString() : null,
+        received: orderReceivedTime ? formatDate(new Date(orderReceivedTime), 'DD MMM YYYY HH:mm') : null,
+        pickedUp: orderPickedUpTime ? formatDate(new Date(orderPickedUpTime), 'DD MMM YYYY HH:mm') : null,
+        onWay: orderOnmywayTime ? formatDate(new Date(orderOnmywayTime), 'DD MMM YYYY HH:mm') : null,
+        completed: orderCompletedTime ? formatDate(new Date(orderCompletedTime), 'DD MMM YYYY HH:mm') : null,
       },
       restaurant: {
         name: restaurantName,
@@ -394,7 +396,7 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                   <span>{t('orders.date')}: {invoiceData.orderDate}</span>
                   <div className="flex items-center gap-1">
                     <span className="text-gray-600 font-medium text-xs">{t('orders.orderStatus')}:</span>
-                    <span className="text-xs font-bold">{invoiceData.orderStatus || 'N/A'}</span>
+                    <span className="text-xs font-bold">{translateOrderStatus(invoiceData.orderStatus) || 'N/A'}</span>
                   </div>
                   {invoiceData.Walkin && (
                     <div className="flex items-center gap-1">
@@ -404,7 +406,11 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                   )}
                   <div className="flex items-center gap-1">
                     <span className="text-gray-600 font-medium">{t('orders.detail.scheduledTime')}:</span>
-                    <span>{invoiceData.scheduledTime ? new Date(invoiceData.scheduledTime).toLocaleString() : t('orders.detail.noScheduledTime')}</span>
+                    <span>
+                      {invoiceData.scheduledTime 
+                        ? formatDate(new Date(invoiceData.scheduledTime), 'DD MMM YYYY HH:mm') 
+                        : t('orders.detail.noScheduledTime')}
+                    </span>
                   </div>
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-1">
@@ -558,7 +564,7 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                           ? 'bg-green-100 text-green-800'
                           : 'bg-gray-100 text-gray-800'}`}
                     >
-                      {invoiceData.kitchenStatus ? invoiceData.kitchenStatus.charAt(0).toUpperCase() + invoiceData.kitchenStatus.slice(1) : t('orders.orderReceived')}
+                      {translateKitchenStatus(invoiceData.kitchenStatus || '')}
                     </span>
                   </div>
                 </div>

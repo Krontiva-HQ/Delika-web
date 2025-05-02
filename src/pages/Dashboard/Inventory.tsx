@@ -15,6 +15,8 @@ import BranchFilter from '../../components/BranchFilter';
 import { api } from '../../services/api';
 import { optimizeImage } from '../../utils/imageOptimizer';
 import { OptimizedImage } from '../../components/OptimizedImage';
+import { useTranslation } from 'react-i18next';
+import { useLanguageChange } from '../../hooks/useLanguageChange';
 
 interface MenuItem {
   id: string;
@@ -79,6 +81,9 @@ interface InventoryProps {
 const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
   const navigate = useNavigate();
   const { addNotification } = useNotifications();
+  const { t } = useTranslation();
+  // Use the language change hook to ensure component updates on language change
+  useLanguageChange();
 
   const [vuesaxlineararrowDownAnchorEl, setVuesaxlineararrowDownAnchorEl] =
     useState<HTMLElement | null>(null);
@@ -229,6 +234,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
     
     const [price, setPrice] = useState(item.price);
     const [available, setAvailable] = useState(item.available);
+    const { t } = useTranslation();
 
     return (
       <Modal
@@ -248,14 +254,14 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
               <h2 className="text-xl font-semibold font-sans">{item.name}</h2>
               <p className="text-sm text-black font-sans">{item.description}</p>
               <div className={`text-sm font-sans ${item.available ? 'text-green-600' : 'text-red-600'}`}>
-                {item.available ? 'In Stock' : 'Out of Stock'}
+                {item.available ? t('inventory.available') : t('inventory.unavailable')}
               </div>
             </div>
           </div>
           <div className="flex gap-4">
             {/* Price Control */}
             <div className="flex flex-col gap-2 flex-1">
-              <label className="text-sm text-gray-600 font-sans">Price (GHS)</label>
+              <label className="text-sm text-gray-600 font-sans">{t('inventory.price')} (GHS)</label>
               <input
                 type="number"
                 value={price}
@@ -266,7 +272,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
 
             {/* Availability Control */}
             <div className="flex flex-col gap-2">
-              <label className="text-sm text-gray-600 font-sans">Available</label>
+              <label className="text-sm text-gray-600 font-sans">{t('inventory.availability')}</label>
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
@@ -275,7 +281,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                   className="w-5 h-5"
                 />
                 <span className="text-sm font-sans">
-                  {available ? 'In Stock' : 'Out of Stock'}
+                  {available ? t('inventory.available') : t('inventory.unavailable')}
                 </span>
               </div>
             </div>
@@ -297,7 +303,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                 height: '42px',
               }}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={() => onSave(item.id, price, available)}
@@ -315,7 +321,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                 whiteSpace: 'nowrap'
               }}
             >
-              Save Changes
+              {t('inventory.saveChanges')}
             </Button>
           </div>
         </div>
@@ -416,7 +422,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         {/* Title and Add Item Section */}
         <div className="flex justify-between items-center mb-4">
           <b className="text-[18px] font-sans">
-            Items
+            {t('inventory.title')}
           </b>
           <div className="flex items-center gap-2">
             {userProfile?.role === 'Admin' && (
@@ -433,13 +439,13 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
               onClick={onAddItemButtonClick}
             >
               <IoMdAdd className="w-[18px] h-[18px] text-[#cbcbcb]" />
-              <div className="leading-[18px] font-sans text-white">Add item</div>
+              <div className="leading-[18px] font-sans text-white">{t('inventory.addNewItem')}</div>
             </div>
           </div>
         </div>
         {/* Total Items */}
         <div className="relative leading-[22px] font-sans mb-4">
-          Total item - {remoteCategories.reduce((total, category) => total + (category.foods?.length || 0), 0)}
+          {t('inventory.allItems')} - {remoteCategories.reduce((total, category) => total + (category.foods?.length || 0), 0)}
         </div>
 
         {/* Categories Section */}
@@ -557,7 +563,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                     ${item.available 
                       ? 'bg-green-100 text-green-800' 
                       : 'bg-red-100 text-red-800'}`}>
-                    {item.available ? 'In Stock' : 'Out of Stock'}
+                    {item.available ? t('inventory.available') : t('inventory.unavailable')}
                   </div>
                 </div>
                 <div className="p-4 flex flex-col gap-1">
@@ -571,14 +577,14 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                   </div>
                   <div className="flex items-center text-[13px] text-[#a2a2a2] mt-1 font-sans">
                     <FiShoppingCart className="mr-1" />
-                    {item.available ? 'In Stock' : 'Out of Stock'}
+                    {item.available ? t('inventory.available') : t('inventory.unavailable')}
                   </div>
                 </div>
               </div>
             ))
           ) : (
             <div className="col-span-full text-center py-4 text-gray-500 font-sans">
-              No items found matching 
+              {t('inventory.noItems')}
             </div>
           )}
         </div>

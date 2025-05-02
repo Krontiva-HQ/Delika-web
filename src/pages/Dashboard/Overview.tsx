@@ -15,6 +15,7 @@ import BranchFilter from '../../components/BranchFilter';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import { hasOverviewAccess, shouldShowRevenue } from '../../permissions/DashboardPermissions';
 import { useTranslation } from 'react-i18next';
+import { formatDate, formatMonth } from '../../i18n/i18n';
 
 interface Order {
   id: string;
@@ -222,6 +223,10 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
     return value.toString();
   };
 
+  const formatMonthName = (value: string) => {
+    return formatMonth(value, 'short');
+  };
+
   return (
     <main className="h-full overflow-auto">
       <div className="p-3 ml-4 mr-4">
@@ -333,6 +338,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
                     tickLine={false}
                     tick={{ fill: '#666', fontSize: 12, fontFamily: 'sans-serif' }}
                     dy={10}
+                    tickFormatter={formatMonthName}
                   />
                   <YAxis 
                     axisLine={false}
@@ -408,6 +414,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
                       tickLine={false}
                       tick={{ fill: '#666', fontSize: 12, fontFamily: 'sans-serif' }}
                       dy={10}
+                      tickFormatter={formatMonthName}
                     />
                     <YAxis
                       axisLine={false}
