@@ -35,32 +35,61 @@ const BatchSummaryModal: React.FC<BatchSummaryModalProps> = ({
         </div>
 
         {/* Orders List */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+        <div className="flex-1 overflow-y-auto p-3 space-y-3">
           {orders.map((order, index) => (
             <div 
-              key={order.id} 
-              className="bg-gray-100 rounded-lg p-3 min-h-[90px] flex flex-col justify-between"
+              key={order.id || index} 
+              className="bg-gray-100 rounded-lg p-3 flex flex-col gap-2"
             >
+              <div className="flex justify-between items-center border-b pb-2">
+                <span className="text-[12px] font-medium font-sans">Order #{index + 1}</span>
+                <span className="text-[12px] text-[#fd683e] font-sans">GH₵ {order.totalPrice}</span>
+              </div>
+              
               <div className="space-y-2">
-                <div className="flex justify-between items-center border-b pb-1">
-                  <span className="text-[12px] font-medium font-sans">Order #{index + 1}</span>
-                  <span className="text-[12px] text-[#fd683e] font-sans">GH₵ {order.deliveryPrice}</span>
+                <div className="flex justify-between">
+                  <span className="text-[11px] text-gray-600 font-sans">Customer name:</span>
+                  <span className="text-[11px] font-medium font-sans">{order.customerName}</span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-[11px] text-gray-600 font-sans">Phone:</span>
+                  <span className="text-[11px] font-medium font-sans">{order.customerPhoneNumber}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[11px] text-gray-600 font-sans">Delivery Address:</span>
+                  <span className="text-[11px] font-medium text-right max-w-[200px] line-clamp-2 font-sans">
+                    {order.dropOff[0].toAddress}
+                  </span>
+                </div>
+              </div>
+
+              {/* Food Items Section */}
+              <div className="mt-2 border-t pt-2">
+                <div className="text-[11px] font-medium font-sans mb-1">Food Items:</div>
                 <div className="space-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-[11px] text-gray-600 font-sans">Customer name:</span>
-                    <span className="text-[11px] font-medium font-sans">{order.customerName}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[11px] text-gray-600 font-sans">Phone:</span>
-                    <span className="text-[11px] font-medium font-sans">{order.customerPhone}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[11px] text-gray-600 font-sans">Delivery Address:</span>
-                    <span className="text-[11px] font-medium text-right max-w-[200px] line-clamp-2 font-sans">
-                      {order.dropOff[0].toAddress}
-                    </span>
-                  </div>
+                  {order.products.map((product: any, pIndex: number) => (
+                    <div key={pIndex} className="flex justify-between items-center">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[11px] font-medium font-sans">{product.quantity}x</span>
+                        <span className="text-[11px] text-gray-600 font-sans">{product.name}</span>
+                      </div>
+                      <span className="text-[11px] text-gray-600 font-sans">
+                        GH₵ {(Number(product.price) * Number(product.quantity)).toFixed(2)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Price Summary */}
+              <div className="mt-2 border-t pt-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-[11px] text-gray-600 font-sans">Delivery Fee:</span>
+                  <span className="text-[11px] font-medium font-sans">GH₵ {order.deliveryPrice}</span>
+                </div>
+                <div className="flex justify-between items-center font-medium">
+                  <span className="text-[11px] text-gray-600 font-sans">Total:</span>
+                  <span className="text-[11px] text-[#fd683e] font-sans">GH₵ {order.totalPrice}</span>
                 </div>
               </div>
             </div>
@@ -68,7 +97,7 @@ const BatchSummaryModal: React.FC<BatchSummaryModalProps> = ({
         </div>
 
         {/* Buttons */}
-        <div className="p-3 space-y-2">
+        <div className="p-3 space-y-2 border-t">
           {!isMaxOrdersReached ? (
             <button
               onClick={onAddAnother}

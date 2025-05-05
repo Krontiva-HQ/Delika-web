@@ -26,6 +26,7 @@ interface RestaurantData {
   Overview: boolean;
   DeliveryReport: boolean;
   WalkIn: boolean; // Add this new property
+  FullService: boolean; // Add this new property
 }
 
 export const useUserProfile = () => {
