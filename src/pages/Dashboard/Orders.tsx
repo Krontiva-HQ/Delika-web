@@ -617,24 +617,39 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     }
   };
 
-  // Add this handler function in the Orders component
-  const handleKitchenStatusUpdate = async (orderId: string, currentStatus: string) => {
+  // Add handler for kitchen status update
+  const handleKitchenStatusUpdate = async (orderId: string, currentStatus: string, order: Order) => {
+    console.log('Kitchen status clicked!');
+    console.log('OrderId:', orderId);
+    console.log('Current Status:', currentStatus);
+    
     let newStatus = currentStatus;
     
-    // Determine the next status
-    if (!currentStatus || currentStatus === 'not started') {
+    // Update status flow to match database values
+    if (currentStatus === 'orderReceived') {
       newStatus = 'preparing';
     } else if (currentStatus === 'preparing') {
       newStatus = 'prepared';
-    } else {
+    } else if (currentStatus === 'prepared') {
       // If already prepared, do nothing
+      console.log('Already in prepared state, no update needed');
       return;
     }
 
+    console.log('New Status:', newStatus);
+    console.log('Order Data:', order);
+
+    const payload = {
+      orderNumber: order.orderNumber,
+      customerName: order.customerName,
+      kitchenStatus: newStatus
+    };
+
+    console.log('API Payload:', payload);
+
     try {
-      await api.put(`/orders/${orderId}`, {
-        kitchenStatus: newStatus
-      });
+      const response = await api.patch('/edit/order', payload);
+      console.log('API Response:', response);
       
       // Refresh orders after status update
       if (selectedDate && selectedBranchId) {
@@ -646,6 +661,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         message: `Kitchen status updated to ${newStatus}`
       });
     } catch (error) {
+      console.error('API Error:', error);
       addNotification({
         type: 'order_status',
         message: 'Failed to update kitchen status'
@@ -922,11 +938,18 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                               ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
                               : order.kitchenStatus === 'prepared'
                                 ? 'bg-green-100 text-green-800'
-                                : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}`}
-                          onClick={() => handleKitchenStatusUpdate(order.id, order.kitchenStatus || 'notStarted')}
+                                : order.kitchenStatus === 'orderReceived'
+                                  ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
+                                  : ''}`}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('Kitchen status clicked - Event handler');
+                            handleKitchenStatusUpdate(order.id, order.kitchenStatus, order);
+                          }}
                           style={{ cursor: order.kitchenStatus === 'prepared' ? 'default' : 'pointer' }}
                         >
-                          {translateKitchenStatus(order.kitchenStatus || '')}
+                          {translateKitchenStatus(order.kitchenStatus)}
                         </span>
                         <div className="flex items-center gap-2">
                           <button 

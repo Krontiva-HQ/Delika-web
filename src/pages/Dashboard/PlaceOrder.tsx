@@ -400,6 +400,9 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   const handlePlaceOrder = async (paymentType: 'cash' | 'momo' | 'visa') => {
     try {
       setIsSubmitting(true);
+      console.log('Starting order placement...');
+      console.log('AutoAssign Status:', restaurantData?.AutoAssign);
+      console.log('Selected Rider userId:', selectedRider);
 
       const formData = new FormData();
       
@@ -461,17 +464,27 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         formData.append('scheduleTime[scheduleDateTime]', scheduleDateTime.toISOString());
       }
 
-      // Add selected rider if manual assignment is enabled
+      // Add selected rider if manual assignment is enabled and a rider is selected
       if (!restaurantData?.AutoAssign && selectedRider) {
-        formData.append('riderId', selectedRider);
+        console.log('Adding courier userId to order:', selectedRider);
+        formData.append('courierUserId', selectedRider); // Changed from courierId to courierUserId
+      } else {
+        console.log('Skipping courier assignment:', {
+          autoAssign: restaurantData?.AutoAssign,
+          selectedRiderUserId: selectedRider
+        });
       }
 
-      // Debug log to check the formData
+      // Log all form data before submission
+      console.log('Final Form Data:');
       formData.forEach((value, key) => {
+        console.log(`${key}:`, value);
       });
 
       // Use the placeOrder function from api.ts
+      console.log('Submitting order to API...');
       const response = await placeOrder(formData);
+      console.log('API Response:', response);
 
       if (!response.data) {
         throw new Error('Failed to place order');
@@ -512,6 +525,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       }
 
     } catch (error) {
+      console.error('Order placement failed:', error);
       addNotification({
         type: 'order_status',
         message: 'Failed to place order. Please try again.'
@@ -2871,7 +2885,13 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   // Update renderRiderSelection to handle loading state
   const renderRiderSelection = () => {
     // Only show rider selection when AutoAssign is false
-    if (restaurantData?.AutoAssign) return null;
+    if (restaurantData?.AutoAssign) {
+      console.log('AutoAssign is enabled, hiding rider selection');
+      return null;
+    }
+
+    console.log('Available Riders:', riders);
+    console.log('Currently Selected Rider userId:', selectedRider);
 
     return (
       <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
@@ -2880,8 +2900,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
                     text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
                     flex flex-row items-center justify-start py-[10px] px-[12px]"
-          value={selectedRider}
-          onChange={(e) => setSelectedRider(e.target.value)}
+          value={riders.find(r => r.userTable?.id === selectedRider || r.userId === selectedRider)?.id || ''}
+          onChange={handleRiderSelect}
           disabled={isLoadingRiders}
         >
           <option value="">
@@ -2900,6 +2920,19 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         )}
       </div>
     );
+  };
+
+  // Update the rider selection handler to store userId instead of rider id
+  const handleRiderSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const riderId = e.target.value;
+    console.log('Selected Rider ID:', riderId);
+    
+    // Find the selected rider's userId from the riders array
+    const selectedRiderData = riders.find(rider => rider.id === riderId);
+    const userId = selectedRiderData?.userTable?.id || selectedRiderData?.userId || '';
+    
+    console.log('Selected Rider userId:', userId);
+    setSelectedRider(userId);
   };
 
   return (

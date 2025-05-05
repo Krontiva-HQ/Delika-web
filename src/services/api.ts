@@ -601,6 +601,7 @@ export const placeOrder = async (formData: FormData) => {
     orderStatus: jsonData.orderStatus,
     payLater: jsonData.payLater === 'true',
     payNow: jsonData.payNow === 'true',
+    courierUserId: jsonData.courierUserId,
     payVisaCard: jsonData.payVisaCard === 'true',
     pickup: [{
       fromAddress: jsonData['pickup[0][fromAddress]'],
