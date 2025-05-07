@@ -101,6 +101,7 @@ export const API_ENDPOINTS = {
     FILTER_BY_DATE: '/filter/orders/by/date',
     GET_ALL_PER_BRANCH: '/get/all/orders/per/branch',
     EDIT: '/edit/order',
+    ACCEPT_DECLINE: '/accept/decline/orders',
     PLACE_ORDER: '/delikaquickshipper_orders_table'
   },
   CATEGORY: {
@@ -601,7 +602,7 @@ export const placeOrder = async (formData: FormData) => {
     orderStatus: jsonData.orderStatus,
     payLater: jsonData.payLater === 'true',
     payNow: jsonData.payNow === 'true',
-    courierUserId: jsonData.courierUserId,
+    courierId: jsonData.courierId,
     payVisaCard: jsonData.payVisaCard === 'true',
     pickup: [{
       fromAddress: jsonData['pickup[0][fromAddress]'],

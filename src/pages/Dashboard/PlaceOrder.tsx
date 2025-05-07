@@ -467,7 +467,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       // Add selected rider if manual assignment is enabled and a rider is selected
       if (!restaurantData?.AutoAssign && selectedRider) {
         console.log('Adding courier userId to order:', selectedRider);
-        formData.append('courierUserId', selectedRider); // Changed from courierId to courierUserId
+        formData.append('courierId', selectedRider); // Changed from courierId to courierId
       } else {
         console.log('Skipping courier assignment:', {
           autoAssign: restaurantData?.AutoAssign,

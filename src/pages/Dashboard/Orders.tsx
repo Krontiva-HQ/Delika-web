@@ -7,7 +7,7 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { Popover } from '@mui/material';
 import dayjs, { Dayjs } from 'dayjs';
 import PlaceOrder from './PlaceOrder';
-import { api } from '../../services/api';
+import { api, API_ENDPOINTS } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import OrderDetails from './OrderDetails';
 import useOrderDetails from '../../hooks/useOrderDetails';
@@ -65,6 +65,7 @@ interface Order {
   payVisaCard: boolean;
   kitchenStatus: string;
   orderAccepted: boolean;
+  orderChannel: string;
 }
 
 // Add interface for API request params
@@ -345,7 +346,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     }
   }, [selectedDate, selectedBranchId, fetchOrders]);
 
-  // Update the filteredOrders useMemo to include pagination
+  // Update the filteredOrders useMemo to include the new channel filtering
   const paginatedOrders = useMemo(() => {
     const filtered = orders
       .sort((a, b) => {
@@ -359,13 +360,11 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
         const matchesTab = activeTab === 'all' 
           ? true 
-          : activeTab === 'onTheWay'
-          ? order.orderStatus === 'OnTheWay'
-          : activeTab === 'readyForPickup'
-            ? order.orderStatus === 'ReadyForPickup'
-            : activeTab === 'deliveryFailed'
-              ? order.orderStatus === 'DeliveryFailed'
-              : order.orderStatus.toLowerCase() === activeTab;
+          : activeTab === 'customerApp'
+          ? order.orderChannel === 'customerApp'
+          : activeTab === 'restaurantPortal'
+          ? order.orderChannel === 'restaurantPortal'
+          : true;
 
         return matchesSearch && matchesTab;
       });
@@ -535,56 +534,124 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     };
   }, [checkForNewOrders]);
 
-  // Add these handlers
-  const handleAcceptNewOrders = useCallback((orderId: string) => {
-    // Find the accepted order
-    const acceptedOrder = newOrders.find(order => order.id === orderId);
-    if (acceptedOrder) {
-      // Update the orders list with just the accepted order
-      setOrders(prev => [acceptedOrder, ...prev]);
-      
-      // Show notification
+  // Update the kitchen status handler to check orderChannel
+  const handleKitchenStatusUpdate = async (orderId: string, currentStatus: string, order: Order) => {
+    // Return early if order is from restaurant portal
+    if (order.orderChannel === 'restaurantPortal') {
       addNotification({
-        type: 'order_created',
-        message: `Accepted order #${acceptedOrder.orderNumber}`
+        type: 'order_status',
+        message: 'Kitchen status cannot be updated for restaurant portal orders'
+      });
+      return;
+    }
+
+    let newStatus = currentStatus;
+    
+    // Determine the next status
+    if (currentStatus === 'orderReceived') {
+      newStatus = 'preparing';
+    } else if (currentStatus === 'preparing') {
+      newStatus = 'prepared';
+    } else if (currentStatus === 'prepared') {
+      // If already prepared, do nothing
+      console.log('Already in prepared state, no update needed');
+      return;
+    }
+
+    console.log('New Status:', newStatus);
+    console.log('Order Data:', order);
+
+    try {
+      await api.patch('/edit/kitchen/status', {
+        orderNumber: order.orderNumber,
+        kitchenStatus: newStatus
       });
       
-      // Remove the accepted order from newOrders
-      setNewOrders(prev => prev.filter(order => order.id !== orderId));
-      
-      // If no more new orders, close the modal
-      if (newOrders.length === 1) {
-        setShowNewOrderModal(false);
-      }
-
-      // Refresh the orders table
+      // Refresh orders after status update
       if (selectedDate && selectedBranchId) {
         fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
+      }
+      
+      addNotification({
+        type: 'order_status',
+        message: `Kitchen status updated to ${newStatus}`
+      });
+    } catch (error) {
+      console.error('API Error:', error);
+      addNotification({
+        type: 'order_status',
+        message: 'Failed to update kitchen status'
+      });
+    }
+  };
+
+  // Update the accept/decline handlers
+  const handleAcceptNewOrders = useCallback(async (orderId: string) => {
+    const acceptedOrder = newOrders.find(order => order.id === orderId);
+    if (acceptedOrder) {
+      try {
+        // Use the ACCEPT_DECLINE endpoint
+        await api.patch('/accept/decline/orders', {
+          orderNumber: acceptedOrder.orderNumber,
+          orderAccepted: true
+        });
+
+        setOrders(prev => [acceptedOrder, ...prev]);
+        
+        addNotification({
+          type: 'order_created',
+          message: `Accepted order #${acceptedOrder.orderNumber}`
+        });
+        
+        setNewOrders(prev => prev.filter(order => order.id !== orderId));
+        
+        if (newOrders.length === 1) {
+          setShowNewOrderModal(false);
+        }
+
+        if (selectedDate && selectedBranchId) {
+          fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
+        }
+      } catch (error) {
+        console.error('Failed to accept order:', error);
+        addNotification({
+          type: 'order_status',
+          message: 'Failed to accept order. Please try again.'
+        });
       }
     }
   }, [newOrders, addNotification, setOrders, setNewOrders, selectedDate, selectedBranchId, fetchOrders, setShowNewOrderModal]);
 
-  const handleDeclineNewOrders = useCallback((orderId: string) => {
-    // Find the declined order
+  const handleDeclineNewOrders = useCallback(async (orderId: string) => {
     const declinedOrder = newOrders.find(order => order.id === orderId);
     if (declinedOrder) {
-      // Show notification
-      addNotification({
-        type: 'order_created',
-        message: `Declined order #${declinedOrder.orderNumber}`
-      });
-      
-      // Remove the declined order from newOrders
-      setNewOrders(prev => prev.filter(order => order.id !== orderId));
-      
-      // If no more new orders, close the modal
-      if (newOrders.length === 1) {
-        setShowNewOrderModal(false);
-      }
+      try {
+        // Use the ACCEPT_DECLINE endpoint
+        await api.patch('/accept/decline/orders', {
+          orderNumber: declinedOrder.orderNumber,
+          orderAccepted: false
+        });
 
-      // Refresh the orders table
-      if (selectedDate && selectedBranchId) {
-        fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
+        addNotification({
+          type: 'order_created',
+          message: `Declined order #${declinedOrder.orderNumber}`
+        });
+        
+        setNewOrders(prev => prev.filter(order => order.id !== orderId));
+        
+        if (newOrders.length === 1) {
+          setShowNewOrderModal(false);
+        }
+
+        if (selectedDate && selectedBranchId) {
+          fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
+        }
+      } catch (error) {
+        console.error('Failed to decline order:', error);
+        addNotification({
+          type: 'order_status',
+          message: 'Failed to decline order. Please try again.'
+        });
       }
     }
   }, [newOrders, addNotification, setNewOrders, selectedDate, selectedBranchId, fetchOrders, setShowNewOrderModal]);
@@ -617,67 +684,12 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     }
   };
 
-  // Add handler for kitchen status update
-  const handleKitchenStatusUpdate = async (orderId: string, currentStatus: string, order: Order) => {
-    console.log('Kitchen status clicked!');
-    console.log('OrderId:', orderId);
-    console.log('Current Status:', currentStatus);
-    
-    let newStatus = currentStatus;
-    
-    // Update status flow to match database values
-    if (currentStatus === 'orderReceived') {
-      newStatus = 'preparing';
-    } else if (currentStatus === 'preparing') {
-      newStatus = 'prepared';
-    } else if (currentStatus === 'prepared') {
-      // If already prepared, do nothing
-      console.log('Already in prepared state, no update needed');
-      return;
-    }
-
-    console.log('New Status:', newStatus);
-    console.log('Order Data:', order);
-
-    const payload = {
-      orderNumber: order.orderNumber,
-      customerName: order.customerName,
-      kitchenStatus: newStatus
-    };
-
-    console.log('API Payload:', payload);
-
-    try {
-      const response = await api.patch('/edit/order', payload);
-      console.log('API Response:', response);
-      
-      // Refresh orders after status update
-      if (selectedDate && selectedBranchId) {
-        fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
-      }
-      
-      addNotification({
-        type: 'order_status',
-        message: `Kitchen status updated to ${newStatus}`
-      });
-    } catch (error) {
-      console.error('API Error:', error);
-      addNotification({
-        type: 'order_status',
-        message: 'Failed to update kitchen status'
-      });
-    }
-  };
-
   return (
     <div className="h-full w-full bg-white m-0 p-0">
       {selectedOrderId ? (
         <OrderDetails 
           orderId={selectedOrderId} 
-          onBack={() => {
-            handleBackToOrders();
-            onOrderDetailsView(false);
-          }} 
+          onBack={handleBackToOrders}
           orderDetails={orderDetails}
           isLoading={isOrderDetailsLoading}
           error={error}
@@ -728,73 +740,23 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                 </div>
                 <div 
                   className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
-                    ${activeTab === 'readyForPickup'
+                    ${activeTab === 'customerApp'
                       ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
                       : 'text-[#929494]'
                     }`}
-                  onClick={() => setActiveTab('readyForPickup')}
+                  onClick={() => setActiveTab('customerApp')}
                 >
-                  {t('orders.statuses.readyForPickup')}
+                  Customer App
                 </div>
                 <div 
                   className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
-                    ${activeTab === 'assigned'
+                    ${activeTab === 'restaurantPortal'
                       ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
                       : 'text-[#929494]'
                     }`}
-                  onClick={() => setActiveTab('assigned')}
+                  onClick={() => setActiveTab('restaurantPortal')}
                 >
-                  {t('orders.statuses.assigned')}
-                </div>
-                <div 
-                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
-                    ${activeTab === 'pickup'
-                      ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
-                      : 'text-[#929494]'
-                    }`}
-                  onClick={() => setActiveTab('pickup')}
-                >
-                  {t('orders.statuses.pickup')}
-                </div>
-                <div 
-                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
-                    ${activeTab === 'onTheWay'
-                      ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
-                      : 'text-[#929494]'
-                    }`}
-                  onClick={() => setActiveTab('onTheWay')}
-                >
-                  {t('orders.statuses.onTheWay')}
-                </div>
-                <div 
-                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
-                    ${activeTab === 'delivered'
-                      ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
-                      : 'text-[#929494]'
-                    }`}
-                  onClick={() => setActiveTab('delivered')}
-                >
-                  {t('orders.statuses.delivered')}
-                </div>
-                <div 
-                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
-                    ${activeTab === 'cancelled'
-                      ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
-                      : 'text-[#929494]'
-                    }`}
-                  onClick={() => setActiveTab('cancelled')}
-                >
-                  {t('orders.statuses.cancelled')}
-                </div>
-                <div 
-                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
-                    ${activeTab === 'deliveryFailed'
-                      ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
-                      : 'text-[#929494]'
-                    }`}
-                  onClick={() => setActiveTab('deliveryFailed')}
-                >
-                  {t('orders.statuses.deliveryFailed')}
+                  Restaurant Portal
                 </div>
               </div>
             </div>
@@ -933,23 +895,35 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                       </div>
                       <div className="flex items-center justify-between">
                         <span 
-                          className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans cursor-pointer
-                            ${order.kitchenStatus === 'preparing' 
-                              ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                              : order.kitchenStatus === 'prepared'
-                                ? 'bg-green-100 text-green-800'
-                                : order.kitchenStatus === 'orderReceived'
-                                  ? 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                                  : ''}`}
+                          className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans
+                            ${order.orderChannel === 'restaurantPortal' 
+                              ? 'bg-gray-100 text-gray-500 cursor-not-allowed opacity-60' 
+                              : order.kitchenStatus === 'preparing' 
+                                ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 cursor-pointer'
+                                : order.kitchenStatus === 'prepared'
+                                  ? 'bg-green-100 text-green-800'
+                                  : order.kitchenStatus === 'orderReceived'
+                                    ? 'bg-blue-100 text-blue-800 hover:bg-blue-200 cursor-pointer'
+                                    : 'bg-blue-100 text-blue-800 hover:bg-blue-200 cursor-pointer'}`}
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            console.log('Kitchen status clicked - Event handler');
-                            handleKitchenStatusUpdate(order.id, order.kitchenStatus, order);
+                            if (order.orderChannel !== 'restaurantPortal') {
+                              console.log('Kitchen status clicked - Event handler');
+                              handleKitchenStatusUpdate(order.id, order.kitchenStatus || '', order);
+                            }
                           }}
-                          style={{ cursor: order.kitchenStatus === 'prepared' ? 'default' : 'pointer' }}
+                          style={{ 
+                            cursor: order.orderChannel === 'restaurantPortal' 
+                              ? 'not-allowed' 
+                              : order.kitchenStatus === 'prepared' 
+                                ? 'default' 
+                                : 'pointer' 
+                          }}
                         >
-                          {translateKitchenStatus(order.kitchenStatus)}
+                          {order.orderChannel === 'restaurantPortal' 
+                            ? `${translateKitchenStatus(order.kitchenStatus)} (Portal Order)` 
+                            : translateKitchenStatus(order.kitchenStatus)}
                         </span>
                         <div className="flex items-center gap-2">
                           <button 
