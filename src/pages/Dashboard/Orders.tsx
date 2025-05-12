@@ -1,4 +1,4 @@
-import { FunctionComponent, useState, useEffect, useCallback, useMemo } from "react";
+import { FunctionComponent, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { IoMdAdd, IoIosArrowBack, IoIosArrowForward } from "react-icons/io";
 import { SlOptionsVertical } from "react-icons/sl";
 import { DateCalendar } from '@mui/x-date-pickers/DateCalendar';
@@ -246,6 +246,86 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
   // Add new state for processing menu
   const [processingMenuAnchor, setProcessingMenuAnchor] = useState<{ [key: string]: HTMLElement | null }>({});
+
+  // Add after the lastOrderIds state
+  const [showFloatingPanel, setShowFloatingPanel] = useState(false);
+  const [showFloatingButton, setShowFloatingButton] = useState(false);
+  const floatingButtonRef = useRef<HTMLDivElement>(null);
+
+  // When the modal is closed but there are still newOrders, show the floating button
+  useEffect(() => {
+    if (!showNewOrderModal && newOrders.length > 0) {
+      setShowFloatingButton(true);
+    } else {
+      setShowFloatingButton(false);
+      setShowFloatingPanel(false);
+    }
+  }, [showNewOrderModal, newOrders.length]);
+
+  // Test button handler
+  const handleTestFloatingButton = () => {
+    setShowFloatingButton(true);
+    setShowFloatingPanel(false);
+  };
+
+  // Jiggle animation CSS (add to the component)
+  const jiggleStyle = `
+  @keyframes jiggle {
+    0% { transform: translateY(0) rotate(-2deg); }
+    20% { transform: translateY(-2px) rotate(2deg); }
+    40% { transform: translateY(2px) rotate(-2deg); }
+    60% { transform: translateY(-2px) rotate(2deg); }
+    80% { transform: translateY(2px) rotate(-2deg); }
+    100% { transform: translateY(0) rotate(0deg); }
+  }
+  `;
+
+  // Filter only CustomerApp orders that are not accepted yet
+  const pendingCustomerAppOrders = newOrders.filter(order => order.orderChannel === 'customerApp');
+
+  // Floating panel for pending orders
+  const FloatingPendingOrdersPanel = () => (
+    <div className="fixed bottom-20 right-6 z-50 bg-white shadow-lg rounded-lg p-4 w-80 max-h-[60vh] overflow-y-auto border border-orange-200 animate-fade-in">
+      <div className="flex justify-between items-center mb-2 font-sans">
+        <span className="font-bold text-orange-600 font-sans">Pending Orders</span>
+        <button onClick={() => setShowFloatingPanel(false)} className="text-gray-400 hover:text-gray-700">✕</button>
+      </div>
+      {pendingCustomerAppOrders.length === 0 ? (
+        <div className="text-gray-500 text-sm font-sans">No pending orders.</div>
+      ) : (
+        pendingCustomerAppOrders.map(order => (
+          <div key={order.id} className="mb-4 p-2 bg-orange-50 rounded">
+            <div className="font-semibold text-sm font-sans">Order #{order.orderNumber}</div>
+            <div className="text-xs text-gray-600 font-sans">{order.customerName} - GH₵{Number(order.orderPrice).toFixed(2)}</div>
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={() => handleAcceptNewOrders(order.id)}
+                className="flex-1 px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600 font-sans"
+              >Accept</button>
+              <button
+                onClick={() => handleDeclineNewOrders(order.id)}
+                className="flex-1 px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600 font-sans"
+              >Decline</button>
+            </div>
+            <div className="flex gap-2 mt-2">
+              <button
+                onClick={() => handleKitchenStatusUpdate(order.id, 'orderReceived', order)}
+                className="flex-1 px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 font-sans"
+              >Order Received</button>
+              <button
+                onClick={() => handleKitchenStatusUpdate(order.id, 'preparing', order)}
+                className="flex-1 px-2 py-1 bg-yellow-500 text-white rounded text-xs hover:bg-yellow-600 font-sans"
+              >Preparing</button>
+              <button
+                onClick={() => handleKitchenStatusUpdate(order.id, 'prepared', order)}
+                className="flex-1 px-2 py-1 bg-emerald-500 text-white rounded text-xs hover:bg-emerald-600 font-sans"
+              >Prepared</button>
+            </div>
+          </div>
+        ))
+      )}
+    </div>
+  );
 
   const handleDateClick = (event: React.MouseEvent<HTMLDivElement>) => {
     setAnchorEl(event.currentTarget);
@@ -695,6 +775,32 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
   return (
     <div className="h-full w-full bg-white m-0 p-0">
+      <style>{jiggleStyle}</style>
+      {/* Floating Button for Pending Orders */}
+      {showFloatingButton && (
+        <div
+          ref={floatingButtonRef}
+          className="fixed bottom-6 right-6 z-50 cursor-pointer flex items-center gap-2 bg-[#fe5b18] text-white px-4 py-3 rounded-full shadow-lg border-2 border-white animate-jiggle"
+          style={{ animation: 'jiggle 1.2s infinite' }}
+          onClick={() => setShowFloatingPanel(true)}
+          title="You have pending orders!"
+        >
+          <span className="font-bold">Pending Orders</span>
+          <span className="bg-white text-[#fe5b18] rounded-full px-2 py-0.5 font-bold text-xs">{pendingCustomerAppOrders.length}</span>
+          <svg className="w-5 h-5 ml-1 animate-bounce" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
+        </div>
+      )}
+      {/* Floating Panel */}
+      {showFloatingPanel && (
+        <FloatingPendingOrdersPanel />
+      )}
+      {/* Test Button */}
+      <button
+        className="fixed bottom-6 left-6 z-50 bg-blue-500 text-white px-4 py-2 rounded shadow hover:bg-blue-600"
+        onClick={handleTestFloatingButton}
+      >
+        Test Pending Orders Button
+      </button>
       {selectedOrderId ? (
         <OrderDetails 
           orderId={selectedOrderId} 
