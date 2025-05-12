@@ -486,10 +486,19 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime()
       );
 
-      // Check for new orders
-      const newIncomingOrders = latestOrders.filter(
-        (order: Order) => !lastOrderIds.has(order.id)
-      );
+      // Check for new orders with payment status filtering
+      const newIncomingOrders = latestOrders.filter((order: Order) => {
+        // Skip if order ID already exists in lastOrderIds
+        if (lastOrderIds.has(order.id)) return false;
+
+        // For CustomerApp orders, only show if payment status is 'paid'
+        if (order.orderChannel === 'customerApp') {
+          return order.paymentStatus === 'paid';
+        }
+
+        // For other order channels (like restaurantPortal), show all orders
+        return true;
+      });
 
       if (newIncomingOrders.length > 0) {
         setNewOrders(newIncomingOrders);
