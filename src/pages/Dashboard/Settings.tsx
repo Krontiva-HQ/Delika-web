@@ -274,33 +274,8 @@ const Settings: FunctionComponent = () => {
   const handleServiceTypeChange = (type: keyof typeof serviceSettings, checked: boolean) => {
     const newSettings = { ...serviceSettings };
     
-    if (type === 'OnDemand' && checked) {
-      // If On Demand is selected, disable Full Service and Walk-In
-      newSettings.OnDemand = true;
-      newSettings.FullService = false;
-      newSettings.WalkIn = false;
-      // Can select Batch and Scheduled
-    } 
-    else if (type === 'FullService' && checked) {
-      // If Full Service is selected, disable On Demand, Batch, and Scheduled
-      newSettings.FullService = true;
-      newSettings.OnDemand = false;
-      newSettings.Batch = false;
-      newSettings.Schedule = false;
-      // Can select Walk-In
-    }
-    else if (type === 'WalkIn' && checked) {
-      // If Walk-In is selected, disable On Demand, Batch, and Scheduled
-      newSettings.WalkIn = true;
-      newSettings.OnDemand = false;
-      newSettings.Batch = false;
-      newSettings.Schedule = false;
-      // Can select Full Service
-    }
-    else {
-      // For Batch and Scheduled, and toggling OFF any option
-      newSettings[type] = checked;
-    }
+    // Simply update the selected service type
+    newSettings[type] = checked;
     
     // Update dependent settings based on service types
     updateDependentSettings(newSettings);
@@ -313,16 +288,11 @@ const Settings: FunctionComponent = () => {
     settings.DeliveryReport = false;
     
     // Apply rules based on selected service types
-    if (settings.OnDemand) {
+    if (settings.OnDemand || settings.FullService) {
       settings.DeliveryReport = true;
     }
     
-    if (settings.FullService) {
-      settings.Inventory = true;
-      settings.DeliveryReport = true;
-    }
-    
-    if (settings.WalkIn) {
+    if (settings.FullService || settings.WalkIn) {
       settings.Inventory = true;
     }
     
