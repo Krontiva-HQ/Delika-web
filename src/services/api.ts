@@ -686,3 +686,40 @@ export const deleteRider = async (params: {
     headers
   });
 };
+
+// Add delivery price calculation endpoint
+export const CALCULATE_DELIVERY_PRICE_URL =
+  'https://api-server.krontiva.africa/api:uEBBwbSs/calculate/delivery/price';
+
+export interface CalculateDeliveryPriceParams {
+  pickup: { fromLongitude: string | number; fromLatitude: string | number };
+  dropOff: { toLongitude: string | number; toLatitude: string | number };
+  rider?: boolean;
+  pedestrian?: boolean;
+}
+
+export interface CalculateDeliveryPriceResponse {
+  riderFee: number;
+  pedestrianFee: number;
+  distance: number;
+}
+
+export const calculateDeliveryPriceAPI = async (
+  params: CalculateDeliveryPriceParams
+): Promise<CalculateDeliveryPriceResponse> => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  const response = await axios.post<CalculateDeliveryPriceResponse>(
+    CALCULATE_DELIVERY_PRICE_URL,
+    {
+      pickup: params.pickup,
+      dropOff: params.dropOff,
+      rider: params.rider ?? false,
+      pedestrian: params.pedestrian ?? false
+    },
+    { headers }
+  );
+  return response.data;
+};

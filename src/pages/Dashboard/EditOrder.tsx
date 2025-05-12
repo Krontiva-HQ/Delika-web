@@ -3,7 +3,7 @@ import { IoIosCloseCircleOutline, IoIosArrowBack } from "react-icons/io";
 import { RiDeleteBinLine } from "react-icons/ri";
 import LocationInput from '../../components/LocationInput';
 import { LocationData } from "../../types/location";
-import { calculateDistance } from "../../utils/distance";
+import { calculateDeliveryPriceAPI } from '../../services/api';
 import { usePlaceOrderItems } from '../../hooks/usePlaceOrderItems';
 import { useNotifications } from '../../context/NotificationContext';
 import { Order } from '../../types/order';
@@ -66,6 +66,9 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
   // Add state to track modified fields
   const [modifiedFields, setModifiedFields] = useState<Set<string>>(new Set());
 
+  // Add state to track whether delivery price has been calculated
+  const [hasCalculatedDelivery, setHasCalculatedDelivery] = useState(false);
+
   // Modify the customer phone input handler
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9]/g, '');
@@ -119,38 +122,38 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
     setSelectedItems(initialItems);
   }, [order]);
 
-  const calculateDeliveryFee = (distance: number): number => {
-    if (distance <= 1) {
-        return 15; // Fixed fee for distances up to 1km
-    } else if (distance <= 2) {
-        return 20; // Fixed fee for distances between 1km and 2km
-    } else if (distance <= 10) {
-        // For distances > 2km and <= 10km: 17 cedis base price + 2.5 cedis per km beyond 2km
-        return 17 + ((distance - 2) * 2.5);
-    } else {
-        // For distances above 10km: 3.5 * distance + 20
-        return (3.5 * distance) + 20;
-    }
-};
-
   useEffect(() => {
-    if (pickupLocation && dropoffLocation) {
-      const newDistance = calculateDistance(
-        pickupLocation.latitude,
-        pickupLocation.longitude,
-        dropoffLocation.latitude,
-        dropoffLocation.longitude
-      );
-      setDistance(newDistance);
-      
-      // Calculate delivery price based on distance
-      const calculatedPrice = Math.round(calculateDeliveryFee(newDistance));
-      setDeliveryPrice(calculatedPrice);
-      
-      // Update total price
-      setTotalPrice(orderPrice + calculatedPrice);
+    if (pickupLocation && dropoffLocation && !hasCalculatedDelivery) {
+      setHasCalculatedDelivery(true);
+      calculateDeliveryPriceAPI({
+        pickup: {
+          fromLongitude: pickupLocation.longitude,
+          fromLatitude: pickupLocation.latitude
+        },
+        dropOff: {
+          toLongitude: dropoffLocation.longitude,
+          toLatitude: dropoffLocation.latitude
+        },
+        rider: false,
+        pedestrian: false
+      })
+        .then(result => {
+          setDeliveryPrice(result.riderFee);
+          setDistance(result.distance);
+          setTotalPrice(orderPrice + result.riderFee);
+        })
+        .catch(() => {
+          setDeliveryPrice(0);
+          setDistance(null);
+          setTotalPrice(orderPrice);
+        });
     }
   }, [pickupLocation, dropoffLocation, orderPrice]);
+
+  // Reset hasCalculatedDelivery when pickup changes
+  useEffect(() => {
+    setHasCalculatedDelivery(false);
+  }, [pickupLocation]);
 
   useEffect(() => {
     if (order) {

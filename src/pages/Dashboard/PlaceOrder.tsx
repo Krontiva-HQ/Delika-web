@@ -1,6 +1,6 @@
 import React, { useState, useEffect, FunctionComponent, ReactNode } from "react";
 import { Button } from "@mui/material";
-import { getAuthenticatedUser, UserResponse, placeOrder, getRidersByBranch } from "../../services/api";
+import { getAuthenticatedUser, UserResponse, placeOrder, getRidersByBranch, calculateDeliveryPriceAPI } from "../../services/api";
 import LocationInput from '../../components/LocationInput';
 import { LocationData } from "../../types/location";
 import { calculateDistance } from "../../utils/distance";
@@ -2521,8 +2521,31 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     setPickupLocation(location);
   };
 
-  const handleDropoffLocationSelect = (location: LocationData) => {
+  const handleDropoffLocationSelect = async (location: LocationData) => {
     setDropoffLocation(location);
+    // Only run calculation if pickupLocation is set and not already calculated for this dropoff
+    if (pickupLocation && location && !hasCalculatedDelivery) {
+      try {
+        setHasCalculatedDelivery(true);
+        const result = await calculateDeliveryPriceAPI({
+          pickup: {
+            fromLongitude: pickupLocation.longitude,
+            fromLatitude: pickupLocation.latitude
+          },
+          dropOff: {
+            toLongitude: location.longitude,
+            toLatitude: location.latitude
+          },
+          rider: false,
+          pedestrian: false
+        });
+        setDeliveryPrice(result.riderFee.toString());
+        setDistance(result.distance);
+      } catch (err) {
+        setDeliveryPrice('');
+        setDistance(null);
+      }
+    }
   };
 
   useEffect(() => {
@@ -2934,6 +2957,13 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     console.log('Selected Rider userId:', userId);
     setSelectedRider(userId);
   };
+
+  const [hasCalculatedDelivery, setHasCalculatedDelivery] = useState(false);
+
+  // Reset hasCalculatedDelivery when pickup or dropoff changes
+  useEffect(() => {
+    setHasCalculatedDelivery(false);
+  }, [pickupLocation]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
