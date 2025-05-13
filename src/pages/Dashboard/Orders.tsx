@@ -252,15 +252,12 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
   const [showFloatingButton, setShowFloatingButton] = useState(false);
   const floatingButtonRef = useRef<HTMLDivElement>(null);
 
-  // When the modal is closed but there are still newOrders, show the floating button
+  // For debugging: Always show the floating pending orders button/panel
   useEffect(() => {
-    if (!showNewOrderModal && newOrders.length > 0) {
-      setShowFloatingButton(true);
-    } else {
-      setShowFloatingButton(false);
-      setShowFloatingPanel(false);
-    }
-  }, [showNewOrderModal, newOrders.length]);
+    setShowFloatingButton(true);
+    // Optionally, you can also always show the panel:
+    // setShowFloatingPanel(true);
+  }, []);
 
   // Filter only CustomerApp orders that are not accepted yet
   const pendingCustomerAppOrders = newOrders.filter(order => order.orderChannel === 'customerApp');
@@ -556,8 +553,23 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         return true;
       });
 
+      // Remove from newOrders any order whose kitchenStatus is 'prepared' or riderStatus is 'PickUp' in the latest data
+      setNewOrders(prev => {
+        // Remove orders that are now prepared or picked up
+        const toRemoveOrderIds = new Set(
+          latestOrders
+            .filter((order: Order) => order.kitchenStatus === 'prepared' || order.status === 'PickUp')
+            .map((order: Order) => order.id)
+        );
+        // Only keep CustomerApp orders that are not prepared or picked up
+        const stillPending = prev.filter((order: Order) => order.orderChannel === 'customerApp' && !toRemoveOrderIds.has(order.id));
+        const newCustomerAppOrders = newIncomingOrders.filter((order: Order) => order.orderChannel === 'customerApp');
+        const result = [...stillPending, ...newCustomerAppOrders];
+        console.log('Pending CustomerApp Orders:', result);
+        return result;
+      });
+
       if (newIncomingOrders.length > 0) {
-        setNewOrders(prev => [...prev, ...newIncomingOrders]);
         setShowNewOrderModal(true);
         const audio = new Audio('/orderRinging.mp3');
         audio.play().catch(() => {});
