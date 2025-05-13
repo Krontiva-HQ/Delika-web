@@ -262,24 +262,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     }
   }, [showNewOrderModal, newOrders.length]);
 
-  // Test button handler
-  const handleTestFloatingButton = () => {
-    setShowFloatingButton(true);
-    setShowFloatingPanel(false);
-  };
-
-  // Jiggle animation CSS (add to the component)
-  const jiggleStyle = `
-  @keyframes jiggle {
-    0% { transform: translateY(0) rotate(-2deg); }
-    20% { transform: translateY(-2px) rotate(2deg); }
-    40% { transform: translateY(2px) rotate(-2deg); }
-    60% { transform: translateY(-2px) rotate(2deg); }
-    80% { transform: translateY(2px) rotate(-2deg); }
-    100% { transform: translateY(0) rotate(0deg); }
-  }
-  `;
-
   // Filter only CustomerApp orders that are not accepted yet
   const pendingCustomerAppOrders = newOrders.filter(order => order.orderChannel === 'customerApp');
 
@@ -540,7 +522,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     }
   }, [selectedDate, fetchOrders]);
 
-  // Update the checkForNewOrders function
+  // Update the checkForNewOrders function dependency array and ensure proper closure
   const checkForNewOrders = useCallback(async () => {
     if (!selectedDate || !selectedBranchId) return;
 
@@ -568,22 +550,15 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
       // Check for new orders with payment status filtering
       const newIncomingOrders = latestOrders.filter((order: Order) => {
-        // Skip if order ID already exists in lastOrderIds
+        // Skip if order ID already exists in lastOrderIds or already in newOrders
         if (lastOrderIds.has(order.id)) return false;
-
-        // For CustomerApp orders, only show if payment status is 'paid'
-        if (order.orderChannel === 'customerApp') {
-          return order.paymentStatus === 'paid';
-        }
-
-        // For other order channels (like restaurantPortal), show all orders
+        if (newOrders.some(o => o.id === order.id)) return false;
         return true;
       });
 
       if (newIncomingOrders.length > 0) {
-        setNewOrders(newIncomingOrders);
+        setNewOrders(prev => [...prev, ...newIncomingOrders]);
         setShowNewOrderModal(true);
-        
         const audio = new Audio('/orderRinging.mp3');
         audio.play().catch(() => {});
       }
@@ -594,7 +569,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     } catch (error) {
       // Silent fail for background polling
     }
-  }, [selectedDate, selectedBranchId, userProfile, lastOrderIds]);
+  }, [selectedDate, selectedBranchId, userProfile, lastOrderIds, newOrders]);
 
   // Update the polling effect
   useEffect(() => {
@@ -603,7 +578,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     const shouldPoll = () => {
       const now = Date.now();
       const timeSinceLastPoll = now - lastPollTime;
-      if (timeSinceLastPoll >= 30000) {
+      if (timeSinceLastPoll >= 10000) { // 10 seconds
         lastPollTime = now;
         return true;
       }
@@ -616,7 +591,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       }
     };
 
-    const pollInterval = setInterval(poll, 30000);
+    const pollInterval = setInterval(poll, 10000); // 10 seconds
 
     return () => {
       clearInterval(pollInterval);
@@ -775,7 +750,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
   return (
     <div className="h-full w-full bg-white m-0 p-0">
-      <style>{jiggleStyle}</style>
       {/* Floating Button for Pending Orders */}
       {showFloatingButton && (
         <div
@@ -794,13 +768,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       {showFloatingPanel && (
         <FloatingPendingOrdersPanel />
       )}
-      {/* Test Button */}
-      <button
-        className="fixed bottom-6 left-6 z-50 bg-blue-500 text-white px-4 py-2 rounded shadow hover:bg-blue-600"
-        onClick={handleTestFloatingButton}
-      >
-        Test Pending Orders Button
-      </button>
       {selectedOrderId ? (
         <OrderDetails 
           orderId={selectedOrderId} 
