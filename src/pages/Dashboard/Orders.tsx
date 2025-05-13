@@ -555,13 +555,13 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
       // Remove from newOrders any order whose kitchenStatus is 'prepared' or riderStatus is 'PickUp' in the latest data
       setNewOrders(prev => {
-        // Remove orders that are now prepared or picked up
+        // Remove orders that are now prepared
         const toRemoveOrderIds = new Set(
           latestOrders
-            .filter((order: Order) => order.kitchenStatus === 'prepared' || order.status === 'PickUp')
+            .filter((order: Order) => order.kitchenStatus === 'prepared')
             .map((order: Order) => order.id)
         );
-        // Only keep CustomerApp orders that are not prepared or picked up
+        // Only keep CustomerApp orders that are not prepared
         const stillPending = prev.filter((order: Order) => order.orderChannel === 'customerApp' && !toRemoveOrderIds.has(order.id));
         const newCustomerAppOrders = newIncomingOrders.filter((order: Order) => order.orderChannel === 'customerApp');
         const result = [...stillPending, ...newCustomerAppOrders];
