@@ -23,7 +23,7 @@ import { useNotifications } from '../../context/NotificationContext';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import { IoIosClose } from "react-icons/io";
 import { useBackgroundRefresh } from '../../hooks/useBackgroundRefresh';
-import { getAvailableMenuItems } from '../../permissions/DashboardPermissions';
+import { getAvailableMenuItems, shouldShowRevenue, shouldShowInventory } from '../../permissions/DashboardPermissions';
 import { IconType } from 'react-icons';
 import { useTranslation } from 'react-i18next';
 import useLanguageChange from '../../hooks/useLanguageChange';
@@ -144,7 +144,9 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
     switch (activeView) {
       case 'dashboard':
         return <Overview 
-          setActiveView={setActiveView} 
+          setActiveView={setActiveView}
+          showRevenue={shouldShowRevenue(restaurantData)}
+          showInventory={shouldShowInventory(restaurantData)}
         />;
       case 'orders':
         return <Orders 

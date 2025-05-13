@@ -233,5 +233,12 @@ export const getAvailableDeliveryMethods = (permissions: DashboardPermissions) =
 
 // Function to determine if overview stats should show revenue
 export const shouldShowRevenue = (permissions: DashboardPermissions): boolean => {
-  return (!!(permissions.FullService || permissions.WalkIn)) && !permissions.OnDemand;
+  // Show revenue if OnDemand is true AND (FullService OR WalkIn is true)
+  return !!(permissions.OnDemand && (permissions.FullService || permissions.WalkIn));
+};
+
+// Function to determine if overview stats should show inventory
+export const shouldShowInventory = (permissions: DashboardPermissions): boolean => {
+  // Show inventory if OnDemand is true AND (FullService OR WalkIn is true)
+  return !!(permissions.OnDemand && (permissions.FullService || permissions.WalkIn));
 }; 

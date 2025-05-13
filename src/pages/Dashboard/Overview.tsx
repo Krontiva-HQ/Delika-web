@@ -75,6 +75,8 @@ const CustomTooltip = ({ active, payload, coordinate }: any) => {
 
 interface OverviewProps {
   setActiveView: (view: string) => void;
+  showRevenue: boolean;
+  showInventory: boolean;
 }
 
 const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
