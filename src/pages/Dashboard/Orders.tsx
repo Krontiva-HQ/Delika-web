@@ -252,6 +252,12 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
   const [showFloatingButton, setShowFloatingButton] = useState(false);
   const floatingButtonRef = useRef<HTMLDivElement>(null);
 
+  // Add new state for loading specific orders
+  const [loadingOrderIds, setLoadingOrderIds] = useState<Set<string>>(new Set());
+
+  // Add new state for orders that need accept/decline decision
+  const [pendingDecisionOrders, setPendingDecisionOrders] = useState<Set<string>>(new Set());
+
   // For debugging: Always show the floating pending orders button/panel
   useEffect(() => {
     setShowFloatingButton(true);
@@ -276,29 +282,78 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
           <div key={order.id} className="mb-4 p-2 bg-orange-50 rounded">
             <div className="font-semibold text-sm font-sans">Order #{order.orderNumber}</div>
             <div className="text-xs text-gray-600 font-sans">{order.customerName} - GH₵{Number(order.orderPrice).toFixed(2)}</div>
-            <div className="flex gap-2 mt-2">
-              <button
-                onClick={() => handleAcceptNewOrders(order.id)}
-                className="flex-1 px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600 font-sans"
-              >Accept</button>
-              <button
-                onClick={() => handleDeclineNewOrders(order.id)}
-                className="flex-1 px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600 font-sans"
-              >Decline</button>
+            
+            {/* Show accept/decline buttons only if order hasn't been acted upon */}
+            {(pendingDecisionOrders.has(order.id) || 
+              (order.orderAccepted !== true && order.orderAccepted !== false)) && (
+              <div className="flex gap-2 mt-2">
+                <button
+                  onClick={() => handleAcceptNewOrders(order.id)}
+                  className="flex-1 px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600 font-sans"
+                >Accept</button>
+                <button
+                  onClick={() => handleDeclineNewOrders(order.id)}
+                  className="flex-1 px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600 font-sans"
+                >Decline</button>
+              </div>
+            )}
+
+            {/* Kitchen Status Section */}
+            <div className="mt-2">
+              <div className="text-xs font-medium text-gray-700 mb-1">Kitchen Status:</div>
+              <div className="flex gap-2 flex-wrap">
+                {/* Order Received Button */}
+                <button
+                  onClick={() => handleKitchenStatusUpdate(order.id, 'orderReceived', order)}
+                  className={`px-2 py-1 rounded text-xs font-sans ${
+                    order.kitchenStatus === 'orderReceived'
+                      ? 'bg-blue-500 text-white'
+                      : order.kitchenStatus === 'preparing' || order.kitchenStatus === 'prepared'
+                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                  }`}
+                  disabled={order.kitchenStatus === 'preparing' || order.kitchenStatus === 'prepared'}
+                >
+                  Order Received
+                </button>
+
+                {/* Preparing Button */}
+                <button
+                  onClick={() => handleKitchenStatusUpdate(order.id, 'preparing', order)}
+                  className={`px-2 py-1 rounded text-xs font-sans ${
+                    order.kitchenStatus === 'preparing'
+                      ? 'bg-yellow-500 text-white'
+                      : order.kitchenStatus === 'prepared'
+                      ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                      : order.kitchenStatus === 'orderReceived'
+                      ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200'
+                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  }`}
+                  disabled={order.kitchenStatus === 'prepared' || order.kitchenStatus !== 'orderReceived'}
+                >
+                  Preparing
+                </button>
+
+                {/* Prepared Button */}
+                <button
+                  onClick={() => handleKitchenStatusUpdate(order.id, 'prepared', order)}
+                  className={`px-2 py-1 rounded text-xs font-sans ${
+                    order.kitchenStatus === 'prepared'
+                      ? 'bg-green-500 text-white'
+                      : order.kitchenStatus === 'preparing'
+                      ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                  }`}
+                  disabled={order.kitchenStatus !== 'preparing'}
+                >
+                  Prepared
+                </button>
+              </div>
             </div>
-            <div className="flex gap-2 mt-2">
-              <button
-                onClick={() => handleKitchenStatusUpdate(order.id, 'orderReceived', order)}
-                className="flex-1 px-2 py-1 bg-blue-500 text-white rounded text-xs hover:bg-blue-600 font-sans"
-              >Order Received</button>
-              <button
-                onClick={() => handleKitchenStatusUpdate(order.id, 'preparing', order)}
-                className="flex-1 px-2 py-1 bg-yellow-500 text-white rounded text-xs hover:bg-yellow-600 font-sans"
-              >Preparing</button>
-              <button
-                onClick={() => handleKitchenStatusUpdate(order.id, 'prepared', order)}
-                className="flex-1 px-2 py-1 bg-emerald-500 text-white rounded text-xs hover:bg-emerald-600 font-sans"
-              >Prepared</button>
+
+            {/* Current Status */}
+            <div className="mt-2 text-xs text-gray-600">
+              Current Status: <span className="font-medium">{translateKitchenStatus(order.kitchenStatus)}</span>
             </div>
           </div>
         ))
@@ -519,7 +574,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     }
   }, [selectedDate, fetchOrders]);
 
-  // Update the checkForNewOrders function dependency array and ensure proper closure
+  // Update the checkForNewOrders function to better track pending decisions
   const checkForNewOrders = useCallback(async () => {
     if (!selectedDate || !selectedBranchId) return;
 
@@ -545,30 +600,61 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime()
       );
 
-      // Check for new orders with payment status filtering
+      // Check for new orders
       const newIncomingOrders = latestOrders.filter((order: Order) => {
-        // Skip if order ID already exists in lastOrderIds or already in newOrders
+        // Skip if order ID already exists in lastOrderIds
         if (lastOrderIds.has(order.id)) return false;
-        if (newOrders.some(o => o.id === order.id)) return false;
-        return true;
+        
+        // Include if it's a new customerApp order
+        return order.orderChannel === 'customerApp';
       });
 
-      // Remove from newOrders any order whose kitchenStatus is 'prepared' or riderStatus is 'PickUp' in the latest data
+      // Update newOrders state
       setNewOrders(prev => {
-        // Remove orders that are now prepared
-        const toRemoveOrderIds = new Set(
-          latestOrders
-            .filter((order: Order) => order.kitchenStatus === 'prepared')
-            .map((order: Order) => order.id)
+        // Keep existing orders that are:
+        // 1. Not in the new incoming orders
+        // 2. From customerApp
+        // 3. Not prepared
+        const existingOrders = prev.filter(order => 
+          !newIncomingOrders.some((newOrder: Order) => newOrder.id === order.id) &&
+          order.orderChannel === 'customerApp' &&
+          order.kitchenStatus !== 'prepared'
         );
-        // Only keep CustomerApp orders that are not prepared
-        const stillPending = prev.filter((order: Order) => order.orderChannel === 'customerApp' && !toRemoveOrderIds.has(order.id));
-        const newCustomerAppOrders = newIncomingOrders.filter((order: Order) => order.orderChannel === 'customerApp');
-        const result = [...stillPending, ...newCustomerAppOrders];
-        console.log('Pending CustomerApp Orders:', result);
-        return result;
+
+        // Combine with new orders
+        const combinedOrders = [...existingOrders, ...newIncomingOrders];
+
+        // Filter out duplicates and sort by time
+        const uniqueOrders = Array.from(
+          new Map(combinedOrders.map(order => [order.id, order])).values()
+        ).sort((a, b) => 
+          new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime()
+        );
+
+        return uniqueOrders;
       });
 
+      // Update pendingDecisionOrders - only include orders that haven't been accepted/declined
+      setPendingDecisionOrders(prev => {
+        const newSet = new Set(prev);
+        latestOrders.forEach((order: Order) => {
+          // Add to pending decisions if:
+          // 1. It's a new order (in newIncomingOrders)
+          // 2. orderAccepted is undefined/null (no decision made)
+          if (newIncomingOrders.some((newOrder: Order) => newOrder.id === order.id) &&
+              (order.orderAccepted === undefined || order.orderAccepted === null)) {
+            newSet.add(order.id);
+          }
+          // Remove from pending decisions if:
+          // 1. Order has been accepted or declined
+          if (order.orderAccepted === true || order.orderAccepted === false) {
+            newSet.delete(order.id);
+          }
+        });
+        return newSet;
+      });
+
+      // Show modal for new orders
       if (newIncomingOrders.length > 0) {
         setShowNewOrderModal(true);
         const audio = new Audio('/orderRinging.mp3');
@@ -579,9 +665,9 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       setLastOrderIds(new Set(latestOrders.map((order: Order) => order.id)));
 
     } catch (error) {
-      // Silent fail for background polling
+      console.error('Error checking for new orders:', error);
     }
-  }, [selectedDate, selectedBranchId, userProfile, lastOrderIds, newOrders]);
+  }, [selectedDate, selectedBranchId, userProfile, lastOrderIds]);
 
   // Update the polling effect
   useEffect(() => {
@@ -610,7 +696,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     };
   }, [checkForNewOrders]);
 
-  // Update the kitchen status handler to check orderChannel
+  // Update the kitchen status handler for faster refresh
   const handleKitchenStatusUpdate = async (orderId: string, currentStatus: string, order: Order) => {
     // Return early if order is from restaurant portal
     if (order.orderChannel === 'restaurantPortal') {
@@ -634,34 +720,79 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       return;
     }
 
-    console.log('New Status:', newStatus);
-    console.log('Order Data:', order);
+    // Add this order to loading state
+    setLoadingOrderIds(prev => new Set(prev).add(order.id));
 
     try {
+      // Optimistically update the UI
+      setOrders(prevOrders => 
+        prevOrders.map(prevOrder => 
+          prevOrder.orderNumber === order.orderNumber 
+            ? { ...prevOrder, kitchenStatus: newStatus }
+            : prevOrder
+        )
+      );
+
+      // Make the API call
       await api.patch('/edit/kitchen/status', {
         orderNumber: order.orderNumber,
         kitchenStatus: newStatus
       });
-      
-      // Refresh orders after status update
-      if (selectedDate && selectedBranchId) {
-        fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
+
+      // Fetch just this order's latest data
+      const response = await api.get(`/orders/${order.orderNumber}`);
+      if (response.data) {
+        setOrders(prevOrders => 
+          prevOrders.map(prevOrder => 
+            prevOrder.orderNumber === order.orderNumber 
+              ? { ...response.data }
+              : prevOrder
+          )
+        );
       }
-      
+
+      // Perform a full table refresh
+      if (selectedDate && selectedBranchId) {
+        await fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
+      }
+
+      // Also check for new orders to update pending orders
+      await checkForNewOrders();
+
       addNotification({
         type: 'order_status',
         message: `Kitchen status updated to ${newStatus}`
       });
+
+      // Update pending orders if needed
+      if (newStatus === 'prepared') {
+        setNewOrders(prev => prev.filter(o => o.id !== order.id));
+      }
     } catch (error) {
       console.error('API Error:', error);
+      // Revert the optimistic update
+      setOrders(prevOrders => 
+        prevOrders.map(prevOrder => 
+          prevOrder.orderNumber === order.orderNumber 
+            ? { ...prevOrder, kitchenStatus: currentStatus }
+            : prevOrder
+        )
+      );
       addNotification({
         type: 'order_status',
         message: 'Failed to update kitchen status'
       });
+    } finally {
+      // Remove this order from loading state
+      setLoadingOrderIds(prev => {
+        const next = new Set(prev);
+        next.delete(order.id);
+        return next;
+      });
     }
   };
 
-  // Update the accept/decline handlers
+  // Update the accept handler to remove from pendingDecisionOrders
   const handleAcceptNewOrders = useCallback(async (orderId: string) => {
     const acceptedOrder = newOrders.find(order => order.id === orderId);
     if (acceptedOrder) {
@@ -672,6 +803,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
           orderAccepted: true
         });
 
+        // Add to main orders table
         setOrders(prev => [acceptedOrder, ...prev]);
         
         addNotification({
@@ -679,14 +811,20 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
           message: `Accepted order #${acceptedOrder.orderNumber}`
         });
         
-        setNewOrders(prev => prev.filter(order => order.id !== orderId));
+        // Remove from pendingDecisionOrders
+        setPendingDecisionOrders(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(orderId);
+          return newSet;
+        });
         
         if (newOrders.length === 1) {
           setShowNewOrderModal(false);
         }
 
+        // Refresh the entire table
         if (selectedDate && selectedBranchId) {
-          fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
+          await fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
         }
       } catch (error) {
         console.error('Failed to accept order:', error);
@@ -696,8 +834,9 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         });
       }
     }
-  }, [newOrders, addNotification, setOrders, setNewOrders, selectedDate, selectedBranchId, fetchOrders, setShowNewOrderModal]);
+  }, [newOrders, addNotification, selectedDate, selectedBranchId, fetchOrders]);
 
+  // Update the decline handler to remove from pendingDecisionOrders
   const handleDeclineNewOrders = useCallback(async (orderId: string) => {
     const declinedOrder = newOrders.find(order => order.id === orderId);
     if (declinedOrder) {
@@ -708,19 +847,32 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
           orderAccepted: false
         });
 
+        // Add to main orders table with declined status
+        setOrders(prev => [{
+          ...declinedOrder,
+          orderAccepted: false,
+          kitchenStatus: 'cancelled'
+        }, ...prev]);
+
         addNotification({
           type: 'order_created',
           message: `Declined order #${declinedOrder.orderNumber}`
         });
         
-        setNewOrders(prev => prev.filter(order => order.id !== orderId));
+        // Remove from pendingDecisionOrders
+        setPendingDecisionOrders(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(orderId);
+          return newSet;
+        });
         
         if (newOrders.length === 1) {
           setShowNewOrderModal(false);
         }
 
+        // Refresh the entire table
         if (selectedDate && selectedBranchId) {
-          fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
+          await fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
         }
       } catch (error) {
         console.error('Failed to decline order:', error);
@@ -730,7 +882,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         });
       }
     }
-  }, [newOrders, addNotification, setNewOrders, selectedDate, selectedBranchId, fetchOrders, setShowNewOrderModal]);
+  }, [newOrders, addNotification, selectedDate, selectedBranchId, fetchOrders]);
 
   // Add handler for processing status update
   const handleProcessingStatusUpdate = async (orderId: string, newStatus: string) => {
@@ -990,6 +1142,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                       <div className="flex items-center justify-between">
                         <span 
                           className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans
+                            ${loadingOrderIds.has(order.id) ? 'opacity-50' : ''} 
                             ${order.orderChannel === 'restaurantPortal' 
                               ? 'bg-gray-100 text-gray-500 cursor-not-allowed opacity-60' 
                               : order.kitchenStatus === 'preparing' 
@@ -1002,22 +1155,32 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            if (order.orderChannel !== 'restaurantPortal') {
-                              console.log('Kitchen status clicked - Event handler');
+                            if (!loadingOrderIds.has(order.id) && order.orderChannel !== 'restaurantPortal') {
                               handleKitchenStatusUpdate(order.id, order.kitchenStatus || '', order);
                             }
                           }}
                           style={{ 
-                            cursor: order.orderChannel === 'restaurantPortal' 
+                            cursor: loadingOrderIds.has(order.id) || order.orderChannel === 'restaurantPortal' 
                               ? 'not-allowed' 
                               : order.kitchenStatus === 'prepared' 
                                 ? 'default' 
-                                : 'pointer' 
+                                : 'pointer',
+                            position: 'relative'
                           }}
                         >
-                          {order.orderChannel === 'restaurantPortal' 
-                            ? `${translateKitchenStatus(order.kitchenStatus)} (Portal Order)` 
-                            : translateKitchenStatus(order.kitchenStatus)}
+                          {loadingOrderIds.has(order.id) ? (
+                            <span className="flex items-center gap-1">
+                              <svg className="animate-spin h-3 w-3 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                              </svg>
+                              {translateKitchenStatus(order.kitchenStatus)}
+                            </span>
+                          ) : (
+                            order.orderChannel === 'restaurantPortal' 
+                              ? `${translateKitchenStatus(order.kitchenStatus)} (Portal Order)` 
+                              : translateKitchenStatus(order.kitchenStatus)
+                          )}
                         </span>
                         <div className="flex items-center gap-2">
                           <button 
