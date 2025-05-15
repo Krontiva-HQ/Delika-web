@@ -4,29 +4,28 @@ import axios from 'axios';
 
 // Get environment variables
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.API_BASE_URL || 'https://api-server.krontiva.africa/api:uEBBwbSs';
-const PROXY_URL = import.meta.env.VITE_PROXY_URL || import.meta.env.PROXY_URL || '/api';
+const PROXY_URL = '/api'; // Simplified proxy URL
 const IS_PRODUCTION = import.meta.env.PROD || import.meta.env.ENV === 'production';
-
-
 
 // Create API instance with simplified configuration
 const api = axios.create({
-  baseURL: IS_PRODUCTION ? API_BASE_URL : PROXY_URL,
+  baseURL: PROXY_URL, // Always use proxy
   headers: {
     'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
   }
 });
 
 // Create a direct API instance that doesn't use the proxy
 const directApi = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: PROXY_URL, // Use proxy for direct API as well
   headers: {
     'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
   }
 });
 
 export { api, directApi };
-
 
 // Add a debug flag (you can control this via env variable)
 const DEBUG_API = false;
@@ -41,13 +40,29 @@ const safebtoa = (str: string) => {
   }
 };
 
+// Add token helper
+const getAuthToken = () => {
+  const token = import.meta.env.VITE_XANO_AUTH_TOKEN || import.meta.env.XANO_AUTH_TOKEN;
+  if (!token) {
+  }
+  return token;
+};
+
+// Add debug logging for requests
+const logRequest = (method: string, url: string, headers: any, body?: any) => {
+  if (body) {
+  }
+  if (!headers.Authorization || headers.Authorization === 'undefined') {
+  }
+};
+
 // Add request interceptor for auth
 api.interceptors.request.use((config) => {
   if (config.url === API_ENDPOINTS.AUTH.LOGIN) {
     const apiKey = import.meta.env.API_KEY || 'api:uEBBwbSs';
     config.headers['Authorization'] = `Basic ${safebtoa(apiKey)}`;
   } else {
-    const token = localStorage.getItem('authToken');
+    const token = import.meta.env.VITE_AUTH_TOKEN || localStorage.getItem('authToken');
     if (token) {
       config.headers['X-Xano-Authorization'] = token;
       config.headers['X-Xano-Authorization-Only'] = 'true';
@@ -86,6 +101,7 @@ export const API_ENDPOINTS = {
     FILTER_BY_DATE: '/filter/orders/by/date',
     GET_ALL_PER_BRANCH: '/get/all/orders/per/branch',
     EDIT: '/edit/order',
+    ACCEPT_DECLINE: '/accept/decline/orders',
     PLACE_ORDER: '/delikaquickshipper_orders_table'
   },
   CATEGORY: {
@@ -111,6 +127,13 @@ export const API_ENDPOINTS = {
   USER: {
     DELETE: (userId: string) => `/delikaquickshipper_user_table/${userId}`,
     UPDATE: (userId: string) => `/delikaquickshipper_user_table/${userId}`
+  },
+  RESTAURANT: {
+    UPDATE_PREFERENCES: '/set/restaurant/preference'
+  },
+  RIDERS: {
+    DELETE: '/remove/courier/from/branch',
+    GET_BY_BRANCH: '/get/rider/from/branch'
   }
 } as const;
 
@@ -178,25 +201,39 @@ export interface UserResponse {
   _restaurantTable: Array<{
     id: string;
     restaurantName: string;
+    language: string;
+    AutoAssign: boolean;
+    AutoCalculatePrice: boolean;
   }>;
   password?: string;
 }
 
 export const getAuthenticatedUser = () => {
-  return api.get<UserResponse>(API_ENDPOINTS.AUTH.ME);
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  return api.get<UserResponse>(API_ENDPOINTS.AUTH.ME, { headers });
 };
 
 export const deleteUser = async (userId: string) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
   return api.delete(API_ENDPOINTS.USER.DELETE(userId), {
-    data: { delikaquickshipper_user_table_id: userId }
+    data: { delikaquickshipper_user_table_id: userId },
+    headers
   });
 };
 
 export const updateUser = async (data: FormData | Record<string, any>) => {
   const userId = data instanceof FormData ? data.get('userId') : data.userId;
-  return api.patch(API_ENDPOINTS.USER.UPDATE(userId as string), data, {
-    headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : undefined
-  });
+  const headers = {
+    'Content-Type': data instanceof FormData ? 'multipart/form-data' : 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  return api.patch(API_ENDPOINTS.USER.UPDATE(userId as string), data, { headers });
 };
 
 // Add dashboard service function
@@ -209,7 +246,11 @@ export const getDashboardData = async (data: {
 
 // Add order service function
 export const getOrderDetails = (orderNumber: string) => {
-  return api.get<OrderDetails>(API_ENDPOINTS.ORDERS.GET_DETAILS(orderNumber));
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  return api.get<OrderDetails>(API_ENDPOINTS.ORDERS.GET_DETAILS(orderNumber), { headers });
 };
 
 // Add the OrderDetails interface
@@ -270,19 +311,11 @@ export interface OrderDetails {
 
 // Add the service functions
 export const addItemToCategory = (formData: FormData) => {
-  
-  // Create a clean FormData with all fields at the top level
   const updatedFormData = new FormData();
-  
-  // Add the path field - this is required by the API
   updatedFormData.append('path', '/add/item/to/category');
   
-  // Add all the other fields from the original FormData
   Array.from(formData.entries()).forEach(([key, value]) => {
-    // Skip the path if it exists in the original FormData
     if (key === 'path') return;
-    
-    // Handle foods JSON specially
     if (key === 'foods' && typeof value === 'string') {
       updatedFormData.append(key, value);
     } else {
@@ -290,85 +323,34 @@ export const addItemToCategory = (formData: FormData) => {
     }
   });
   
-
-  
-  const logData: Record<string, unknown> = {};
-  Array.from(updatedFormData.entries()).forEach(([key, value]) => {
-    if (value instanceof File) {
-      logData[key] = {
-        name: value.name,
-        size: value.size,
-        type: value.type
-      };
-    } else {
-      logData[key] = value;
-    }
-  });
-  
-  // Get auth token
-  const token = localStorage.getItem('authToken');
-  const headers: Record<string, string> = {
-    'Content-Type': 'multipart/form-data'
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
   };
-  
-  if (token) {
-    headers['X-Xano-Authorization'] = token;
-    headers['X-Xano-Authorization-Only'] = 'true';
-  }
-  
-  // Use direct API call without proxy
-  return axios.patch<{data: any; status: number}>(
-    `${API_BASE_URL}/add/item/to/category`, 
+
+  return api.patch<{data: any; status: number}>(
+    API_ENDPOINTS.CATEGORY.ADD_ITEM, 
     updatedFormData, 
     { headers }
   );
 };
 
 export const createCategory = (formData: FormData) => {
-  
-  // Create a clean FormData with all fields at the top level
   const updatedFormData = new FormData();
-  
-  // Add the path field - this is required by the API
   updatedFormData.append('path', '/create/new/category');
   
-  // Add all the other fields from the original FormData
   Array.from(formData.entries()).forEach(([key, value]) => {
-    // Skip the path if it exists in the original FormData
     if (key === 'path') return;
-    
     updatedFormData.append(key, value);
   });
   
-
-  
-  const logData: Record<string, unknown> = {};
-  Array.from(updatedFormData.entries()).forEach(([key, value]) => {
-    if (value instanceof File) {
-      logData[key] = {
-        name: value.name,
-        size: value.size,
-        type: value.type
-      };
-    } else {
-      logData[key] = value;
-    }
-  });
-  
-  // Get auth token
-  const token = localStorage.getItem('authToken');
-  const headers: Record<string, string> = {
-    'Content-Type': 'multipart/form-data'
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
   };
-  
-  if (token) {
-    headers['X-Xano-Authorization'] = token;
-    headers['X-Xano-Authorization-Only'] = 'true';
-  }
-  
-  // Use direct API call without proxy
-  return axios.post(
-    `${API_BASE_URL}/create/new/category`, 
+
+  return api.post(
+    API_ENDPOINTS.CATEGORY.CREATE, 
     updatedFormData, 
     { headers }
   );
@@ -386,33 +368,82 @@ export interface AddMemberParams {
 }
 
 export const addMember = (params: AddMemberParams) => {
-  return api.post(API_ENDPOINTS.TEAM.ADD_MEMBER, params);
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  return api.post(API_ENDPOINTS.TEAM.ADD_MEMBER, params, { headers });
 };
 
-export const getTeamMembers = (data: { restaurantId: string; branchId: string }) => {
-  return api.post(API_ENDPOINTS.TEAM.GET_MEMBERS, data);
+export const getTeamMembers = async (data: { restaurantId: string; branchId: string }) => {
+  const requestParams = data;
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': token
+  };
+
+  logRequest('POST', API_ENDPOINTS.TEAM.GET_MEMBERS, headers, requestParams);
+
+  return api.post(API_ENDPOINTS.TEAM.GET_MEMBERS, JSON.stringify(requestParams), {
+    headers
+  });
 };
 
 export const getTeamMembersAdmin = (data: { restaurantId: string }) => {
-  return api.post(API_ENDPOINTS.TEAM.GET_MEMBERS_ADMIN, data);
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  return api.post(API_ENDPOINTS.TEAM.GET_MEMBERS_ADMIN, data, { headers });
 };
 
 export const updateTeamMember = async (data: FormData) => {
   const userId = data.get('userId');
-  return api.patch(API_ENDPOINTS.TEAM.UPDATE_MEMBER(userId as string), data);
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  return api.patch(API_ENDPOINTS.TEAM.UPDATE_MEMBER(userId as string), data, { headers });
 };
 
 // Background refresh operations
-export const filterOrdersByDate = (params: { restaurantId: string; branchId: string; date: string }) => {
-  return api.get(API_ENDPOINTS.ORDERS.FILTER_BY_DATE, { params });
+export const filterOrdersByDate = async (params: { restaurantId: string; branchId: string; date: string }) => {
+  const requestParams = params;
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': token
+  };
+
+  logRequest('GET', API_ENDPOINTS.ORDERS.FILTER_BY_DATE, headers, requestParams);
+
+  return api.get(API_ENDPOINTS.ORDERS.FILTER_BY_DATE, {
+    params: requestParams,
+    headers
+  });
 };
 
 export const getAllOrdersPerBranch = (params: { restaurantId: string; branchId: string }) => {
-  return api.get(API_ENDPOINTS.ORDERS.GET_ALL_PER_BRANCH, { params });
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  return api.get(API_ENDPOINTS.ORDERS.GET_ALL_PER_BRANCH, { 
+    params,
+    headers
+  });
 };
 
 export const getAuditLogs = (params: { restaurantId: string; branchId: string }) => {
-  return api.get(API_ENDPOINTS.AUDIT.GET_ALL, { params });
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  return api.get(API_ENDPOINTS.AUDIT.GET_ALL, { 
+    params,
+    headers
+  });
 };
 
 // Branch interfaces and functions
@@ -429,7 +460,11 @@ export interface Branch {
 }
 
 export const getBranchesByRestaurant = (restaurantId: string) => {
-  return api.get<Branch[]>(API_ENDPOINTS.BRANCHES.GET_BY_RESTAURANT(restaurantId));
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  return api.get<Branch[]>(API_ENDPOINTS.BRANCHES.GET_BY_RESTAURANT(restaurantId), { headers });
 };
 
 export interface EditOrderParams {
@@ -454,7 +489,18 @@ export interface EditOrderParams {
 }
 
 export const editOrder = async (params: EditOrderParams) => {
-  return api.patch(API_ENDPOINTS.ORDERS.EDIT, params);
+  const requestParams = params;
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': token
+  };
+
+  logRequest('PATCH', API_ENDPOINTS.ORDERS.EDIT, headers, requestParams);
+
+  return api.patch(API_ENDPOINTS.ORDERS.EDIT, JSON.stringify(requestParams), {
+    headers
+  });
 };
 
 export interface UpdateInventoryParams {
@@ -466,12 +512,34 @@ export interface UpdateInventoryParams {
 }
 
 export const updateInventory = async (params: UpdateInventoryParams) => {
-  return api.patch(API_ENDPOINTS.MENU.UPDATE_INVENTORY, params);
+  const requestParams = params;
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': token
+  };
+
+  logRequest('PATCH', API_ENDPOINTS.MENU.UPDATE_INVENTORY, headers, requestParams);
+
+  return api.patch(API_ENDPOINTS.MENU.UPDATE_INVENTORY, JSON.stringify(requestParams), {
+    headers
+  });
 };
 
 // Menu service functions
-export const getAllMenu = (data: { restaurantId: string; branchId: string }) => {
-  return api.post(API_ENDPOINTS.MENU.GET_ALL, data);
+export const getAllMenu = async (data: { restaurantId: string; branchId: string }) => {
+  const requestParams = data;
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': token
+  };
+
+  logRequest('POST', API_ENDPOINTS.MENU.GET_ALL, headers, requestParams);
+
+  return api.post(API_ENDPOINTS.MENU.GET_ALL, JSON.stringify(requestParams), {
+    headers
+  });
 };
 
 // Update the placeOrder function
@@ -496,13 +564,29 @@ export const placeOrder = async (formData: FormData) => {
     index++;
   }
 
+  // Handle price calculations based on what's available
+  const deliveryPrice = jsonData.deliveryPrice ? parseFloat(jsonData.deliveryPrice as string) : 0;
+  const orderPrice = jsonData.orderPrice ? parseFloat(jsonData.orderPrice as string) : 0;
+  let totalPrice = 0;
+
+  if (deliveryPrice > 0 && orderPrice > 0) {
+    // Both prices exist - add them together
+    totalPrice = deliveryPrice + orderPrice;
+  } else if (deliveryPrice > 0 && !orderPrice) {
+    // Only delivery price exists
+    totalPrice = deliveryPrice;
+  } else if (!deliveryPrice && orderPrice > 0) {
+    // Only order price exists
+    totalPrice = orderPrice;
+  }
+
   const orderPayload = {
     branchId: jsonData.branchId,
     courierName: jsonData.courierName || '',
     customerName: jsonData.customerName,
     customerPhoneNumber: jsonData.customerPhoneNumber,
     deliveryDistance: jsonData.deliveryDistance,
-    deliveryPrice: jsonData.deliveryPrice,
+    deliveryPrice: deliveryPrice > 0 ? deliveryPrice.toString() : '',
     dropOff: [{
       toAddress: jsonData['dropOff[0][toAddress]'],
       toLatitude: jsonData['dropOff[0][toLatitude]'],
@@ -514,10 +598,11 @@ export const placeOrder = async (formData: FormData) => {
     orderComment: jsonData.orderComment || '',
     orderDate: jsonData.orderDate,
     orderNumber: jsonData.orderNumber,
-    orderPrice: jsonData.orderPrice,
+    orderPrice: orderPrice > 0 ? orderPrice.toString() : '',
     orderStatus: jsonData.orderStatus,
     payLater: jsonData.payLater === 'true',
     payNow: jsonData.payNow === 'true',
+    courierId: jsonData.courierId,
     payVisaCard: jsonData.payVisaCard === 'true',
     pickup: [{
       fromAddress: jsonData['pickup[0][fromAddress]'],
@@ -525,19 +610,85 @@ export const placeOrder = async (formData: FormData) => {
       fromLongitude: jsonData['pickup[0][fromLongitude]']
     }],
     pickupName: jsonData.pickupName,
-    products: products,
+    products: products.map((product) => ({
+      name: product.name,
+      price: product.price,
+      quantity: product.quantity,
+    })),
     restaurantId: jsonData.restaurantId,
     distance: jsonData.deliveryDistance,
     trackingUrl: jsonData.trackingUrl || '',
+    totalPrice: totalPrice.toString(),
     Walkin: jsonData.Walkin === 'true',
-    // Add batch ID if present
     batchID: jsonData.batchID || null,
-    // Add schedule delivery information if present
     scheduledTime: jsonData['scheduleTime[scheduleDateTime]'] ? 
       jsonData['scheduleTime[scheduleDateTime]'] : undefined
   };
 
-  // Debug log to check the payload
+  console.log('Order payload:', orderPayload);
 
-  return api.post('/delikaquickshipper_orders_table', orderPayload);
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+
+  return api.post(API_ENDPOINTS.ORDERS.PLACE_ORDER, orderPayload, { headers });
+};
+
+// Add restaurant settings interface and function
+export interface RestaurantPreferences {
+  restaurantId: string | null;
+  AutoAssign: boolean;
+  AutoCalculatePrice: boolean;
+  language: string;
+}
+
+export const updateRestaurantPreferences = async (preferences: RestaurantPreferences) => {
+  try {
+    const response = await api.patch(API_ENDPOINTS.RESTAURANT.UPDATE_PREFERENCES, preferences, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Update rider service functions
+export const getRidersByBranch = async (branchId: string) => {
+  const requestParams = {
+    branchName: branchId
+  };
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': token
+  };
+
+  logRequest('GET', API_ENDPOINTS.RIDERS.GET_BY_BRANCH, headers, requestParams);
+
+  return api.get(API_ENDPOINTS.RIDERS.GET_BY_BRANCH, {
+    params: requestParams,
+    headers
+  });
+};
+
+export const deleteRider = async (params: { 
+  delikaquickshipper_user_table_id: string;
+  branchName: string;
+}) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  return api.delete(API_ENDPOINTS.RIDERS.DELETE, { 
+    data: {
+      delikaquickshipper_user_table_id: params.delikaquickshipper_user_table_id,
+      branchName: params.branchName
+    },
+    headers
+  });
 };

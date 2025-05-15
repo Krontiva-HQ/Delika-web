@@ -357,17 +357,15 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
       const formData = new FormData();
       
-      // Add products to formData only if FullService is disabled
-      if (!restaurantData?.FullService) {
-        selectedItems.forEach((item, index) => {
-          formData.append(`products[${index}][name]`, item.name);
-          formData.append(`products[${index}][price]`, item.price.toString());
-          formData.append(`products[${index}][quantity]`, item.quantity.toString());
-          if (item.image) {
-            formData.append(`products[${index}][foodImage][url]`, item.image);
-          }
-        });
-      }
+      // Always add products to formData
+      selectedItems.forEach((item, index) => {
+        formData.append(`products[${index}][name]`, item.name);
+        formData.append(`products[${index}][price]`, item.price.toString());
+        formData.append(`products[${index}][quantity]`, item.quantity.toString());
+        if (item.image) {
+          formData.append(`products[${index}][foodImage][url]`, item.image);
+        }
+      });
 
       // Add other fields to formData
       formData.append('customerName', customerName);
