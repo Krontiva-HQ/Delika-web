@@ -29,18 +29,10 @@ export const useAddCategory = () => {
     foods,
     onSuccess
   }: AddCategoryParams) => {
-    console.log('🔥 useAddCategory hook called - DIRECT API APPROACH 🔥', {
-      foodType,
-      restaurantName,
-      branchName,
-      hasFoodTypePhoto: !!foodTypePhoto,
-      hasFoodsPhoto: !!foodsPhoto,
-      foodsCount: foods.length
-    });
-    
     setIsLoading(true);
     try {
       const formData = new FormData();
+      formData.append('path', '/create/new/category');
       formData.append('foodType', foodType);
       formData.append('restaurantName', restaurantName);
       formData.append('branchName', branchName);
@@ -60,9 +52,7 @@ export const useAddCategory = () => {
         formData.append('foodsPhoto', foodsPhoto);
       }
 
-      console.log('🔥 Calling API directly - CreateCategory 🔥');
       const response = await createCategory(formData);
-      console.log('✅ API Response:', { status: response.status });
 
       if (response.status !== 200) {
         throw new Error('Failed to add category');
@@ -72,7 +62,6 @@ export const useAddCategory = () => {
       onSuccess?.();
       return data;
     } catch (error) {
-      console.error('❌ API Error:', error);
       throw error;
     } finally {
       setIsLoading(false);

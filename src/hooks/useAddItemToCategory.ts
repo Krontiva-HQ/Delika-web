@@ -29,18 +29,6 @@ export const useAddItemToCategory = () => {
     foodPhoto,
     onSuccess
   }: AddItemParams): Promise<AddItemResponse> => {
-    console.log('🔥 useAddItemToCategory hook called - DIRECT API APPROACH 🔥', {
-      categoryId,
-      name,
-      price,
-      description,
-      foodPhoto: foodPhoto ? {
-        name: foodPhoto.name,
-        type: foodPhoto.type,
-        size: foodPhoto.size
-      } : null
-    });
-    
     setIsLoading(true);
     setError(null);
 
@@ -62,27 +50,13 @@ export const useAddItemToCategory = () => {
         throw new Error('Missing file resource.');
       }
 
-      // Append the file directly to FormData
       formData.append('foodPhoto', foodPhoto);
 
-      // Log the FormData contents for debugging
-      console.log('📦 FormData contents:', {
-        categoryId: formData.get('categoryId'),
-        foods: formData.get('foods'),
-        restaurantName: formData.get('restaurantName'),
-        branchName: formData.get('branchName'),
-        hasFoodPhoto: formData.has('foodPhoto'),
-        foodPhotoType: formData.get('foodPhoto') instanceof File ? 'File' : 'Not a File'
-      });
-
-      console.log('🔥 Calling API directly - AddItemToCategory 🔥');
       const response = await addItemToCategory(formData);
-      console.log('✅ API Response:', { status: response.status });
       onSuccess?.();
       return response;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred';
-      console.error('❌ API Error:', err);
       setError(message);
       throw err;
     } finally {
