@@ -1,17 +1,19 @@
 {
   "common": {
+    "back": "Back",
+    "next": "Next",
     "save": "Save",
     "cancel": "Cancel",
-    "edit": "Edit",
     "delete": "Delete",
+    "edit": "Edit",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
     "add": "Add",
     "search": "Search",
-    "loading": "Loading...",
     "noResults": "No results found",
     "settings": "Settings",
-    "poweredBy": "Powered By",
-    "back": "Back",
-    "error": "Error"
+    "poweredBy": "Powered By"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -150,6 +152,15 @@
       "notStarted": "Not Started",
       "preparing": "Preparing",
       "prepared": "Prepared"
+    },
+    "delivery": {
+      "onDemand": "On-Demand Delivery",
+      "onDemandDescription": "Immediate delivery of your order",
+      "fullService": "Full Service",
+      "fullServiceDescription": "Complete delivery service with tracking",
+      "schedule": "Schedule Delivery",
+      "scheduleDescription": "Schedule delivery for a later time",
+      "walkInDescription": "Customer picks up the order in person"
     }
   },
   "inventory": {

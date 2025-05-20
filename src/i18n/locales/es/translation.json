@@ -10,8 +10,9 @@
     "noResults": "No se encontraron resultados",
     "settings": "Configuración",
     "poweredBy": "Desarrollado por",
-    "back": "Volver",
-    "error": "Error"
+    "back": "Atrás",
+    "error": "Error",
+    "success": "Éxito"
   },
   "dashboard": {
     "title": "Panel de control",
@@ -150,6 +151,15 @@
       "notStarted": "No iniciado",
       "preparing": "En preparación",
       "prepared": "Preparado"
+    },
+    "delivery": {
+      "onDemand": "Entrega bajo demanda",
+      "onDemandDescription": "Entrega inmediata de su pedido",
+      "fullService": "Servicio completo",
+      "fullServiceDescription": "Servicio de entrega completo con seguimiento",
+      "schedule": "Entrega programada",
+      "scheduleDescription": "Programar la entrega para más tarde",
+      "walkInDescription": "El cliente recoge el pedido en persona"
     }
   },
   "inventory": {

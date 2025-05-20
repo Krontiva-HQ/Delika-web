@@ -1,17 +1,18 @@
 {
   "common": {
+    "back": "Retour",
+    "next": "Suivant",
     "save": "Enregistrer",
     "cancel": "Annuler",
-    "edit": "Modifier",
     "delete": "Supprimer",
-    "add": "Ajouter",
-    "search": "Rechercher",
+    "edit": "Modifier",
     "loading": "Chargement...",
+    "error": "Erreur",
+    "success": "Succès",
+    "search": "Rechercher",
     "noResults": "Aucun résultat trouvé",
     "settings": "Paramètres",
-    "poweredBy": "Alimenté par",
-    "back": "Retour",
-    "error": "Erreur"
+    "poweredBy": "Alimenté par"
   },
   "dashboard": {
     "title": "Tableau de bord",
@@ -150,6 +151,15 @@
       "notStarted": "Non commencée",
       "preparing": "En préparation",
       "prepared": "Préparée"
+    },
+    "delivery": {
+      "onDemand": "Livraison à la demande",
+      "onDemandDescription": "Livraison immédiate de votre commande",
+      "fullService": "Service complet",
+      "fullServiceDescription": "Service de livraison complet avec suivi",
+      "schedule": "Livraison programmée",
+      "scheduleDescription": "Programmer la livraison pour plus tard",
+      "walkInDescription": "Le client récupère la commande en personne"
     }
   },
   "inventory": {

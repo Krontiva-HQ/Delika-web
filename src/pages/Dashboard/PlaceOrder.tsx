@@ -21,9 +21,7 @@ import BatchSummaryModal from '../../components/BatchSummaryModal';
 import { ArrowLeftIcon } from '@heroicons/react/24/solid';
 import { getAvailableDeliveryMethods } from '../../permissions/DashboardPermissions';
 import { hasAutoCalculatePrice, calculateDeliveryFee, getDeliveryPriceInfo } from '../../permissions/DashboardPermissions';
-import { Rider } from "../../components/RidersTable";
-
-// Add the API key directly if needed
+import { Rider } from "../../components/RidersTable";import { useTranslation } from 'react-i18next';// Add the API key directly if needed
 const GOOGLE_MAPS_API_KEY = 'AIzaSyAdv28EbwKXqvlKo2henxsKMD-4EKB20l8';
 
 interface PlaceOrderProps {
@@ -144,8 +142,7 @@ const StyledDateInput = styled('input')({
 });
 
 
-const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced, branchId: initialBranchId }): ReactNode => {
-  const { addNotification } = useNotifications();
+const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced, branchId: initialBranchId }): ReactNode => {  const { t } = useTranslation();  const { addNotification } = useNotifications();
   const { userProfile, restaurantData } = useUserProfile();
   const { branches, isLoading: branchesLoading } = useBranches(userProfile?.restaurantId ?? null);
   const [selectedBranchId, setSelectedBranchId] = useState(initialBranchId || '');
@@ -428,8 +425,13 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       formData.append('totalPrice', calculateTotal());
       formData.append('orderComment', orderComment);
       
-      // Set orderStatus based on delivery method
-      const orderStatus = deliveryMethod === 'walk-in' ? 'Delivered' : 'ReadyForPickup';
+      // Set orderStatus based on delivery method and AutoAssign setting
+      let orderStatus = 'ReadyForPickup';
+      if (deliveryMethod === 'walk-in') {
+        orderStatus = 'Delivered';
+      } else if (!restaurantData?.AutoAssign && selectedRider) {
+        orderStatus = 'Assigned';
+      }
       formData.append('orderStatus', orderStatus);
 
       formData.append('orderDate', new Date().toISOString());
@@ -464,15 +466,17 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         formData.append('scheduleTime[scheduleDateTime]', scheduleDateTime.toISOString());
       }
 
-      // Add selected rider if manual assignment is enabled and a rider is selected
-      if (!restaurantData?.AutoAssign && selectedRider) {
-        console.log('Adding courier userId to order:', selectedRider);
-        formData.append('courierId', selectedRider); // Changed from courierId to courierId
+      // Handle rider assignment based on AutoAssign setting
+      if (restaurantData?.AutoAssign) {
+        // If AutoAssign is enabled, don't send courierId
+        console.log('AutoAssign is enabled - letting system assign rider');
+      } else if (selectedRider) {
+        // If AutoAssign is disabled and a rider is selected, send the courierId
+        console.log('AutoAssign is disabled - assigning selected rider:', selectedRider);
+        formData.append('courierId', selectedRider);
       } else {
-        console.log('Skipping courier assignment:', {
-          autoAssign: restaurantData?.AutoAssign,
-          selectedRiderUserId: selectedRider
-        });
+        // If AutoAssign is disabled but no rider is selected, show error
+        throw new Error(t('orders.error.noRiderSelected'));
       }
 
       // Log all form data before submission
@@ -487,7 +491,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       console.log('API Response:', response);
 
       if (!response.data) {
-        throw new Error('Failed to place order');
+        throw new Error(t('orders.error.failedToPlaceOrder'));
       }
 
       // If this is a batch delivery, add the order to batchedOrders and show the modal
@@ -513,14 +517,14 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         // Show success notification
         addNotification({
           type: 'order_created',
-          message: 'Order added to batch successfully!'
+          message: t('orders.success.batchOrderAdded')
         });
       } else {
         // For non-batch orders, close the modal and show success
         onOrderPlaced();
         addNotification({
           type: 'order_created',
-          message: 'Order placed successfully!'
+          message: t('orders.success.orderPlaced')
         });
       }
 
@@ -528,7 +532,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       console.error('Order placement failed:', error);
       addNotification({
         type: 'order_status',
-        message: 'Failed to place order. Please try again.'
+        message: error instanceof Error ? error.message : t('orders.error.failedToPlaceOrder')
       });
     } finally {
       setIsSubmitting(false);
@@ -646,14 +650,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 onClick={handleBackToDeliveryType}
               >
                 <IoIosArrowBack className="w-5 h-5" />
-                <span>Back to Delivery Types</span>
+                <span>{t('common.back')}</span>
               </button>
             </div>
             
             <b className="font-sans text-lg font-semibold gap-2 mb-4">
-              {deliveryMethod === 'on-demand' ? 'On Demand Delivery' :
-               deliveryMethod === 'schedule' ? 'Schedule Delivery' :
-               'Batch Delivery'}
+              {t('orders.delivery.onDemand')}
             </b>
             
             {/* Add Estimated Distance section here */}
@@ -663,12 +665,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4">
               <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
                 <div className="self-stretch relative leading-[20px] font-sans text-black">
-                  Customer Name
+                  {t('orders.detail.name')}
                 </div>
                 <input
                   className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
                             text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-center py-[10px] px-[12px] text-black"
-                  placeholder="customer name"
+                  placeholder={t('orders.detail.name')}
                   type="text"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
@@ -676,12 +678,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               </div>
               <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
                 <div className="self-stretch relative leading-[20px] font-sans text-black">
-                  Customer Phone
+                  {t('orders.detail.phone')}
                 </div>
                 <input
                   className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
                             text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[10px] px-[12px] text-black"
-                  placeholder="customer phone number"
+                  placeholder={t('orders.detail.phone')}
                   type="tel"
                   value={customerPhone}
                   onChange={(e) => {
@@ -696,7 +698,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               {userProfile?.role === 'Admin' ? (
                 <div className="w-full">
                   <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                    Select Branch for Pickup
+                    {t('orders.detail.pickup')}
                   </div>
                   <StyledSelect
                     fullWidth
@@ -737,7 +739,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               ) : (
                 <div className="w-full">
                   <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                    Your Branch
+                    {t('orders.detail.pickup')}
                   </div>
                   <div className="font-sans border-[#efefef] border-[1px] border-solid 
                                 bg-[#f9fafb] self-stretch rounded-[3px] overflow-hidden 
@@ -748,7 +750,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               )}
             </div>
             <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4">
-              <LocationInput label="Drop-Off Location" onLocationSelect={handleDropoffLocationSelect} />
+              <LocationInput label={t('orders.detail.dropoff')} onLocationSelect={handleDropoffLocationSelect} />
               {dropoffLocation && (
                 <div className="text-sm text-gray-600 mt-2 pl-2">
                 </div>
@@ -764,7 +766,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                            ? 'bg-[#fd683e] border-[#f5fcf8] hover:opacity-90' 
                            : 'bg-gray-400 border-gray-300 cursor-not-allowed'}`}
             >
-              <div className="relative leading-[16px] font-sans text-[#fff]">Next</div>
+              <div className="relative leading-[16px] font-sans text-[#fff]">{t('common.next')}</div>
             </button>
           </>
         );
@@ -772,13 +774,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         return (
           <>
             <div className="flex items-center mb-6">
-           
               <button
                 className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent"
                 onClick={handlePreviousStep}
               >
                 <IoIosArrowBack className="w-5 h-5" />
-                <span>Back</span>
+                <span>{t('common.back')}</span>
               </button>
             </div>
             
@@ -951,14 +952,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 onClick={handleBackToDeliveryType}
               >
                 <IoIosArrowBack className="w-5 h-5" />
-                <span>Back to Delivery Types</span>
+                <span>{t('common.back')}</span>
               </button>
             </div>
             
             <b className="font-sans text-lg font-semibold gap-2 mb-4">
-              {deliveryMethod === 'on-demand' ? 'On Demand Delivery' :
-               deliveryMethod === 'schedule' ? 'Schedule Delivery' :
-               'Batch Delivery'}
+              {t('orders.delivery.schedule')}
             </b>
             
             {/* Add Estimated Distance section here */}
@@ -968,12 +967,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4">
               <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
                 <div className="self-stretch relative leading-[20px] font-sans text-black">
-                  Customer Name
+                  {t('orders.detail.name')}
                 </div>
                 <input
                   className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
                             text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-center py-[10px] px-[12px] text-black"
-                  placeholder="customer name"
+                  placeholder={t('orders.detail.name')}
                   type="text"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
@@ -981,12 +980,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               </div>
               <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
                 <div className="self-stretch relative leading-[20px] font-sans text-black">
-                  Customer Phone
+                  {t('orders.detail.phone')}
                 </div>
                 <input
                   className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
                             text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[10px] px-[12px] text-black"
-                  placeholder="customer phone number"
+                  placeholder={t('orders.detail.phone')}
                   type="tel"
                   value={customerPhone}
                   onChange={(e) => {
@@ -1001,7 +1000,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               {userProfile?.role === 'Admin' ? (
                 <div className="w-full">
                   <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                    Select Branch for Pickup
+                    {t('orders.detail.pickup')}
                   </div>
                   <StyledSelect
                     fullWidth
@@ -1042,7 +1041,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               ) : (
                 <div className="w-full">
                   <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                    Your Branch
+                    {t('orders.detail.pickup')}
                   </div>
                   <div className="font-sans border-[#efefef] border-[1px] border-solid 
                                 bg-[#f9fafb] self-stretch rounded-[3px] overflow-hidden 
@@ -1053,7 +1052,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               )}
             </div>
             <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4">
-              <LocationInput label="Drop-Off Location" onLocationSelect={handleDropoffLocationSelect} />
+              <LocationInput label={t('orders.detail.dropoff')} onLocationSelect={handleDropoffLocationSelect} />
               {dropoffLocation && (
                 <div className="text-sm text-gray-600 mt-2 pl-2">
                 </div>
@@ -1069,7 +1068,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                            ? 'bg-[#fd683e] border-[#f5fcf8] hover:opacity-90' 
                            : 'bg-gray-400 border-gray-300 cursor-not-allowed'}`}
             >
-              <div className="relative leading-[16px] font-sans text-[#fff]">Next</div>
+              <div className="relative leading-[16px] font-sans text-[#fff]">{t('common.next')}</div>
             </button>
           </>
         );
@@ -1083,11 +1082,11 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 onClick={handlePreviousStep}
               >
                 <IoIosArrowBack className="w-5 h-5" />
-                <span>Back</span>
+                <span>{t('common.back')}</span>
               </button>
             </div>
             
-            <b className="font-sans text-lg font-semibold">Add Menu Item</b>
+            <b className="font-sans text-lg font-semibold">{t('orders.addMenuItem')}</b>
             {/* Add this scrollable container */}
             <div className="flex-1 overflow-y-auto max-h-[75vh] pr-2">
               {/* Delivery Price Section */}
@@ -1284,7 +1283,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 onClick={handlePreviousStep}
               >
                 <IoIosArrowBack className="w-5 h-5" />
-                <span>Back</span>
+                <span>{t('common.back')}</span>
               </button>
             </div>
             
@@ -1457,14 +1456,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 onClick={handleBackToDeliveryType}
               >
                 <IoIosArrowBack className="w-5 h-5" />
-                <span>Back to Delivery Types</span>
+                <span>{t('common.back')}</span>
               </button>
             </div>
             
             <b className="font-sans text-lg font-semibold gap-2 mb-4">
-              {deliveryMethod === 'on-demand' ? 'On Demand Delivery' :
-               deliveryMethod === 'schedule' ? 'Schedule Delivery' :
-               'Batch Delivery'}
+              {t('orders.delivery.batch')}
             </b>
             
             {/* Add Estimated Distance section here */}
@@ -1474,12 +1471,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4">
               <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
                 <div className="self-stretch relative leading-[20px] font-sans text-black">
-                  Customer Name
+                  {t('orders.detail.name')}
                 </div>
                 <input
                   className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
                             text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-center py-[10px] px-[12px] text-black"
-                  placeholder="customer name"
+                  placeholder={t('orders.detail.name')}
                   type="text"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
@@ -1487,12 +1484,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               </div>
               <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
                 <div className="self-stretch relative leading-[20px] font-sans text-black">
-                  Customer Phone
+                  {t('orders.detail.phone')}
                 </div>
                 <input
                   className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
                             text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[10px] px-[12px] text-black"
-                  placeholder="customer phone number"
+                  placeholder={t('orders.detail.phone')}
                   type="tel"
                   value={customerPhone}
                   onChange={(e) => {
@@ -1507,7 +1504,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               {userProfile?.role === 'Admin' ? (
                 <div className="w-full">
                   <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                    Select Branch for Pickup
+                    {t('orders.detail.pickup')}
                   </div>
                   <StyledSelect
                     fullWidth
@@ -1548,7 +1545,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               ) : (
                 <div className="w-full">
                   <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                    Your Branch
+                    {t('orders.detail.pickup')}
                   </div>
                   <div className="font-sans border-[#efefef] border-[1px] border-solid 
                                 bg-[#f9fafb] self-stretch rounded-[3px] overflow-hidden 
@@ -1559,7 +1556,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               )}
             </div>
             <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4">
-              <LocationInput label="Drop-Off Location" onLocationSelect={handleDropoffLocationSelect} />
+              <LocationInput label={t('orders.detail.dropoff')} onLocationSelect={handleDropoffLocationSelect} />
               {dropoffLocation && (
                 <div className="text-sm text-gray-600 mt-2 pl-2">
                 </div>
@@ -1575,7 +1572,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                            ? 'bg-[#fd683e] border-[#f5fcf8] hover:opacity-90' 
                            : 'bg-gray-400 border-gray-300 cursor-not-allowed'}`}
             >
-              <div className="relative leading-[16px] font-sans text-[#fff]">Next</div>
+              <div className="relative leading-[16px] font-sans text-[#fff]">{t('common.next')}</div>
             </button>
           </>
         );
@@ -1590,7 +1587,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 onClick={handlePreviousStep}
               >
                 <IoIosArrowBack className="w-5 h-5" />
-                <span>Back</span>
+                <span>{t('common.back')}</span>
               </button>
             </div>
             
@@ -1762,7 +1759,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 onClick={handleBackToDeliveryType}
               >
                 <IoIosArrowBack className="w-5 h-5" />
-                <span>Back to Delivery Types</span>
+                <span>{t('common.back')}</span>
               </button>
             </div>
             
@@ -1770,17 +1767,16 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             
             {/* Add Estimated Distance section here */}
             {renderDistanceInfo()}
-
             {/* Customer Details Section */}
             <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4">
               <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
                 <div className="self-stretch relative leading-[20px] font-sans text-black">
-                  Customer Name
+                  {t('orders.detail.name')}
                 </div>
                 <input
                   className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
                             text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-center py-[10px] px-[12px] text-black"
-                  placeholder="customer name"
+                  placeholder={t('orders.detail.name')}
                   type="text"
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
@@ -1788,12 +1784,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               </div>
               <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
                 <div className="self-stretch relative leading-[20px] font-sans text-black">
-                  Customer Phone
+                  {t('orders.detail.phone')}
                 </div>
                 <input
                   className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
                             text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[10px] px-[12px] text-black"
-                  placeholder="customer phone number"
+                  placeholder={t('orders.detail.phone')}
                   type="tel"
                   value={customerPhone}
                   onChange={(e) => {
@@ -1810,7 +1806,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               {userProfile?.role === 'Admin' ? (
                 <div className="w-full">
                   <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                    Select Branch for Pickup
+                    {t('orders.detail.pickup')}
                   </div>
                   <StyledSelect
                     fullWidth
@@ -1851,7 +1847,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               ) : (
                 <div className="w-full">
                   <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                    Your Branch
+                    {t('orders.detail.pickup')}
                   </div>
                   <div className="font-sans border-[#efefef] border-[1px] border-solid 
                                 bg-[#f9fafb] self-stretch rounded-[3px] overflow-hidden 
@@ -1864,7 +1860,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
             {/* Location Input */}
             <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4">
-              <LocationInput label="Drop-Off Location" onLocationSelect={handleDropoffLocationSelect} />
+              <LocationInput label={t('orders.detail.dropoff')} onLocationSelect={handleDropoffLocationSelect} />
               {dropoffLocation && (
                 <div className="text-sm text-gray-600 mt-2 pl-2">
                 </div>
@@ -1882,7 +1878,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                            ? 'bg-[#fd683e] border-[#f5fcf8] hover:opacity-90' 
                            : 'bg-gray-400 border-gray-300 cursor-not-allowed'}`}
             >
-              <div className="relative leading-[16px] font-sans text-[#fff]">Next</div>
+              <div className="relative leading-[16px] font-sans text-[#fff]">{t('common.next')}</div>
             </button>
           </>
         );
@@ -1896,11 +1892,11 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 onClick={handlePreviousStep}
               >
                 <IoIosArrowBack className="w-5 h-5" />
-                <span>Back</span>
+                <span>{t('common.back')}</span>
               </button>
                 </div>
                
-            <b className="font-sans text-lg font-semibold">Add Menu Item</b>
+            <b className="font-sans text-lg font-semibold">{t('orders.addMenuItem')}</b>
             
             {/* Scrollable container */}
             <div className="flex-1 overflow-y-auto max-h-[75vh] pr-2">
@@ -2090,7 +2086,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 onClick={handlePreviousStep}
               >
                 <IoIosArrowBack className="w-5 h-5" />
-                <span>Back</span>
+                <span>{t('common.back')}</span>
               </button>
             </div>
             
@@ -2230,13 +2226,13 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 onClick={handleBackToDeliveryType}
               >
                 <IoIosArrowBack className="w-5 h-5" />
-                <span>Back to Delivery Types</span>
+                <span>{t('common.back')}</span>
               </button>
             </div>
             
             <b className="font-sans text-lg font-semibold gap-2 mb-4">Walk-In Order</b>
 
-            <b className="font-sans text-lg font-semibold">Add Menu Item</b>
+            <b className="font-sans text-lg font-semibold">{t('orders.addMenuItem')}</b>
             {/* Add this scrollable container */}
             <div className="flex-1 overflow-y-auto max-h-[75vh] pr-2">
               {/* Menu Items Section */}
@@ -2402,7 +2398,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 onClick={handleNextStep}
                 disabled={selectedItems.length === 0}
               >
-                Next
+                {t('common.next')}
               </button>
             </div>
           </>
@@ -2416,17 +2412,17 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                   onClick={handlePreviousStep}
                 >
                   <IoIosArrowBack className="w-5 h-5" />
-                  <span>Back</span>
+                  <span>{t('common.back')}</span>
                 </button>
               </div>
               
               <b className="font-sans text-lg font-semibold gap-2 mb-4">Walk-In Order</b>
 
-              <b className="font-sans text-lg font-semibold mb-6">Customer Details</b>
+              <b className="font-sans text-lg font-semibold mb-6">{t('orders.customerDetails')}</b>
   
               {/* Order Summary Section */}
               <div className="mb-6 bg-[#f9fafb] rounded-lg p-4 font-sans">
-                <div className="font-sans text-lg font-semibold mb-3">Order Summary</div>
+                <div className="font-sans text-lg font-semibold mb-3">{t('orders.orderSummary')}</div>
                 <div className="space-y-3">
                   {selectedItems.map((item, index) => (
                     <div key={index} className="flex justify-between items-center text-sm">
@@ -2843,33 +2839,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     );
 };
 
-  const renderDeliveryMethodSelection = () => {
-    return (
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Only show On-Demand if walkInSetting is true */}
-        {walkInSetting && (
-          <div 
-            className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg relative cursor-pointer hover:bg-[#FFE5E0] transition-colors"
-            onClick={() => handleDeliveryMethodSelect('on-demand')}
-          >
-            <h3 className="text-lg font-medium text-[#333]">On-Demand Delivery</h3>
-            {/* ... other content ... */}
-          </div>
-        )}
-        
-        {/* Other delivery options like schedule, batch, full-service */}
-        
-        {/* Show Walk-In regardless of WalkIn setting */}
-        <div 
-          className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg relative cursor-pointer hover:bg-[#FFE5E0] transition-colors"
-          onClick={() => handleDeliveryMethodSelect('walk-in')}
-        >
-          <h3 className="text-lg font-medium text-[#333]">Walk-In Order</h3>
-          {/* ... other content ... */}
-        </div>
-      </div>
-    );
-  };
+  const renderDeliveryMethodSelection = () => {    return (      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">        {/* Only show On-Demand if walkInSetting is true */}        {walkInSetting && (          <div             className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg relative cursor-pointer hover:bg-[#FFE5E0] transition-colors"            onClick={() => handleDeliveryMethodSelect('on-demand')}          >            <h3 className="text-lg font-medium text-[#333]">{t('orders.delivery.onDemand')}</h3>            <p className="text-sm text-gray-600 mt-2 text-center">{t('orders.delivery.onDemandDescription')}</p>          </div>        )}                {/* Other delivery options like schedule, batch, full-service */}        <div           className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg relative cursor-pointer hover:bg-[#FFE5E0] transition-colors"          onClick={() => handleDeliveryMethodSelect('full-service')}        >          <h3 className="text-lg font-medium text-[#333]">{t('orders.delivery.fullService')}</h3>          <p className="text-sm text-gray-600 mt-2 text-center">{t('orders.delivery.fullServiceDescription')}</p>        </div>                <div           className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg relative cursor-pointer hover:bg-[#FFE5E0] transition-colors"          onClick={() => handleDeliveryMethodSelect('schedule')}        >          <h3 className="text-lg font-medium text-[#333]">{t('orders.delivery.schedule')}</h3>          <p className="text-sm text-gray-600 mt-2 text-center">{t('orders.delivery.scheduleDescription')}</p>        </div>                {/* Show Walk-In regardless of WalkIn setting */}        <div           className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg relative cursor-pointer hover:bg-[#FFE5E0] transition-colors"          onClick={() => handleDeliveryMethodSelect('walk-in')}         >          <h3 className="text-lg font-medium text-[#333]">{t('orders.walkIn')}</h3>          <p className="text-sm text-gray-600 mt-2 text-center">{t('orders.delivery.walkInDescription')}</p>        </div>      </div>    );  };
 
   const [riders, setRiders] = useState<Rider[]>([]);
   const [selectedRider, setSelectedRider] = useState<string>('');
