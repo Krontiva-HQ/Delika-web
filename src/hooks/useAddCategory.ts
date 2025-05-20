@@ -32,7 +32,6 @@ export const useAddCategory = () => {
     setIsLoading(true);
     try {
       const formData = new FormData();
-      formData.append('path', '/create/new/category');
       formData.append('foodType', foodType);
       formData.append('restaurantName', restaurantName);
       formData.append('branchName', branchName);

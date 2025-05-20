@@ -37,12 +37,10 @@ export const useAddItemToCategory = () => {
       
       const formData = new FormData();
       formData.append('categoryId', categoryId);
-      formData.append('foods', JSON.stringify({ 
-        name, 
-        price, 
-        description, 
-        available 
-      }));
+      formData.append('name', name);
+      formData.append('price', price);
+      formData.append('description', description);
+      formData.append('available', String(available));
       formData.append('restaurantName', userProfile.restaurantId || '');
       formData.append('branchName', userProfile.branchId || '');
       

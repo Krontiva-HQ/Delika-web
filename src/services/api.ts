@@ -311,63 +311,27 @@ export interface OrderDetails {
 
 // Add the service functions
 export const addItemToCategory = (formData: FormData) => {
-  const updatedFormData = new FormData();
-  updatedFormData.append('path', '/add/item/to/category');
-  
-  Array.from(formData.entries()).forEach(([key, value]) => {
-    if (key === 'path') return;
-    if (key === 'foods' && typeof value === 'string') {
-      updatedFormData.append(key, value);
-    } else if (key === 'foodPhoto' && value instanceof File) {
-      // Log the file details
-     
-      updatedFormData.append(key, value);
-    } else {
-      updatedFormData.append(key, value);
-    }
-  });
-  
   const headers = {
     'Content-Type': 'multipart/form-data',
     'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
   };
 
-  
-
   return api.patch<{data: any; status: number}>(
     API_ENDPOINTS.CATEGORY.ADD_ITEM, 
-    updatedFormData, 
+    formData, 
     { headers }
   );
 };
 
 export const createCategory = (formData: FormData) => {
-  const updatedFormData = new FormData();
-  updatedFormData.append('path', '/create/new/category');
-  
-  Array.from(formData.entries()).forEach(([key, value]) => {
-    if (key === 'path') return;
-    if (key === 'foods' && typeof value === 'string') {
-      updatedFormData.append(key, value);
-    } else if ((key === 'foodTypePhoto' || key === 'foodsPhoto') && value instanceof File) {
-      // Log the file details
-     
-      updatedFormData.append(key, value);
-    } else {
-      updatedFormData.append(key, value);
-    }
-  });
-  
   const headers = {
     'Content-Type': 'multipart/form-data',
     'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
   };
 
-
-
   return api.post(
     API_ENDPOINTS.CATEGORY.CREATE, 
-    updatedFormData, 
+    formData, 
     { headers }
   );
 };
