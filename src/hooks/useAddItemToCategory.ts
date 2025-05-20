@@ -33,7 +33,12 @@ export const useAddItemToCategory = () => {
       categoryId,
       name,
       price,
-      description
+      description,
+      foodPhoto: foodPhoto ? {
+        name: foodPhoto.name,
+        type: foodPhoto.type,
+        size: foodPhoto.size
+      } : null
     });
     
     setIsLoading(true);
@@ -53,11 +58,22 @@ export const useAddItemToCategory = () => {
       formData.append('restaurantName', userProfile.restaurantId || '');
       formData.append('branchName', userProfile.branchId || '');
       
-      if (foodPhoto) {
-        formData.append('foodPhoto', foodPhoto);
-      } else {
+      if (!foodPhoto) {
         throw new Error('Missing file resource.');
       }
+
+      // Append the file directly to FormData
+      formData.append('foodPhoto', foodPhoto);
+
+      // Log the FormData contents for debugging
+      console.log('📦 FormData contents:', {
+        categoryId: formData.get('categoryId'),
+        foods: formData.get('foods'),
+        restaurantName: formData.get('restaurantName'),
+        branchName: formData.get('branchName'),
+        hasFoodPhoto: formData.has('foodPhoto'),
+        foodPhotoType: formData.get('foodPhoto') instanceof File ? 'File' : 'Not a File'
+      });
 
       console.log('🔥 Calling API directly - AddItemToCategory 🔥');
       const response = await addItemToCategory(formData);

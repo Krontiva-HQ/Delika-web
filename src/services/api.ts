@@ -318,15 +318,34 @@ export const addItemToCategory = (formData: FormData) => {
     if (key === 'path') return;
     if (key === 'foods' && typeof value === 'string') {
       updatedFormData.append(key, value);
+    } else if (key === 'foodPhoto' && value instanceof File) {
+      // Log the file details
+      console.log('📸 Food photo details in API:', {
+        name: value.name,
+        type: value.type,
+        size: value.size
+      });
+      updatedFormData.append(key, value);
     } else {
       updatedFormData.append(key, value);
     }
   });
   
   const headers = {
-    'Content-Type': 'application/json',
+    'Content-Type': 'multipart/form-data',
     'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
   };
+
+  // Log the final FormData contents
+  console.log('📦 Final FormData contents in API:', {
+    path: updatedFormData.get('path'),
+    categoryId: updatedFormData.get('categoryId'),
+    foods: updatedFormData.get('foods'),
+    restaurantName: updatedFormData.get('restaurantName'),
+    branchName: updatedFormData.get('branchName'),
+    hasFoodPhoto: updatedFormData.has('foodPhoto'),
+    foodPhotoType: updatedFormData.get('foodPhoto') instanceof File ? 'File' : 'Not a File'
+  });
 
   return api.patch<{data: any; status: number}>(
     API_ENDPOINTS.CATEGORY.ADD_ITEM, 
