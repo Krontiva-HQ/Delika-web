@@ -1109,7 +1109,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                                 : 'cursor-not-allowed opacity-100'
                             }`}
                             onClick={() => {
-                              if (item.available) {   
+                              if (item.available) {
                                 setSelectedItem(item.name);
                                 setIsItemsDropdownOpen(false);
                                 addItem(item);
@@ -1757,7 +1757,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           <>
             <div className="flex items-center mb-6">
               
-             
+              
               <button
                 className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent"
                 onClick={handlePreviousStep}
@@ -2077,9 +2077,9 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         case 2:
           return (
             <>
-              <b className="font-sans text-lg font-semibold">Add Menu Item</b>
+            <b className="font-sans text-lg font-semibold">Add Menu Item</b>
               {/* Add this scrollable container */}
-              <div className="flex-1 overflow-y-auto max-h-[75vh] pr-2">
+            <div className="flex-1 overflow-y-auto max-h-[75vh] pr-2">
                 {/* Delivery Price Section */}
                 <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
                   <div className="self-stretch relative leading-[20px] font-sans text-black">Delivery Price</div>
@@ -2637,7 +2637,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                   <span>Back</span>
                 </button>
               </div>
-              
+
               <b className="font-sans text-lg font-semibold mb-6">Customer Details</b>
   
               {/* Order Summary Section */}
@@ -3085,10 +3085,10 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                     : 'cursor-pointer hover:bg-[#FFE5E0] transition-colors'}`}
               >
                 <div className="w-14 h-14 mb-4">
-                  <img src="/on-demand-delivery.svg" alt="On-Demand" className="w-full h-full" />
-                </div>
+                    <img src="/on-demand-delivery.svg" alt="On-Demand" className="w-full h-full" />
+                  </div>
                 <span className="text-center font-medium font-sans">On Demand<br/>Delivery</span>
-              </div>
+                </div>
 
               {/* Full-service */}
               <div
@@ -3103,47 +3103,47 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 }}
               >
                 <div className="w-14 h-14 mb-4">
-                  <img src="/full-service.svg" alt="Full-service" className="w-full h-full" />
-                </div>
+                    <img src="/full-service.svg" alt="Full-service" className="w-full h-full" />
+                  </div>
                 <span className="text-center font-medium font-sans">Full-service<br/>Delivery</span>
-              </div>  
+                </div>
 
               {/* Schedule Delivery */}
-              <div
-                onClick={() => handleDeliveryMethodSelect('schedule')}
+                <div
+                  onClick={() => handleDeliveryMethodSelect('schedule')}
                 className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[200px]"
-              >
+                >
                 <div className="w-14 h-14 mb-4">
-                  <img src="/schedule-delivery.svg" alt="Schedule" className="w-full h-full" />
-                </div>
+                    <img src="/schedule-delivery.svg" alt="Schedule" className="w-full h-full" />
+                  </div>
                 <span className="text-center font-medium font-sans">Schedule<br/>Delivery</span>
-              </div>
+                </div>
 
               {/* Batch Delivery */}
-              <div
-                onClick={() => handleDeliveryMethodSelect('batch-delivery')}
+                <div
+                  onClick={() => handleDeliveryMethodSelect('batch-delivery')}
                 className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[200px]"
-              >
+                >
                 <div className="w-14 h-14 mb-4">
-                  <img src="/batch-delivery.svg" alt="Batch" className="w-full h-full" />
-                </div>
+                    <img src="/batch-delivery.svg" alt="Batch" className="w-full h-full" />
+                  </div>
                 <span className="text-center font-medium font-sans">Batch<br/>Delivery</span>
-              </div>
+                </div>
 
               {/* Walk-In Service */}
-              <div
-                onClick={() => handleDeliveryMethodSelect('walk-in')}
+                <div
+                  onClick={() => handleDeliveryMethodSelect('walk-in')}
                 className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[200px]"
-              >
+                >
                 <div className="w-14 h-14 mb-4">
-                  <img src="/dining-out.png" alt="Walk-In" className="w-full h-full" />
-                </div>
+                    <img src="/dining-out.png" alt="Walk-In" className="w-full h-full" />
+                  </div>
                 <span className="text-center font-medium font-sans">Walk-In<br/>Service</span>
-              </div>
+                </div>
             </div>
           </div>
         ) : (
-          // Existing order placement modal content
+          // Existing order placement modal content 
           <>
             {/* Main content */}
             {renderStepContent()}

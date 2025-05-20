@@ -18,7 +18,7 @@ const api = axios.create({
 
 // Create a direct API instance that doesn't use the proxy
 const directApi = axios.create({
-  baseURL: PROXY_URL, // Use proxy for direct API as well
+  baseURL: API_BASE_URL, // Use direct API URL
   headers: {
     'Content-Type': 'application/json',
     'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
@@ -316,7 +316,7 @@ export const addItemToCategory = (formData: FormData) => {
     'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
   };
 
-  return api.patch<{data: any; status: number}>(
+  return directApi.patch<{data: any; status: number}>(
     API_ENDPOINTS.CATEGORY.ADD_ITEM, 
     formData, 
     { headers }
@@ -329,7 +329,7 @@ export const createCategory = (formData: FormData) => {
     'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
   };
 
-  return api.post(
+  return directApi.post(
     API_ENDPOINTS.CATEGORY.CREATE, 
     formData, 
     { headers }
