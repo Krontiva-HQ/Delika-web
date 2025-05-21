@@ -161,12 +161,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
           return;
         }
 
-        console.log('Adding item to category', {
-          categoryId: selectedCategoryData.id,
-          name: itemName,
-          restaurantId: userProfile.restaurantId,
-          branchId: userProfile.branchId
-        });
+       
         
         await addItem({
           categoryId: selectedCategoryData.id,
