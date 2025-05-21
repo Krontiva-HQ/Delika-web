@@ -253,6 +253,39 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
   // Add new state for orders that need accept/decline decision
   const [pendingDecisionOrders, setPendingDecisionOrders] = useState<Set<string>>(new Set());
 
+  // Add useEffect to load persisted pending orders on mount
+  useEffect(() => {
+    const loadPersistedOrders = () => {
+      try {
+        const persistedOrders = localStorage.getItem('pendingOrders');
+        if (persistedOrders) {
+          const parsedOrders = JSON.parse(persistedOrders);
+          setNewOrders(parsedOrders);
+          
+          // Also restore pending decision orders
+          const persistedDecisions = localStorage.getItem('pendingDecisionOrders');
+          if (persistedDecisions) {
+            setPendingDecisionOrders(new Set(JSON.parse(persistedDecisions)));
+          }
+        }
+      } catch (error) {
+        console.error('Error loading persisted orders:', error);
+      }
+    };
+
+    loadPersistedOrders();
+  }, []);
+
+  // Add useEffect to persist orders when they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('pendingOrders', JSON.stringify(newOrders));
+      localStorage.setItem('pendingDecisionOrders', JSON.stringify(Array.from(pendingDecisionOrders)));
+    } catch (error) {
+      console.error('Error persisting orders:', error);
+    }
+  }, [newOrders, pendingDecisionOrders]);
+
   // For debugging: Always show the floating pending orders button/panel
   useEffect(() => {
     setShowFloatingButton(true);
@@ -569,9 +602,15 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     }
   }, [selectedDate, fetchOrders]);
 
-  // Update the checkForNewOrders function to better track pending decisions
+  // Update the checkForNewOrders function to properly sync kitchen status between floating panel and table
   const checkForNewOrders = useCallback(async () => {
     if (!selectedDate || !selectedBranchId) return;
+
+    console.log('🔄 Starting checkForNewOrders...', {
+      selectedDate: selectedDate.format('YYYY-MM-DD'),
+      selectedBranchId,
+      currentPendingOrders: newOrders.length
+    });
 
     try {
       let params = new URLSearchParams();
@@ -590,12 +629,17 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         });
       }
 
+      console.log('📡 Fetching orders with params:', params.toString());
       const response = await api.get(`/filter/orders/by/date?${params.toString()}`);
       const latestOrders = response.data.sort((a: Order, b: Order) => 
         new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime()
       );
+      console.log('📥 Received orders:', latestOrders.length);
 
-      // Check for new orders
+      // Update the main orders table with latest data
+      setOrders(latestOrders);
+
+      // Check for new orders and update kitchen status
       const newIncomingOrders = latestOrders.filter((order: Order) => {
         // Skip if order ID already exists in lastOrderIds
         if (lastOrderIds.has(order.id)) return false;
@@ -604,27 +648,73 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         return order.orderChannel === 'customerApp';
       });
 
-      // Update newOrders state
+      console.log('🆕 New incoming orders:', newIncomingOrders.length, {
+        orderIds: newIncomingOrders.map((o: Order) => o.id),
+        lastOrderIds: Array.from(lastOrderIds)
+      });
+
+      // Update newOrders state with proper kitchen status sync
       setNewOrders(prev => {
-        // Keep existing orders that are:
-        // 1. Not in the new incoming orders
-        // 2. From customerApp
-        // 3. Not prepared
+        console.log('🔄 Updating newOrders state...', {
+          previousOrders: prev.length,
+          existingOrders: prev.filter(order => 
+            !newIncomingOrders.some((newOrder: Order) => newOrder.id === order.id) &&
+            order.orderChannel === 'customerApp' &&
+            order.kitchenStatus !== 'prepared'
+          ).length
+        });
+
+        // Get existing orders that should remain in the floating panel
         const existingOrders = prev.filter(order => 
           !newIncomingOrders.some((newOrder: Order) => newOrder.id === order.id) &&
           order.orderChannel === 'customerApp' &&
           order.kitchenStatus !== 'prepared'
         );
 
-        // Combine with new orders
-        const combinedOrders = [...existingOrders, ...newIncomingOrders];
+        // Get orders from latestOrders that should be in the floating panel
+        const activeOrders = latestOrders.filter((order: Order) => 
+          order.orderChannel === 'customerApp' && 
+          (order.kitchenStatus === 'orderReceived' || order.kitchenStatus === 'preparing')
+        );
+
+        console.log('🔍 Active orders from latest:', {
+          count: activeOrders.length,
+          orderIds: activeOrders.map((o: Order) => o.id),
+          statuses: activeOrders.map((o: Order) => o.kitchenStatus)
+        });
+
+        // Update kitchen status for existing orders
+        const updatedExistingOrders = existingOrders.map(existingOrder => {
+          const latestOrder = latestOrders.find((order: Order) => order.id === existingOrder.id);
+          if (latestOrder) {
+            console.log('🔄 Updating kitchen status for order:', {
+              orderId: existingOrder.id,
+              oldStatus: existingOrder.kitchenStatus,
+              newStatus: latestOrder.kitchenStatus
+            });
+            return {
+              ...existingOrder,
+              kitchenStatus: latestOrder.kitchenStatus
+            };
+          }
+          return existingOrder;
+        });
+
+        // Combine with new orders and active orders
+        const combinedOrders = [...updatedExistingOrders, ...newIncomingOrders, ...activeOrders];
 
         // Filter out duplicates and sort by time
         const uniqueOrders = Array.from(
-          new Map(combinedOrders.map(order => [order.id, order])).values()
+          new Map(combinedOrders.map((order: Order) => [order.id, order])).values()
         ).sort((a, b) => 
           new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime()
         );
+
+        console.log('✅ Final newOrders state:', {
+          totalOrders: uniqueOrders.length,
+          orderIds: uniqueOrders.map((o: Order) => o.id),
+          statuses: uniqueOrders.map((o: Order) => o.kitchenStatus)
+        });
 
         return uniqueOrders;
       });
@@ -638,11 +728,13 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
           // 2. orderAccepted is undefined/null (no decision made)
           if (newIncomingOrders.some((newOrder: Order) => newOrder.id === order.id) &&
               (order.orderAccepted === undefined || order.orderAccepted === null)) {
+            console.log('➕ Adding to pending decisions:', order.id);
             newSet.add(order.id);
           }
           // Remove from pending decisions if:
           // 1. Order has been accepted or declined
           if (order.orderAccepted === true || order.orderAccepted === false) {
+            console.log('➖ Removing from pending decisions:', order.id);
             newSet.delete(order.id);
           }
         });
@@ -651,6 +743,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
       // Show modal for new orders
       if (newIncomingOrders.length > 0) {
+        console.log('🔔 Showing new order modal for orders:', newIncomingOrders.map((o: Order) => o.id));
         setShowNewOrderModal(true);
         const audio = new Audio('/orderRinging.mp3');
         audio.play().catch(() => {});
@@ -660,17 +753,21 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       setLastOrderIds(new Set(latestOrders.map((order: Order) => order.id)));
 
     } catch (error) {
-      console.error('Error checking for new orders:', error);
+      console.error('❌ Error checking for new orders:', error);
     }
   }, [selectedDate, selectedBranchId, userProfile, lastOrderIds]);
 
-  // Update the polling effect
+  // Add console log to track polling interval
   useEffect(() => {
     let lastPollTime = Date.now();
     
     const shouldPoll = () => {
       const now = Date.now();
       const timeSinceLastPoll = now - lastPollTime;
+      console.log('⏰ Polling check:', {
+        timeSinceLastPoll,
+        shouldPoll: timeSinceLastPoll >= 10000
+      });
       if (timeSinceLastPoll >= 10000) { // 10 seconds
         lastPollTime = now;
         return true;
@@ -680,6 +777,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
     const poll = async () => {
       if (shouldPoll()) {
+        console.log('🔄 Starting poll cycle...');
         await checkForNewOrders();
       }
     };
@@ -687,6 +785,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     const pollInterval = setInterval(poll, 10000); // 10 seconds
 
     return () => {
+      console.log('🧹 Cleaning up polling interval');
       clearInterval(pollInterval);
     };
   }, [checkForNewOrders]);
@@ -719,8 +818,17 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     setLoadingOrderIds(prev => new Set(prev).add(order.id));
 
     try {
-      // Optimistically update the UI
+      // Optimistically update both the table and floating panel
       setOrders(prevOrders => 
+        prevOrders.map(prevOrder => 
+          prevOrder.orderNumber === order.orderNumber 
+            ? { ...prevOrder, kitchenStatus: newStatus }
+            : prevOrder
+        )
+      );
+
+      // Also update the floating panel orders
+      setNewOrders(prevOrders => 
         prevOrders.map(prevOrder => 
           prevOrder.orderNumber === order.orderNumber 
             ? { ...prevOrder, kitchenStatus: newStatus }
@@ -737,10 +845,21 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       // Fetch just this order's latest data
       const response = await api.get(`/orders/${order.orderNumber}`);
       if (response.data) {
+        const updatedOrder = response.data;
+        
+        // Update both the table and floating panel with the latest data
         setOrders(prevOrders => 
           prevOrders.map(prevOrder => 
             prevOrder.orderNumber === order.orderNumber 
-              ? { ...response.data }
+              ? updatedOrder
+              : prevOrder
+          )
+        );
+
+        setNewOrders(prevOrders => 
+          prevOrders.map(prevOrder => 
+            prevOrder.orderNumber === order.orderNumber 
+              ? updatedOrder
               : prevOrder
           )
         );
@@ -765,7 +884,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       }
     } catch (error) {
       console.error('API Error:', error);
-      // Revert the optimistic update
+      // Revert the optimistic updates in both places
       setOrders(prevOrders => 
         prevOrders.map(prevOrder => 
           prevOrder.orderNumber === order.orderNumber 
@@ -773,6 +892,15 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
             : prevOrder
         )
       );
+
+      setNewOrders(prevOrders => 
+        prevOrders.map(prevOrder => 
+          prevOrder.orderNumber === order.orderNumber 
+            ? { ...prevOrder, kitchenStatus: currentStatus }
+            : prevOrder
+        )
+      );
+
       addNotification({
         type: 'order_status',
         message: 'Failed to update kitchen status'
@@ -900,12 +1028,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       }
       
       // Show success notification
-      addNotification({
-        type: 'order_status',
-        message: `Order status updated to ${newStatus}`
-      });
-      
-      // Close the menu
       setProcessingMenuAnchor(prev => ({ ...prev, [orderId]: null }));
     } catch (error) {
       addNotification({
