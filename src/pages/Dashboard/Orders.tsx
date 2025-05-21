@@ -338,7 +338,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                   className={`px-2 py-1 rounded text-xs font-sans font-semibold
                     ${order.kitchenStatus === 'orderReceived' ? 'bg-[#2196F3] text-white' : 'bg-[#E3F2FD] text-[#2196F3]'}
                   `}
-                  disabled
+                  disabled={order.kitchenStatus !== 'orderReceived' && order.kitchenStatus !== ''}
                 >
                   Order Received
                 </button>
@@ -364,7 +364,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                   className={`px-2 py-1 rounded text-xs font-sans font-semibold
                     ${order.kitchenStatus === 'prepared' ? 'bg-[#B9F6CA] text-[#004D40]' : 'bg-[#E0F2F1] text-[#26A69A]'}
                   `}
-                  disabled={order.kitchenStatus === 'prepared'}
+                  disabled={order.kitchenStatus !== 'preparing'}
                 >
                   Prepared
                 </button>
@@ -401,7 +401,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     if (!branchId || !date) return;
     
     setIsLoading(true);
-    setOrders([]); // Clear existing data
     
     try {
       let params = new URLSearchParams();
@@ -421,13 +420,16 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       }
 
       const response = await api.get(`/filter/orders/by/date?${params.toString()}`);
-      const sortedOrders = response.data.sort((a: Order, b: Order) => {
-        return new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime();
-      });
-      setOrders(sortedOrders);
       
-      // Initialize lastOrderIds with current orders
+      // Optimize sorting by using a more efficient comparison
+      const sortedOrders = response.data.sort((a: Order, b: Order) => 
+        new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime()
+      );
+
+      // Batch state updates
+      setOrders(sortedOrders);
       setLastOrderIds(new Set(sortedOrders.map((order: Order) => order.id)));
+      
     } catch (error) {
       setOrders([]);
     } finally {
@@ -609,28 +611,27 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     }
   }, [orders, checkForNewOrders]);
 
-  // Add console log to track polling interval
+  // Optimize the polling interval
   useEffect(() => {
     let lastPollTime = Date.now();
+    let isPolling = false;
     
     const shouldPoll = () => {
       const now = Date.now();
       const timeSinceLastPoll = now - lastPollTime;
-     
-      if (timeSinceLastPoll >= 10000) { // 10 seconds
-        lastPollTime = now;
-        return true;
-      }
-      return false;
+      return timeSinceLastPoll >= 10000 && !isPolling; // 10 seconds and not currently polling
     };
 
     const poll = async () => {
       if (shouldPoll()) {
+        isPolling = true;
+        lastPollTime = Date.now();
         await checkForNewOrders();
+        isPolling = false;
       }
     };
 
-    const pollInterval = setInterval(poll, 10000); // 10 seconds
+    const pollInterval = setInterval(poll, 10000);
 
     return () => {
       clearInterval(pollInterval);
@@ -762,16 +763,16 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       return;
     }
 
-    let newStatus = currentStatus;
-    
-    // Determine the next status
-    if (currentStatus === 'orderReceived') {
-      newStatus = 'preparing';
-    } else if (currentStatus === 'preparing') {
-      newStatus = 'prepared';
-    } else if (currentStatus === 'prepared') {
-      // If already prepared, do nothing
-      return;
+    // Determine the next status based on current status
+    let nextStatus = '';
+    if (order.kitchenStatus === '' || !order.kitchenStatus) {
+      nextStatus = 'orderReceived';
+    } else if (order.kitchenStatus === 'orderReceived') {
+      nextStatus = 'preparing';
+    } else if (order.kitchenStatus === 'preparing') {
+      nextStatus = 'prepared';
+    } else {
+      return; // No further status changes allowed
     }
 
     // Add this order to loading state
@@ -781,8 +782,8 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       // Optimistically update both the table and floating panel
       setOrders(prevOrders => 
         prevOrders.map(prevOrder => 
-          prevOrder.orderNumber === order.orderNumber 
-            ? { ...prevOrder, kitchenStatus: newStatus }
+          prevOrder.id === order.id 
+            ? { ...prevOrder, kitchenStatus: nextStatus }
             : prevOrder
         )
       );
@@ -790,8 +791,8 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       // Also update the floating panel orders
       setNewOrders(prevOrders => 
         prevOrders.map(prevOrder => 
-          prevOrder.orderNumber === order.orderNumber 
-            ? { ...prevOrder, kitchenStatus: newStatus }
+          prevOrder.id === order.id 
+            ? { ...prevOrder, kitchenStatus: nextStatus }
             : prevOrder
         )
       );
@@ -799,7 +800,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       // Make the API call
       await api.patch('/edit/kitchen/status', {
         orderNumber: order.orderNumber,
-        kitchenStatus: newStatus
+        kitchenStatus: nextStatus
       });
 
       // Fetch just this order's latest data
@@ -810,7 +811,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         // Update both the table and floating panel with the latest data
         setOrders(prevOrders => 
           prevOrders.map(prevOrder => 
-            prevOrder.orderNumber === order.orderNumber 
+            prevOrder.id === order.id 
               ? updatedOrder
               : prevOrder
           )
@@ -818,7 +819,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
         setNewOrders(prevOrders => 
           prevOrders.map(prevOrder => 
-            prevOrder.orderNumber === order.orderNumber 
+            prevOrder.id === order.id 
               ? updatedOrder
               : prevOrder
           )
@@ -835,27 +836,27 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
       addNotification({
         type: 'order_status',
-        message: `Kitchen status updated to ${newStatus}`
+        message: `Kitchen status updated to ${nextStatus}`
       });
 
       // Only remove from pending orders if status is "prepared"
-      if (newStatus === 'prepared') {
+      if (nextStatus === 'prepared') {
         setNewOrders(prev => prev.filter(o => o.id !== order.id));
       }
     } catch (error) {
       // Revert the optimistic updates in both places
       setOrders(prevOrders => 
         prevOrders.map(prevOrder => 
-          prevOrder.orderNumber === order.orderNumber 
-            ? { ...prevOrder, kitchenStatus: currentStatus }
+          prevOrder.id === order.id 
+            ? { ...prevOrder, kitchenStatus: order.kitchenStatus }
             : prevOrder
         )
       );
 
       setNewOrders(prevOrders => 
         prevOrders.map(prevOrder => 
-          prevOrder.orderNumber === order.orderNumber 
-            ? { ...prevOrder, kitchenStatus: currentStatus }
+          prevOrder.id === order.id 
+            ? { ...prevOrder, kitchenStatus: order.kitchenStatus }
             : prevOrder
         )
       );
@@ -1002,11 +1003,25 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       {showFloatingButton && (
         <div
           ref={floatingButtonRef}
-          className="fixed bottom-6 right-6 z-50 cursor-pointer flex items-center gap-2 bg-[#fe5b18] text-white px-4 py-3 rounded-full shadow-lg border-2 border-white animate-jiggle"
-          style={{ animation: 'jiggle 1.2s infinite' }}
-          onClick={() => setShowFloatingPanel(true)}
-          title="You have pending orders!"
+          className="fixed bottom-6 right-6 z-50 cursor-pointer flex items-center gap-2 bg-[#fe5b18] text-white px-4 py-3 rounded-full shadow-lg border-2 border-white"
+          style={{ 
+            animation: pendingCustomerAppOrders.length > 0 ? 'jiggle 1.2s infinite' : 'none',
+            transformOrigin: 'center'
+          }}
+          onClick={() => setShowFloatingPanel(prev => !prev)}
+          title={pendingCustomerAppOrders.length > 0 ? "You have pending orders!" : "No pending orders"}
         >
+          <style>
+            {`
+              @keyframes jiggle {
+                0% { transform: rotate(0deg); }
+                25% { transform: rotate(-5deg); }
+                50% { transform: rotate(0deg); }
+                75% { transform: rotate(5deg); }
+                100% { transform: rotate(0deg); }
+              }
+            `}
+          </style>
           <span className="font-bold text-white">Pending Orders</span>
           <span className="bg-white text-[#fe5b18] rounded-full px-2 py-0.5 font-bold text-xs">{pendingCustomerAppOrders.length}</span>
           <svg className="w-5 h-5 ml-1 animate-bounce" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" /></svg>
