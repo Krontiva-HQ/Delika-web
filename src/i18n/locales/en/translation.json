@@ -93,7 +93,7 @@
     "accept": "Accept",
     "decline": "Decline",
     "orderReceived": "Order Received",
-    "newOrderReceived": "New Order{{count, plural, =1 {} other {s}}} Received!",
+    "newOrderReceived": "New Order Received!",
     "noOrderDetails": "No order details available",
     "detail": {
       "customerInfo": "Customer Info",

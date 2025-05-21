@@ -108,12 +108,7 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose, onAccept
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 font-sans">
       <div className="bg-white dark:bg-black rounded-lg p-6 w-full max-w-md mx-4 sm:mx-0 font-sans relative">
-        <button
-          onClick={onClose}
-          className="absolute top-2 sm:top-4 right-2 sm:right-4 text-gray-500 hover:text-gray-700 bg-transparent z-50"
-        >
-          <IoIosCloseCircleOutline className="w-6 h-6 sm:w-8 sm:h-8" />
-        </button>
+       
         
         <h2 className="text-lg sm:text-xl font-semibold mb-4 text-black dark:text-white">
           {t('orders.newOrderReceived', {count: newOrders.length})}
@@ -764,7 +759,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         message: `Kitchen status updated to ${newStatus}`
       });
 
-      // Update pending orders if needed
+      // Only remove from pending orders if status is "prepared"
       if (newStatus === 'prepared') {
         setNewOrders(prev => prev.filter(o => o.id !== order.id));
       }
@@ -796,45 +791,53 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
   const handleAcceptNewOrders = useCallback(async (orderId: string) => {
     const acceptedOrder = newOrders.find(order => order.id === orderId);
     if (acceptedOrder) {
-      try {
-        // Use the ACCEPT_DECLINE endpoint
-        await api.patch('/accept/decline/orders', {
-          orderNumber: acceptedOrder.orderNumber,
-          orderAccepted: true
-        });
+        try {
+            // Use the ACCEPT_DECLINE endpoint
+            await api.patch('/accept/decline/orders', {
+                orderNumber: acceptedOrder.orderNumber,
+                orderAccepted: true
+            });
 
-        // Add to main orders table
-        setOrders(prev => [acceptedOrder, ...prev]);
-        
-        addNotification({
-          type: 'order_created',
-          message: `Accepted order #${acceptedOrder.orderNumber}`
-        });
-        
-        // Remove from pendingDecisionOrders
-        setPendingDecisionOrders(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(orderId);
-          return newSet;
-        });
-        
-        if (newOrders.length === 1) {
-          setShowNewOrderModal(false);
-        }
+            // Add to main orders table
+            setOrders(prev => [acceptedOrder, ...prev]);
+            
+            addNotification({
+                type: 'order_created',
+                message: `Accepted order #${acceptedOrder.orderNumber}`
+            });
+            
+            // Remove from pending decisions (for accept/decline)
+            setPendingDecisionOrders(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(orderId);
+                return newSet;
+            });
+            
+            // Close the modal if it was the last order
+            if (newOrders.length === 1) {
+                setShowNewOrderModal(false);
+            }
 
-        // Refresh the entire table
-        if (selectedDate && selectedBranchId) {
-          await fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
+            // Refresh the entire table
+            if (selectedDate && selectedBranchId) {
+                await fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
+            }
+
+            // Update the order in newOrders to mark it as accepted but keep it in the list
+            setNewOrders(prev => prev.map(order => 
+                order.id === orderId 
+                    ? { ...order, orderAccepted: true }
+                    : order
+            ));
+        } catch (error) {
+            console.error('Failed to accept order:', error);
+            addNotification({
+                type: 'order_status',
+                message: 'Failed to accept order. Please try again.'
+            });
         }
-      } catch (error) {
-        console.error('Failed to accept order:', error);
-        addNotification({
-          type: 'order_status',
-          message: 'Failed to accept order. Please try again.'
-        });
-      }
     }
-  }, [newOrders, addNotification, selectedDate, selectedBranchId, fetchOrders]);
+}, [newOrders, addNotification, selectedDate, selectedBranchId, fetchOrders]);
 
   // Update the decline handler to remove from pendingDecisionOrders
   const handleDeclineNewOrders = useCallback(async (orderId: string) => {
