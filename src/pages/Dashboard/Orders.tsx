@@ -488,120 +488,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     }
   }, [selectedDate, selectedBranchId, fetchOrders]);
 
-  // Update the filteredOrders useMemo to include the new channel filtering
-  const paginatedOrders = useMemo(() => {
-    const filtered = orders
-      .sort((a, b) => {
-        return new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime();
-      })
-      .filter(order => {
-        const matchesSearch = searchQuery
-          ? order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            order.orderNumber.toString().includes(searchQuery)
-          : true;
-
-        const matchesTab = activeTab === 'all' 
-          ? true 
-          : activeTab === 'customerApp'
-          ? order.orderChannel === 'customerApp'
-          : activeTab === 'restaurantPortal'
-          ? order.orderChannel === 'restaurantPortal'
-          : true;
-
-        return matchesSearch && matchesTab;
-      });
-
-    // Calculate pagination
-    const indexOfLastOrder = currentPage * ordersPerPage;
-    const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
-    
-    return {
-      orders: filtered.slice(indexOfFirstOrder, indexOfLastOrder),
-      totalOrders: filtered.length,
-      totalPages: Math.ceil(filtered.length / ordersPerPage)
-    };
-  }, [orders, searchQuery, activeTab, currentPage]);
-
-  // Add pagination handlers
-  const handleNextPage = () => {
-    if (currentPage < paginatedOrders.totalPages) {
-      setCurrentPage(prev => prev + 1);
-    }
-  };
-
-  const handlePrevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(prev => prev - 1);
-    }
-  };
-
-  // Reset to first page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeTab, searchQuery, selectedDate]);
-
-  // Update the New Order button click handler
-  const handleNewOrderClick = () => {
-    setShowPlaceOrder(true);
-  };
-
-  const handleOrderClick = (orderNumber: number) => {
-    setSelectedOrderId(orderNumber.toString());
-  };
-
-  const handleBackToOrders = () => {
-    setSelectedOrderId(null);
-  };
-
-  // Add this status color mapping
-  const getStatusStyle = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'all orders':
-        return 'bg-gray-100 text-gray-800';
-      case 'ready for pickup':
-        return 'bg-blue-100 text-blue-800';
-      case 'assigned':
-        return 'bg-purple-100 text-purple-800';
-      case 'pickup':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'on the way':
-        return 'bg-indigo-100 text-indigo-800';
-      case 'delivered':
-        return 'bg-green-100 text-green-800';
-      case 'cancelled':
-        return 'bg-red-100 text-red-800';
-      case 'delivery failed':
-        return 'bg-orange-100 text-orange-800';
-      case 'preparing':
-        return 'bg-amber-100 text-amber-800';
-      case 'prepared':
-        return 'bg-emerald-100 text-emerald-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  // Add handler for edit click
-  const handleEditClick = (e: React.MouseEvent, order: Order) => {
-    e.stopPropagation();
-    setEditingOrder(order);
-    setShowEditOrder(true);
-  };
-
-  useEffect(() => {
-    // Update parent component when selectedOrderId changes
-    onOrderDetailsView(!!selectedOrderId);
-  }, [selectedOrderId, onOrderDetailsView]);
-
-  const handleBranchSelect = useCallback((branchId: string) => {
-    localStorage.setItem('selectedBranchId', branchId);
-    setSelectedBranchId(branchId);
-    
-    if (selectedDate) {
-      fetchOrders(branchId, selectedDate.format('YYYY-MM-DD'));
-    }
-  }, [selectedDate, fetchOrders]);
-
   // Update the checkForNewOrders function to properly sync kitchen status between floating panel and table
   const checkForNewOrders = useCallback(async () => {
     if (!selectedDate || !selectedBranchId) return;
@@ -757,6 +643,14 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     }
   }, [selectedDate, selectedBranchId, userProfile, lastOrderIds]);
 
+  // Add immediate check when orders are loaded
+  useEffect(() => {
+    if (orders.length > 0) {
+      console.log('🚀 Orders loaded, checking for pending orders immediately...');
+      checkForNewOrders();
+    }
+  }, [orders, checkForNewOrders]);
+
   // Add console log to track polling interval
   useEffect(() => {
     let lastPollTime = Date.now();
@@ -789,6 +683,120 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       clearInterval(pollInterval);
     };
   }, [checkForNewOrders]);
+
+  // Update the filteredOrders useMemo to include the new channel filtering
+  const paginatedOrders = useMemo(() => {
+    const filtered = orders
+      .sort((a, b) => {
+        return new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime();
+      })
+      .filter(order => {
+        const matchesSearch = searchQuery
+          ? order.customerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            order.orderNumber.toString().includes(searchQuery)
+          : true;
+
+        const matchesTab = activeTab === 'all' 
+          ? true 
+          : activeTab === 'customerApp'
+          ? order.orderChannel === 'customerApp'
+          : activeTab === 'restaurantPortal'
+          ? order.orderChannel === 'restaurantPortal'
+          : true;
+
+        return matchesSearch && matchesTab;
+      });
+
+    // Calculate pagination
+    const indexOfLastOrder = currentPage * ordersPerPage;
+    const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
+    
+    return {
+      orders: filtered.slice(indexOfFirstOrder, indexOfLastOrder),
+      totalOrders: filtered.length,
+      totalPages: Math.ceil(filtered.length / ordersPerPage)
+    };
+  }, [orders, searchQuery, activeTab, currentPage]);
+
+  // Add pagination handlers
+  const handleNextPage = () => {
+    if (currentPage < paginatedOrders.totalPages) {
+      setCurrentPage(prev => prev + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(prev => prev - 1);
+    }
+  };
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery, selectedDate]);
+
+  // Update the New Order button click handler
+  const handleNewOrderClick = () => {
+    setShowPlaceOrder(true);
+  };
+
+  const handleOrderClick = (orderNumber: number) => {
+    setSelectedOrderId(orderNumber.toString());
+  };
+
+  const handleBackToOrders = () => {
+    setSelectedOrderId(null);
+  };
+
+  // Add this status color mapping
+  const getStatusStyle = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'all orders':
+        return 'bg-gray-100 text-gray-800';
+      case 'ready for pickup':
+        return 'bg-blue-100 text-blue-800';
+      case 'assigned':
+        return 'bg-purple-100 text-purple-800';
+      case 'pickup':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'on the way':
+        return 'bg-indigo-100 text-indigo-800';
+      case 'delivered':
+        return 'bg-green-100 text-green-800';
+      case 'cancelled':
+        return 'bg-red-100 text-red-800';
+      case 'delivery failed':
+        return 'bg-orange-100 text-orange-800';
+      case 'preparing':
+        return 'bg-amber-100 text-amber-800';
+      case 'prepared':
+        return 'bg-emerald-100 text-emerald-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Add handler for edit click
+  const handleEditClick = (e: React.MouseEvent, order: Order) => {
+    e.stopPropagation();
+    setEditingOrder(order);
+    setShowEditOrder(true);
+  };
+
+  useEffect(() => {
+    // Update parent component when selectedOrderId changes
+    onOrderDetailsView(!!selectedOrderId);
+  }, [selectedOrderId, onOrderDetailsView]);
+
+  const handleBranchSelect = useCallback((branchId: string) => {
+    localStorage.setItem('selectedBranchId', branchId);
+    setSelectedBranchId(branchId);
+    
+    if (selectedDate) {
+      fetchOrders(branchId, selectedDate.format('YYYY-MM-DD'));
+    }
+  }, [selectedDate, fetchOrders]);
 
   // Update the kitchen status handler for faster refresh
   const handleKitchenStatusUpdate = async (orderId: string, currentStatus: string, order: Order) => {
