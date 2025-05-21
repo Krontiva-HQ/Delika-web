@@ -503,37 +503,35 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
 
             
               {/* Order Table */}
-              {!userProfile._restaurantTable?.[0]?.Inventory && 
-               !userProfile._restaurantTable?.[0]?.Transactions && 
-               invoiceData.orders.length > 0 && (
+              {invoiceData.orders.length > 0 && (
                 <div className="mb-6 w-full border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden bg-white">
                   <table className="w-full border-collapse">
                     <thead>
                       <tr className="bg-[#ffffff]" style={{ borderBottom: '1px solid #eaeaea' }}>
-                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">{t('orders.detail.serialNumber')}</th>
-                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">{t('orders.detail.product')}</th>
-                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">{t('orders.detail.unitPrice')}</th>
-                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">{t('orders.detail.quantity')}</th>
-                        <th className="text-right p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">{t('orders.detail.totalPrice')}</th>
+                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">#</th>
+                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Product</th>
+                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Unit Price</th>
+                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Quantity</th>
+                        <th className="text-right p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Total</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {invoiceData.orders.map((order) => (
+                      {invoiceData.orders.map((order, idx) => (
                         <tr key={order.id} className="hover:bg-[#f9f9f9]" style={{ borderBottom: '1px solid #eaeaea' }}>
-                          <td className="p-2 text-[12px] leading-[20px] font-sans text-[#444]">{order.id}</td>
+                          <td className="p-2 text-[12px] leading-[20px] font-sans text-[#444]">{idx + 1}</td>
                           <td className="p-2">
                             <span className="text-[12px] leading-[20px] font-sans text-[#444]">
                               {order.productName}
                             </span>
                           </td>
                           <td className="p-2 text-[12px] leading-[20px] font-sans text-[#666]">
-                            GHS{order.unitPrice}
+                            GHS{Number(order.unitPrice).toFixed(2)}
                           </td>
                           <td className="p-2 text-[12px] leading-[20px] font-sans text-[#666]">
                             {order.quantity}
                           </td>
                           <td className="p-2 text-right text-[12px] leading-[20px] font-sans text-[#444]">
-                            GHS{order.totalPrice}
+                            GHS{Number(order.totalPrice).toFixed(2)}
                           </td>
                         </tr>
                       ))}
