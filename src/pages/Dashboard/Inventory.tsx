@@ -545,43 +545,55 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         {/* Menu Items Grid - Using filteredItems */}
         <div className="grid grid-cols-1 min-[433px]:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
           {filteredItems.length > 0 ? (
-            filteredItems.map((item) => (
-              <div 
-                key={item.id}
-                className="w-full bg-white dark:bg-[#2c2522] rounded-[12px] border-[#eaeaeb] border-[1px] border-solid 
-                          overflow-hidden flex flex-col hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => handleItemClick(item)}
+            <>
+              {filteredItems.map((item) => (
+                <div 
+                  key={item.id}
+                  className="w-full bg-white dark:bg-[#2c2522] rounded-[12px] border-[#eaeaeb] border-[1px] border-solid 
+                            overflow-hidden flex flex-col hover:shadow-md transition-shadow cursor-pointer"
+                  onClick={() => handleItemClick(item)}
+                >
+                  <div className="relative w-full">
+                    <OptimizedImage
+                      src={item.image}
+                      alt={item.name}
+                      className="w-full h-[180px] object-cover"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    />
+                    <div className={`absolute top-2 right-2 text-[12px] px-2 py-1 rounded-full font-sans
+                      ${item.available 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'}`}>
+                      {item.available ? t('inventory.available') : t('inventory.unavailable')}
+                    </div>
+                  </div>
+                  <div className="p-4 flex flex-col gap-1">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[14px] font-medium text-[#333] dark:text-white font-sans truncate overflow-hidden whitespace-nowrap">
+                        {item.name}
+                      </div>
+                      <div className="text-[12px] font-medium text-[#606060] dark:text-[#a2a2a2] font-sans">
+                      GH₵{item.price}
+                      </div>
+                    </div>
+                    <div className="flex items-center text-[13px] text-[#a2a2a2] mt-1 font-sans">
+                      <FiShoppingCart className="mr-1" />
+                      {item.available ? t('inventory.available') : t('inventory.unavailable')}
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {/* Add Item Card */}
+              <div
+                className="flex flex-col items-center justify-center bg-[#F7F7F7] dark:bg-[#201a18] rounded-[12px] border border-[#eaeaeb] min-h-[260px] cursor-pointer transition hover:shadow-md"
+                onClick={onAddItemButtonClick}
               >
-                <div className="relative w-full">
-                  <OptimizedImage
-                    src={item.image}
-                    alt={item.name}
-                    className="w-full h-[180px] object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  />
-                  <div className={`absolute top-2 right-2 text-[12px] px-2 py-1 rounded-full font-sans
-                    ${item.available 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'}`}>
-                    {item.available ? t('inventory.available') : t('inventory.unavailable')}
-                  </div>
+                <div className="flex items-center justify-center w-16 h-16 rounded-full bg-[#fd4d4d]/10 mb-2">
+                  <span className="text-4xl text-[#fd4d4d]">+</span>
                 </div>
-                <div className="p-4 flex flex-col gap-1">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[14px] font-medium text-[#333] dark:text-white font-sans truncate overflow-hidden whitespace-nowrap">
-                      {item.name}
-                    </div>
-                    <div className="text-[12px] font-medium text-[#606060] dark:text-[#a2a2a2] font-sans">
-                    GH₵{item.price}
-                    </div>
-                  </div>
-                  <div className="flex items-center text-[13px] text-[#a2a2a2] mt-1 font-sans">
-                    <FiShoppingCart className="mr-1" />
-                    {item.available ? t('inventory.available') : t('inventory.unavailable')}
-                  </div>
-                </div>
+                <span className="text-base font-sans text-[#222]">Add item</span>
               </div>
-            ))
+            </>
           ) : (
             <div className="col-span-full text-center py-4 text-gray-500 font-sans">
               {t('inventory.noItems')}

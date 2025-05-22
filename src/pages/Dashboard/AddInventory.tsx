@@ -8,6 +8,7 @@ import { IoIosCloseCircleOutline } from "react-icons/io";
 import { useTranslation } from 'react-i18next';
 import { useLanguageChange } from '../../hooks/useLanguageChange';
 import { api } from '../../services/api';
+import Switch from '@mui/material/Switch';
 
 interface AddInventoryProps {
   onClose: () => void;
@@ -55,6 +56,9 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
 
   // Add new state for selected category ID
   const [selectedMainCategoryId, setSelectedMainCategoryId] = useState("");
+
+  // Add new state for extrasAvailable
+  const [extrasAvailable, setExtrasAvailable] = useState(false);
 
   // Add useEffect to fetch main categories
   useEffect(() => {
@@ -645,12 +649,24 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
               </div>
             </div>
             <div className="self-stretch flex flex-col items-start justify-start gap-[8px]">
-              <div className="self-stretch relative leading-[22px] font-sans">{t('inventory.availability')}</div>
-              <input
-                type="checkbox"
-                checked={available}
-                onChange={(e) => setAvailable(e.target.checked)}
-              />
+              <div className="flex flex-row items-center justify-between w-full mb-2">
+                <span className="relative leading-[22px] font-sans">Available</span>
+                <Switch
+                  checked={available}
+                  onChange={(e) => setAvailable(e.target.checked)}
+                  color="primary"
+                  inputProps={{ 'aria-label': 'Available switch' }}
+                />
+              </div>
+              <div className="flex flex-row items-center justify-between w-full">
+                <span className="relative leading-[22px] font-sans">Extras available</span>
+                <Switch
+                  checked={extrasAvailable}
+                  onChange={(e) => setExtrasAvailable(e.target.checked)}
+                  color="primary"
+                  inputProps={{ 'aria-label': 'Extras available switch' }}
+                />
+              </div>
             </div>
             <button
               className={`cursor-pointer border-[#f5fcf8] border-[1px] border-solid py-[9px] px-[90px] 
