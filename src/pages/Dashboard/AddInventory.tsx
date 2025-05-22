@@ -60,6 +60,9 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   // Add new state for extrasAvailable
   const [extrasAvailable, setExtrasAvailable] = useState(false);
 
+  // Add new state for showExtrasForm
+  const [showExtrasForm, setShowExtrasForm] = useState(false);
+
   // Add useEffect to fetch main categories
   useEffect(() => {
     const fetchMainCategories = async () => {
@@ -668,6 +671,14 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                 />
               </div>
             </div>
+            {extrasAvailable && !showExtrasForm && (
+              <button
+                className="mt-4 px-6 py-2 bg-[#fd4d4d] text-white rounded font-sans"
+                onClick={() => setShowExtrasForm(true)}
+              >
+                Next
+              </button>
+            )}
             <button
               className={`cursor-pointer border-[#f5fcf8] border-[1px] border-solid py-[9px] px-[90px] 
                          bg-[#fd683e] self-stretch rounded-[4px] overflow-hidden 
@@ -684,6 +695,50 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
           </div>
         </div>
       </div>
+
+      {showExtrasForm && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30">
+          <div className="bg-white rounded-lg p-8 w-full max-w-md shadow-lg">
+            <h2 className="text-2xl font-bold mb-6 font-sans">Add Extras</h2>
+            <div className="mb-4">
+              <label className="block mb-1 font-sans">Extras Name</label>
+              <select className="w-full border rounded px-3 py-2 font-sans">
+                <option>Select Extras</option>
+                {/* Map your extras options here */}
+              </select>
+            </div>
+            <div className="mb-4">
+              <label className="block mb-1 font-sans">Select Variant</label>
+              <select className="w-full border rounded px-3 py-2 font-sans">
+                <option>Select variant</option>
+                {/* Map your variant options here */}
+              </select>
+            </div>
+            <div className="mb-6">
+              <label className="block mb-1 font-sans">Price</label>
+              <input
+                type="number"
+                className="w-full border rounded px-3 py-2 font-sans"
+                placeholder="$0.00"
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                className="px-6 py-2 border rounded font-sans"
+                onClick={() => setShowExtrasForm(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="px-6 py-2 bg-[#fd4d4d] text-white rounded font-sans"
+                // onClick={handleAddExtras}
+              >
+                Add Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
