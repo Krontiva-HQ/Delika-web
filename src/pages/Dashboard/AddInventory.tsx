@@ -142,13 +142,13 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
           branchName: userProfile.branchId,
           foodTypePhoto: newCategoryFile,
           foodsPhoto: photoFile,
-          foods: [{
+          foods: {
             name: itemName,
             price: price,
             description: shortDetails,
             quantity: "0",
             available: available
-          }],
+          },
           onSuccess: () => {
             onInventoryUpdated?.();
             onClose();

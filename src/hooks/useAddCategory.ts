@@ -7,13 +7,13 @@ interface AddCategoryParams {
   branchName: string;
   foodTypePhoto?: File | null;
   foodsPhoto?: File | null;
-  foods: Array<{
+  foods: {
     name: string;
     price: string;
     description: string;
     quantity: string;
     available: boolean;
-  }>;
+  };
   onSuccess?: () => void;
 }
 
@@ -36,13 +36,8 @@ export const useAddCategory = () => {
       formData.append('restaurantName', restaurantName);
       formData.append('branchName', branchName);
       
-      foods.forEach((food, index) => {
-        formData.append(`foods[${index}][name]`, food.name);
-        formData.append(`foods[${index}][price]`, food.price);
-        formData.append(`foods[${index}][description]`, food.description);
-        formData.append(`foods[${index}][quantity]`, food.quantity);
-        formData.append(`foods[${index}][available]`, String(food.available));
-      });
+      // Append foods as JSON string
+      formData.append('foods', JSON.stringify(foods));
 
       if (foodTypePhoto) {
         formData.append('foodTypePhoto', foodTypePhoto);

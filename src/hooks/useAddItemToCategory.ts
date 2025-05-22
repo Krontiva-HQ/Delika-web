@@ -37,12 +37,20 @@ export const useAddItemToCategory = () => {
       
       const formData = new FormData();
       formData.append('categoryId', categoryId);
-      formData.append('name', name);
-      formData.append('price', price);
-      formData.append('description', description);
-      formData.append('available', String(available));
       formData.append('restaurantName', userProfile.restaurantId || '');
       formData.append('branchName', userProfile.branchId || '');
+      
+      // Create foods as a single object
+      const foods = {
+        name,
+        price,
+        description,
+        available,
+        quantity: "1" // Adding default quantity
+      };
+      
+      // Append foods as JSON string
+      formData.append('foods', JSON.stringify(foods));
       
       if (!foodPhoto) {
         throw new Error('Missing file resource.');
