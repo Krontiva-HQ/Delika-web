@@ -116,6 +116,7 @@ export const API_ENDPOINTS = {
   },
   MENU: {
     GET_ALL: '/get/all/menu',
+    GET_ALL_CATEGORIES: '/get/menu/categories',
     UPDATE_INVENTORY: '/update/inventory/price/quantity'
   },
   AUDIT: {
@@ -311,12 +312,26 @@ export interface OrderDetails {
 
 // Add the service functions
 export const addItemToCategory = (formData: FormData) => {
+  console.log('📤 API: addItemToCategory called with FormData:');
+  
+  // Create a new FormData instance
   const updatedFormData = new FormData();
   updatedFormData.append('path', '/add/item/to/category');
   
+  // Log and append each field
   Array.from(formData.entries()).forEach(([key, value]) => {
     if (key === 'path') return;
-    if (key === 'foods' && typeof value === 'string') {
+    console.log(`Processing ${key}:`, value);
+    
+    if (key === 'foods' && value instanceof Blob) {
+      // Keep foods as a JSON Blob
+      updatedFormData.append(key, value);
+    } else if (key === 'foodPhoto' && value instanceof File) {
+      console.log('📸 Processing foodPhoto:', {
+        name: value.name,
+        type: value.type,
+        size: value.size
+      });
       updatedFormData.append(key, value);
     } else {
       updatedFormData.append(key, value);
@@ -324,9 +339,15 @@ export const addItemToCategory = (formData: FormData) => {
   });
   
   const headers = {
-    'Content-Type': 'application/json',
+    'Content-Type': 'multipart/form-data',
     'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
   };
+
+  console.log('📤 Final request payload:', {
+    url: API_ENDPOINTS.CATEGORY.ADD_ITEM,
+    headers,
+    formData: Object.fromEntries(updatedFormData.entries())
+  });
 
   return api.patch<{data: any; status: number}>(
     API_ENDPOINTS.CATEGORY.ADD_ITEM, 

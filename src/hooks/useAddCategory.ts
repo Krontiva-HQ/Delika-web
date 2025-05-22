@@ -7,6 +7,8 @@ interface AddCategoryParams {
   branchName: string;
   foodTypePhoto?: File | null;
   foodsPhoto?: File | null;
+  mainCategory: string;
+  categoryId: string;
   foods: Array<{
     name: string;
     price: string;
@@ -26,6 +28,8 @@ export const useAddCategory = () => {
     branchName,
     foodTypePhoto,
     foodsPhoto,
+    mainCategory,
+    categoryId,
     foods,
     onSuccess
   }: AddCategoryParams) => {
@@ -35,7 +39,8 @@ export const useAddCategory = () => {
       branchName,
       hasFoodTypePhoto: !!foodTypePhoto,
       hasFoodsPhoto: !!foodsPhoto,
-      foodsCount: foods.length
+      foodsCount: foods.length,
+      categoryId
     });
     
     setIsLoading(true);
@@ -44,6 +49,8 @@ export const useAddCategory = () => {
       formData.append('foodType', foodType);
       formData.append('restaurantName', restaurantName);
       formData.append('branchName', branchName);
+      formData.append('mainCategory', mainCategory);
+      formData.append('categoryId', categoryId);
       
       foods.forEach((food, index) => {
         formData.append(`foods[${index}][name]`, food.name);

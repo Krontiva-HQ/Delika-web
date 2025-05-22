@@ -8,6 +8,8 @@ interface AddItemParams {
   description: string;
   available: boolean;
   foodPhoto: File | null;
+  mainCategoryId: string;
+  mainCategory: string;
   onSuccess?: () => void;
 }
 
@@ -27,13 +29,21 @@ export const useAddItemToCategory = () => {
     description,
     available,
     foodPhoto,
+    mainCategoryId,
+    mainCategory,
     onSuccess
   }: AddItemParams): Promise<AddItemResponse> => {
     console.log('🔥 useAddItemToCategory hook called - DIRECT API APPROACH 🔥', {
       categoryId,
       name,
       price,
-      description
+      description,
+      mainCategoryId,
+      foodPhoto: foodPhoto ? {
+        name: foodPhoto.name,
+        type: foodPhoto.type,
+        size: foodPhoto.size
+      } : null
     });
     
     setIsLoading(true);
@@ -43,25 +53,49 @@ export const useAddItemToCategory = () => {
       const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
       
       const formData = new FormData();
+      formData.append('path', '/add/item/to/category');
       formData.append('categoryId', categoryId);
-      formData.append('foods', JSON.stringify({ 
-        name, 
-        price, 
-        description, 
-        available 
-      }));
+      formData.append('mainCategoryId', mainCategoryId);
+      
+      // Create foods object
+      const foods = {
+        name,
+        price,
+        description,
+        quantity: "1",
+        available
+      };
+      
+      // Append foods as a JSON object
+      formData.append('foods', new Blob([JSON.stringify(foods)], { type: 'application/json' }));
+      
       formData.append('restaurantName', userProfile.restaurantId || '');
       formData.append('branchName', userProfile.branchId || '');
       
       if (foodPhoto) {
+        console.log('📸 Adding foodPhoto to FormData:', {
+          name: foodPhoto.name,
+          type: foodPhoto.type,
+          size: foodPhoto.size
+        });
         formData.append('foodPhoto', foodPhoto);
       } else {
-        throw new Error('Missing file resource.');
+        console.warn('⚠️ No foodPhoto provided');
       }
+
+      // Log the final FormData contents
+      console.log('📦 Final FormData contents:');
+      Array.from(formData.entries()).forEach(([key, value]) => {
+        if (key === 'foods') {
+          console.log('foods:', foods);
+        } else {
+          console.log(`${key}:`, value);
+        }
+      });
 
       console.log('🔥 Calling API directly - AddItemToCategory 🔥');
       const response = await addItemToCategory(formData);
-      console.log('✅ API Response:', { status: response.status });
+      console.log('✅ API Response:', { status: response.status, data: response.data });
       onSuccess?.();
       return response;
     } catch (err) {

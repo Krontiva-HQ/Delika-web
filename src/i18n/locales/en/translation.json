@@ -179,6 +179,7 @@
     "available": "In Stock",
     "unavailable": "Out of Stock",
     "image": "Image",
+    "subCategory": "Sub Category",
     "category": "Category",
     "selectCategory": "Select Category",
     "addCategory": "Add New Category",

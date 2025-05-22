@@ -1,4 +1,4 @@
-import { FunctionComponent, useState, useRef, useCallback } from "react";
+import { FunctionComponent, useState, useRef, useCallback, useEffect } from "react";
 import { Button, Menu, MenuItem } from "@mui/material";
 import { FaChevronDown } from "react-icons/fa";
 import { useMenuCategories } from '../../hooks/useMenuCategories';
@@ -7,6 +7,7 @@ import { useAddCategory } from '../../hooks/useAddCategory';
 import { IoIosCloseCircleOutline } from "react-icons/io";
 import { useTranslation } from 'react-i18next';
 import { useLanguageChange } from '../../hooks/useLanguageChange';
+import { api } from '../../services/api';
 
 interface AddInventoryProps {
   onClose: () => void;
@@ -32,6 +33,10 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   const [textfieldAnchorEl, setTextfieldAnchorEl] = useState<null | HTMLElement>(null);
   const [categoryAnchorEl, setCategoryAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedCategory, setSelectedCategory] = useState("");
+  const [selectedMainCategory, setSelectedMainCategory] = useState("");
+  const [mainCategories, setMainCategories] = useState<Array<{ id: string; categoryName: string }>>([]);
+  const [mainCategoryAnchorEl, setMainCategoryAnchorEl] = useState<null | HTMLElement>(null);
+  const [isLoadingMainCategories, setIsLoadingMainCategories] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
@@ -47,6 +52,26 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   const { addCategory, isLoading: isAddingCategory } = useAddCategory();
   const { t } = useTranslation();
   useLanguageChange();
+
+  // Add new state for selected category ID
+  const [selectedMainCategoryId, setSelectedMainCategoryId] = useState("");
+
+  // Add useEffect to fetch main categories
+  useEffect(() => {
+    const fetchMainCategories = async () => {
+      setIsLoadingMainCategories(true);
+      try {
+        const response = await api.get('/get/menu/categories');
+        setMainCategories(response.data);
+      } catch (error) {
+        console.error('Failed to fetch main categories:', error);
+      } finally {
+        setIsLoadingMainCategories(false);
+      }
+    };
+
+    fetchMainCategories();
+  }, []);
 
   const handleTextfieldClick = (event: React.MouseEvent<HTMLElement>) => {
     setTextfieldAnchorEl(event.currentTarget);
@@ -113,7 +138,8 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
       shortDetails.trim() !== '' &&
       selectedImage !== null &&
       price.trim() !== '' &&
-      available !== null;
+      available !== null &&
+      selectedMainCategory.trim() !== '';
 
     if (showCategoryForm) {
       return baseValidation && 
@@ -137,7 +163,8 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
         console.log('Adding new category with item', {
           foodType: newCategory,
           restaurantId: userProfile.restaurantId,
-          branchId: userProfile.branchId
+          branchId: userProfile.branchId,
+          categoryId: selectedMainCategoryId
         });
         
         await addCategory({
@@ -153,6 +180,8 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
             quantity: "0",
             available: available
           }],
+          mainCategory: selectedMainCategory,
+          categoryId: selectedMainCategoryId,
           onSuccess: () => {
             onInventoryUpdated?.();
             onClose();
@@ -167,6 +196,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
 
         console.log('Adding item to category', {
           categoryId: selectedCategoryData.id,
+          mainCategoryId: selectedMainCategoryId,
           name: itemName,
           restaurantId: userProfile.restaurantId,
           branchId: userProfile.branchId
@@ -179,6 +209,8 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
           description: shortDetails,
           available,
           foodPhoto: photoFile,
+          mainCategoryId: selectedMainCategoryId,
+          mainCategory: selectedMainCategory,
           onSuccess: () => {
             onInventoryUpdated?.();
             onClose();
@@ -186,12 +218,15 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
         });
       }
 
+      // Reset all states including the new categoryId
       setItemName('');
       setPrice('');
       setAvailable(true);
       setShortDetails('');
       setSelectedImage(null);
       setSelectedCategory('');
+      setSelectedMainCategory('');
+      setSelectedMainCategoryId('');
       setShowCategoryForm(false);
       setNewCategory('');
       setNewCategoryImage(null);
@@ -211,6 +246,18 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   };
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleMainCategoryClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    setMainCategoryAnchorEl(event.currentTarget);
+  };
+
+  const handleMainCategoryClose = (category?: { id: string; categoryName: string }) => {
+    if (category) {
+      setSelectedMainCategory(category.categoryName);
+      setSelectedMainCategoryId(category.id);
+    }
+    setMainCategoryAnchorEl(null);
+  };
 
   const handleAddCategory = () => {
     if (newCategory.trim()) {
@@ -261,11 +308,82 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
             <IoIosCloseCircleOutline className="w-7 h-7" />
           </button>
 
-          {/* Modal content */}
+          {/* Add Inventory Modal form content*/}
           <div className="flex flex-col items-start justify-start gap-[19px] text-[13px] text-[#686868] font-sans">
             <b className="relative text-[25px] text-[#201a18] font-sans">{t('inventory.addNewItem')}</b>
+            
+            {/* Main Category Section */}
             <div className="self-stretch flex flex-col items-start justify-start gap-[1px]">
               <b className="self-stretch relative leading-[20px] font-sans text-black">{t('inventory.category')}</b>
+              <div
+                ref={dropdownRef}
+                onClick={handleMainCategoryClick}
+                className="border-[#efefef] border-[1px] border-solid [outline:none] 
+                         font-sans text-[13px] bg-[#fff] self-stretch rounded-[8px] 
+                         flex flex-row items-center justify-between py-[14px] px-[20px] 
+                         text-black cursor-pointer hover:border-[#e0e0e0]"
+              >
+                <span>{selectedMainCategory || t('inventory.selectCategory')}</span>
+                <FaChevronDown className="text-black text-[12px]" />
+              </div>
+
+              <Menu
+                anchorEl={mainCategoryAnchorEl}
+                open={Boolean(mainCategoryAnchorEl)}
+                onClose={() => handleMainCategoryClose()}
+                PaperProps={{
+                  sx: {
+                    mt: 1,
+                    width: dropdownRef.current?.offsetWidth,
+                    maxWidth: 'unset',
+                    boxShadow: '0px 4px 15px rgba(0, 0, 0, 0.1)',
+                    borderRadius: '8px',
+                    '& .MuiList-root': {
+                      padding: '8px 0',
+                      width: '100%',
+                    },
+                    '& .MuiMenuItem-root': {
+                      fontFamily: 'Inter',
+                      fontSize: '13px',
+                      padding: '10px 20px',
+                      color: '#686868',
+                      width: '100%',
+                      '&:hover': {
+                        backgroundColor: '#f5f5f5',
+                      },
+                    },
+                  },
+                }}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'left',
+                }}
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'left',
+                }}
+              >
+                {isLoadingMainCategories ? (
+                  <MenuItem disabled>{t('common.loading')}</MenuItem>
+                ) : (
+                  mainCategories.map((category) => (
+                    <MenuItem 
+                      key={category.id} 
+                      onClick={() => handleMainCategoryClose(category)}
+                      sx={{
+                        backgroundColor: selectedMainCategory === category.categoryName ? '#f5f5f5' : 'transparent',
+                      }}
+                    >
+                      {category.categoryName}
+                    </MenuItem>
+                  ))
+                )}
+              </Menu>
+            </div>
+
+            {/* Existing Subcategory Section */}
+            <div className="self-stretch flex flex-col items-start justify-start gap-[1px]">
+              <b className="self-stretch relative leading-[20px] font-sans text-black">{t('inventory.subCategory')}</b>
               {!showCategoryForm ? (
                 <div
                   ref={dropdownRef}
