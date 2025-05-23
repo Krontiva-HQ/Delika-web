@@ -117,7 +117,8 @@ export const API_ENDPOINTS = {
   MENU: {
     GET_ALL: '/get/all/menu',
     GET_ALL_CATEGORIES: '/get/menu/categories',
-    UPDATE_INVENTORY: '/update/inventory/price/quantity'
+    UPDATE_INVENTORY: '/update/inventory/price/quantity',
+    GET_ALL_INVENTORY: '/get/inventory/by/restaurant'
   },
   AUDIT: {
     GET_ALL: '/delikaquickshipper_audit_table'

@@ -7,8 +7,9 @@ import { useAddCategory } from '../../hooks/useAddCategory';
 import { IoIosCloseCircleOutline } from "react-icons/io";
 import { useTranslation } from 'react-i18next';
 import { useLanguageChange } from '../../hooks/useLanguageChange';
-import { api } from '../../services/api';
+import { api, API_ENDPOINTS } from '../../services/api';
 import Switch from '@mui/material/Switch';
+import { useUserProfile } from '../../hooks/useUserProfile';
 
 interface AddInventoryProps {
   onClose: () => void;
@@ -24,12 +25,19 @@ interface AddItemParams {
   // ... other properties ...
 }
 
+interface InventoryItem {
+  id: string;
+  foodName: string;
+  foodPrice: number;
+}
+
 const AddInventory: FunctionComponent<AddInventoryProps> = ({ 
   onClose,
   onInventoryUpdated,
   branchId
 }) => {
   const { categories, isLoading } = useMenuCategories();
+  const { userProfile } = useUserProfile();
   const [textfieldOpen, setTextfieldOpen] = useState(false);
   const [textfieldAnchorEl, setTextfieldAnchorEl] = useState<null | HTMLElement>(null);
   const [categoryAnchorEl, setCategoryAnchorEl] = useState<null | HTMLElement>(null);
@@ -63,6 +71,12 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   // Add new state for showExtrasForm
   const [showExtrasForm, setShowExtrasForm] = useState(false);
 
+  // Add new state for inventory items
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [selectedExtra, setSelectedExtra] = useState('');
+  const [selectedVariant, setSelectedVariant] = useState('');
+  const [extraPrice, setExtraPrice] = useState('');
+
   // Add useEffect to fetch main categories
   useEffect(() => {
     const fetchMainCategories = async () => {
@@ -79,6 +93,65 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
 
     fetchMainCategories();
   }, []);
+
+  // Add useEffect to fetch inventory items
+  useEffect(() => {
+    const fetchInventoryItems = async () => {
+      try {
+        if (!userProfile.restaurantId) {
+          console.error('Missing restaurant ID in userProfile:', userProfile);
+          return;
+        }
+
+        console.log('Starting inventory fetch with params:', {
+          restaurantId: userProfile.restaurantId,
+          endpoint: '/get/inventory/by/restaurant'
+        });
+
+        // Use direct API call with the full URL
+        const response = await api.get('/get/inventory/by/restaurant', {
+          params: {
+            restaurantId: userProfile.restaurantId
+          }
+        });
+
+        console.log('Raw API Response:', response);
+
+        if (!response.data) {
+          console.error('No data received from API');
+          setInventoryItems([]);
+          return;
+        }
+
+        // Check if response.data is an array and has items
+        if (Array.isArray(response.data)) {
+          console.log('Received inventory items:', response.data);
+          if (response.data.length > 0) {
+            setInventoryItems(response.data);
+          } else {
+            console.log('Inventory array is empty');
+            setInventoryItems([]);
+          }
+        } else {
+          console.error('Invalid response format - expected array but got:', typeof response.data);
+          setInventoryItems([]);
+        }
+      } catch (error: any) {
+        console.error('Failed to fetch inventory items:', {
+          error: error,
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status
+        });
+        setInventoryItems([]);
+      }
+    };
+
+    if (showExtrasForm) {
+      console.log('Extras form opened, fetching inventory...');
+      fetchInventoryItems();
+    }
+  }, [showExtrasForm, userProfile.restaurantId]);
 
   const handleTextfieldClick = (event: React.MouseEvent<HTMLElement>) => {
     setTextfieldAnchorEl(event.currentTarget);
@@ -702,16 +775,34 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
             <h2 className="text-2xl font-bold mb-6 font-sans">Add Extras</h2>
             <div className="mb-4">
               <label className="block mb-1 font-sans">Extras Name</label>
-              <select className="w-full border rounded px-3 py-2 font-sans">
-                <option>Select Extras</option>
-                {/* Map your extras options here */}
+              <select 
+                className="w-full border rounded px-3 py-2 font-sans"
+                value={selectedExtra}
+                onChange={(e) => setSelectedExtra(e.target.value)}
+              >
+                <option value="">Select Extras</option>
+                {inventoryItems && inventoryItems.length > 0 ? (
+                  inventoryItems.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.foodName} - GH₵{item.foodPrice}
+                    </option>
+                  ))
+                ) : (
+                  <option value="" disabled>No extras available</option>
+                )}
               </select>
             </div>
             <div className="mb-4">
               <label className="block mb-1 font-sans">Select Variant</label>
-              <select className="w-full border rounded px-3 py-2 font-sans">
-                <option>Select variant</option>
-                {/* Map your variant options here */}
+              <select 
+                className="w-full border rounded px-3 py-2 font-sans"
+                value={selectedVariant}
+                onChange={(e) => setSelectedVariant(e.target.value)}
+              >
+                <option value="">Select variant</option>
+                <option value="small">Small</option>
+                <option value="medium">Medium</option>
+                <option value="large">Large</option>
               </select>
             </div>
             <div className="mb-6">
@@ -719,7 +810,9 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
               <input
                 type="number"
                 className="w-full border rounded px-3 py-2 font-sans"
-                placeholder="$0.00"
+                placeholder="0.00"
+                value={extraPrice}
+                onChange={(e) => setExtraPrice(e.target.value)}
               />
             </div>
             <div className="flex gap-3">
@@ -731,7 +824,10 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
               </button>
               <button
                 className="px-6 py-2 bg-[#fd4d4d] text-white rounded font-sans"
-                // onClick={handleAddExtras}
+                onClick={() => {
+                  // Handle adding the extra
+                  setShowExtrasForm(false);
+                }}
               >
                 Add Now
               </button>
