@@ -310,71 +310,96 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
       case 2:
         return (
           <Box sx={{ mt: 2, fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>
-            <Grid container spacing={2}>
-              {extraGroups.map((group) => (
-                <Grid 
-                  key={group.id} 
-                  item 
-                  xs={12} 
-                  sm={6}
-                  component="div"
-                  sx={{ display: 'flex', flexDirection: 'column' }}
-                >
-                  <Card sx={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>
-                    <CardContent sx={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>
-                      <Typography variant="h6" gutterBottom sx={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>
-                        {group.title}
-                      </Typography>
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {group.extras.map((extra) => (
-                          <Chip
-                            key={extra.id}
-                            label={extra.variant}
+            {extraGroups.length === 0 ? (
+              <Typography color="text.secondary" align="center" sx={{ mt: 4 }}>
+                No extras added yet. Click "Add Another Group" to get started!
+              </Typography>
+            ) : (
+              <Grid container spacing={2}>
+                {extraGroups.map((group) => (
+                  <Grid item xs={12} sm={6} key={group.id}>
+                    <Card
+                      sx={{
+                        boxShadow: 1,
+                        borderRadius: 1.5,
+                        overflow: 'visible',
+                        position: 'relative',
+                        minHeight: 110,
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          background: '#201a18',
+                          color: '#fff',
+                          px: 1.5,
+                          py: 0.7,
+                          borderTopLeftRadius: 6,
+                          borderTopRightRadius: 6,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                        }}
+                      >
+                        <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: 16, color: '#fff' }}>
+                          {group.title}
+                        </Typography>
+                        <Box>
+                          <IconButton
+                            onClick={() => handleEditGroup(group)}
+                            sx={{ color: '#fff', mr: 0.5, p: 0.5 }}
                             size="small"
-                            sx={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}
-                          />
-                        ))}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton
+                            onClick={() => handleRemoveGroup(group.id)}
+                            sx={{ color: '#fff', p: 0.5 }}
+                            size="small"
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Box>
                       </Box>
-                    </CardContent>
-                    <CardActions sx={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>
-                      <IconButton 
-                        size="small" 
-                        onClick={() => handleEditGroup(group)}
-                        title="Edit group"
-                        sx={{ color: '#686868', fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}
-                      >
-                        <EditIcon />
-                      </IconButton>
-                      <IconButton 
-                        size="small" 
-                        onClick={() => handleRemoveGroup(group.id)}
-                        title="Remove group"
-                        sx={{ color: '#686868', fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}
-                      >
-                        <DeleteIcon />
-                      </IconButton>
-                    </CardActions>
-                  </Card>
-                </Grid>
-              ))}
-            </Grid>
-            {extraGroups.length > 0 && (
-              <Button
-                sx={{ 
-                  mt: 2,
-                  backgroundColor: '#fd683e',
-                  '&:hover': {
-                    backgroundColor: '#e54d0e',
-                  },
-                  fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
-                }}
-                onClick={handleAddAnotherGroup}
-                startIcon={<AddIcon />}
-                variant="contained"
-              >
-                Add Another Group
-              </Button>
+                      <CardContent sx={{ pt: 1, pb: 1, px: 1.5 }}>
+                        <Typography variant="caption" color="text.secondary" sx={{ mb: 0.2, display: 'block', fontSize: 13 }}>
+                          {group.extras.length} variant{group.extras.length !== 1 ? 's' : ''} added:
+                        </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {group.extras.map((extra) => (
+                            <Chip
+                              key={extra.id}
+                              label={extra.variant}
+                              size="small"
+                              sx={{
+                                fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+                                background: '#fff3ea',
+                                color: '#fd683e',
+                                fontWeight: 500,
+                                fontSize: 12,
+                                height: 24,
+                              }}
+                            />
+                          ))}
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
             )}
+            <Button
+              sx={{
+                mt: 2,
+                backgroundColor: '#fd683e',
+                '&:hover': { backgroundColor: '#e54d0e' },
+                fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+              }}
+              onClick={handleAddAnotherGroup}
+              startIcon={<AddIcon />}
+              variant="contained"
+            >
+              Add Another Group
+            </Button>
           </Box>
         );
     }
@@ -384,31 +409,42 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
     <Dialog 
       open={open} 
       onClose={onClose} 
-      maxWidth="md" 
+      maxWidth="sm" 
       fullWidth
       PaperProps={{
         sx: {
-          minHeight: '50vh',
+          minHeight: '30vh',
+          maxWidth: 600,
+          width: '100%',
           fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-          '& .MuiDialogTitle-root': {
-            fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-          },
-          '& .MuiTypography-root': {
-            fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-          },
-          '& .MuiStepLabel-label': {
-            fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-          },
+          p: 1.5,
+          '& .MuiDialogTitle-root': { fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif', fontSize: 22, py: 1 },
+          '& .MuiTypography-root': { fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' },
+          '& .MuiStepLabel-label': { fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' },
         }
       }}
     >
-      <DialogTitle>Add Extras</DialogTitle>
-      <DialogContent>
+      {/* Close button at top right */}
+      <IconButton
+        aria-label="close"
+        onClick={onClose}
+        sx={{
+          position: 'absolute',
+          right: 12,
+          top: 12,
+          color: '#686868',
+          zIndex: 10,
+        }}
+      >
+        <span style={{ fontSize: 24, fontWeight: 700 }}>&times;</span>
+      </IconButton>
+      <DialogTitle sx={{ fontSize: 22, py: 1 }}>Add Extras</DialogTitle>
+      <DialogContent sx={{ p: 1.5 }}>
         <Stepper 
           activeStep={activeStep} 
           sx={{ 
-            pt: 2, 
-            pb: 3,
+            pt: 1,
+            pb: 1.5,
             '& .MuiStepIcon-root': {
               color: '#ffd2b3', // default (inactive) step icon color
             },
@@ -443,42 +479,18 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
         </Stepper>
         {renderStepContent()}
       </DialogContent>
-      <DialogActions sx={{ gap: 2, px: 3, pb: 3 }}>
-        <Button
-          variant="contained"
-          onClick={onClose}
-          sx={{
-            backgroundColor: '#201a18',
-            color: '#fff',
-            boxShadow: 'none',
-            '&:hover': { backgroundColor: '#181512' },
-            textTransform: 'uppercase',
-            fontWeight: 500,
-            borderRadius: '6px',
-            px: 4,
-            py: 1.5,
-            minWidth: 110,
-            fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
-          }}
-        >
-          Cancel
-        </Button>
+      <DialogActions sx={{ gap: 1, px: 2, pb: 2 }}>
+        {/* Only show Cancel button if not on step 2 or 3 */}
         {activeStep > 0 && (
           <Button
             variant="contained"
             onClick={handleBack}
+            className="uppercase font-semibold rounded-md px-4 py-1 text-sm shadow-none"
             sx={{
-              backgroundColor: '#686868',
+              backgroundColor: '#201a18',
               color: '#fff',
+              '&:hover': { backgroundColor: '#181512' },
               boxShadow: 'none',
-              '&:hover': { backgroundColor: '#4d4d4d' },
-              textTransform: 'uppercase',
-              fontWeight: 500,
-              borderRadius: '6px',
-              px: 4,
-              py: 1.5,
-              minWidth: 110,
-              fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
             }}
           >
             Back
@@ -489,23 +501,17 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
             variant="contained"
             onClick={handleSave}
             disabled={extraGroups.length === 0}
+            className="uppercase font-semibold rounded-md px-4 py-1 text-sm shadow-none"
             sx={{
               backgroundColor: '#fd683e',
               color: '#fff',
-              boxShadow: 'none',
               '&:hover': { backgroundColor: '#e54d0e' },
+              boxShadow: 'none',
               '&.Mui-disabled': {
                 backgroundColor: '#ffd2b3',
                 color: '#fff',
                 opacity: 1,
               },
-              textTransform: 'uppercase',
-              fontWeight: 500,
-              borderRadius: '6px',
-              px: 4,
-              py: 1.5,
-              minWidth: 110,
-              fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
             }}
           >
             Save All
@@ -518,23 +524,17 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
               (activeStep === 0 && !groupTitle) ||
               (activeStep === 1 && (!currentGroup || currentGroup.extras.length === 0))
             }
+            className="uppercase font-semibold rounded-md px-4 py-1 text-sm shadow-none"
             sx={{
               backgroundColor: '#fd683e',
               color: '#fff',
-              boxShadow: 'none',
               '&:hover': { backgroundColor: '#e54d0e' },
+              boxShadow: 'none',
               '&.Mui-disabled': {
                 backgroundColor: '#ffd2b3',
                 color: '#fff',
                 opacity: 1,
               },
-              textTransform: 'uppercase',
-              fontWeight: 500,
-              borderRadius: '6px',
-              px: 4,
-              py: 1.5,
-              minWidth: 110,
-              fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
             }}
           >
             Next
