@@ -29,7 +29,8 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
-
+import { api } from '@/services/api';
+import { useUserProfile } from '../hooks/useUserProfile';
 // Option type for dropdowns
 type Option = { label: string; value: string };
 
@@ -73,6 +74,8 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
   const [foodTypes, setFoodTypes] = useState<Option[]>([]);
   const [loading, setLoading] = useState(false);
 
+  const { restaurantData } = useUserProfile();
+
   useEffect(() => {
     const fetchFoodTypes = async () => {
       try {
@@ -82,7 +85,7 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
         
         // Filter for restaurant ID and get unique food types
         const filteredData = data.filter(item => 
-          item.restaurantName === '12439651-ffdd-4dba-97b3-7f618cc2481d'
+          item.restaurantName === restaurantData.id
         );
         
         // Get unique food types and create options
@@ -103,7 +106,7 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
     if (open) {
       fetchFoodTypes();
     }
-  }, [open]);
+  }, [open, restaurantData.id]);
 
   const handleNext = () => {
     if (activeStep === 0) {
