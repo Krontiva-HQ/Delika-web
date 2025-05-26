@@ -530,272 +530,276 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
           <div className="flex flex-col items-start justify-start gap-[19px] text-[13px] text-[#686868] font-sans">
             <b className="relative text-[25px] text-[#201a18] font-sans">{t('inventory.addNewItem')}</b>
             
-            {/* Main Category Section */}
-            <div className="self-stretch flex flex-col items-start justify-start gap-[1px]">
-              <b className="self-stretch relative leading-[20px] font-sans text-black">{t('inventory.category')}</b>
-              <div
-                ref={dropdownRef}
-                onClick={selectedMainCategory ? undefined : handleMainCategoryClick}
-                id="main-category-button"
-                className={`border-[#efefef] border-[1px] border-solid [outline:none] 
-                         font-sans text-[13px] bg-[#fff] self-stretch rounded-[8px] 
-                         flex flex-row items-center justify-between py-[14px] px-[20px] 
-                         ${selectedMainCategory ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-[#e0e0e0]'}`}
-              >
-                <span>{selectedMainCategory || t('inventory.selectCategory')}</span>
-                <FaChevronDown className={`text-black text-[12px] ${selectedMainCategory ? 'opacity-50' : ''}`} />
-              </div>
-
-              <Menu
-                anchorEl={mainCategoryAnchorEl}
-                open={Boolean(mainCategoryAnchorEl)}
-                onClose={() => handleMainCategoryClose()}
-                PaperProps={{
-                  sx: {
-                    mt: 1,
-                    width: dropdownRef.current?.offsetWidth,
-                    maxWidth: 'unset',
-                    boxShadow: '0px 4px 15px rgba(0, 0, 0, 0.1)',
-                    borderRadius: '8px',
-                    '& .MuiList-root': {
-                      padding: '8px 0',
-                      width: '100%',
-                    },
-                    '& .MuiMenuItem-root': {
-                      fontFamily: 'Inter',
-                      fontSize: '13px',
-                      padding: '10px 20px',
-                      color: '#686868',
-                      width: '100%',
-                      '&:hover': {
-                        backgroundColor: '#f5f5f5',
-                      },
-                    },
-                  },
-                }}
-                anchorOrigin={{
-                  vertical: 'bottom',
-                  horizontal: 'left',
-                }}
-                transformOrigin={{
-                  vertical: 'top',
-                  horizontal: 'left',
-                }}
-                keepMounted
-                disablePortal
-                MenuListProps={{
-                  'aria-labelledby': 'main-category-button',
-                  role: 'listbox',
-                }}
-              >
-                {isLoadingMainCategories ? (
-                  <MenuItem disabled>{t('common.loading')}</MenuItem>
-                ) : (
-                  mainCategories.map((category) => (
-                    <MenuItem 
-                      key={category.id} 
-                      onClick={() => handleMainCategoryClose(category)}
-                      sx={{
-                        backgroundColor: selectedMainCategory === category.categoryName ? '#f5f5f5' : 'transparent',
-                      }}
-                      role="option"
-                      aria-selected={selectedMainCategory === category.categoryName}
-                    >
-                      {category.categoryName}
-                    </MenuItem>
-                  ))
-                )}
-              </Menu>
-            </div>
-
-            {/* Existing Subcategory Section */}
-            <div className="self-stretch flex flex-col items-start justify-start gap-[1px]">
-              <b className="self-stretch relative leading-[20px] font-sans text-black">{t('inventory.subCategory')}</b>
-              {!showCategoryForm ? (
-                <div
-                  ref={dropdownRef}
-                  onClick={selectedCategory ? undefined : handleCategoryClick}
-                  id="category-button"
-                  className={`border-[#efefef] border-[1px] border-solid [outline:none] 
-                           font-sans text-[13px] bg-[#fff] self-stretch rounded-[8px] 
-                           flex flex-row items-center justify-between py-[14px] px-[20px] 
-                           ${selectedCategory ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-[#e0e0e0]'}`}
-                >
-                  <span>{selectedCategory || t('inventory.selectCategory')}</span>
-                  <FaChevronDown className={`text-black text-[12px] ${selectedCategory ? 'opacity-50' : ''}`} />
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 w-full">
-                  <input
-                    type="text"
-                    value={newCategory}
-                    onChange={handleNewCategoryChange}
-                    placeholder={t('inventory.newCategoryName')}
-                    className="flex-1 border-[#efefef] border-[1px] border-solid [outline:none] 
-                             font-sans text-[13px] bg-[#fff] rounded-[8px] 
-                             py-[14px] px-[20px]"
-                    autoFocus
-                  />
-                  <div className="flex gap-2">
-                    
-                    <button
-                      onClick={handleCategoryCancel}
-                      className="px-4 py-[14px] bg-gray-100 text-gray-600 rounded-[8px] 
-                               text-[13px] font-sans hover:bg-gray-200 
-                               transition-colors whitespace-nowrap"
-                    >
-                      {t('common.cancel')}
-                    </button>
-                  </div>
-                </div>
-              )}
-              
-              {/* Add Category Image Section */}
-              {showCategoryForm && (
-                <div className="mt-4 w-full">
+            {/* Only show category selection if no preSelectedCategory */}
+            {!preSelectedCategory && (
+              <>
+                {/* Main Category Section */}
+                <div className="self-stretch flex flex-col items-start justify-start gap-[1px]">
+                  <b className="self-stretch relative leading-[20px] font-sans text-black">{t('inventory.category')}</b>
                   <div
-                    className={`
-                      relative w-full h-[120px] border-2 border-dashed rounded-lg
-                      ${isDragging ? 'border-[#fd683e] bg-[#fff3f0]' : 'border-[#e0e0e0] bg-[#fafafa]'}
-                      transition-colors duration-200 cursor-pointer
-                    `}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setIsDragging(false);
-                      const file = e.dataTransfer.files[0];
-                      if (file && file.type.startsWith('image/')) {
-                        const reader = new FileReader();
-                        reader.onload = (e) => {
-                          setNewCategoryImage(e.target?.result as string);
-                        };
-                        reader.readAsDataURL(file);
-                      }
+                    ref={dropdownRef}
+                    onClick={selectedMainCategory ? undefined : handleMainCategoryClick}
+                    id="main-category-button"
+                    className={`border-[#efefef] border-[1px] border-solid [outline:none] 
+                             font-sans text-[13px] bg-[#fff] self-stretch rounded-[8px] 
+                             flex flex-row items-center justify-between py-[14px] px-[20px] 
+                             ${selectedMainCategory ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-[#e0e0e0]'}`}
+                  >
+                    <span>{selectedMainCategory || t('inventory.selectCategory')}</span>
+                    <FaChevronDown className={`text-black text-[12px] ${selectedMainCategory ? 'opacity-50' : ''}`} />
+                  </div>
+
+                  <Menu
+                    anchorEl={mainCategoryAnchorEl}
+                    open={Boolean(mainCategoryAnchorEl)}
+                    onClose={() => handleMainCategoryClose()}
+                    PaperProps={{
+                      sx: {
+                        mt: 1,
+                        width: dropdownRef.current?.offsetWidth,
+                        maxWidth: 'unset',
+                        boxShadow: '0px 4px 15px rgba(0, 0, 0, 0.1)',
+                        borderRadius: '8px',
+                        '& .MuiList-root': {
+                          padding: '8px 0',
+                          width: '100%',
+                        },
+                        '& .MuiMenuItem-root': {
+                          fontFamily: 'Inter',
+                          fontSize: '13px',
+                          padding: '10px 20px',
+                          color: '#686868',
+                          width: '100%',
+                          '&:hover': {
+                            backgroundColor: '#f5f5f5',
+                          },
+                        },
+                      },
                     }}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      setIsDragging(true);
+                    anchorOrigin={{
+                      vertical: 'bottom',
+                      horizontal: 'left',
                     }}
-                    onDragLeave={(e) => {
-                      e.preventDefault();
-                      setIsDragging(false);
+                    transformOrigin={{
+                      vertical: 'top',
+                      horizontal: 'left',
+                    }}
+                    keepMounted
+                    disablePortal
+                    MenuListProps={{
+                      'aria-labelledby': 'main-category-button',
+                      role: 'listbox',
                     }}
                   >
-                    {newCategoryImage ? (
-                      <div className="relative w-full h-full group">
-                        <img
-                          src={newCategoryImage}
-                          alt="Category Preview"
-                          className="w-full h-full object-contain rounded-lg"
-                        />
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 rounded-lg flex items-center justify-center">
-                          <button
-                            onClick={() => setNewCategoryImage(null)}
-                            className="opacity-0 group-hover:opacity-100 bg-white text-gray-700 px-3 py-1 rounded-md text-sm"
-                          >
-                            {t('common.delete')}
-                          </button>
-                        </div>
-                      </div>
+                    {isLoadingMainCategories ? (
+                      <MenuItem disabled>{t('common.loading')}</MenuItem>
                     ) : (
-                      <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              handleCategoryImageUpload(file);
-                            }
+                      mainCategories.map((category) => (
+                        <MenuItem 
+                          key={category.id} 
+                          onClick={() => handleMainCategoryClose(category)}
+                          sx={{
+                            backgroundColor: selectedMainCategory === category.categoryName ? '#f5f5f5' : 'transparent',
                           }}
-                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                        />
-                        <div className="text-gray-400 text-center text-sm font-sans">
-                          <p>{t('inventory.dragAndDrop')}</p>
-                          <p>{t('inventory.or')} {t('inventory.browseFiles')}</p>
-                        </div>
-                      </div>
+                          role="option"
+                          aria-selected={selectedMainCategory === category.categoryName}
+                        >
+                          {category.categoryName}
+                        </MenuItem>
+                      ))
                     )}
-                  </div>
+                  </Menu>
                 </div>
-              )}
 
-              <Menu
-                anchorEl={categoryAnchorEl}
-                open={Boolean(categoryAnchorEl)}
-                onClose={() => handleCategoryClose()}
-                PaperProps={{
-                  sx: {
-                    mt: 1,
-                    width: dropdownRef.current?.offsetWidth,
-                    maxWidth: 'unset',
-                    boxShadow: '0px 4px 15px rgba(0, 0, 0, 0.1)',
-                    borderRadius: '8px',
-                    '& .MuiList-root': {
-                      padding: '8px 0',
-                      width: '100%',
-                    },
-                    '& .MuiMenuItem-root': {
-                      fontFamily: 'Inter',
-                      fontSize: '13px',
-                      padding: '10px 20px',
-                      color: '#686868',
-                      width: '100%',
-                      '&:hover': {
-                        backgroundColor: '#f5f5f5',
-                      },
-                    },
-                  },
-                }}
-                anchorOrigin={{
-                  vertical: 'bottom',
-                  horizontal: 'left',
-                }}
-                transformOrigin={{
-                  vertical: 'top',
-                  horizontal: 'left',
-                }}
-                keepMounted
-                disablePortal
-                MenuListProps={{
-                  'aria-labelledby': 'category-button',
-                  role: 'listbox',
-                }}
-              >
-                {isLoading ? (
-                  <MenuItem disabled>{t('common.loading')}</MenuItem>
-                ) : (
-                  [
-                    ...categories.map((category) => (
-                      <MenuItem 
-                        key={category.id} 
-                        onClick={() => handleCategoryClose(category.name)}
-                        sx={{
-                          backgroundColor: selectedCategory === category.name ? '#f5f5f5' : 'transparent',
-                        }}
-                        role="option"
-                        aria-selected={selectedCategory === category.name}
-                      >
-                        {category.name}
-                      </MenuItem>
-                    )),
-                    <MenuItem
-                      key="add-new"
-                      sx={{
-                        borderTop: '1px solid #efefef',
-                        color: '#fd683e !important',
-                      }}
-                      onClick={() => {
-                        setShowCategoryForm(true);
-                        setCategoryAnchorEl(null);
-                      }}
-                      role="option"
+                {/* Existing Subcategory Section */}
+                <div className="self-stretch flex flex-col items-start justify-start gap-[1px]">
+                  <b className="self-stretch relative leading-[20px] font-sans text-black">{t('inventory.subCategory')}</b>
+                  {!showCategoryForm ? (
+                    <div
+                      ref={dropdownRef}
+                      onClick={selectedCategory ? undefined : handleCategoryClick}
+                      id="category-button"
+                      className={`border-[#efefef] border-[1px] border-solid [outline:none] 
+                               font-sans text-[13px] bg-[#fff] self-stretch rounded-[8px] 
+                               flex flex-row items-center justify-between py-[14px] px-[20px] 
+                               ${selectedCategory ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-[#e0e0e0]'}`}
                     >
-                      + {t('inventory.addCategory')}
-                    </MenuItem>
-                  ]
-                )}
-              </Menu>
-            </div>
+                      <span>{selectedCategory || t('inventory.selectCategory')}</span>
+                      <FaChevronDown className={`text-black text-[12px] ${selectedCategory ? 'opacity-50' : ''}`} />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 w-full">
+                      <input
+                        type="text"
+                        value={newCategory}
+                        onChange={handleNewCategoryChange}
+                        placeholder={t('inventory.newCategoryName')}
+                        className="flex-1 border-[#efefef] border-[1px] border-solid [outline:none] 
+                                 font-sans text-[13px] bg-[#fff] rounded-[8px] 
+                                 py-[14px] px-[20px]"
+                        autoFocus
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleCategoryCancel}
+                          className="px-4 py-[14px] bg-gray-100 text-gray-600 rounded-[8px] 
+                                   text-[13px] font-sans hover:bg-gray-200 
+                                   transition-colors whitespace-nowrap"
+                        >
+                          {t('common.cancel')}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Add Category Image Section */}
+                  {showCategoryForm && (
+                    <div className="mt-4 w-full">
+                      <div
+                        className={`
+                          relative w-full h-[120px] border-2 border-dashed rounded-lg
+                          ${isDragging ? 'border-[#fd683e] bg-[#fff3f0]' : 'border-[#e0e0e0] bg-[#fafafa]'}
+                          transition-colors duration-200 cursor-pointer
+                        `}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setIsDragging(false);
+                          const file = e.dataTransfer.files[0];
+                          if (file && file.type.startsWith('image/')) {
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                              setNewCategoryImage(e.target?.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setIsDragging(true);
+                        }}
+                        onDragLeave={(e) => {
+                          e.preventDefault();
+                          setIsDragging(false);
+                        }}
+                      >
+                        {newCategoryImage ? (
+                          <div className="relative w-full h-full group">
+                            <img
+                              src={newCategoryImage}
+                              alt="Category Preview"
+                              className="w-full h-full object-contain rounded-lg"
+                            />
+                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 rounded-lg flex items-center justify-center">
+                              <button
+                                onClick={() => setNewCategoryImage(null)}
+                                className="opacity-0 group-hover:opacity-100 bg-white text-gray-700 px-3 py-1 rounded-md text-sm"
+                              >
+                                {t('common.delete')}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  handleCategoryImageUpload(file);
+                                }
+                              }}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                            />
+                            <div className="text-gray-400 text-center text-sm font-sans">
+                              <p>{t('inventory.dragAndDrop')}</p>
+                              <p>{t('inventory.or')} {t('inventory.browseFiles')}</p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <Menu
+                    anchorEl={categoryAnchorEl}
+                    open={Boolean(categoryAnchorEl)}
+                    onClose={() => handleCategoryClose()}
+                    PaperProps={{
+                      sx: {
+                        mt: 1,
+                        width: dropdownRef.current?.offsetWidth,
+                        maxWidth: 'unset',
+                        boxShadow: '0px 4px 15px rgba(0, 0, 0, 0.1)',
+                        borderRadius: '8px',
+                        '& .MuiList-root': {
+                          padding: '8px 0',
+                          width: '100%',
+                        },
+                        '& .MuiMenuItem-root': {
+                          fontFamily: 'Inter',
+                          fontSize: '13px',
+                          padding: '10px 20px',
+                          color: '#686868',
+                          width: '100%',
+                          '&:hover': {
+                            backgroundColor: '#f5f5f5',
+                          },
+                        },
+                      },
+                    }}
+                    anchorOrigin={{
+                      vertical: 'bottom',
+                      horizontal: 'left',
+                    }}
+                    transformOrigin={{
+                      vertical: 'top',
+                      horizontal: 'left',
+                    }}
+                    keepMounted
+                    disablePortal
+                    MenuListProps={{
+                      'aria-labelledby': 'category-button',
+                      role: 'listbox',
+                    }}
+                  >
+                    {isLoading ? (
+                      <MenuItem disabled>{t('common.loading')}</MenuItem>
+                    ) : (
+                      [
+                        ...categories.map((category) => (
+                          <MenuItem 
+                            key={category.id} 
+                            onClick={() => handleCategoryClose(category.name)}
+                            sx={{
+                              backgroundColor: selectedCategory === category.name ? '#f5f5f5' : 'transparent',
+                            }}
+                            role="option"
+                            aria-selected={selectedCategory === category.name}
+                          >
+                            {category.name}
+                          </MenuItem>
+                        )),
+                        <MenuItem
+                          key="add-new"
+                          sx={{
+                            borderTop: '1px solid #efefef',
+                            color: '#fd683e !important',
+                          }}
+                          onClick={() => {
+                            setShowCategoryForm(true);
+                            setCategoryAnchorEl(null);
+                          }}
+                          role="option"
+                        >
+                          + {t('inventory.addCategory')}
+                        </MenuItem>
+                      ]
+                    )}
+                  </Menu>
+                </div>
+              </>
+            )}
             <div className="self-stretch flex flex-col items-start justify-start gap-[1px]">
               <b className="self-stretch relative leading-[20px] font-sans">{t('inventory.name')}</b>
               <input
