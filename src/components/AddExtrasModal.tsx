@@ -58,7 +58,7 @@ interface FoodItem {
   restaurantName: string;
 }
 
-const steps = ['Enter Group Title', 'Add Variants', 'Review Groups'];
+const steps = ['Enter extras title', 'Add extras', 'Review extras'];
 
 const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
   open,
@@ -180,18 +180,41 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
     switch (activeStep) {
       case 0:
         return (
-          <Box sx={{ mt: 2, fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>
+          <Box sx={{ mt: 2, fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif ' }}>
             <TextField
               fullWidth
-              label="Group Title"
+              label="Extras Title"
               value={groupTitle}
               onChange={(e) => setGroupTitle(e.target.value)}
               placeholder="e.g., Toppings, Sauces, Sides"
               InputProps={{
-                sx: { fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }
+                sx: { 
+                  fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#000',
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#000',
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#000',
+                  },
+                  '& .MuiOutlinedInput-input': {
+                    color: '#201a18', // default text color
+                  },
+                  '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-input': {
+                    color: '#fd683e', // orange text when focused
+                  },
+                }
               }}
               InputLabelProps={{
-                sx: { fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }
+                sx: { 
+                  fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+                  color: '#201a18', // default label color
+                  '&.Mui-focused': {
+                    color: '#fd683e', // orange label when focused
+                  },
+                }
               }}
             />
           </Box>
@@ -204,7 +227,15 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
             </Typography>
             <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
               <FormControl fullWidth sx={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>
-                <InputLabel sx={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>Select Variant</InputLabel>
+                <InputLabel 
+                  sx={{ 
+                    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+                    color: '#201a18', // black by default
+                    '&.Mui-focused': {
+                      color: '#fd683e', // orange when focused
+                    },
+                  }}
+                >Select Variant</InputLabel>
                 {loading ? (
                   <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
                     <CircularProgress sx={{ color: '#fd683e' }} size={24} />
@@ -214,7 +245,21 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
                     value={variant}
                     onChange={(e: SelectChangeEvent) => setVariant(e.target.value as string)}
                     label="Select Variant"
-                    sx={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}
+                    sx={{ 
+                      fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#000',
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#000',
+                      },
+                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#000',
+                      },
+                      '& .MuiSelect-select': {
+                        color: '#201a18', // always black for selected value
+                      },
+                    }}
                   >
                     {foodTypes.map(opt => (
                       <MenuItem key={opt.value} value={opt.value} sx={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>
@@ -356,7 +401,37 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
     >
       <DialogTitle>Add Extras</DialogTitle>
       <DialogContent>
-        <Stepper activeStep={activeStep} sx={{ pt: 2, pb: 3 }}>
+        <Stepper 
+          activeStep={activeStep} 
+          sx={{ 
+            pt: 2, 
+            pb: 3,
+            '& .MuiStepIcon-root': {
+              color: '#ffd2b3', // default (inactive) step icon color
+            },
+            '& .MuiStepIcon-root.Mui-active': {
+              color: '#fd683e', // active step icon color
+            },
+            '& .MuiStepIcon-root.Mui-completed': {
+              color: '#fd683e', // completed step icon color
+            },
+            '& .MuiStepLabel-label': {
+              color: '#000', // always black for step label text
+            },
+            '& .MuiStepLabel-label.Mui-active': {
+              color: '#000', // active step label color black
+            },
+            '& .MuiStepLabel-label.Mui-completed': {
+              color: '#000', // completed step label color black
+            },
+            '& .MuiStepLabel-iconContainer .Mui-active': {
+              color: '#fd683e', // active step icon
+            },
+            '& .MuiStepLabel-iconContainer .Mui-completed': {
+              color: '#fd683e', // completed step icon
+            },
+          }}
+        >
           {steps.map((label) => (
             <Step key={label}>
               <StepLabel>{label}</StepLabel>
