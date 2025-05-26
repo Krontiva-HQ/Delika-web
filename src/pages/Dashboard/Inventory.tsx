@@ -54,6 +54,7 @@ interface Category {
   image: string;
   itemCount: number;
   foods: CategoryFood[];
+  categoryId?: string;
 }
 
 // Update the existing CategoryCard interface
@@ -117,10 +118,70 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
   }, []);
 
   const [showAddInventory, setShowAddInventory] = useState(false);
+  const [addInventoryCategory, setAddInventoryCategory] = useState<{
+    mainCategory: string;
+    mainCategoryId: string;
+    subCategory: string;
+  } | null>(null);
 
-  const onAddItemButtonClick = useCallback(() => {
-    setShowAddInventory(true);
+  // Add effect to fetch main categories
+  const [mainCategories, setMainCategories] = useState<Array<{ id: string; categoryName: string }>>([]);
+  
+  useEffect(() => {
+    const fetchMainCategories = async () => {
+      try {
+        const response = await api.get('/get/menu/categories');
+        setMainCategories(response.data);
+      } catch (error) {
+        console.error('Failed to fetch main categories:', error);
+      }
+    };
+
+    fetchMainCategories();
   }, []);
+
+  const onAddItemButtonClick = useCallback((category?: Category) => {
+    if (category) {
+      console.log('Add Item clicked for category:', category);
+      // Find the main category based on the categoryId from the category
+      const mainCategory = mainCategories.find(mc => mc.id === category.categoryId);
+      if (mainCategory) {
+        console.log('Main category data from endpoint:', mainCategory);
+      } else {
+        console.log('No matching main category found for categoryId:', category.categoryId);
+      }
+      
+      if (mainCategory) {
+        setAddInventoryCategory({
+          mainCategory: mainCategory.categoryName,
+          mainCategoryId: mainCategory.id,
+          subCategory: category.name
+        });
+        console.log('Setting preSelectedCategory:', {
+          mainCategory: mainCategory.categoryName,
+          mainCategoryId: mainCategory.id,
+          subCategory: category.name
+        });
+      } else {
+        // Fallback if main category is not found
+        setAddInventoryCategory({
+          mainCategory: category.name,
+          mainCategoryId: category.categoryId || category.id,
+          subCategory: category.name
+        });
+        console.log('Fallback preSelectedCategory:', {
+          mainCategory: category.name,
+          mainCategoryId: category.categoryId || category.id,
+          subCategory: category.name
+        });
+      }
+    } else {
+      // If adding from the top button, reset category info
+      setAddInventoryCategory(null);
+      console.log('Add Item clicked from top button, resetting preSelectedCategory');
+    }
+    setShowAddInventory(true);
+  }, [mainCategories]);
 
   // Get user data from useAuth
   const { user } = useAuth();
@@ -409,12 +470,19 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       }); 
 
       const response = await api.post(`/get/menu/items?${params.toString()}`);
+      console.log('Raw inventory categories response:', response.data);
       setCategories(response.data);
     } catch (error) {
     }
   };
 
   const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    if (addInventoryCategory) {
+      console.log('AddInventory modal will open with preSelectedCategory:', addInventoryCategory);
+    }
+  }, [addInventoryCategory]);
 
   return (
     <div className="h-full w-full bg-white dark:bg-[#201a18] m-0 p-0">
@@ -436,7 +504,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
             )}
             <div
               className="flex items-center gap-2 px-3 py-1 rounded-[4px] bg-[#313131] border-[#737373] border-[1px] border-solid cursor-pointer text-[12px] font-sans"
-              onClick={onAddItemButtonClick}
+              onClick={() => onAddItemButtonClick()}
             >
               <IoMdAdd className="w-[18px] h-[18px] text-[#cbcbcb]" />
               <div className="leading-[18px] font-sans text-white">{t('inventory.addNewItem')}</div>
@@ -498,7 +566,10 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                   remoteCategories.map((category) => (
                     <div 
                       key={category.id}
-                      onClick={() => setActiveId(category.id)}
+                      onClick={() => {
+                        console.log('Category card clicked:', category);
+                        setActiveId(category.id);
+                      }}
                       className={`flex-none w-[180px] rounded-[8px] border-[1px] border-solid border-[#eaeaea]
                                   flex flex-row items-center justify-start p-3 gap-[10px] 
                                   text-center text-[#5e5c57] transition-all duration-300
@@ -586,7 +657,12 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
               {/* Add Item Card */}
               <div
                 className="flex flex-col items-center justify-center bg-[#F7F7F7] dark:bg-[#201a18] rounded-[12px] border border-[#eaeaeb] min-h-[260px] cursor-pointer transition hover:shadow-md"
-                onClick={onAddItemButtonClick}
+                onClick={() => {
+                  const activeCategory = remoteCategories.find(cat => cat.id === activeId);
+                  if (activeCategory) {
+                    onAddItemButtonClick(activeCategory);
+                  }
+                }}
               >
                 <div className="flex items-center justify-center w-16 h-16 rounded-full bg-[#fd4d4d]/10 mb-2">
                   <span className="text-4xl text-[#fd4d4d]">+</span>
@@ -611,6 +687,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
             setShowAddInventory(false);
           }}
           branchId={selectedBranchId || userProfile.branchId}
+          preSelectedCategory={addInventoryCategory || undefined}
         />
       )}
 

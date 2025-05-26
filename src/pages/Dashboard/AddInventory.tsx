@@ -10,11 +10,17 @@ import { useLanguageChange } from '../../hooks/useLanguageChange';
 import { api, API_ENDPOINTS } from '../../services/api';
 import Switch from '@mui/material/Switch';
 import { useUserProfile } from '../../hooks/useUserProfile';
+import AddExtrasModal, { ExtraGroup } from '../../components/AddExtrasModal';
 
 interface AddInventoryProps {
   onClose: () => void;
   onInventoryUpdated?: () => void;
   branchId: string | null;
+  preSelectedCategory?: {
+    mainCategory: string;
+    mainCategoryId: string;
+    subCategory: string;
+  };
 }
 
 interface AddItemParams {
@@ -34,15 +40,16 @@ interface InventoryItem {
 const AddInventory: FunctionComponent<AddInventoryProps> = ({ 
   onClose,
   onInventoryUpdated,
-  branchId
+  branchId,
+  preSelectedCategory
 }) => {
   const { categories, isLoading } = useMenuCategories();
   const { userProfile } = useUserProfile();
   const [textfieldOpen, setTextfieldOpen] = useState(false);
   const [textfieldAnchorEl, setTextfieldAnchorEl] = useState<null | HTMLElement>(null);
   const [categoryAnchorEl, setCategoryAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedCategory, setSelectedCategory] = useState("");
-  const [selectedMainCategory, setSelectedMainCategory] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState(preSelectedCategory?.subCategory || "");
+  const [selectedMainCategory, setSelectedMainCategory] = useState(preSelectedCategory?.mainCategory || "");
   const [mainCategories, setMainCategories] = useState<Array<{ id: string; categoryName: string }>>([]);
   const [mainCategoryAnchorEl, setMainCategoryAnchorEl] = useState<null | HTMLElement>(null);
   const [isLoadingMainCategories, setIsLoadingMainCategories] = useState(false);
@@ -63,7 +70,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   useLanguageChange();
 
   // Add new state for selected category ID
-  const [selectedMainCategoryId, setSelectedMainCategoryId] = useState("");
+  const [selectedMainCategoryId, setSelectedMainCategoryId] = useState(preSelectedCategory?.mainCategoryId || "");
 
   // Add new state for extrasAvailable
   const [extrasAvailable, setExtrasAvailable] = useState(false);
@@ -71,11 +78,15 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   // Add new state for showExtrasForm
   const [showExtrasForm, setShowExtrasForm] = useState(false);
 
+  // Add new state for extrasModalOpen
+  const [extrasModalOpen, setExtrasModalOpen] = useState(false);
+
   // Add new state for inventory items
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [selectedExtra, setSelectedExtra] = useState('');
   const [selectedVariant, setSelectedVariant] = useState('');
   const [extraPrice, setExtraPrice] = useState('');
+  const [extraGroups, setExtraGroups] = useState<ExtraGroup[]>([]);
 
   // Add useEffect to fetch main categories
   useEffect(() => {
@@ -362,6 +373,12 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
 
   const handleCategoryCancel = () => {
     setShowCategoryForm(false);
+  };
+
+  const handleExtrasAdd = (groups: ExtraGroup[]) => {
+    setExtraGroups(groups);
+    setExtrasModalOpen(false);
+    // You can handle the extras data here or pass it to your API
   };
 
   return (
@@ -747,7 +764,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
             {extrasAvailable && !showExtrasForm && (
               <button
                 className="mt-4 px-6 py-2 bg-[#fd4d4d] text-white rounded font-sans"
-                onClick={() => setShowExtrasForm(true)}
+                onClick={() => setExtrasModalOpen(true)}
               >
                 Next
               </button>
@@ -769,72 +786,11 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
         </div>
       </div>
 
-      {showExtrasForm && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/30">
-          <div className="bg-white rounded-lg p-8 w-full max-w-md shadow-lg">
-            <h2 className="text-2xl font-bold mb-6 font-sans">Add Extras</h2>
-            <div className="mb-4">
-              <label className="block mb-1 font-sans">Extras Name</label>
-              <select 
-                className="w-full border rounded px-3 py-2 font-sans"
-                value={selectedExtra}
-                onChange={(e) => setSelectedExtra(e.target.value)}
-              >
-                <option value="">Select Extras</option>
-                {inventoryItems && inventoryItems.length > 0 ? (
-                  inventoryItems.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.foodName} - GH₵{item.foodPrice}
-                    </option>
-                  ))
-                ) : (
-                  <option value="" disabled>No extras available</option>
-                )}
-              </select>
-            </div>
-            <div className="mb-4">
-              <label className="block mb-1 font-sans">Select Variant</label>
-              <select 
-                className="w-full border rounded px-3 py-2 font-sans"
-                value={selectedVariant}
-                onChange={(e) => setSelectedVariant(e.target.value)}
-              >
-                <option value="">Select variant</option>
-                <option value="small">Small</option>
-                <option value="medium">Medium</option>
-                <option value="large">Large</option>
-              </select>
-            </div>
-            <div className="mb-6">
-              <label className="block mb-1 font-sans">Price</label>
-              <input
-                type="number"
-                className="w-full border rounded px-3 py-2 font-sans"
-                placeholder="0.00"
-                value={extraPrice}
-                onChange={(e) => setExtraPrice(e.target.value)}
-              />
-            </div>
-            <div className="flex gap-3">
-              <button
-                className="px-6 py-2 border rounded font-sans"
-                onClick={() => setShowExtrasForm(false)}
-              >
-                Cancel
-              </button>
-              <button
-                className="px-6 py-2 bg-[#fd4d4d] text-white rounded font-sans"
-                onClick={() => {
-                  // Handle adding the extra
-                  setShowExtrasForm(false);
-                }}
-              >
-                Add Now
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AddExtrasModal
+        open={extrasModalOpen}
+        onClose={() => setExtrasModalOpen(false)}
+        onAdd={handleExtrasAdd}
+      />
     </>
   );
 };
