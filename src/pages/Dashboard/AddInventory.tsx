@@ -23,6 +23,58 @@ interface AddInventoryProps {
   };
 }
 
+interface FoodImage {
+  access: string;
+  path: string;
+  name: string;
+  type: string;
+  size: number;
+  url: string;
+  meta?: {
+    width: number;
+    height: number;
+  };
+  mime?: string;
+}
+
+interface FoodItem {
+  name: string;
+  price: string;
+  description: string;
+  quantity: number;
+  available: boolean;
+  extras: any[];
+  foodImage: FoodImage;
+}
+
+interface CategoryTableItem {
+  categoryImage: string | null;
+  categoryName: string;
+  created_at: number;
+  id: string;
+}
+
+interface CategoryCard {
+  id: string;
+  image: string;
+  name: string;
+  itemCount: number;
+  categoryTable: CategoryTableItem[];
+  foods: FoodItem[];
+}
+
+interface MenuCategory {
+  id: string;
+  created_at: number;
+  foodType: string;
+  restaurantName: string;
+  branchName: string;
+  categoryId: string | null;
+  categoryTable: CategoryTableItem[];
+  foodTypeImage: FoodImage;
+  foods: FoodItem[];
+}
+
 interface AddItemParams {
   name: string;
   price: string;
@@ -58,8 +110,8 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   const [textfieldAnchorEl, setTextfieldAnchorEl] = useState<null | HTMLElement>(null);
   const [categoryAnchorEl, setCategoryAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedCategory, setSelectedCategory] = useState(preSelectedCategory?.subCategory || "");
-  const [selectedMainCategory, setSelectedMainCategory] = useState("");
-  const [selectedMainCategoryId, setSelectedMainCategoryId] = useState("");
+  const [selectedMainCategory, setSelectedMainCategory] = useState(preSelectedCategory?.mainCategory || "");
+  const [selectedMainCategoryId, setSelectedMainCategoryId] = useState(preSelectedCategory?.mainCategoryId || "");
   const [mainCategories, setMainCategories] = useState<Array<{ id: string; categoryName: string }>>([]);
   const [mainCategoryAnchorEl, setMainCategoryAnchorEl] = useState<null | HTMLElement>(null);
   const [isLoadingMainCategories, setIsLoadingMainCategories] = useState(false);
@@ -103,24 +155,45 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
     mainCategories
   });
 
-  // Add useEffect to fetch main categories
+  // Update useEffect to use categoryTable data
   useEffect(() => {
     const fetchMainCategories = async () => {
       setIsLoadingMainCategories(true);
       try {
-        console.log('Fetching main categories from /get/menu/categories');
-        const response = await api.get('/get/menu/categories');
-        console.log('Main Categories API Response:', response.data);
-        setMainCategories(response.data);
+        // Find the selected category from categories
+        const selectedCat = categories.find(cat => cat.name === preSelectedCategory?.subCategory);
+        
+        // Get main categories from the selected category's categoryTable
+        const allMainCategories = selectedCat?.categoryTable?.map(tableCat => ({
+          id: tableCat.id,
+          categoryName: tableCat.categoryName
+        })) || [];
+
+        console.log('Main Categories from selected category:', allMainCategories);
+        setMainCategories(allMainCategories);
+
+        // Set main category from the first item in categoryTable
+        if (allMainCategories.length > 0) {
+          const mainCat = allMainCategories[0];
+          setSelectedMainCategory(mainCat.categoryName);
+          setSelectedMainCategoryId(mainCat.id);
+        }
+        
+        // Set subcategory from preSelectedCategory
+        if (preSelectedCategory?.subCategory) {
+          setSelectedCategory(preSelectedCategory.subCategory);
+        }
       } catch (error) {
-        console.error('Failed to fetch main categories:', error);
+        console.error('Failed to process main categories:', error);
       } finally {
         setIsLoadingMainCategories(false);
       }
     };
 
-    fetchMainCategories();
-  }, []);
+    if (categories.length > 0) {
+      fetchMainCategories();
+    }
+  }, [categories, preSelectedCategory]);
 
   // Add useEffect to fetch inventory items
   useEffect(() => {
@@ -274,7 +347,8 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
         itemName,
         price,
         shortDetails,
-        available
+        available,
+        extras: extraGroups
       });
 
       if (!userProfile.restaurantId || !userProfile.branchId) {
@@ -301,7 +375,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
             price: price,
             description: shortDetails,
             quantity: "0",
-            available: available
+            available: available,
           }],
           mainCategory: selectedMainCategory,
           categoryId: selectedMainCategoryId,
@@ -324,7 +398,8 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
           mainCategoryId: selectedMainCategoryId,
           name: itemName,
           restaurantId: userProfile.restaurantId,
-          branchId: userProfile.branchId
+          branchId: userProfile.branchId,
+          extras: extraGroups
         });
         
         await addItem({
@@ -453,15 +528,15 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
               <b className="self-stretch relative leading-[20px] font-sans text-black">{t('inventory.category')}</b>
               <div
                 ref={dropdownRef}
-                onClick={handleMainCategoryClick}
+                onClick={selectedMainCategory ? undefined : handleMainCategoryClick}
                 id="main-category-button"
-                className="border-[#efefef] border-[1px] border-solid [outline:none] 
+                className={`border-[#efefef] border-[1px] border-solid [outline:none] 
                          font-sans text-[13px] bg-[#fff] self-stretch rounded-[8px] 
                          flex flex-row items-center justify-between py-[14px] px-[20px] 
-                         text-black cursor-pointer hover:border-[#e0e0e0]"
+                         ${selectedMainCategory ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-[#e0e0e0]'}`}
               >
                 <span>{selectedMainCategory || t('inventory.selectCategory')}</span>
-                <FaChevronDown className="text-black text-[12px]" />
+                <FaChevronDown className={`text-black text-[12px] ${selectedMainCategory ? 'opacity-50' : ''}`} />
               </div>
 
               <Menu
@@ -532,15 +607,15 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
               {!showCategoryForm ? (
                 <div
                   ref={dropdownRef}
-                  onClick={handleCategoryClick}
+                  onClick={selectedCategory ? undefined : handleCategoryClick}
                   id="category-button"
-                  className="border-[#efefef] border-[1px] border-solid [outline:none] 
+                  className={`border-[#efefef] border-[1px] border-solid [outline:none] 
                            font-sans text-[13px] bg-[#fff] self-stretch rounded-[8px] 
                            flex flex-row items-center justify-between py-[14px] px-[20px] 
-                           text-black cursor-pointer hover:border-[#e0e0e0]"
+                           ${selectedCategory ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-[#e0e0e0]'}`}
                 >
                   <span>{selectedCategory || t('inventory.selectCategory')}</span>
-                  <FaChevronDown className="text-black text-[12px]" />
+                  <FaChevronDown className={`text-black text-[12px] ${selectedCategory ? 'opacity-50' : ''}`} />
                 </div>
               ) : (
                 <div className="flex items-center gap-2 w-full">

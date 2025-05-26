@@ -9,6 +9,7 @@ export interface CategoryCard {
   name: string;
   itemCount: number;
   isActive?: boolean;
+  categoryTable: CategoryTableItem[];
   foods: {
     name: string;
     price: string;
@@ -17,6 +18,7 @@ export interface CategoryCard {
     };
     description?: string;
     available: boolean;
+    extras?: any[];
   }[];
 }
 
@@ -37,26 +39,30 @@ interface FoodImage {
 interface FoodItem {
   name: string;
   price: string;
-  foodImage: FoodImage;
-  description?: string;
+  description: string;
+  quantity: number;
   available: boolean;
+  extras: any[];
+  foodImage: FoodImage;
+}
+
+interface CategoryTableItem {
+  categoryImage: string | null;
+  categoryName: string;
+  created_at: number;
+  id: string;
 }
 
 interface APICategory {
   id: string;
+  created_at: number;
   foodType: string;
-  foodTypeImage: FoodImage;
-  foods: FoodItem[];
   restaurantName: string;
   branchName: string;
-  created_at: number;
-  categoryId?: string;
-  categoryTable?: Array<{
-    categoryImage: string | null;
-    categoryName: string;
-    created_at: number;
-    id: string;
-  }>;
+  categoryId: string | null;
+  categoryTable: CategoryTableItem[];
+  foodTypeImage: FoodImage;
+  foods: FoodItem[];
 }
 
 export interface CategoryDetails {
@@ -119,6 +125,7 @@ export const useMenuCategories = () => {
             image: category.foodTypeImage?.url || '',
             name: category.foodType,
             itemCount: category.foods?.length || 0,
+            categoryTable: category.categoryTable || [],
             foods: (category.foods || []).map(food => ({
               name: food.name,
               price: food.price,
@@ -126,7 +133,9 @@ export const useMenuCategories = () => {
                 url: food.foodImage?.url || '',
               },
               description: food.description,
-              available: food.available ?? false
+              available: food.available ?? false,
+              quantity: food.quantity || 0,
+              extras: food.extras || []
             }))
           }))
           .sort((a, b) => a.name.localeCompare(b.name));
@@ -142,7 +151,7 @@ export const useMenuCategories = () => {
     };
 
     fetchCategories();
-  }, [selectedBranchId]); // Add selectedBranchId as a dependency
+  }, [selectedBranchId]);
 
   useEffect(() => {
     // Prefetch the data
