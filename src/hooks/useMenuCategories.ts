@@ -21,15 +21,23 @@ export interface CategoryCard {
 }
 
 interface FoodImage {
+  access: string;
+  path: string;
+  name: string;
+  type: string;
+  size: number;
   url: string;
+  meta?: {
+    width: number;
+    height: number;
+  };
+  mime?: string;
 }
 
 interface FoodItem {
   name: string;
   price: string;
-  foodImage: {
-    url: string;
-  };
+  foodImage: FoodImage;
   description?: string;
   available: boolean;
 }
@@ -37,13 +45,18 @@ interface FoodItem {
 interface APICategory {
   id: string;
   foodType: string;
-  foodTypeImage: {
-    url: string;
-  };
+  foodTypeImage: FoodImage;
   foods: FoodItem[];
   restaurantName: string;
   branchName: string;
   created_at: number;
+  categoryId?: string;
+  categoryTable?: Array<{
+    categoryImage: string | null;
+    categoryName: string;
+    created_at: number;
+    id: string;
+  }>;
 }
 
 export interface CategoryDetails {
@@ -88,28 +101,37 @@ export const useMenuCategories = () => {
       
       try {
         const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+        console.log('Fetching menu data with params:', {
+          restaurantId: userProfile.restaurantId || '',
+          branchId: userProfile?.role === 'Admin' ? selectedBranchId : userProfile?.branchId || '',
+        });
+        
         const response = await api.post<APICategory[]>('/get/all/menu', {
           restaurantId: userProfile.restaurantId || '',
           branchId: userProfile?.role === 'Admin' ? selectedBranchId : userProfile?.branchId || '',
         });
         
+        console.log('Raw /get/all/menu Response:', response.data);
+        
         const transformedCategories = response.data
           .map(category => ({
             id: category.id,
-            image: category.foodTypeImage.url,
+            image: category.foodTypeImage?.url || '',
             name: category.foodType,
-            itemCount: category.foods.length,
-            foods: category.foods.map(food => ({
+            itemCount: category.foods?.length || 0,
+            foods: (category.foods || []).map(food => ({
               name: food.name,
               price: food.price,
               foodImage: {
-                url: food.foodImage.url,
+                url: food.foodImage?.url || '',
               },
               description: food.description,
               available: food.available ?? false
             }))
           }))
           .sort((a, b) => a.name.localeCompare(b.name));
+        
+        console.log('Transformed Categories:', transformedCategories);
         
         setCategories(transformedCategories);
       } catch (err) {
