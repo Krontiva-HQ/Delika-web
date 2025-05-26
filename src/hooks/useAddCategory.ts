@@ -67,6 +67,12 @@ export const useAddCategory = () => {
         formData.append('foodsPhoto', foodsPhoto);
       }
 
+      // Log the full FormData payload before posting
+      console.log('🚀 Posting to /add/category with FormData:');
+      Array.from(formData.entries()).forEach(pair => {
+        console.log(pair[0] + ':', pair[1]);
+      });
+
       console.log('🔥 Calling API directly - CreateCategory 🔥');
       const response = await createCategory(formData);
       console.log('✅ API Response:', { status: response.status });

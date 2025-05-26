@@ -54,7 +54,6 @@ interface Category {
   image: string;
   itemCount: number;
   foods: CategoryFood[];
-  categoryId?: string;
 }
 
 // Update the existing CategoryCard interface
@@ -124,65 +123,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
     subCategory: string;
   } | null>(null);
 
-  // Add effect to fetch main categories
-  const [mainCategories, setMainCategories] = useState<Array<{ id: string; categoryName: string }>>([]);
-  
-  useEffect(() => {
-    const fetchMainCategories = async () => {
-      try {
-        const response = await api.get('/get/menu/categories');
-        setMainCategories(response.data);
-      } catch (error) {
-        console.error('Failed to fetch main categories:', error);
-      }
-    };
-
-    fetchMainCategories();
-  }, []);
-
-  const onAddItemButtonClick = useCallback((category?: Category) => {
-    if (category) {
-      console.log('Add Item clicked for category:', category);
-      // Find the main category based on the categoryId from the category
-      const mainCategory = mainCategories.find(mc => mc.id === category.categoryId);
-      if (mainCategory) {
-        console.log('Main category data from endpoint:', mainCategory);
-      } else {
-        console.log('No matching main category found for categoryId:', category.categoryId);
-      }
-      
-      if (mainCategory) {
-        setAddInventoryCategory({
-          mainCategory: mainCategory.categoryName,
-          mainCategoryId: mainCategory.id,
-          subCategory: category.name
-        });
-        console.log('Setting preSelectedCategory:', {
-          mainCategory: mainCategory.categoryName,
-          mainCategoryId: mainCategory.id,
-          subCategory: category.name
-        });
-      } else {
-        // Fallback if main category is not found
-        setAddInventoryCategory({
-          mainCategory: category.name,
-          mainCategoryId: category.categoryId || category.id,
-          subCategory: category.name
-        });
-        console.log('Fallback preSelectedCategory:', {
-          mainCategory: category.name,
-          mainCategoryId: category.categoryId || category.id,
-          subCategory: category.name
-        });
-      }
-    } else {
-      // If adding from the top button, reset category info
-      setAddInventoryCategory(null);
-      console.log('Add Item clicked from top button, resetting preSelectedCategory');
-    }
-    setShowAddInventory(true);
-  }, [mainCategories]);
-
   // Get user data from useAuth
   const { user } = useAuth();
   
@@ -208,6 +148,23 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
 
   // Pass selectedBranchId to useMenuCategories
   const { categories: remoteCategories, isLoading: categoriesLoading, error: categoriesError } = useMenuCategories();
+
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const onAddItemButtonClick = useCallback((category?: Category) => {
+    if (category) {
+      // If adding from within a category, only set the subcategory info
+      setAddInventoryCategory({
+        mainCategory: "",  // Don't pre-fill main category
+        mainCategoryId: "", // Don't pre-fill main category ID
+        subCategory: category.name // Only pre-fill subcategory
+      });
+    } else {
+      // If adding from the top button, don't pre-fill any category
+      setAddInventoryCategory(null);
+    }
+    setShowAddInventory(true);
+  }, []);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -254,6 +211,8 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
   const [selectedCardIndex, setSelectedCardIndex] = useState(0);
 
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+  const [activeCategoryFoods, setActiveCategoryFoods] = useState<MenuItem[]>([]);
+  const { updateInventory, isLoading: isUpdating, error: updateError } = useUpdateInventory();
 
   const handleItemClick = (item: MenuItem) => {
     setSelectedItem(item);
@@ -390,10 +349,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
     );
   };
 
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [activeCategoryFoods, setActiveCategoryFoods] = useState<MenuItem[]>([]);
-  const { updateInventory, isLoading: isUpdating, error: updateError } = useUpdateInventory();
-
   // Update handleBranchSelect
   const handleBranchSelect = async (branchId: string) => {
     localStorage.setItem('selectedBranchId', branchId);
@@ -403,7 +358,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
   // Function to handle closing the AddInventory modal
   const handleAddInventoryClose = () => {
     setShowAddInventory(false);
-    refreshInventory();
     navigate('/dashboard', { state: { activeView: 'inventory' } });
   };
 
@@ -469,20 +423,35 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
           : (userProfile.branchId || ''),
       }); 
 
-      const response = await api.post(`/get/menu/items?${params.toString()}`);
-      console.log('Raw inventory categories response:', response.data);
+      const response = await api.post(`/get/all/menu`, params);
       setCategories(response.data);
+
+      if (addInventoryCategory?.mainCategoryId) {
+        const mainCategory = response.data.find(
+          (cat: { id: string; categoryName: string }) => cat.id === addInventoryCategory.mainCategoryId
+        );
+        if (mainCategory) {
+          console.log('Setting initial main category:', mainCategory);
+          setAddInventoryCategory({
+            mainCategory: mainCategory.categoryName,
+            mainCategoryId: mainCategory.id,
+            subCategory: addInventoryCategory.subCategory
+          });
+        }
+      }
+
+      console.log('Initial State Values:', {
+        selectedCategory: addInventoryCategory,
+        selectedMainCategory: response.data.find((cat: { id: string; categoryName: string }) => cat.id === addInventoryCategory?.mainCategoryId),
+        selectedMainCategoryId: addInventoryCategory?.mainCategoryId,
+        mainCategories: response.data
+      });
     } catch (error) {
+      console.error('Failed to refresh inventory:', error);
     }
   };
 
   const [categories, setCategories] = useState<Category[]>([]);
-
-  useEffect(() => {
-    if (addInventoryCategory) {
-      console.log('AddInventory modal will open with preSelectedCategory:', addInventoryCategory);
-    }
-  }, [addInventoryCategory]);
 
   return (
     <div className="h-full w-full bg-white dark:bg-[#201a18] m-0 p-0">
@@ -566,10 +535,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                   remoteCategories.map((category) => (
                     <div 
                       key={category.id}
-                      onClick={() => {
-                        console.log('Category card clicked:', category);
-                        setActiveId(category.id);
-                      }}
+                      onClick={() => setActiveId(category.id)}
                       className={`flex-none w-[180px] rounded-[8px] border-[1px] border-solid border-[#eaeaea]
                                   flex flex-row items-center justify-start p-3 gap-[10px] 
                                   text-center text-[#5e5c57] transition-all duration-300
@@ -683,7 +649,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         <AddInventory 
           onClose={handleAddInventoryClose}
           onInventoryUpdated={() => {
-            refreshInventory();
             setShowAddInventory(false);
           }}
           branchId={selectedBranchId || userProfile.branchId}

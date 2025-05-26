@@ -83,13 +83,15 @@ export const useAddItemToCategory = () => {
         console.warn('⚠️ No foodPhoto provided');
       }
 
-      // Log the final FormData contents
-      console.log('📦 Final FormData contents:');
-      Array.from(formData.entries()).forEach(([key, value]) => {
-        if (key === 'foods') {
-          console.log('foods:', foods);
+      // Log the full FormData payload before posting
+      console.log('🚀 Posting to /add/item/to/category with FormData:');
+      Array.from(formData.entries()).forEach(pair => {
+        if (pair[1] instanceof Blob && pair[0] === 'foods') {
+          (pair[1] as Blob).text().then(text => {
+            console.log(pair[0] + ':', text);
+          });
         } else {
-          console.log(`${key}:`, value);
+          console.log(pair[0] + ':', pair[1]);
         }
       });
 

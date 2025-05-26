@@ -45,11 +45,21 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
 }) => {
   const { categories, isLoading } = useMenuCategories();
   const { userProfile } = useUserProfile();
+
+  // Add console logs for initial props and state
+  console.log('AddInventory Props:', {
+    preSelectedCategory,
+    branchId
+  });
+
+  console.log('Initial Categories from useMenuCategories:', categories);
+
   const [textfieldOpen, setTextfieldOpen] = useState(false);
   const [textfieldAnchorEl, setTextfieldAnchorEl] = useState<null | HTMLElement>(null);
   const [categoryAnchorEl, setCategoryAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedCategory, setSelectedCategory] = useState(preSelectedCategory?.subCategory || "");
-  const [selectedMainCategory, setSelectedMainCategory] = useState(preSelectedCategory?.mainCategory || "");
+  const [selectedMainCategory, setSelectedMainCategory] = useState("");
+  const [selectedMainCategoryId, setSelectedMainCategoryId] = useState("");
   const [mainCategories, setMainCategories] = useState<Array<{ id: string; categoryName: string }>>([]);
   const [mainCategoryAnchorEl, setMainCategoryAnchorEl] = useState<null | HTMLElement>(null);
   const [isLoadingMainCategories, setIsLoadingMainCategories] = useState(false);
@@ -69,9 +79,6 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   const { t } = useTranslation();
   useLanguageChange();
 
-  // Add new state for selected category ID
-  const [selectedMainCategoryId, setSelectedMainCategoryId] = useState(preSelectedCategory?.mainCategoryId || "");
-
   // Add new state for extrasAvailable
   const [extrasAvailable, setExtrasAvailable] = useState(false);
 
@@ -88,12 +95,22 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   const [extraPrice, setExtraPrice] = useState('');
   const [extraGroups, setExtraGroups] = useState<ExtraGroup[]>([]);
 
+  // Add console log for initial state values with ID
+  console.log('Initial State Values:', {
+    selectedCategory,
+    selectedMainCategory,
+    selectedMainCategoryId,
+    mainCategories
+  });
+
   // Add useEffect to fetch main categories
   useEffect(() => {
     const fetchMainCategories = async () => {
       setIsLoadingMainCategories(true);
       try {
+        console.log('Fetching main categories from /get/menu/categories');
         const response = await api.get('/get/menu/categories');
+        console.log('Main Categories API Response:', response.data);
         setMainCategories(response.data);
       } catch (error) {
         console.error('Failed to fetch main categories:', error);
@@ -179,6 +196,10 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   };
 
   const handleCategoryClose = (category?: string) => {
+    console.log('Category Selection:', {
+      selectedCategory: category,
+      previousCategory: selectedCategory
+    });
     if (category) {
       setSelectedCategory(category);
     }
@@ -245,6 +266,17 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
     try {
       const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
       
+      console.log('Form Submission Data:', {
+        showCategoryForm,
+        selectedCategory,
+        selectedMainCategory,
+        selectedMainCategoryId,
+        itemName,
+        price,
+        shortDetails,
+        available
+      });
+
       if (!userProfile.restaurantId || !userProfile.branchId) {
         alert('Please log in again. Restaurant or branch information is missing.');
         return;
@@ -280,6 +312,8 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
         });
       } else {
         const selectedCategoryData = categories.find(cat => cat.name === selectedCategory);
+        console.log('Selected Category Data:', selectedCategoryData);
+
         if (!selectedCategoryData) {
           alert('Selected category not found. Please try again.');
           return;
@@ -343,6 +377,11 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   };
 
   const handleMainCategoryClose = (category?: { id: string; categoryName: string }) => {
+    console.log('Main Category Selection:', {
+      selectedCategory: category,
+      previousMainCategory: selectedMainCategory,
+      previousMainCategoryId: selectedMainCategoryId
+    });
     if (category) {
       setSelectedMainCategory(category.categoryName);
       setSelectedMainCategoryId(category.id);
@@ -415,6 +454,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
               <div
                 ref={dropdownRef}
                 onClick={handleMainCategoryClick}
+                id="main-category-button"
                 className="border-[#efefef] border-[1px] border-solid [outline:none] 
                          font-sans text-[13px] bg-[#fff] self-stretch rounded-[8px] 
                          flex flex-row items-center justify-between py-[14px] px-[20px] 
@@ -459,6 +499,12 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                   vertical: 'top',
                   horizontal: 'left',
                 }}
+                keepMounted
+                disablePortal
+                MenuListProps={{
+                  'aria-labelledby': 'main-category-button',
+                  role: 'listbox',
+                }}
               >
                 {isLoadingMainCategories ? (
                   <MenuItem disabled>{t('common.loading')}</MenuItem>
@@ -470,6 +516,8 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                       sx={{
                         backgroundColor: selectedMainCategory === category.categoryName ? '#f5f5f5' : 'transparent',
                       }}
+                      role="option"
+                      aria-selected={selectedMainCategory === category.categoryName}
                     >
                       {category.categoryName}
                     </MenuItem>
@@ -485,6 +533,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                 <div
                   ref={dropdownRef}
                   onClick={handleCategoryClick}
+                  id="category-button"
                   className="border-[#efefef] border-[1px] border-solid [outline:none] 
                            font-sans text-[13px] bg-[#fff] self-stretch rounded-[8px] 
                            flex flex-row items-center justify-between py-[14px] px-[20px] 
@@ -623,6 +672,12 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                   vertical: 'top',
                   horizontal: 'left',
                 }}
+                keepMounted
+                disablePortal
+                MenuListProps={{
+                  'aria-labelledby': 'category-button',
+                  role: 'listbox',
+                }}
               >
                 {isLoading ? (
                   <MenuItem disabled>{t('common.loading')}</MenuItem>
@@ -635,6 +690,8 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                         sx={{
                           backgroundColor: selectedCategory === category.name ? '#f5f5f5' : 'transparent',
                         }}
+                        role="option"
+                        aria-selected={selectedCategory === category.name}
                       >
                         {category.name}
                       </MenuItem>
@@ -649,6 +706,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                         setShowCategoryForm(true);
                         setCategoryAnchorEl(null);
                       }}
+                      role="option"
                     >
                       + {t('inventory.addCategory')}
                     </MenuItem>
