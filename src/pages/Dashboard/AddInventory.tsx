@@ -160,27 +160,34 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
     const fetchMainCategories = async () => {
       setIsLoadingMainCategories(true);
       try {
-        // Find the selected category from categories
-        const selectedCat = categories.find(cat => cat.name === preSelectedCategory?.subCategory);
-        
-        // Get main categories from the selected category's categoryTable
-        const allMainCategories = selectedCat?.categoryTable?.map(tableCat => ({
-          id: tableCat.id,
-          categoryName: tableCat.categoryName
-        })) || [];
+        let allMainCategories: Array<{ id: string; categoryName: string }> = [];
 
-        console.log('Main Categories from selected category:', allMainCategories);
+        if (preSelectedCategory?.subCategory) {
+          // If adding from within a category, use pre-selected categories
+          const selectedCat = categories.find(cat => cat.name === preSelectedCategory.subCategory);
+          allMainCategories = selectedCat?.categoryTable?.map(tableCat => ({
+            id: tableCat.id,
+            categoryName: tableCat.categoryName
+          })) || [];
+        } else {
+          // If adding from top button, fetch all categories from API
+          try {
+            const response = await api.get('/get/menu/categories');
+            console.log('All Categories from API:', response.data);
+            allMainCategories = response.data;
+          } catch (error) {
+            console.error('Failed to fetch categories:', error);
+          }
+        }
+
+        console.log('Main Categories:', allMainCategories);
         setMainCategories(allMainCategories);
 
-        // Set main category from the first item in categoryTable
-        if (allMainCategories.length > 0) {
+        // Only set pre-selected values if we're adding from within a category
+        if (preSelectedCategory?.subCategory && allMainCategories.length > 0) {
           const mainCat = allMainCategories[0];
           setSelectedMainCategory(mainCat.categoryName);
           setSelectedMainCategoryId(mainCat.id);
-        }
-        
-        // Set subcategory from preSelectedCategory
-        if (preSelectedCategory?.subCategory) {
           setSelectedCategory(preSelectedCategory.subCategory);
         }
       } catch (error) {
