@@ -10,6 +10,10 @@ interface AddItemParams {
   foodPhoto: File | null;
   mainCategoryId: string;
   mainCategory: string;
+  extras?: Array<{
+    extrasTitle: string;
+    inventoryId: string;
+  }>;
   onSuccess?: () => void;
 }
 
@@ -31,6 +35,7 @@ export const useAddItemToCategory = () => {
     foodPhoto,
     mainCategoryId,
     mainCategory,
+    extras,
     onSuccess
   }: AddItemParams): Promise<AddItemResponse> => {
     console.log('🔥 useAddItemToCategory hook called - DIRECT API APPROACH 🔥', {
@@ -39,6 +44,7 @@ export const useAddItemToCategory = () => {
       price,
       description,
       mainCategoryId,
+      extras,
       foodPhoto: foodPhoto ? {
         name: foodPhoto.name,
         type: foodPhoto.type,
@@ -63,12 +69,21 @@ export const useAddItemToCategory = () => {
         price,
         description,
         quantity: "1",
-        available
+        available,
+        extras: extras || []
       };
       
       // Append foods as a JSON object
       formData.append('foods', new Blob([JSON.stringify(foods)], { type: 'application/json' }));
       
+      // Append extras as top-level fields
+      if (extras && extras.length > 0) {
+        extras.forEach((extra, idx) => {
+          formData.append(`extrasTitle`, extra.extrasTitle);
+          formData.append(`inventoryId`, extra.inventoryId);
+        });
+      }
+
       formData.append('restaurantName', userProfile.restaurantId || '');
       formData.append('branchName', userProfile.branchId || '');
       

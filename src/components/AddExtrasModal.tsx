@@ -38,6 +38,7 @@ export interface Extra {
   id: string;
   variant: string;
   title: string;
+  inventoryId?: string;
 }
 
 export interface ExtraGroup {
@@ -53,6 +54,7 @@ interface AddExtrasModalProps {
 }
 
 interface FoodItem {
+  id: string;
   foodType: string;
   foodName: string;
   foodPrice: string;
@@ -89,11 +91,10 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
         );
         
         // Get unique food types and create options
-        const uniqueFoodTypes = Array.from(new Set(filteredData.map(item => item.foodName)))
-          .map(type => ({
-            label: type,
-            value: type
-          }));
+        const uniqueFoodTypes = filteredData.map(item => ({
+          label: item.foodName,
+          value: item.id
+        }));
         
         setFoodTypes(uniqueFoodTypes);
       } catch (error) {
@@ -135,12 +136,14 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
 
   const handleAddVariant = () => {
     if (currentGroup && variant) {
+      const selectedOption = foodTypes.find(opt => opt.value === variant);
       setCurrentGroup({
         ...currentGroup,
-        extras: [...currentGroup.extras, { 
-          id: Date.now().toString(), 
-          variant,
-          title: currentGroup.title 
+        extras: [...currentGroup.extras, {
+          id: Date.now().toString(),
+          variant: selectedOption ? selectedOption.label : variant,
+          inventoryId: selectedOption ? selectedOption.value : variant,
+          title: currentGroup.title
         }]
       });
       setVariant('');

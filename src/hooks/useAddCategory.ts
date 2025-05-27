@@ -15,6 +15,10 @@ interface AddCategoryParams {
     description: string;
     quantity: string;
     available: boolean;
+    extras?: Array<{
+      extrasTitle: string;
+      inventoryId: string;
+    }>;
   }>;
   onSuccess?: () => void;
 }
@@ -58,6 +62,11 @@ export const useAddCategory = () => {
         formData.append(`foods[${index}][description]`, food.description);
         formData.append(`foods[${index}][quantity]`, food.quantity);
         formData.append(`foods[${index}][available]`, String(food.available));
+        
+        // Add extras if they exist
+        if (food.extras && food.extras.length > 0) {
+          formData.append(`foods[${index}][extras]`, JSON.stringify(food.extras));
+        }
       });
 
       if (foodTypePhoto) {

@@ -43,7 +43,7 @@ interface FoodItem {
   description: string;
   quantity: number;
   available: boolean;
-  extras: any[];
+  extras?: ExtraItem[];
   foodImage: FoodImage;
 }
 
@@ -87,6 +87,11 @@ interface InventoryItem {
   id: string;
   foodName: string;
   foodPrice: number;
+}
+
+interface ExtraItem {
+  extrasTitle: string;
+  inventoryId: string;
 }
 
 const AddInventory: FunctionComponent<AddInventoryProps> = ({ 
@@ -145,7 +150,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   const [selectedExtra, setSelectedExtra] = useState('');
   const [selectedVariant, setSelectedVariant] = useState('');
   const [extraPrice, setExtraPrice] = useState('');
-  const [extraGroups, setExtraGroups] = useState<ExtraGroup[]>([]);
+  const [extraGroups, setExtraGroups] = useState<ExtraItem[]>([]);
 
   // Add console log for initial state values with ID
   console.log('Initial State Values:', {
@@ -325,28 +330,61 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   };
 
   const isFormValid = () => {
-    const baseValidation = 
-      itemName.trim() !== '' &&
-      shortDetails.trim() !== '' &&
-      selectedImage !== null &&
-      price.trim() !== '' &&
-      available !== null &&
-      selectedMainCategory.trim() !== '';
-
     if (showCategoryForm) {
-      return baseValidation && 
-             newCategory.trim() !== '' && 
-             newCategoryImage !== null;
+      // New category: require newCategory, newCategoryImage, itemName, shortDetails, selectedImage, price, selectedMainCategory
+      return (
+        newCategory.trim() !== '' &&
+        newCategoryImage !== null &&
+        itemName.trim() !== '' &&
+        shortDetails.trim() !== '' &&
+        selectedImage !== null &&
+        price.trim() !== '' &&
+        selectedMainCategory.trim() !== ''
+      );
+    } else {
+      // Existing category: require selectedCategory, itemName, shortDetails, selectedImage, price, selectedMainCategory
+      return (
+        selectedCategory.trim() !== '' &&
+        itemName.trim() !== '' &&
+        shortDetails.trim() !== '' &&
+        selectedImage !== null &&
+        price.trim() !== '' &&
+        selectedMainCategory.trim() !== ''
+      );
     }
+  };
 
-    return baseValidation && selectedCategory.trim() !== '';
+  const handleExtrasAdd = (groups: ExtraGroup[]) => {
+    // Transform the groups into the format we need for the API
+    const transformedExtras = groups.flatMap(group =>
+      group.extras.map(extra => ({
+        extrasTitle: group.title,
+        inventoryId: extra.inventoryId || ""
+      }))
+    );
+    setExtraGroups(transformedExtras);
+    setExtrasModalOpen(false);
   };
 
   const onButtonAddItemClick = async () => {
     try {
       const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
       
-      console.log('Form Submission Data:', {
+      // Add detailed console logs
+      console.log('🔍 Form Validation State:', {
+        itemName: itemName.trim() !== '',
+        shortDetails: shortDetails.trim() !== '',
+        selectedImage: selectedImage !== null,
+        price: price.trim() !== '',
+        available: available !== null,
+        selectedMainCategory: selectedMainCategory.trim() !== '',
+        selectedCategory: selectedCategory.trim() !== '',
+        showCategoryForm: showCategoryForm,
+        newCategory: newCategory.trim() !== '',
+        newCategoryImage: newCategoryImage !== null
+      });
+
+      console.log('📦 Form Data:', {
         showCategoryForm,
         selectedCategory,
         selectedMainCategory,
@@ -355,7 +393,17 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
         price,
         shortDetails,
         available,
-        extras: extraGroups
+        extras: extraGroups,
+        photoFile: photoFile ? {
+          name: photoFile.name,
+          type: photoFile.type,
+          size: photoFile.size
+        } : null,
+        newCategoryFile: newCategoryFile ? {
+          name: newCategoryFile.name,
+          type: newCategoryFile.type,
+          size: newCategoryFile.size
+        } : null
       });
 
       if (!userProfile.restaurantId || !userProfile.branchId) {
@@ -383,6 +431,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
             description: shortDetails,
             quantity: "0",
             available: available,
+            extras: extraGroups
           }],
           mainCategory: selectedMainCategory,
           categoryId: selectedMainCategoryId,
@@ -418,6 +467,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
           foodPhoto: photoFile,
           mainCategoryId: selectedMainCategoryId,
           mainCategory: selectedMainCategory,
+          extras: extraGroups,
           onSuccess: () => {
             onInventoryUpdated?.();
             onClose();
@@ -437,6 +487,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
       setShowCategoryForm(false);
       setNewCategory('');
       setNewCategoryImage(null);
+      setExtraGroups([]); // Reset extras as well
       
     } catch (error) {
       console.error('Failed to save item:', error);
@@ -494,12 +545,6 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
 
   const handleCategoryCancel = () => {
     setShowCategoryForm(false);
-  };
-
-  const handleExtrasAdd = (groups: ExtraGroup[]) => {
-    setExtraGroups(groups);
-    setExtrasModalOpen(false);
-    // You can handle the extras data here or pass it to your API
   };
 
   return (
