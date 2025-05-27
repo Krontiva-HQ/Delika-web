@@ -779,20 +779,21 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     setLoadingOrderIds(prev => new Set(prev).add(order.id));
 
     try {
-      // Optimistically update both the table and floating panel
+      // Immediately update both the table and floating panel with the new status
+      const updatedOrder = { ...order, kitchenStatus: nextStatus };
+      
       setOrders(prevOrders => 
         prevOrders.map(prevOrder => 
           prevOrder.id === order.id 
-            ? { ...prevOrder, kitchenStatus: nextStatus }
+            ? updatedOrder
             : prevOrder
         )
       );
 
-      // Also update the floating panel orders
       setNewOrders(prevOrders => 
         prevOrders.map(prevOrder => 
           prevOrder.id === order.id 
-            ? { ...prevOrder, kitchenStatus: nextStatus }
+            ? updatedOrder
             : prevOrder
         )
       );
@@ -806,24 +807,26 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       // Fetch just this order's latest data
       const response = await api.get(`/orders/${order.orderNumber}`);
       if (response.data) {
-        const updatedOrder = response.data;
+        const latestOrder = response.data;
         
-        // Update both the table and floating panel with the latest data
-        setOrders(prevOrders => 
-          prevOrders.map(prevOrder => 
-            prevOrder.id === order.id 
-              ? updatedOrder
-              : prevOrder
-          )
-        );
+        // Only update if the status is different from what we optimistically set
+        if (latestOrder.kitchenStatus !== nextStatus) {
+          setOrders(prevOrders => 
+            prevOrders.map(prevOrder => 
+              prevOrder.id === order.id 
+                ? latestOrder
+                : prevOrder
+            )
+          );
 
-        setNewOrders(prevOrders => 
-          prevOrders.map(prevOrder => 
-            prevOrder.id === order.id 
-              ? updatedOrder
-              : prevOrder
-          )
-        );
+          setNewOrders(prevOrders => 
+            prevOrders.map(prevOrder => 
+              prevOrder.id === order.id 
+                ? latestOrder
+                : prevOrder
+            )
+          );
+        }
       }
 
       // Perform a full table refresh

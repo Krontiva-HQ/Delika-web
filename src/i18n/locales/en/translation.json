@@ -166,6 +166,7 @@
   "inventory": {
     "title": "Items",
     "addNewItem": "Add item",
+    "addItemTo": "Add item to",
     "categories": "Categories",
     "allItems": "Total item",
     "noItems": "No items found",

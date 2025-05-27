@@ -528,7 +528,9 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
 
           {/* Add Inventory Modal form content*/}
           <div className="flex flex-col items-start justify-start gap-[19px] text-[13px] text-[#686868] font-sans">
-            <b className="relative text-[25px] text-[#201a18] font-sans">{t('inventory.addNewItem')}</b>
+            <b className="relative text-[25px] text-[#201a18] font-sans">
+              {selectedCategory ? `${t('inventory.addItemTo')} ${selectedCategory}` : t('inventory.addNewItem')}
+            </b>
             
             {/* Only show category selection if no preSelectedCategory */}
             {!preSelectedCategory && (
