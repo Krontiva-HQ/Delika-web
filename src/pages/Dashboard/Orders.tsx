@@ -105,92 +105,101 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose, onAccept
   
   if (!isOpen) return null;
 
+  // Filter orders that haven't been accepted or declined yet
+  const pendingOrders = newOrders.filter(order => 
+    order.orderAccepted === undefined || order.orderAccepted === null
+  );
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 font-sans">
       <div className="bg-white dark:bg-black rounded-lg p-6 w-full max-w-md mx-4 sm:mx-0 font-sans relative">
-       
-        
         <h2 className="text-lg sm:text-xl font-semibold mb-4 text-black dark:text-white">
-          {t('orders.newOrderReceived', {count: newOrders.length})}
+          {t('orders.newOrderReceived', {count: pendingOrders.length})}
         </h2>
         
         <div className="max-h-[70vh] overflow-y-auto mb-4 font-sans">
-          {newOrders.map((order) => (
-            <div key={order.id} className="mb-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg font-sans">
-              <div className="text-sm font-medium text-black dark:text-white font-sans">
-                {t('orders.orderNumber')} #{order.orderNumber}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-sans">
-                {t('orders.customer')}: {order.customerName}
-              </div>
-              <div className="text-xs text-gray-500 dark:text-gray-400 font-sans">
-                {t('orders.amount')}: GH₵{Number(order.orderPrice).toFixed(2)}
-              </div>
-              
-              {/* Products Section */}
-              <div className="mt-2 border-t border-gray-200 dark:border-gray-700 pt-2">
-                <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 font-sans">
-                  {t('orders.products')}:
+          {pendingOrders.length === 0 ? (
+            <div className="text-center text-gray-500 py-4">
+              {t('orders.noPendingOrders')}
+            </div>
+          ) : (
+            pendingOrders.map((order) => (
+              <div key={order.id} className="mb-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg font-sans">
+                <div className="text-sm font-medium text-black dark:text-white font-sans">
+                  {t('orders.orderNumber')} #{order.orderNumber}
                 </div>
-                {order.products.map((product, index) => (
-                  <div 
-                    key={`${order.id}-${index}`} 
-                    className="flex justify-between items-start py-1 text-xs font-sans"
-                  >
-                    <div className="flex-1">
-                      <span className="text-black dark:text-white font-medium font-sans">
-                        {product.name}
-                      </span>
-                      <div className="text-gray-500 dark:text-gray-400 text-[10px] font-sans">
-                        GH₵{Number(product.price).toFixed(2)} × {product.quantity}
+                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1 font-sans">
+                  {t('orders.customer')}: {order.customerName}
+                </div>
+                <div className="text-xs text-gray-500 dark:text-gray-400 font-sans">
+                  {t('orders.amount')}: GH₵{Number(order.orderPrice).toFixed(2)}
+                </div>
+                
+                {/* Products Section */}
+                <div className="mt-2 border-t border-gray-200 dark:border-gray-700 pt-2">
+                  <div className="text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 font-sans">
+                    {t('orders.products')}:
+                  </div>
+                  {order.products.map((product, index) => (
+                    <div 
+                      key={`${order.id}-${index}`} 
+                      className="flex justify-between items-start py-1 text-xs font-sans"
+                    >
+                      <div className="flex-1">
+                        <span className="text-black dark:text-white font-medium font-sans">
+                          {product.name}
+                        </span>
+                        <div className="text-gray-500 dark:text-gray-400 text-[10px] font-sans">
+                          GH₵{Number(product.price).toFixed(2)} × {product.quantity}
+                        </div>
+                      </div>
+                      <div className="text-black dark:text-white font-medium ml-2 font-sans">
+                        GH₵{(Number(product.price) * Number(product.quantity)).toFixed(2)}
                       </div>
                     </div>
-                    <div className="text-black dark:text-white font-medium ml-2 font-sans">
-                      GH₵{(Number(product.price) * Number(product.quantity)).toFixed(2)}
-                    </div>
+                  ))}
+                  <div className="mt-1 pt-1 border-t border-gray-200 dark:border-gray-700 flex justify-between text-xs font-medium font-sans">
+                    <span className="text-gray-700 dark:text-gray-300 font-sans">{t('orders.deliveryFee')}:</span>
+                    <span className="text-black dark:text-white font-sans">GH₵{Number(order.deliveryPrice).toFixed(2)}</span>
                   </div>
-                ))}
-                <div className="mt-1 pt-1 border-t border-gray-200 dark:border-gray-700 flex justify-between text-xs font-medium font-sans">
-                  <span className="text-gray-700 dark:text-gray-300 font-sans">{t('orders.deliveryFee')}:</span>
-                  <span className="text-black dark:text-white font-sans">GH₵{Number(order.deliveryPrice).toFixed(2)}</span>
+                  <div className="mt-1 pt-1 border-t border-gray-200 dark:border-gray-700 flex justify-between text-xs font-medium font-sans">
+                    <span className="text-gray-700 dark:text-gray-300 font-sans">{t('orders.total')}:</span>
+                    <span className="text-black dark:text-white font-sans">GH₵{Number(order.totalPrice).toFixed(2)}</span>
+                  </div>
                 </div>
-                <div className="mt-1 pt-1 border-t border-gray-200 dark:border-gray-700 flex justify-between text-xs font-medium font-sans">
-                  <span className="text-gray-700 dark:text-gray-300 font-sans">{t('orders.total')}:</span>
-                  <span className="text-black dark:text-white font-sans">GH₵{Number(order.totalPrice).toFixed(2)}</span>
+
+                {/* Order Type Badge */}
+                <div className="mt-2 flex items-center gap-2">
+                  {order.Walkin && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                      {t('orders.walkIn')}
+                    </span>
+                  )}
+                  {order.payNow && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                      {t('orders.paid')}
+                    </span>
+                  )}
+                </div>
+
+                {/* Accept/Decline buttons */}
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={() => onAccept(order.id)}
+                    className="flex-1 px-3 py-1.5 bg-[#fe5b18] text-white rounded-md text-xs font-medium hover:bg-[#e54d0e] transition-colors"
+                  >
+                    {t('orders.accept')}
+                  </button>
+                  <button
+                    onClick={() => onDecline(order.id)}
+                    className="flex-1 px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md text-xs font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    {t('orders.decline')}
+                  </button>
                 </div>
               </div>
-
-              {/* Order Type Badge */}
-              <div className="mt-2 flex items-center gap-2">
-                {order.Walkin && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
-                    {t('orders.walkIn')}
-                  </span>
-                )}
-                {order.payNow && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
-                    {t('orders.paid')}
-                  </span>
-                )}
-              </div>
-
-              {/* Individual Accept/Decline buttons for each order */}
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={() => onAccept(order.id)}
-                  className="flex-1 px-3 py-1.5 bg-[#fe5b18] text-white rounded-md text-xs font-medium hover:bg-[#e54d0e] transition-colors"
-                >
-                  {t('orders.accept')}
-                </button>
-                <button
-                  onClick={() => onDecline(order.id)}
-                  className="flex-1 px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md text-xs font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                >
-                  {t('orders.decline')}
-                </button>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>
@@ -252,6 +261,10 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
   // Add new state for orders that need accept/decline decision
   const [pendingDecisionOrders, setPendingDecisionOrders] = useState<Set<string>>(new Set());
+
+  // Add new state for initial loading
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isTableLoading, setIsTableLoading] = useState(false);
 
   // Add useEffect to load persisted pending orders on mount
   useEffect(() => {
@@ -336,11 +349,22 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                     handleKitchenStatusUpdate(order.id, 'orderReceived', order);
                   }}
                   className={`px-2 py-1 rounded text-xs font-sans font-semibold
+                    ${loadingOrderIds.has(order.id) && order.kitchenStatus === '' ? 'opacity-50' : ''}
                     ${order.kitchenStatus === 'orderReceived' ? 'bg-[#2196F3] text-white' : 'bg-[#E3F2FD] text-[#2196F3]'}
                   `}
-                  disabled={order.kitchenStatus !== 'orderReceived' && order.kitchenStatus !== ''}
+                  disabled={loadingOrderIds.has(order.id) || (order.kitchenStatus !== 'orderReceived' && order.kitchenStatus !== '')}
                 >
-                  Order Received
+                  {loadingOrderIds.has(order.id) && order.kitchenStatus === '' ? (
+                    <span className="flex items-center gap-1">
+                      <svg className="animate-spin h-3 w-3 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Order Received
+                    </span>
+                  ) : (
+                    'Order Received'
+                  )}
                 </button>
 
                 {/* Preparing Button */}
@@ -349,11 +373,22 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                     handleKitchenStatusUpdate(order.id, 'preparing', order);
                   }}
                   className={`px-2 py-1 rounded text-xs font-sans font-semibold
+                    ${loadingOrderIds.has(order.id) && order.kitchenStatus === 'orderReceived' ? 'opacity-50' : ''}
                     ${order.kitchenStatus === 'preparing' ? 'bg-[#FFC107] text-white' : 'bg-[#FFF8E1] text-[#FFC107]'}
                   `}
-                  disabled={order.kitchenStatus !== 'orderReceived'}
+                  disabled={loadingOrderIds.has(order.id) || order.kitchenStatus !== 'orderReceived'}
                 >
-                  Preparing
+                  {loadingOrderIds.has(order.id) && order.kitchenStatus === 'orderReceived' ? (
+                    <span className="flex items-center gap-1">
+                      <svg className="animate-spin h-3 w-3 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Preparing
+                    </span>
+                  ) : (
+                    'Preparing'
+                  )}
                 </button>
 
                 {/* Prepared Button */}
@@ -362,11 +397,22 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                     handleKitchenStatusUpdate(order.id, 'prepared', order);
                   }}
                   className={`px-2 py-1 rounded text-xs font-sans font-semibold
+                    ${loadingOrderIds.has(order.id) && order.kitchenStatus === 'preparing' ? 'opacity-50' : ''}
                     ${order.kitchenStatus === 'prepared' ? 'bg-[#B9F6CA] text-[#004D40]' : 'bg-[#E0F2F1] text-[#26A69A]'}
                   `}
-                  disabled={order.kitchenStatus !== 'preparing'}
+                  disabled={loadingOrderIds.has(order.id) || order.kitchenStatus !== 'preparing'}
                 >
-                  Prepared
+                  {loadingOrderIds.has(order.id) && order.kitchenStatus === 'preparing' ? (
+                    <span className="flex items-center gap-1">
+                      <svg className="animate-spin h-3 w-3 text-current" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Prepared
+                    </span>
+                  ) : (
+                    'Prepared'
+                  )}
                 </button>
               </div>
             </div>
@@ -396,11 +442,16 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
   const open = Boolean(anchorEl);
 
-  // Update the fetchOrders function to handle Store Clerk and Manager roles
+  // Update the fetchOrders function to handle loading states better
   const fetchOrders = useCallback(async (branchId: string, date: string) => {
     if (!branchId || !date) return;
     
-    setIsLoading(true);
+    // Only show full loading state on initial load
+    if (isInitialLoading) {
+      setIsLoading(true);
+    } else {
+      setIsTableLoading(true);
+    }
     
     try {
       let params = new URLSearchParams();
@@ -434,8 +485,10 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       setOrders([]);
     } finally {
       setIsLoading(false);
+      setIsTableLoading(false);
+      setIsInitialLoading(false);
     }
-  }, [userProfile?.restaurantId, userProfile?.role, userProfile?.branchId]);
+  }, [userProfile?.restaurantId, userProfile?.role, userProfile?.branchId, isInitialLoading]);
 
   // Update useEffect to handle branch selection based on role
   useEffect(() => {
@@ -486,8 +539,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
   const checkForNewOrders = useCallback(async () => {
     if (!selectedDate || !selectedBranchId) return;
 
-
-
     try {
       let params = new URLSearchParams();
       
@@ -522,8 +573,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         return order.orderChannel === 'customerApp';
       });
 
-     
-
       // Update newOrders state with proper kitchen status sync
       setNewOrders(prev => {
         // Removed console.log('🔄 Updating newOrders state...', ...)
@@ -540,13 +589,10 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
           (order.kitchenStatus === 'orderReceived' || order.kitchenStatus === 'preparing')
         );
 
-    
-
         // Update kitchen status for existing orders
         const updatedExistingOrders = existingOrders.map(existingOrder => {
           const latestOrder = latestOrders.find((order: Order) => order.id === existingOrder.id);
           if (latestOrder) {
-           
             return {
               ...existingOrder,
               kitchenStatus: latestOrder.kitchenStatus
@@ -564,8 +610,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         ).sort((a, b) => 
           new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime()
         );
-
-   
 
         return uniqueOrders;
       });
@@ -775,13 +819,20 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       return; // No further status changes allowed
     }
 
-    // Add this order to loading state
+    // Add this order to loading state before any updates
     setLoadingOrderIds(prev => new Set(prev).add(order.id));
 
     try {
-      // Immediately update both the table and floating panel with the new status
+      // Make the API call first
+      await api.patch('/edit/kitchen/status', {
+        orderNumber: order.orderNumber,
+        kitchenStatus: nextStatus
+      });
+
+      // After successful API call, update the UI
       const updatedOrder = { ...order, kitchenStatus: nextStatus };
       
+      // Update both the table and floating panel with the new status
       setOrders(prevOrders => 
         prevOrders.map(prevOrder => 
           prevOrder.id === order.id 
@@ -798,35 +849,27 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         )
       );
 
-      // Make the API call
-      await api.patch('/edit/kitchen/status', {
-        orderNumber: order.orderNumber,
-        kitchenStatus: nextStatus
-      });
-
-      // Fetch just this order's latest data
+      // Fetch just this order's latest data to ensure consistency
       const response = await api.get(`/orders/${order.orderNumber}`);
       if (response.data) {
         const latestOrder = response.data;
         
-        // Only update if the status is different from what we optimistically set
-        if (latestOrder.kitchenStatus !== nextStatus) {
-          setOrders(prevOrders => 
-            prevOrders.map(prevOrder => 
-              prevOrder.id === order.id 
-                ? latestOrder
-                : prevOrder
-            )
-          );
+        // Update with the latest data from the server
+        setOrders(prevOrders => 
+          prevOrders.map(prevOrder => 
+            prevOrder.id === order.id 
+              ? latestOrder
+              : prevOrder
+          )
+        );
 
-          setNewOrders(prevOrders => 
-            prevOrders.map(prevOrder => 
-              prevOrder.id === order.id 
-                ? latestOrder
-                : prevOrder
-            )
-          );
-        }
+        setNewOrders(prevOrders => 
+          prevOrders.map(prevOrder => 
+            prevOrder.id === order.id 
+              ? latestOrder
+              : prevOrder
+          )
+        );
       }
 
       // Perform a full table refresh
@@ -869,7 +912,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         message: 'Failed to update kitchen status'
       });
     } finally {
-      // Remove this order from loading state
+      // Remove this order from loading state after all operations are complete
       setLoadingOrderIds(prev => {
         const next = new Set(prev);
         next.delete(order.id);
@@ -1202,17 +1245,21 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
               {/* Table Body */}
               {isLoading ? (
-                <div className="p-4 text-center text-gray-500 font-sans">{t('common.loading')}</div>
+                <div className="p-8 text-center">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-[#fe5b18] border-t-transparent"></div>
+                  <div className="mt-2 text-[#666] font-sans">{t('common.loading')}</div>
+                </div>
               ) : paginatedOrders.orders.length === 0 ? (
                 <div className="p-4 text-center text-gray-500 font-sans">{t('orders.noOrdersFound')}</div>
               ) : (
                 <>
-                  {/* Map through paginatedOrders.orders instead of filteredOrders */}
                   {paginatedOrders.orders.map((order) => (
                     <div 
                       key={order.id} 
                       style={{ borderBottom: '1px solid #eaeaea', gridTemplateColumns: '80px 1fr 1.2fr 0.8fr 80px 1fr 1fr' }}
-                      className="grid grid-cols-7 p-3 gap-2 hover:bg-[#f9f9f9]"
+                      className={`grid grid-cols-7 p-3 gap-2 hover:bg-[#f9f9f9] transition-all duration-200 ${
+                        isTableLoading ? 'opacity-50' : ''
+                      }`}
                     >
                       <div className="text-[12px] leading-[20px] font-sans text-[#444] truncate">{order.orderNumber}</div>
                       <div className="flex items-center gap-2 min-w-0">
@@ -1242,7 +1289,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span 
+                        <span
                           className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans
                             ${loadingOrderIds.has(order.id) ? 'opacity-50' : ''} 
                             ${order.orderChannel === 'restaurantPortal' 
