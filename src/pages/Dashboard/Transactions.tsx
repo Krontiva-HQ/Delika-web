@@ -41,6 +41,9 @@ const Transactions: FunctionComponent = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 10;
 
+  // Add this state near the top of the component with other state declarations
+  const [paymentStatus, setPaymentStatus] = useState('all');
+
   // Updated fetchTransactions function
   const fetchTransactions = useCallback(async (branchId: string, date: string) => {
     setIsLoading(true);
@@ -153,20 +156,31 @@ const Transactions: FunctionComponent = () => {
         return new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime();
       })
       .filter(order => {
-        switch (activeTab) {
-          case 'pending':
-            return order.paymentStatus === 'Pending';
-          case 'paid':
-            return order.paymentStatus === 'Paid';
-          case 'momo':
-            return order.payLater === true;
-          case 'cash':
-            return order.payNow === true;
-          case 'visa':
-            return order.payVisaCard === true;
-          default:
-            return true;
-        }
+        const matchesTab = activeTab === 'all' 
+          ? true 
+          : activeTab === 'customerApp'
+          ? order.orderChannel === 'customerApp'
+          : activeTab === 'restaurantPortal'
+          ? order.orderChannel === 'restaurantPortal'
+          : true;
+
+        const matchesPaymentStatus = activeTab === 'restaurantPortal' 
+          ? paymentStatus === 'all' 
+            ? true 
+            : paymentStatus === 'pending' 
+              ? order.paymentStatus === 'Pending'
+              : paymentStatus === 'paid' 
+                ? order.paymentStatus === 'Paid'
+                : paymentStatus === 'momo' 
+                  ? order.payLater === true
+                  : paymentStatus === 'cash' 
+                    ? order.payNow === true
+                    : paymentStatus === 'visa' 
+                      ? order.payVisaCard === true
+                      : true
+          : true;
+
+        return matchesTab && matchesPaymentStatus;
       });
 
     // Calculate pagination
@@ -178,7 +192,7 @@ const Transactions: FunctionComponent = () => {
       totalOrders: filtered.length,
       totalPages: Math.ceil(filtered.length / ordersPerPage)
     };
-  }, [orders, activeTab, currentPage]);
+  }, [orders, activeTab, paymentStatus, currentPage]);
 
   // Add pagination handlers
   const handleNextPage = () => {
@@ -219,24 +233,42 @@ const Transactions: FunctionComponent = () => {
     if (!orders.length) return 0;
     
     const relevantOrders = orders.filter(order => {
-      switch (activeTab) {
-        case 'pending':
-          return order.paymentStatus === 'Pending';
-        case 'paid':
-          return order.paymentStatus === 'Paid';
-        case 'momo':
-          return order.payLater === true;
-        case 'cash':
-          return order.payNow === true;
-        case 'visa':
-          return order.payVisaCard === true;
-        default:
-          return true;
-      }
+      const matchesTab = activeTab === 'all' 
+        ? true 
+        : activeTab === 'customerApp'
+        ? order.orderChannel === 'customerApp'
+        : activeTab === 'restaurantPortal'
+        ? order.orderChannel === 'restaurantPortal'
+        : true;
+
+      const matchesPaymentStatus = activeTab === 'restaurantPortal' 
+        ? paymentStatus === 'all' 
+          ? true 
+          : paymentStatus === 'pending' 
+            ? order.paymentStatus === 'Pending'
+            : paymentStatus === 'paid' 
+              ? order.paymentStatus === 'Paid'
+              : paymentStatus === 'momo' 
+                ? order.payLater === true
+                : paymentStatus === 'cash' 
+                  ? order.payNow === true
+                  : paymentStatus === 'visa' 
+                    ? order.payVisaCard === true
+                    : true
+        : true;
+
+      return matchesTab && matchesPaymentStatus;
     });
 
     return relevantOrders.reduce((sum, order) => sum + (parseFloat(order.orderPrice) || 0), 0).toFixed(2);
-  }, [orders, activeTab]);
+  }, [orders, activeTab, paymentStatus]);
+
+  // Add this effect to reset payment status when changing tabs
+  useEffect(() => {
+    if (activeTab !== 'restaurantPortal') {
+      setPaymentStatus('all');
+    }
+  }, [activeTab]);
 
   return (
     <div className="h-full w-full bg-white m-0 p-0">
@@ -284,55 +316,91 @@ const Transactions: FunctionComponent = () => {
                 </div>
                 <div 
                   className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
-                    ${activeTab === 'pending'
+                    ${activeTab === 'customerApp'
                       ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
                       : 'text-[#929494]'
                     }`}
-                  onClick={() => setActiveTab('pending')}
+                  onClick={() => setActiveTab('customerApp')}
                 >
-                  Pending
+                  Customer App
                 </div>
                 <div 
                   className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
-                    ${activeTab === 'paid'
+                    ${activeTab === 'restaurantPortal'
                       ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
                       : 'text-[#929494]'
                     }`}
-                  onClick={() => setActiveTab('paid')}
+                  onClick={() => setActiveTab('restaurantPortal')}
                 >
-                  Paid
-                </div>
-                <div 
-                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
-                    ${activeTab === 'momo'
-                      ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
-                      : 'text-[#929494]'
-                    }`}
-                  onClick={() => setActiveTab('momo')}
-                >
-                  Momo
-                </div>
-                <div 
-                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
-                    ${activeTab === 'cash'
-                      ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
-                      : 'text-[#929494]'
-                    }`}
-                  onClick={() => setActiveTab('cash')}
-                >
-                  Cash
-                </div>
-                <div 
-                  className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
-                    ${activeTab === 'visa'
-                      ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
-                      : 'text-[#929494]'
-                    }`}
-                  onClick={() => setActiveTab('visa')}
-                >
-                  Visa Card
+                  Restaurant Portal
                 </div>
               </div>
+
+              {/* Payment Status Tabs - Only show when Restaurant Portal is selected */}
+              {activeTab === 'restaurantPortal' && (
+                <div className="flex gap-4 min-w-max mt-4">
+                  <div 
+                    className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
+                      ${paymentStatus === 'all' 
+                        ? 'bg-[#fe5b18] text-white border-[#fe5b18]' 
+                        : 'text-[#797979]'
+                      }`}
+                    onClick={() => setPaymentStatus('all')}
+                  >
+                    All
+                  </div>
+                  <div 
+                    className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
+                      ${paymentStatus === 'pending'
+                        ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
+                        : 'text-[#929494]'
+                      }`}
+                    onClick={() => setPaymentStatus('pending')}
+                  >
+                    Pending
+                  </div>
+                  <div 
+                    className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
+                      ${paymentStatus === 'paid'
+                        ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
+                        : 'text-[#929494]'
+                      }`}
+                    onClick={() => setPaymentStatus('paid')}
+                  >
+                    Paid
+                  </div>
+                  <div 
+                    className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
+                      ${paymentStatus === 'momo'
+                        ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
+                        : 'text-[#929494]'
+                      }`}
+                    onClick={() => setPaymentStatus('momo')}
+                  >
+                    Momo
+                  </div>
+                  <div 
+                    className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
+                      ${paymentStatus === 'cash'
+                        ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
+                        : 'text-[#929494]'
+                      }`}
+                    onClick={() => setPaymentStatus('cash')}
+                  >
+                    Cash
+                  </div>
+                  <div 
+                    className={`relative text-[12px] leading-[20px] font-sans cursor-pointer border-[1px] border-solid border-[#eaeaea] rounded-[6px] px-1 py-1 whitespace-nowrap
+                      ${paymentStatus === 'visa'
+                        ? 'bg-[#fe5b18] text-white border-[#fe5b18]'
+                        : 'text-[#929494]'
+                      }`}
+                    onClick={() => setPaymentStatus('visa')}
+                  >
+                    Visa Card
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -340,11 +408,8 @@ const Transactions: FunctionComponent = () => {
               <div className="flex-shrink-0 border border-[#eaeaea] border-solid rounded-md px-3 py-1">
                 <span className="text-[12px] font-sans text-[#666] whitespace-nowrap">
                   Total {activeTab === 'all' ? '' : 
-                         activeTab === 'momo' ? 'Momo' :
-                         activeTab === 'cash' ? 'Cash' :
-                         activeTab === 'visa' ? 'Visa Card' :
-                         activeTab === 'pending' ? 'Pending' :
-                         activeTab === 'paid' ? 'Paid' : ''}: GH₵ {totalAmount}
+                         activeTab === 'customerApp' ? 'Customer App' :
+                         activeTab === 'restaurantPortal' ? 'Restaurant Portal' : ''}: GH₵ {totalAmount}
                 </span>
               </div>
 
