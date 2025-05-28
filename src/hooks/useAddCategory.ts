@@ -50,24 +50,40 @@ export const useAddCategory = () => {
     setIsLoading(true);
     try {
       const formData = new FormData();
+      formData.append('path', '/create/new/category');
       formData.append('foodType', foodType);
       formData.append('restaurantName', restaurantName);
       formData.append('branchName', branchName);
       formData.append('mainCategory', mainCategory);
       formData.append('categoryId', categoryId);
       
-      foods.forEach((food, index) => {
-        formData.append(`foods[${index}][name]`, food.name);
-        formData.append(`foods[${index}][price]`, food.price);
-        formData.append(`foods[${index}][description]`, food.description);
-        formData.append(`foods[${index}][quantity]`, food.quantity);
-        formData.append(`foods[${index}][available]`, String(food.available));
+      // Process the first food item (assuming single food item like useAddItemToCategory)
+      const firstFood = foods[0];
+      if (firstFood) {
+        // Create foods object (single object, not array)
+        const foodsObject = {
+          name: firstFood.name,
+          price: firstFood.price,
+          description: firstFood.description,
+          quantity: firstFood.quantity,
+          available: firstFood.available,
+          extras: (firstFood.extras || []).map(extra => ({
+            extrasTitle: extra.extrasTitle,
+            inventoryId: extra.inventoryId
+          }))
+        };
+
+        // Append foods as a JSON object (same as useAddItemToCategory)
+        formData.append('foods', new Blob([JSON.stringify(foodsObject)], { type: 'application/json' }));
         
-        // Add extras if they exist
-        if (food.extras && food.extras.length > 0) {
-          formData.append(`foods[${index}][extras]`, JSON.stringify(food.extras));
+        // Append extras as indexed fields (same as useAddItemToCategory)
+        if (firstFood.extras && firstFood.extras.length > 0) {
+          firstFood.extras.forEach((extra, idx) => {
+            formData.append(`extras[${idx}][extrasTitle]`, extra.extrasTitle);
+            formData.append(`extras[${idx}][inventoryId]`, extra.inventoryId);
+          });
         }
-      });
+      }
 
       if (foodTypePhoto) {
         console.log('📸 Adding foodTypePhoto:', {
