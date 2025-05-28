@@ -63,26 +63,30 @@ export const useAddItemToCategory = () => {
       formData.append('categoryId', categoryId);
       formData.append('mainCategoryId', mainCategoryId);
       
-      // Create foods object
-      const foods = {
-        name,
-        price,
-        description,
-        quantity: "1",
-        available,
-        extras: extras || []
-      };
-      
+     // Create foods object
+const foods = {
+  name,
+  price,
+  description,
+  quantity: "1",
+  available,
+  extras: (extras || []).map(extra => ({
+    extrasTitle: extra.extrasTitle,
+    inventoryId: extra.inventoryId
+  }))
+};
+
       // Append foods as a JSON object
       formData.append('foods', new Blob([JSON.stringify(foods)], { type: 'application/json' }));
       
-      // Append extras as top-level fields
-      if (extras && extras.length > 0) {
-        extras.forEach((extra, idx) => {
-          formData.append(`extrasTitle`, extra.extrasTitle);
-          formData.append(`inventoryId`, extra.inventoryId);
-        });
-      }
+    // Append extras as indexed fields
+if (extras && extras.length > 0) {
+  extras.forEach((extra, idx) => {
+    formData.append(`extras[${idx}][extrasTitle]`, extra.extrasTitle);
+    formData.append(`extras[${idx}][inventoryId]`, extra.inventoryId);
+  });
+}
+
 
       formData.append('restaurantName', userProfile.restaurantId || '');
       formData.append('branchName', userProfile.branchId || '');
