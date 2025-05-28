@@ -367,7 +367,7 @@ export const createCategory = (formData: FormData) => {
   });
   
   const headers = {
-    'Content-Type': 'application/json',
+    'Content-Type': 'multipart/form-data',
     'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
   };
 

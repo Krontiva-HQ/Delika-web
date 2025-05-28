@@ -70,9 +70,19 @@ export const useAddCategory = () => {
       });
 
       if (foodTypePhoto) {
+        console.log('📸 Adding foodTypePhoto:', {
+          name: foodTypePhoto.name,
+          type: foodTypePhoto.type,
+          size: foodTypePhoto.size
+        });
         formData.append('foodTypePhoto', foodTypePhoto);
       }
       if (foodsPhoto) {
+        console.log('📸 Adding foodsPhoto:', {
+          name: foodsPhoto.name,
+          type: foodsPhoto.type,
+          size: foodsPhoto.size
+        });
         formData.append('foodsPhoto', foodsPhoto);
       }
 
