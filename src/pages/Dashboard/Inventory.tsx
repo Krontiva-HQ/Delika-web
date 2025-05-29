@@ -25,6 +25,7 @@ interface MenuItem {
   price: number;
   description?: string;
   available: boolean;
+  extras?: ExtraGroup[];
 }
 
 interface EditInventoryModalProps {
@@ -34,6 +35,32 @@ interface EditInventoryModalProps {
   isUpdating: boolean;
   updateError: string | null;
   branchId: string;
+}
+
+// Add interfaces for extras
+interface ExtraDetail {
+  foodName: string;
+  foodPrice: number;
+  foodDescription: string;
+  foodImage: {
+    access: string;
+    path: string;
+    name: string;
+    type: string;
+    size: number;
+    mime: string;
+    meta: {
+      width: number;
+      height: number;
+    };
+    url: string;
+  };
+}
+
+interface ExtraGroup {
+  delika_inventory_table_id: string;
+  extrasTitle: string;
+  extrasDetails: ExtraDetail[];
 }
 
 // Add interface for category food items
@@ -46,6 +73,7 @@ interface CategoryFood {
   description?: string;
   quantity?: number;
   available?: boolean;
+  extras?: ExtraGroup[];
 }
 
 interface Category {
@@ -260,89 +288,148 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       <Modal
         open={true}
         onClose={onClose}
-        className="flex items-center justify-center"
+        className="flex items-center justify-center p-4"
       >
-        <div className="bg-white dark:bg-[#2c2522] rounded-lg p-6 w-[90%] max-w-[400px] mx-auto">
-          <div className="flex flex-col gap-4">
-            <img
-              src={optimizeImageUrl(item.image)}
-              alt={item.name}
-              className="w-full h-[250px] object-cover rounded-lg"
-              loading="eager"
-            />
-            <div className="flex flex-col gap-1">
-              <h2 className="text-xl font-semibold font-sans">{item.name}</h2>
-              <p className="text-sm text-black font-sans">{item.description}</p>
-              <div className={`text-sm font-sans ${item.available ? 'text-green-600' : 'text-red-600'}`}>
-                {item.available ? t('inventory.available') : t('inventory.unavailable')}
-              </div>
-            </div>
-          </div>
-          <div className="flex gap-4">
-            {/* Price Control */}
-            <div className="flex flex-col gap-2 flex-1">
-              <label className="text-sm text-gray-600 font-sans">{t('inventory.price')} (GHS)</label>
-              <input
-                type="number"
-                value={price}
-                onChange={(e) => setPrice(Number(e.target.value))}
-                className="border rounded p-2 font-sans"
+        <div className="bg-white dark:bg-[#2c2522] rounded-lg p-4 sm:p-6 w-full max-w-[95%] sm:max-w-[90%] md:max-w-[1000px] mx-auto max-h-[90vh] overflow-y-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+            {/* Left Column - Main Item Details */}
+            <div className="flex flex-col gap-4">
+              <img
+                src={optimizeImageUrl(item.image)}
+                alt={item.name}
+                className="w-full h-[200px] sm:h-[250px] object-cover rounded-lg"
+                loading="eager"
               />
-            </div>
-
-            {/* Availability Control */}
-            <div className="flex flex-col gap-2">
-              <label className="text-sm text-gray-600 font-sans">{t('inventory.availability')}</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={available}
-                  onChange={(e) => setAvailable(e.target.checked)}
-                  className="w-5 h-5"
-                />
-                <span className="text-sm font-sans">
-                  {available ? t('inventory.available') : t('inventory.unavailable')}
-                </span>
+              <div className="flex flex-col gap-1">
+                <h2 className="text-lg sm:text-xl font-semibold font-sans">{item.name}</h2>
+                <p className="text-sm text-black font-sans">{item.description}</p>
+                <div className={`text-sm font-sans ${item.available ? 'text-green-600' : 'text-red-600'}`}>
+                  {item.available ? t('inventory.available') : t('inventory.unavailable')}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="flex gap-4 justify-end mt-4">
-            <Button
-              onClick={onClose}
-              variant="outlined"
-              className="font-sans"
-              style={{
-                backgroundColor: '#fd683e',
-                borderColor: '#f5fcf8',
-                color: 'white',
-                padding: '9px 90px',
-                fontSize: '10px',
-                borderRadius: '4px',
-                flex: 1,
-                height: '42px',
-              }}
-            >
-              {t('common.cancel')}
-            </Button>
-            <Button
-              onClick={() => onSave(item.id, price, available)}
-              variant="contained"
-              className="font-sans !font-sans"
-              style={{
-                backgroundColor: '#201a18',
-                borderColor: '#f5fcf8',
-                color: 'white',
-                padding: '9px 90px',
-                fontSize: '10px',
-                borderRadius: '4px',
-                flex: 1,
-                height: '42px',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {t('inventory.saveChanges')}
-            </Button>
+            {/* Right Column - Extras and Controls */}
+            <div className="flex flex-col gap-4">
+              {/* Extras Section */}
+              {item.extras && item.extras.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold font-sans mb-2">Extras Available</h3>
+                  <div className="space-y-3 max-h-[250px] sm:max-h-[300px] overflow-y-auto">
+                    {(() => {
+                      // Group extras by extrasTitle
+                      const groupedExtras = item.extras.reduce((acc, extraGroup) => {
+                        const title = extraGroup.extrasTitle;
+                        if (!acc[title]) {
+                          acc[title] = [];
+                        }
+                        // Add all extrasDetails from this group to the title
+                        acc[title].push(...extraGroup.extrasDetails);
+                        return acc;
+                      }, {} as Record<string, ExtraDetail[]>);
+
+                      // Render grouped extras
+                      return Object.entries(groupedExtras).map(([title, details], groupIndex) => (
+                        <div key={groupIndex} className="border border-gray-200 rounded-lg p-2 sm:p-3 bg-gray-50">
+                          <h4 className="text-sm sm:text-md font-medium font-sans mb-2 text-[#333]">
+                            {title}
+                          </h4>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {details.map((extraDetail, detailIndex) => (
+                              <div key={detailIndex} className="bg-white rounded-lg border border-gray-100 p-2 text-center">
+                                <img
+                                  src={optimizeImageUrl(extraDetail.foodImage.url)}
+                                  alt={extraDetail.foodName}
+                                  className="w-full h-12 sm:h-16 object-contain rounded mb-1"
+                                  loading="lazy"
+                                />
+                                <div className="text-xs font-medium font-sans text-[#333] leading-tight mb-1">
+                                  {extraDetail.foodName}
+                                </div>
+                                <div className="text-xs font-semibold font-sans text-[#fd683e]">
+                                  GH₵{extraDetail.foodPrice}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </div>
+              )}
+
+              {/* Price and Availability Controls */}
+              <div className="flex flex-col gap-4 mt-auto">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  {/* Price Control */}
+                  <div className="flex flex-col gap-2 flex-1">
+                    <label className="text-sm text-gray-600 font-sans">{t('inventory.price')} (GHS)</label>
+                    <input
+                      type="number"
+                      value={price}
+                      onChange={(e) => setPrice(Number(e.target.value))}
+                      className="border rounded p-2 font-sans w-full"
+                    />
+                  </div>
+
+                  {/* Availability Control */}
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm text-gray-600 font-sans">{t('inventory.availability')}</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={available}
+                        onChange={(e) => setAvailable(e.target.checked)}
+                        className="w-5 h-5"
+                      />
+                      <span className="text-sm font-sans">
+                        {available ? t('inventory.available') : t('inventory.unavailable')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 justify-end">
+                  <Button
+                    onClick={onClose}
+                    variant="outlined"
+                    className="font-sans order-2 sm:order-1"
+                    style={{
+                      backgroundColor: '#fd683e',
+                      borderColor: '#f5fcf8',
+                      color: 'white',
+                      padding: '9px 20px',
+                      fontSize: '10px',
+                      borderRadius: '4px',
+                      flex: 1,
+                      height: '42px',
+                    }}
+                  >
+                    {t('common.cancel')}
+                  </Button>
+                  <Button
+                    onClick={() => onSave(item.id, price, available)}
+                    variant="contained"
+                    className="font-sans !font-sans order-1 sm:order-2"
+                    style={{
+                      backgroundColor: '#201a18',
+                      borderColor: '#f5fcf8',
+                      color: 'white',
+                      padding: '9px 20px',
+                      fontSize: '10px',
+                      borderRadius: '4px',
+                      flex: 1,
+                      height: '42px',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    {t('inventory.saveChanges')}
+                  </Button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </Modal>
@@ -382,7 +469,8 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
             name: food.name,
             price: Number(food.price),
             description: food.description,
-            available: food.available ?? false
+            available: food.available ?? false,
+            extras: food.extras || []
           }))
         );
       }
@@ -404,7 +492,8 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         name: food.name,
         price: Number(food.price),
         description: food.description || '',
-        available: food.available ?? false
+        available: food.available ?? false,
+        extras: food.extras || []
       }))
     );
 
