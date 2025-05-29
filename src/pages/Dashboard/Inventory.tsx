@@ -351,8 +351,11 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
             <Button
               onClick={handleEditToggle}
               variant="outlined"
-              className="absolute top-3 right-3 z-10"
+              className="z-10"
               style={{
+                position: 'absolute',
+                top: '12px',
+                right: '24px',
                 backgroundColor: isEditing ? '#fd683e' : '#201a18',
                 borderColor: isEditing ? '#fd683e' : '#201a18',
                 color: 'white',
@@ -362,7 +365,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                 minWidth: '60px'
               }}
             >
-              {isEditing ? 'Edit' : 'Cancel'}
+              {isEditing ? 'Cancel' : 'Edit'}
             </Button>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 mt-6">

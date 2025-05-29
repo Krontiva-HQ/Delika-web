@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
   Dialog,
-  DialogTitle,
   DialogContent,
-  DialogActions,
   Button,
   MenuItem,
   Select,
@@ -16,21 +14,12 @@ import {
   Box,
   Typography,
   CircularProgress,
-  Grid,
-  Card,
-  CardContent,
-  CardActions,
-  Stepper,
-  Step,
-  StepLabel,
-  Paper,
   Chip,
 } from '@mui/material';
-import DeleteIcon from '@mui/icons-material/Delete';
-import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
+import { X, Plus, Trash2, Edit3, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { api } from '@/services/api';
 import { useUserProfile } from '../hooks/useUserProfile';
+
 // Option type for dropdowns
 type Option = { label: string; value: string };
 
@@ -61,7 +50,23 @@ interface FoodItem {
   restaurantName: string;
 }
 
-const steps = ['Enter extras title', 'Add extras', 'Review extras'];
+const steps = [
+  {
+    id: 1,
+    title: 'Enter extras title',
+    description: 'Create a title for your extras group'
+  },
+  {
+    id: 2,
+    title: 'Add extras',
+    description: 'Select and add variants to your group'
+  },
+  {
+    id: 3,
+    title: 'Review extras',
+    description: 'Review and manage your extras groups'
+  }
+];
 
 const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
   open,
@@ -182,229 +187,315 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
     onClose();
   };
 
+  const StepIndicator = () => (
+    <div className="flex items-center justify-center mb-6">
+      {steps.map((step, index) => (
+        <div key={step.id} className="flex items-center">
+          <div className="flex flex-col items-center">
+            <div 
+              className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold transition-all duration-300 ${
+                index <= activeStep 
+                  ? 'bg-[#fd683e] text-white shadow-md' 
+                  : 'bg-gray-200 text-gray-500'
+              }`}
+            >
+              {index < activeStep ? (
+                <Check className="w-4 h-4" />
+              ) : (
+                step.id
+              )}
+            </div>
+            <div className="mt-1 text-center max-w-[80px]">
+              <div className={`text-xs font-medium ${index <= activeStep ? 'text-[#fd683e]' : 'text-gray-500'}`}>
+                {step.title}
+              </div>
+            </div>
+          </div>
+          {index < steps.length - 1 && (
+            <div 
+              className={`w-12 h-0.5 mx-3 transition-all duration-300 ${
+                index < activeStep ? 'bg-[#fd683e]' : 'bg-gray-200'
+              }`}
+            />
+          )}
+        </div>
+      ))}
+    </div>
+  );
+
   const renderStepContent = () => {
     switch (activeStep) {
       case 0:
         return (
-          <Box sx={{ mt: 2, fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif ' }}>
-            <TextField
-              fullWidth
-              label="Extras Title"
-              value={groupTitle}
-              onChange={(e) => setGroupTitle(e.target.value)}
-              placeholder="e.g., Toppings, Sauces, Sides"
-              InputProps={{
-                sx: { 
-                  fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#000',
+          <div className="space-y-4">
+            <div className="text-center space-y-1">
+              <h3 className="text-lg font-semibold text-gray-900">Create Extras Group</h3>
+              <p className="text-sm text-gray-600">Give your extras group a descriptive title</p>
+            </div>
+            
+            <div className="bg-gray-50 rounded-lg p-4">
+              <TextField
+                fullWidth
+                label="Extras Title"
+                value={groupTitle}
+                onChange={(e) => setGroupTitle(e.target.value)}
+                placeholder="e.g., Toppings, Sauces, Sides"
+                variant="outlined"
+                size="small"
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: 'white',
+                    borderRadius: '8px',
+                    '& fieldset': {
+                      borderColor: '#e5e7eb',
+                      borderWidth: '1px',
+                    },
+                    '&:hover fieldset': {
+                      borderColor: '#fd683e',
+                    },
+                    '&.Mui-focused fieldset': {
+                      borderColor: '#fd683e',
+                      borderWidth: '2px',
+                    },
                   },
-                  '&:hover .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#000',
+                  '& .MuiInputLabel-root': {
+                    color: '#6b7280',
+                    '&.Mui-focused': {
+                      color: '#fd683e',
+                    },
                   },
-                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                    borderColor: '#000',
-                  },
-                  '& .MuiOutlinedInput-input': {
-                    color: '#201a18', // default text color
-                  },
-                  '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-input': {
-                    color: '#fd683e', // orange text when focused
-                  },
-                }
-              }}
-              InputLabelProps={{
-                sx: { 
-                  fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-                  color: '#201a18', // default label color
-                  '&.Mui-focused': {
-                    color: '#fd683e', // orange label when focused
-                  },
-                }
-              }}
-            />
-          </Box>
+                }}
+              />
+            </div>
+          </div>
         );
+
       case 1:
         return (
-          <Box sx={{ mt: 2, fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>
-            <Typography variant="h6" gutterBottom sx={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>
-              Adding variants for: {currentGroup?.title}
-            </Typography>
-            <Box sx={{ display: 'flex', gap: 1, mb: 2 }}>
-              <FormControl fullWidth sx={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>
-                <InputLabel 
-                  sx={{ 
-                    fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-                    color: '#201a18', // black by default
-                    '&.Mui-focused': {
-                      color: '#fd683e', // orange when focused
-                    },
-                  }}
-                >Select Variant</InputLabel>
-                {loading ? (
-                  <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
-                    <CircularProgress sx={{ color: '#fd683e' }} size={24} />
-                  </Box>
-                ) : (
-                  <Select
-                    value={variant}
-                    onChange={(e: SelectChangeEvent) => setVariant(e.target.value as string)}
-                    label="Select Variant"
+          <div className="space-y-4">
+            <div className="text-center space-y-1">
+              <h3 className="text-lg font-semibold text-gray-900">Add Variants</h3>
+              <p className="text-sm text-gray-600">Adding variants for: <span className="font-medium text-[#fd683e]">{currentGroup?.title}</span></p>
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+              <div className="flex gap-2">
+                <FormControl fullWidth size="small">
+                  <InputLabel 
                     sx={{ 
-                      fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-                      '& .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#000',
-                      },
-                      '&:hover .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#000',
-                      },
-                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                        borderColor: '#000',
-                      },
-                      '& .MuiSelect-select': {
-                        color: '#201a18', // always black for selected value
+                      color: '#6b7280',
+                      '&.Mui-focused': {
+                        color: '#fd683e',
                       },
                     }}
                   >
-                    {foodTypes.map(opt => (
-                      <MenuItem key={opt.value} value={opt.value} sx={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>
-                        {opt.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                )}
-              </FormControl>
-              <Button
-                variant="contained"
-                onClick={handleAddVariant}
-                disabled={!variant}
-                startIcon={<AddIcon />}
-                sx={{
-                  backgroundColor: '#fd683e',
-                  '&:hover': {
-                    backgroundColor: '#e54d0e',
-                  },
-                  fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif'
-                }}
-              >
-                Add
-              </Button>
-            </Box>
-            {currentGroup && currentGroup.extras.length > 0 && (
-              <Paper sx={{ p: 2, fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>
-                <Typography variant="subtitle1" gutterBottom sx={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>
-                  Added Variants:
-                </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                  {currentGroup.extras.map((extra) => (
-                    <Chip
-                      key={extra.id}
-                      label={extra.variant}
-                      onDelete={() => handleRemoveVariant(extra.id)}
-                      sx={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}
-                    />
-                  ))}
-                </Box>
-              </Paper>
-            )}
-          </Box>
-        );
-      case 2:
-        return (
-          <Box sx={{ mt: 2, fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>
-            {extraGroups.length === 0 ? (
-              <Typography color="text.secondary" align="center" sx={{ mt: 4 }}>
-                No extras added yet. Click "Add Another Group" to get started!
-              </Typography>
-            ) : (
-              <Grid container spacing={2}>
-                {extraGroups.map((group) => (
-                  <Grid item xs={12} sm={6} key={group.id}>
-                    <Card
-                      sx={{
-                        boxShadow: 1,
-                        borderRadius: 1.5,
-                        overflow: 'visible',
-                        position: 'relative',
-                        minHeight: 110,
+                    Select Variant
+                  </InputLabel>
+                  {loading ? (
+                    <div className="flex justify-center items-center h-10 bg-white rounded-lg border border-gray-200">
+                      <CircularProgress sx={{ color: '#fd683e' }} size={20} />
+                    </div>
+                  ) : (
+                    <Select
+                      value={variant}
+                      onChange={(e: SelectChangeEvent) => setVariant(e.target.value as string)}
+                      label="Select Variant"
+                      sx={{ 
+                        backgroundColor: 'white',
+                        borderRadius: '8px',
+                        '& .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#e5e7eb',
+                        },
+                        '&:hover .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#fd683e',
+                        },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                          borderColor: '#fd683e',
+                          borderWidth: '2px',
+                        },
                       }}
                     >
-                      <Box
+                      {foodTypes.map(opt => (
+                        <MenuItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  )}
+                </FormControl>
+                <Button
+                  variant="contained"
+                  onClick={handleAddVariant}
+                  disabled={!variant}
+                  className="h-10 px-4 shrink-0"
+                  sx={{
+                    backgroundColor: '#fd683e',
+                    borderRadius: '8px',
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    minWidth: '80px',
+                    '&:hover': {
+                      backgroundColor: '#e54d0e',
+                    },
+                    '&:disabled': {
+                      backgroundColor: '#ffd2b3',
+                    },
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add
+                </Button>
+              </div>
+
+              {currentGroup && currentGroup.extras.length > 0 && (
+                <div className="bg-white rounded-lg p-3 border border-gray-200">
+                  <h4 className="text-xs font-medium text-gray-700 mb-2">Added Variants ({currentGroup.extras.length})</h4>
+                  <div className="flex flex-wrap gap-1">
+                    {currentGroup.extras.map((extra) => (
+                      <Chip
+                        key={extra.id}
+                        label={extra.variant}
+                        onDelete={() => handleRemoveVariant(extra.id)}
+                        deleteIcon={<X className="w-3 h-3" />}
+                        size="small"
                         sx={{
-                          background: '#201a18',
-                          color: '#fff',
-                          px: 1.5,
-                          py: 0.7,
-                          borderTopLeftRadius: 6,
-                          borderTopRightRadius: 6,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
+                          backgroundColor: '#fff3ea',
+                          color: '#fd683e',
+                          fontWeight: 500,
+                          fontSize: '11px',
+                          height: '24px',
+                          '& .MuiChip-deleteIcon': {
+                            color: '#fd683e',
+                            '&:hover': {
+                              color: '#e54d0e',
+                            },
+                          },
                         }}
-                      >
-                        <Typography variant="subtitle1" sx={{ fontWeight: 700, fontSize: 16, color: '#fff' }}>
-                          {group.title}
-                        </Typography>
-                        <Box>
-                          <IconButton
-                            onClick={() => handleEditGroup(group)}
-                            sx={{ color: '#fff', mr: 0.5, p: 0.5 }}
-                            size="small"
-                          >
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton
-                            onClick={() => handleRemoveGroup(group.id)}
-                            sx={{ color: '#fff', p: 0.5 }}
-                            size="small"
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Box>
-                      </Box>
-                      <CardContent sx={{ pt: 1, pb: 1, px: 1.5 }}>
-                        <Typography variant="caption" color="text.secondary" sx={{ mb: 0.2, display: 'block', fontSize: 13 }}>
-                          {group.extras.length} variant{group.extras.length !== 1 ? 's' : ''} added:
-                        </Typography>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                          {group.extras.map((extra) => (
-                            <Chip
-                              key={extra.id}
-                              label={extra.variant}
-                              size="small"
-                              sx={{
-                                fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-                                background: '#fff3ea',
-                                color: '#fd683e',
-                                fontWeight: 500,
-                                fontSize: 12,
-                                height: 24,
-                              }}
-                            />
-                          ))}
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            )}
-            <Button
-              sx={{
-                mt: 2,
-                backgroundColor: '#fd683e',
-                '&:hover': { backgroundColor: '#e54d0e' },
-                fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-              }}
-              onClick={handleAddAnotherGroup}
-              startIcon={<AddIcon />}
-              variant="contained"
-            >
-              Add Another Group
-            </Button>
-          </Box>
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         );
+
+      case 2:
+        return (
+          <div className="space-y-4">
+            <div className="text-center space-y-1">
+              <h3 className="text-lg font-semibold text-gray-900">Review Extras</h3>
+              <p className="text-sm text-gray-600">Manage your extras groups before saving</p>
+            </div>
+
+            {extraGroups.length === 0 ? (
+              <div className="text-center py-8 bg-gray-50 rounded-lg">
+                <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Plus className="w-6 h-6 text-gray-400" />
+                </div>
+                <p className="text-sm text-gray-500 mb-3">No extras groups added yet</p>
+                <Button
+                  onClick={handleAddAnotherGroup}
+                  variant="outlined"
+                  size="small"
+                  sx={{
+                    borderColor: '#fd683e',
+                    color: '#fd683e',
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    '&:hover': {
+                      borderColor: '#e54d0e',
+                      backgroundColor: '#fff3ea',
+                    },
+                  }}
+                >
+                  Add Your First Group
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {extraGroups.map((group) => (
+                  <div key={group.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                    <div className="bg-[#201a18] text-white px-3 py-2 flex items-center justify-between">
+                      <h4 className="font-semibold text-sm">{group.title}</h4>
+                      <div className="flex gap-1">
+                        <IconButton
+                          onClick={() => handleEditGroup(group)}
+                          size="small"
+                          sx={{ 
+                            color: 'white', 
+                            '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' },
+                            padding: '4px'
+                          }}
+                        >
+                          <Edit3 className="w-3 h-3" />
+                        </IconButton>
+                        <IconButton
+                          onClick={() => handleRemoveGroup(group.id)}
+                          size="small"
+                          sx={{ 
+                            color: 'white', 
+                            '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' },
+                            padding: '4px'
+                          }}
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </IconButton>
+                      </div>
+                    </div>
+                    <div className="p-3">
+                      <p className="text-xs text-gray-600 mb-2">
+                        {group.extras.length} variant{group.extras.length !== 1 ? 's' : ''} added
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {group.extras.map((extra) => (
+                          <Chip
+                            key={extra.id}
+                            label={extra.variant}
+                            size="small"
+                            sx={{
+                              backgroundColor: '#fff3ea',
+                              color: '#fd683e',
+                              fontWeight: 500,
+                              fontSize: '10px',
+                              height: '20px',
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                
+                <Button
+                  onClick={handleAddAnotherGroup}
+                  variant="outlined"
+                  fullWidth
+                  size="small"
+                  className="py-2"
+                  sx={{
+                    borderColor: '#fd683e',
+                    color: '#fd683e',
+                    textTransform: 'none',
+                    fontWeight: 600,
+                    borderStyle: 'dashed',
+                    '&:hover': {
+                      borderColor: '#e54d0e',
+                      backgroundColor: '#fff3ea',
+                      borderStyle: 'dashed',
+                    },
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Another Group
+                </Button>
+              </div>
+            )}
+          </div>
+        );
+
+      default:
+        return null;
     }
   };
 
@@ -416,134 +507,113 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
       fullWidth
       PaperProps={{
         sx: {
-          minHeight: '30vh',
-          maxWidth: 600,
-          width: '100%',
-          fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif',
-          p: 1.5,
-          '& .MuiDialogTitle-root': { fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif', fontSize: 22, py: 1 },
-          '& .MuiTypography-root': { fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' },
-          '& .MuiStepLabel-label': { fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' },
+          borderRadius: '12px',
+          maxHeight: '85vh',
+          margin: '16px',
+          maxWidth: '500px',
         }
       }}
     >
-      {/* Close button at top right */}
-      <IconButton
-        aria-label="close"
-        onClick={onClose}
-        sx={{
-          position: 'absolute',
-          right: 12,
-          top: 12,
-          color: '#686868',
-          zIndex: 10,
-        }}
-      >
-        <span style={{ fontSize: 24, fontWeight: 700 }}>&times;</span>
-      </IconButton>
-      <DialogTitle sx={{ fontSize: 22, py: 1 }}>Add Extras</DialogTitle>
-      <DialogContent sx={{ p: 1.5 }}>
-        <Stepper 
-          activeStep={activeStep} 
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-gray-200">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">Add Extras</h2>
+          <p className="text-sm text-gray-600 mt-0.5">{steps[activeStep].description}</p>
+        </div>
+        <IconButton
+          onClick={onClose}
           sx={{ 
-            pt: 1,
-            pb: 1.5,
-            '& .MuiStepIcon-root': {
-              color: '#ffd2b3', // default (inactive) step icon color
-            },
-            '& .MuiStepIcon-root.Mui-active': {
-              color: '#fd683e', // active step icon color
-            },
-            '& .MuiStepIcon-root.Mui-completed': {
-              color: '#fd683e', // completed step icon color
-            },
-            '& .MuiStepLabel-label': {
-              color: '#000', // always black for step label text
-            },
-            '& .MuiStepLabel-label.Mui-active': {
-              color: '#000', // active step label color black
-            },
-            '& .MuiStepLabel-label.Mui-completed': {
-              color: '#000', // completed step label color black
-            },
-            '& .MuiStepLabel-iconContainer .Mui-active': {
-              color: '#fd683e', // active step icon
-            },
-            '& .MuiStepLabel-iconContainer .Mui-completed': {
-              color: '#fd683e', // completed step icon
-            },
+            color: '#6b7280',
+            '&:hover': { backgroundColor: '#f3f4f6' },
           }}
         >
-          {steps.map((label) => (
-            <Step key={label}>
-              <StepLabel>{label}</StepLabel>
-            </Step>
-          ))}
-        </Stepper>
+          <X className="w-5 h-5" />
+        </IconButton>
+      </div>
+
+      <DialogContent sx={{ p: 4 }}>
+        <StepIndicator />
         {renderStepContent()}
       </DialogContent>
-      <DialogActions sx={{ gap: 1, px: 2, pb: 2 }}>
-        {/* Only show Cancel button if not on step 2 or 3 */}
-        {activeStep > 0 && (
-          <Button
-            variant="contained"
-            onClick={handleBack}
-            className="uppercase font-semibold rounded-md px-4 py-1 text-sm shadow-none"
-            sx={{
-              backgroundColor: '#201a18',
-              color: '#fff',
-              '&:hover': { backgroundColor: '#181512' },
-              boxShadow: 'none',
-            }}
-          >
-            Back
-          </Button>
-        )}
-        {activeStep === 2 ? (
-          <Button
-            variant="contained"
-            onClick={handleSave}
-            disabled={extraGroups.length === 0}
-            className="uppercase font-semibold rounded-md px-4 py-1 text-sm shadow-none"
-            sx={{
-              backgroundColor: '#fd683e',
-              color: '#fff',
-              '&:hover': { backgroundColor: '#e54d0e' },
-              boxShadow: 'none',
-              '&.Mui-disabled': {
-                backgroundColor: '#ffd2b3',
-                color: '#fff',
-                opacity: 1,
-              },
-            }}
-          >
-            Save All
-          </Button>
-        ) : (
-          <Button
-            variant="contained"
-            onClick={handleNext}
-            disabled={
-              (activeStep === 0 && !groupTitle) ||
-              (activeStep === 1 && (!currentGroup || currentGroup.extras.length === 0))
-            }
-            className="uppercase font-semibold rounded-md px-4 py-1 text-sm shadow-none"
-            sx={{
-              backgroundColor: '#fd683e',
-              color: '#fff',
-              '&:hover': { backgroundColor: '#e54d0e' },
-              boxShadow: 'none',
-              '&.Mui-disabled': {
-                backgroundColor: '#ffd2b3',
-                color: '#fff',
-                opacity: 1,
-              },
-            }}
-          >
-            Next
-          </Button>
-        )}
-      </DialogActions>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-gray-50">
+        <div className="flex gap-2">
+          {activeStep > 0 && (
+            <Button
+              onClick={handleBack}
+              variant="outlined"
+              size="small"
+              sx={{
+                borderColor: '#d1d5db',
+                color: '#6b7280',
+                textTransform: 'none',
+                fontWeight: 600,
+                '&:hover': {
+                  borderColor: '#9ca3af',
+                  backgroundColor: 'white',
+                },
+              }}
+            >
+              <ChevronLeft className="w-4 h-4 mr-1" />
+              Back
+            </Button>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          {activeStep === 2 ? (
+            <Button
+              onClick={handleSave}
+              disabled={extraGroups.length === 0}
+              variant="contained"
+              size="small"
+              sx={{
+                backgroundColor: '#fd683e',
+                textTransform: 'none',
+                fontWeight: 600,
+                px: 3,
+                py: 1,
+                '&:hover': {
+                  backgroundColor: '#e54d0e',
+                },
+                '&:disabled': {
+                  backgroundColor: '#ffd2b3',
+                },
+              }}
+            >
+              <Check className="w-4 h-4 mr-1" />
+              Save All Extras
+            </Button>
+          ) : (
+            <Button
+              onClick={handleNext}
+              disabled={
+                (activeStep === 0 && !groupTitle) ||
+                (activeStep === 1 && (!currentGroup || currentGroup.extras.length === 0))
+              }
+              variant="contained"
+              size="small"
+              sx={{
+                backgroundColor: '#fd683e',
+                textTransform: 'none',
+                fontWeight: 600,
+                px: 3,
+                py: 1,
+                '&:hover': {
+                  backgroundColor: '#e54d0e',
+                },
+                '&:disabled': {
+                  backgroundColor: '#ffd2b3',
+                },
+              }}
+            >
+              Next
+              <ChevronRight className="w-4 h-4 ml-1" />
+            </Button>
+          )}
+        </div>
+      </div>
     </Dialog>
   );
 };
