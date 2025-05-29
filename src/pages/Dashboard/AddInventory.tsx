@@ -487,6 +487,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
       setShowCategoryForm(false);
       setNewCategory('');
       setNewCategoryImage(null);
+      setNewCategoryFile(null);
       setExtraGroups([]); // Reset extras as well
       
     } catch (error) {
@@ -500,6 +501,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
     setShowCategoryForm(false);
     setNewCategory("");
     setNewCategoryImage(null);
+    setNewCategoryFile(null);
     onClose?.();
   };
 
@@ -713,11 +715,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                           setIsDragging(false);
                           const file = e.dataTransfer.files[0];
                           if (file && file.type.startsWith('image/')) {
-                            const reader = new FileReader();
-                            reader.onload = (e) => {
-                              setNewCategoryImage(e.target?.result as string);
-                            };
-                            reader.readAsDataURL(file);
+                            handleCategoryImageUpload(file);
                           }
                         }}
                         onDragOver={(e) => {
@@ -738,7 +736,10 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                             />
                             <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 rounded-lg flex items-center justify-center">
                               <button
-                                onClick={() => setNewCategoryImage(null)}
+                                onClick={() => {
+                                  setNewCategoryImage(null);
+                                  setNewCategoryFile(null);
+                                }}
                                 className="opacity-0 group-hover:opacity-100 bg-white text-gray-700 px-3 py-1 rounded-md text-sm"
                               >
                                 {t('common.delete')}

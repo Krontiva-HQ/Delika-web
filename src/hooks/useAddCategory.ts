@@ -44,7 +44,17 @@ export const useAddCategory = () => {
       hasFoodTypePhoto: !!foodTypePhoto,
       hasFoodsPhoto: !!foodsPhoto,
       foodsCount: foods.length,
-      categoryId
+      categoryId,
+      foodTypePhoto: foodTypePhoto ? {
+        name: foodTypePhoto.name,
+        type: foodTypePhoto.type,
+        size: foodTypePhoto.size
+      } : 'NO FOOD TYPE PHOTO PROVIDED',
+      foodsPhoto: foodsPhoto ? {
+        name: foodsPhoto.name,
+        type: foodsPhoto.type,
+        size: foodsPhoto.size
+      } : 'NO FOODS PHOTO PROVIDED'
     });
     
     setIsLoading(true);
@@ -92,6 +102,9 @@ export const useAddCategory = () => {
           size: foodTypePhoto.size
         });
         formData.append('foodTypePhoto', foodTypePhoto);
+        console.log('✅ foodTypePhoto successfully added to FormData');
+      } else {
+        console.warn('⚠️ No foodTypePhoto provided or foodTypePhoto is null/undefined');
       }
       if (foodsPhoto) {
         console.log('📸 Adding foodsPhoto:', {
@@ -100,12 +113,27 @@ export const useAddCategory = () => {
           size: foodsPhoto.size
         });
         formData.append('foodsPhoto', foodsPhoto);
+        console.log('✅ foodsPhoto successfully added to FormData');
+      } else {
+        console.warn('⚠️ No foodsPhoto provided or foodsPhoto is null/undefined');
       }
 
       // Log the full FormData payload before posting
       console.log('🚀 Posting to /add/category with FormData:');
       Array.from(formData.entries()).forEach(pair => {
-        console.log(pair[0] + ':', pair[1]);
+        if (pair[1] instanceof Blob && pair[0] === 'foods') {
+          (pair[1] as Blob).text().then(text => {
+            console.log(pair[0] + ':', text);
+          });
+        } else if (pair[1] instanceof File) {
+          console.log(pair[0] + ':', {
+            name: pair[1].name,
+            type: pair[1].type,
+            size: pair[1].size
+          });
+        } else {
+          console.log(pair[0] + ':', pair[1]);
+        }
       });
 
       console.log('🔥 Calling API directly - CreateCategory 🔥');
