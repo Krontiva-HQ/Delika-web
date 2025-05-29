@@ -1,4 +1,4 @@
-import { FunctionComponent, useState, useCallback, useRef, TouchEvent, MouseEvent, useEffect, useMemo } from "react";
+import React, { FunctionComponent, useState, useCallback, useRef, TouchEvent, MouseEvent, useEffect, useMemo } from "react";
 import { Button, Menu, MenuItem, Modal, IconButton } from "@mui/material";
 import { IoMdNotificationsOutline, IoMdAdd, IoMdRemove } from "react-icons/io";
 import { FaRegMoon, FaChevronDown, FaArrowAltCircleLeft, FaArrowAltCircleRight } from "react-icons/fa";
@@ -17,6 +17,15 @@ import { optimizeImage } from '../../utils/imageOptimizer';
 import { OptimizedImage } from '../../components/OptimizedImage';
 import { useTranslation } from 'react-i18next';
 import { useLanguageChange } from '../../hooks/useLanguageChange';
+import { Badge } from '../../components/ui/badge';
+import { Input } from '../../components/ui/input';
+import { Checkbox } from '../../components/ui/checkbox';
+import { Textarea } from '../../components/ui/textarea';
+import { Label } from '../../components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Switch } from '../../components/ui/switch';
+import { Button as UIButton } from '../../components/ui/button';
+import AddExtrasModal from '../../components/AddExtrasModal';
 
 interface MenuItem {
   id: string;
@@ -282,157 +291,366 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
     
     const [price, setPrice] = useState(item.price);
     const [available, setAvailable] = useState(item.available);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editForm, setEditForm] = useState({
+      name: item.name,
+      description: item.description || '',
+      image: item.image
+    });
+    const [showAddExtrasModal, setShowAddExtrasModal] = useState(false);
+    const [itemExtras, setItemExtras] = useState(item.extras || []);
     const { t } = useTranslation();
 
+    const handleEditToggle = () => {
+      setIsEditing(!isEditing);
+      if (!isEditing) {
+        // Reset form when entering edit mode
+        setEditForm({
+          name: item.name,
+          description: item.description || '',
+          image: item.image
+        });
+      }
+    };
+
+    const handleFormChange = (field: string, value: string) => {
+      setEditForm(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    };
+
+    const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          setEditForm(prev => ({
+            ...prev,
+            image: e.target?.result as string
+          }));
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+
+    const handleAddExtras = (newExtras: any[]) => {
+      setItemExtras([...itemExtras, ...newExtras]);
+      setShowAddExtrasModal(false);
+    };
+
     return (
-      <Modal
-        open={true}
-        onClose={onClose}
-        className="flex items-center justify-center p-4"
-      >
-        <div className="bg-white dark:bg-[#2c2522] rounded-lg p-4 sm:p-6 w-full max-w-[95%] sm:max-w-[90%] md:max-w-[1000px] mx-auto max-h-[90vh] overflow-y-auto">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-            {/* Left Column - Main Item Details */}
-            <div className="flex flex-col gap-4">
-              <img
-                src={optimizeImageUrl(item.image)}
-                alt={item.name}
-                className="w-full h-[200px] sm:h-[250px] object-cover rounded-lg"
-                loading="eager"
-              />
-              <div className="flex flex-col gap-1">
-                <h2 className="text-lg sm:text-xl font-semibold font-sans">{item.name}</h2>
-                <p className="text-sm text-black font-sans">{item.description}</p>
-                <div className={`text-sm font-sans ${item.available ? 'text-green-600' : 'text-red-600'}`}>
-                  {item.available ? t('inventory.available') : t('inventory.unavailable')}
-                </div>
-              </div>
-            </div>
+      <>
+        <Modal
+          open={true}
+          onClose={onClose}
+          className="flex items-center justify-center p-4"
+        >
+          <div className="bg-white dark:bg-[#2c2522] rounded-lg p-3 sm:p-4 w-full max-w-[95%] sm:max-w-[85%] md:max-w-[800px] mx-auto max-h-[85vh] overflow-y-auto relative shadow-xl border border-gray-100">
+            {/* Edit Button at Top Right */}
+            <Button
+              onClick={handleEditToggle}
+              variant="outlined"
+              className="absolute top-3 right-3 z-10"
+              style={{
+                backgroundColor: isEditing ? '#fd683e' : '#201a18',
+                borderColor: isEditing ? '#fd683e' : '#201a18',
+                color: 'white',
+                padding: '4px 12px',
+                fontSize: '10px',
+                borderRadius: '4px',
+                minWidth: '60px'
+              }}
+            >
+              {isEditing ? 'Edit' : 'Cancel'}
+            </Button>
 
-            {/* Right Column - Extras and Controls */}
-            <div className="flex flex-col gap-4">
-              {/* Extras Section */}
-              {item.extras && item.extras.length > 0 && (
-                <div>
-                  <h3 className="text-lg font-semibold font-sans mb-2">Extras Available</h3>
-                  <div className="space-y-3 max-h-[250px] sm:max-h-[300px] overflow-y-auto">
-                    {(() => {
-                      // Group extras by extrasTitle
-                      const groupedExtras = item.extras.reduce((acc, extraGroup) => {
-                        const title = extraGroup.extrasTitle;
-                        if (!acc[title]) {
-                          acc[title] = [];
-                        }
-                        // Add all extrasDetails from this group to the title
-                        acc[title].push(...extraGroup.extrasDetails);
-                        return acc;
-                      }, {} as Record<string, ExtraDetail[]>);
-
-                      // Render grouped extras
-                      return Object.entries(groupedExtras).map(([title, details], groupIndex) => (
-                        <div key={groupIndex} className="border border-gray-200 rounded-lg p-2 sm:p-3 bg-gray-50">
-                          <h4 className="text-sm sm:text-md font-medium font-sans mb-2 text-[#333]">
-                            {title}
-                          </h4>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            {details.map((extraDetail, detailIndex) => (
-                              <div key={detailIndex} className="bg-white rounded-lg border border-gray-100 p-2 text-center">
-                                <img
-                                  src={optimizeImageUrl(extraDetail.foodImage.url)}
-                                  alt={extraDetail.foodName}
-                                  className="w-full h-12 sm:h-16 object-contain rounded mb-1"
-                                  loading="lazy"
-                                />
-                                <div className="text-xs font-medium font-sans text-[#333] leading-tight mb-1">
-                                  {extraDetail.foodName}
-                                </div>
-                                <div className="text-xs font-semibold font-sans text-[#fd683e]">
-                                  GH₵{extraDetail.foodPrice}
-                                </div>
-                              </div>
-                            ))}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 mt-6">
+              {/* Left Column - Main Item Details */}
+              <div className="flex flex-col gap-3 bg-gray-50 dark:bg-[#201a18] rounded-lg p-4">
+                {isEditing ? (
+                  <div className="space-y-6">
+                    {/* Image Upload Section */}
+                    <Card className="bg-white dark:bg-[#2c2522] border-gray-200">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                          <svg className="w-5 h-5 text-[#fd683e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                          </svg>
+                          Item Image
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="relative group">
+                          <img
+                            src={editForm.image}
+                            alt={editForm.name}
+                            className="w-full h-[200px] object-cover rounded-lg border-2 border-dashed border-gray-300 group-hover:border-[#fd683e] transition-colors"
+                          />
+                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center">
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
+                              </svg>
+                            </div>
                           </div>
                         </div>
-                      ));
-                    })()}
-                  </div>
-                </div>
-              )}
+                        
+                      </CardContent>
+                    </Card>
 
-              {/* Price and Availability Controls */}
-              <div className="flex flex-col gap-4 mt-auto">
-                <div className="flex flex-col sm:flex-row gap-4">
-                  {/* Price Control */}
-                  <div className="flex flex-col gap-2 flex-1">
-                    <label className="text-sm text-gray-600 font-sans">{t('inventory.price')} (GHS)</label>
-                    <input
-                      type="number"
-                      value={price}
-                      onChange={(e) => setPrice(Number(e.target.value))}
-                      className="border rounded p-2 font-sans w-full"
-                    />
+                    {/* Item Details Section */}
+                    <Card className="bg-white dark:bg-[#2c2522] border-gray-200">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                          <svg className="w-5 h-5 text-[#fd683e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                          </svg>
+                          Item Details
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4 w-[270px] ">
+                        <div className="space-y-2">
+                          <Label htmlFor="item-name" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Item Name
+                          </Label>
+                          <Input
+                            id="item-name"
+                            value={editForm.name}
+                            onChange={(e) => handleFormChange('name', e.target.value)}
+                            placeholder="Enter item name"
+                            className="border-gray-300 focus:border-[#fd683e] focus:ring-[#fd683e]"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="item-description" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Description
+                          </Label>
+                          <Textarea
+                            id="item-description"
+                            value={editForm.description}
+                            onChange={(e) => handleFormChange('description', e.target.value)}
+                            placeholder="Enter item description"
+                            rows={3}
+                            className="border-gray-300 focus:border-[#fd683e] focus:ring-[#fd683e] resize-none"
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
                   </div>
-
-                  {/* Availability Control */}
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm text-gray-600 font-sans">{t('inventory.availability')}</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={available}
-                        onChange={(e) => setAvailable(e.target.checked)}
-                        className="w-5 h-5"
-                      />
-                      <span className="text-sm font-sans">
-                        {available ? t('inventory.available') : t('inventory.unavailable')}
-                      </span>
+                ) : (
+                  <>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex justify-between items-start">
+                        <div className="flex flex-col gap-0.5">
+                          <label className="text-xs text-gray-600 font-sans">Item Name</label>
+                          <h2 className="text-md sm:text-lg font-semibold">{item.name}</h2>
+                        </div>
+                        <Badge 
+                          className={item.available 
+                            ? "w-fit bg-green-100 text-green-800 border-green-200 hover:bg-green-200" 
+                            : "w-fit bg-red-100 text-red-800 border-red-200 hover:bg-red-200"}
+                        >
+                          {item.available ? t('inventory.available') : t('inventory.unavailable')}
+                        </Badge>
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <label className="text-xs text-gray-600 font-sans">Item Description</label>
+                        <p className="text-sm text-black">{item.description || 'No description available'}</p>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                    <img
+                      src={optimizeImageUrl(item.image)}
+                      alt={item.name}
+                      className="w-full h-[200px] sm:h-[250px] object-cover rounded-lg"
+                      loading="eager"
+                    />
+                  </>
+                )}
+              </div>
 
-                {/* Action Buttons */}
-                <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 justify-end">
-                  <Button
-                    onClick={onClose}
-                    variant="outlined"
-                    className="font-sans order-2 sm:order-1"
-                    style={{
-                      backgroundColor: '#fd683e',
-                      borderColor: '#f5fcf8',
-                      color: 'white',
-                      padding: '9px 20px',
-                      fontSize: '10px',
-                      borderRadius: '4px',
-                      flex: 1,
-                      height: '42px',
-                    }}
-                  >
-                    {t('common.cancel')}
-                  </Button>
-                  <Button
-                    onClick={() => onSave(item.id, price, available)}
-                    variant="contained"
-                    className="font-sans !font-sans order-1 sm:order-2"
-                    style={{
-                      backgroundColor: '#201a18',
-                      borderColor: '#f5fcf8',
-                      color: 'white',
-                      padding: '9px 20px',
-                      fontSize: '10px',
-                      borderRadius: '4px',
-                      flex: 1,
-                      height: '42px',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {t('inventory.saveChanges')}
-                  </Button>
-                </div>
+              {/* Right Column - Extras and Controls */}
+              <div className="flex flex-col gap-3 bg-gray-50 dark:bg-[#201a18] rounded-lg p-4">
+                {/* Extras Section */}
+                <Card className="bg-white dark:bg-[#2c2522] border-gray-200">
+                  <CardHeader className="pb-3">
+                    <div className="flex justify-between items-center">
+                      <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                        <svg className="w-5 h-5 text-[#fd683e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        Extras Available
+                      </CardTitle>
+                      {isEditing && (
+                        <UIButton
+                          onClick={() => setShowAddExtrasModal(true)}
+                          size="sm"
+                          className="h-8 px-3 text-xs bg-[#fd683e] hover:bg-[#e54d0e] text-white"
+                        >
+                          <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                          </svg>
+                          Add Extras
+                        </UIButton>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {itemExtras && itemExtras.length > 0 ? (
+                      <div className="space-y-3 max-h-[200px] overflow-y-auto">
+                        {(() => {
+                          // Group extras by extrasTitle
+                          const groupedExtras = itemExtras.reduce((acc, extraGroup) => {
+                            const title = extraGroup.extrasTitle;
+                            if (!acc[title]) {
+                              acc[title] = [];
+                            }
+                            acc[title].push(...extraGroup.extrasDetails);
+                            return acc;
+                          }, {} as Record<string, ExtraDetail[]>);
+
+                          return Object.entries(groupedExtras).map(([title, details], groupIndex) => (
+                            <div key={groupIndex} className="border border-gray-200 rounded-lg p-3 bg-gray-50 dark:bg-[#201a18]">
+                              <h4 className="text-sm font-medium text-gray-800 dark:text-white mb-2 flex items-center gap-2">
+                                <div className="w-2 h-2 bg-[#fd683e] rounded-full"></div>
+                                {title}
+                              </h4>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                {details.map((extraDetail, detailIndex) => (
+                                  <div key={detailIndex} className="bg-white dark:bg-[#2c2522] rounded-lg border border-gray-200 p-2 text-center hover:shadow-sm transition-shadow">
+                                    <img
+                                      src={optimizeImageUrl(extraDetail.foodImage.url)}
+                                      alt={extraDetail.foodName}
+                                      className="w-full h-10 object-contain rounded mb-2"
+                                      loading="lazy"
+                                    />
+                                    <div className="text-xs font-medium text-gray-800 dark:text-white leading-tight mb-1">
+                                      {extraDetail.foodName}
+                                    </div>
+                                    <div className="text-xs font-semibold text-[#fd683e]">
+                                      GH₵{extraDetail.foodPrice}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-8 text-center">
+                        <div className="w-16 h-16 bg-gray-100 dark:bg-[#201a18] rounded-full flex items-center justify-center mb-3">
+                          <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M9 1L5 5l4 4"></path>
+                          </svg>
+                        </div>
+                        <p className="text-sm font-medium text-gray-500 mb-1">No extras available</p>
+                        <p className="text-xs text-gray-400">This menu item currently has no additional extras or add-ons</p>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Pricing & Availability Section */}
+                <Card className="bg-white dark:bg-[#2c2522] border-gray-200">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
+                      <svg className="w-5 h-5 text-[#fd683e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                      </svg>
+                      Pricing & Availability
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {!isEditing ? (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-gray-600">Price (GHS)</Label>
+                          <div className="text-2xl font-bold text-[#fd683e]">GH₵{item.price}</div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium text-gray-600">Availability</Label>
+                          <Badge 
+                            className={item.available 
+                              ? "w-fit bg-green-100 text-green-800 border-green-200 hover:bg-green-200" 
+                              : "w-fit bg-red-100 text-red-800 border-red-200 hover:bg-red-200"}
+                          >
+                            {item.available ? t('inventory.available') : t('inventory.unavailable')}
+                          </Badge>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-6">
+                        <div>
+                          <Label htmlFor="price-input" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Price (GHS)
+                          </Label>
+                          <div className="relative w-[240px] mb-6">
+                            <div className="relative w-full max-w-xs">
+                              <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">GH₵</span>
+                              <Input
+                                id="price-input"
+                                type="number"
+                                value={price}
+                                onChange={(e) => setPrice(Number(e.target.value))}
+                                className="pl-14 border-gray-300 focus:border-[#fd683e] focus:ring-[#fd683e]"
+                                placeholder="0.00"
+                              />
+                            </div>
+                          </div>
+                          
+                          <Label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                            Availability
+                          </Label>
+                          <div className="flex items-center space-x-3">
+                            <Switch
+                              checked={available}
+                              onCheckedChange={(checked: boolean) => setAvailable(checked)}
+                              className="data-[state=checked]:bg-[#fd683e]"
+                            />
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              {available ? 'In Stock' : 'Out of Stock'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-3 pt-4 mt-6">
+                          {!isEditing && (
+                            <UIButton
+                              onClick={onClose}
+                              variant="outline"
+                              className="flex-1"
+                            >
+                              Cancel
+                            </UIButton>
+                          )}
+                          <UIButton
+                            onClick={() => onSave(item.id, price, available)}
+                            className="flex-1 bg-[#fd683e] hover:bg-[#e54d0e]"
+                          >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                            </svg>
+                            Save Changes
+                          </UIButton>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
             </div>
           </div>
-        </div>
-      </Modal>
+        </Modal>
+
+        {/* Add Extras Modal */}
+        <AddExtrasModal
+          open={showAddExtrasModal}
+          onClose={() => setShowAddExtrasModal(false)}
+          onAdd={handleAddExtras}
+        />
+      </>
     );
   };
 
@@ -686,12 +904,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                       className="w-full h-[180px] object-cover"
                       sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
-                    <div className={`absolute top-2 right-2 text-[12px] px-2 py-1 rounded-full font-sans
-                      ${item.available 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'}`}>
-                      {item.available ? t('inventory.available') : t('inventory.unavailable')}
-                    </div>
                   </div>
                   <div className="p-4 flex flex-col gap-1">
                     <div className="flex-1 min-w-0">
@@ -702,9 +914,15 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                       GH₵{item.price}
                       </div>
                     </div>
-                    <div className="flex items-center text-[13px] text-[#a2a2a2] mt-1 font-sans">
-                      <FiShoppingCart className="mr-1" />
-                      {item.available ? t('inventory.available') : t('inventory.unavailable')}
+                    <div className="flex items-center gap-2 mt-1">
+                      <FiShoppingCart className="text-[13px] text-[#a2a2a2]" />
+                      <Badge 
+                        className={item.available 
+                          ? "text-[11px] h-5 bg-green-100 text-green-800 border-green-200 hover:bg-green-200" 
+                          : "text-[11px] h-5 bg-red-100 text-red-800 border-red-200 hover:bg-red-200"}
+                      >
+                        {item.available ? t('inventory.available') : t('inventory.unavailable')}
+                      </Badge>
                     </div>
                   </div>
                 </div>
