@@ -43,6 +43,9 @@ interface Order {
   }[];
   products: any[];
   customerImage?: string;
+  orderChannel: string;
+  orderAccepted: "pending" | "accepted" | "declined";
+  paymentStatus: string;
 }
 
 const CustomTooltip = ({ active, payload, coordinate }: any) => {
@@ -127,7 +130,16 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
       });
 
       const response = await api.get(`/filter/orders/by/date?${params.toString()}`);
-      const ordersWithDefaultImage = response.data.slice(0, 3).map((order: Order) => ({
+      
+      // Apply the same filtering logic as in Orders.tsx
+      const filteredOrders = response.data.filter((order: Order) => {
+        // Exclude customerApp orders that are still pending or not paid
+        const shouldShowInTable = !(order.orderChannel === 'customerApp' && 
+          (order.orderAccepted === 'pending' || order.paymentStatus !== 'Paid'));
+        return shouldShowInTable;
+      });
+      
+      const ordersWithDefaultImage = filteredOrders.slice(0, 3).map((order: Order) => ({
         ...order,
         customerImage: order.customerImage || '/default-profile.jpg'
       }));
@@ -473,54 +485,52 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
             <h2 className="text-lg font-bold font-sans">{t('overview.currentOrders')}</h2>
           </div>
 
-          <div className="overflow-x-auto">
-            <div className="min-w-[900px] w-full border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg">
-              <div className="sticky top-0 z-10 grid grid-cols-6 bg-[#f9f9f9] p-3" style={{ borderBottom: '1px solid #eaeaea' }}>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666]">{t('orders.orderNumber')}</div>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666]">{t('orders.customer')}</div>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666]">{t('orders.address')}</div>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666]">{t('orders.date')}</div>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666]">{t('orders.price')} (GH₵)</div>
-                <div className="text-[12px] leading-[20px] font-sans text-[#666]">{t('orders.status')}</div>
-              </div>
+          <div className="w-full border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg">
+            <div className="sticky top-0 z-10 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-1 bg-[#f9f9f9] p-2" style={{ borderBottom: '1px solid #eaeaea' }}>
+              <div className="text-[11px] leading-[18px] font-sans text-[#666]">{t('orders.orderNumber')}</div>
+              <div className="text-[11px] leading-[18px] font-sans text-[#666]">{t('orders.customer')}</div>
+              <div className="text-[11px] leading-[18px] font-sans text-[#666] hidden lg:block">{t('orders.address')}</div>
+              <div className="text-[11px] leading-[18px] font-sans text-[#666] hidden sm:block">{t('orders.date')}</div>
+              <div className="text-[11px] leading-[18px] font-sans text-[#666] hidden lg:block">{t('orders.price')} (GH₵)</div>
+              <div className="text-[11px] leading-[18px] font-sans text-[#666]">{t('orders.status')}</div>
+            </div>
 
-              <div className="overflow-y-auto max-h-[400px]">
-                {isLoading ? (
-                  <div className="p-4 text-center text-gray-500">Loading orders...</div>
-                ) : recentOrders.length === 0 ? (
-                  <div className="p-4 text-center text-gray-500 font-sans">{t('overview.noCurrentOrders')}</div>
-                ) : (
-                  recentOrders.map((order) => (
-                    <div 
-                      key={order.id} 
-                      style={{ borderBottom: '1px solid #eaeaea' }}
-                      className="grid grid-cols-6 p-3 hover:bg-[#f9f9f9]"
-                    >
-                      <div className="text-[12px] leading-[20px] font-sans text-[#444]">{order.orderNumber}</div>
-                      <div className="flex items-center gap-2">
-                        <img 
-                          src={order.customerImage || '/default-profile.jpg'} 
-                          alt={order.customerName} 
-                          className="w-6 h-6 rounded-full object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = '/default-profile.jpg';
-                          }}
-                        />
-                        <span className="text-[12px] leading-[20px] font-sans text-[#444]">{order.customerName}</span>
-                      </div>
-                      <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.dropOff[0]?.toAddress || 'N/A'}</div>
-                      <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.orderDate}</div>
-                      <div className="text-[12px] leading-[20px] font-sans text-[#444]">{Number(order.totalPrice).toFixed(2)}</div>
-                      <div className="flex items-center justify-between">
-                        <span className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans ${getStatusStyle(order.orderStatus)}`}>
-                          {order.orderStatus}
-                        </span>
-                      </div>
+            <div className="overflow-y-auto max-h-[400px]">
+              {isLoading ? (
+                <div className="p-4 text-center text-gray-500">Loading orders...</div>
+              ) : recentOrders.length === 0 ? (
+                <div className="p-4 text-center text-gray-500 font-sans">{t('overview.noCurrentOrders')}</div>
+              ) : (
+                recentOrders.map((order) => (
+                  <div 
+                    key={order.id} 
+                    style={{ borderBottom: '1px solid #eaeaea' }}
+                    className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-1 p-2 hover:bg-[#f9f9f9]"
+                  >
+                    <div className="text-[11px] leading-[18px] font-sans text-[#444] truncate">#{order.orderNumber}</div>
+                    <div className="flex items-center gap-1 min-w-0">
+                      <img 
+                        src={order.customerImage || '/default-profile.jpg'} 
+                        alt={order.customerName} 
+                        className="w-4 h-4 rounded-full object-cover flex-shrink-0"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = '/default-profile.jpg';
+                        }}
+                      />
+                      <span className="text-[11px] leading-[18px] font-sans text-[#444] truncate">{order.customerName}</span>
                     </div>
-                  ))
-                )}
-              </div>
+                    <div className="text-[11px] leading-[18px] font-sans text-[#666] truncate hidden lg:block">{order.dropOff[0]?.toAddress || 'N/A'}</div>
+                    <div className="text-[11px] leading-[18px] font-sans text-[#666] hidden sm:block">{formatDate(order.orderDate)}</div>
+                    <div className="text-[11px] leading-[18px] font-sans text-[#444] truncate hidden lg:block">₵{Number(order.totalPrice).toFixed(0)}</div>
+                    <div className="flex items-center justify-start">
+                      <span className={`px-1 py-0.5 rounded text-[9px] leading-[14px] font-sans truncate max-w-full ${getStatusStyle(order.orderStatus)}`}>
+                        {order.orderStatus}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 

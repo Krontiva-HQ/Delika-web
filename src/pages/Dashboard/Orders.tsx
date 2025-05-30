@@ -1398,12 +1398,15 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                           >
                             <IoInformationCircleOutline className="w-[14px] h-[14px] text-[#666]" />
                           </button>
-                          <button 
-                            className="p-1 border-[1px] border-solid border-[#eaeaea] rounded-[4px] bg-white hover:bg-gray-50"
-                            onClick={(e) => handleEditClick(e, order)}
-                          >
-                            <CiEdit className="w-[14px] h-[14px] text-[#666]" />
-                          </button>
+                          {/* Hide edit button for customerApp orders */}
+                          {order.orderChannel !== 'customerApp' && (
+                            <button 
+                              className="p-1 border-[1px] border-solid border-[#eaeaea] rounded-[4px] bg-white hover:bg-gray-50"
+                              onClick={(e) => handleEditClick(e, order)}
+                            >
+                              <CiEdit className="w-[14px] h-[14px] text-[#666]" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
