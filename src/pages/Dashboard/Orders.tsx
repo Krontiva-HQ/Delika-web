@@ -64,7 +64,7 @@ interface Order {
   payNow: boolean;
   payVisaCard: boolean;
   kitchenStatus: string;
-  orderAccepted: boolean;
+  orderAccepted: "pending" | "accepted" | "declined";
   orderChannel: string;
 }
 
@@ -98,16 +98,17 @@ interface NewOrderModalProps {
   onAccept: (orderId: string) => void;
   onDecline: (orderId: string) => void;
   newOrders: Order[];
+  modalLoadingOrderIds: Set<string>;
 }
 
-const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose, onAccept, onDecline, newOrders }) => {
+const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose, onAccept, onDecline, newOrders, modalLoadingOrderIds }) => {
   const { t } = useTranslation();
   
   if (!isOpen) return null;
 
   // Filter orders that haven't been accepted or declined yet
   const pendingOrders = newOrders.filter(order => 
-    order.orderAccepted === undefined || order.orderAccepted === null
+    order.orderAccepted === "pending" && order.paymentStatus === "Paid"
   );
 
   return (
@@ -186,15 +187,39 @@ const NewOrderModal: React.FC<NewOrderModalProps> = ({ isOpen, onClose, onAccept
                 <div className="flex gap-2 mt-3">
                   <button
                     onClick={() => onAccept(order.id)}
-                    className="flex-1 px-3 py-1.5 bg-[#fe5b18] text-white rounded-md text-xs font-medium hover:bg-[#e54d0e] transition-colors"
+                    disabled={modalLoadingOrderIds.has(order.id)}
+                    className={`flex-1 px-3 py-1.5 bg-[#fe5b18] text-white rounded-md text-xs font-medium hover:bg-[#e54d0e] transition-colors
+                      ${modalLoadingOrderIds.has(order.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    {t('orders.accept')}
+                    {modalLoadingOrderIds.has(order.id) ? (
+                      <span className="flex items-center justify-center gap-1">
+                        <svg className="animate-spin h-3 w-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        {t('orders.accepting')}
+                      </span>
+                    ) : (
+                      t('orders.accept')
+                    )}
                   </button>
                   <button
                     onClick={() => onDecline(order.id)}
-                    className="flex-1 px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md text-xs font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    disabled={modalLoadingOrderIds.has(order.id)}
+                    className={`flex-1 px-3 py-1.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-md text-xs font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors
+                      ${modalLoadingOrderIds.has(order.id) ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    {t('orders.decline')}
+                    {modalLoadingOrderIds.has(order.id) ? (
+                      <span className="flex items-center justify-center gap-1">
+                        <svg className="animate-spin h-3 w-3 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        {t('orders.declining')}
+                      </span>
+                    ) : (
+                      t('orders.decline')
+                    )}
                   </button>
                 </div>
               </div>
@@ -266,6 +291,9 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isTableLoading, setIsTableLoading] = useState(false);
 
+  // Add new state for modal accept/decline loading
+  const [modalLoadingOrderIds, setModalLoadingOrderIds] = useState<Set<string>>(new Set());
+
   // Add useEffect to load persisted pending orders on mount
   useEffect(() => {
     const loadPersistedOrders = () => {
@@ -307,7 +335,9 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
   }, []);
 
   // Filter only CustomerApp orders that are not accepted yet
-  const pendingCustomerAppOrders = newOrders.filter(order => order.orderChannel === 'customerApp');
+  const pendingCustomerAppOrders = newOrders.filter(order => 
+    order.orderChannel === 'customerApp' && order.paymentStatus === 'Paid'
+  );
 
   // Floating panel for pending orders
   const FloatingPendingOrdersPanel = () => (
@@ -325,8 +355,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
             <div className="text-xs text-gray-600 font-sans">{order.customerName} - GH₵{Number(order.orderPrice).toFixed(2)}</div>
             
             {/* Show accept/decline buttons only if order hasn't been acted upon */}
-            {(pendingDecisionOrders.has(order.id) || 
-              (order.orderAccepted !== true && order.orderAccepted !== false)) && (
+            {order.orderAccepted === "pending" && (
               <div className="flex gap-2 mt-2">
                 <button
                   onClick={() => handleAcceptNewOrders(order.id)}
@@ -569,24 +598,32 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         // Skip if order ID already exists in lastOrderIds
         if (lastOrderIds.has(order.id)) return false;
         
-        // Include if it's a new customerApp order
-        return order.orderChannel === 'customerApp';
+        // Include if it's a new customerApp order with paid status
+        return order.orderChannel === 'customerApp' && order.paymentStatus === 'Paid';
       });
 
       // Update newOrders state with proper kitchen status sync
       setNewOrders(prev => {
-        // Removed console.log('🔄 Updating newOrders state...', ...)
         // Get existing orders that should remain in the floating panel
         const existingOrders = prev.filter(order => 
           !newIncomingOrders.some((newOrder: Order) => newOrder.id === order.id) &&
           order.orderChannel === 'customerApp' &&
+          order.paymentStatus === 'Paid' &&
           order.kitchenStatus !== 'prepared'
         );
 
         // Get orders from latestOrders that should be in the floating panel
         const activeOrders = latestOrders.filter((order: Order) => 
           order.orderChannel === 'customerApp' && 
+          order.paymentStatus === 'Paid' &&
           (order.kitchenStatus === 'orderReceived' || order.kitchenStatus === 'preparing')
+        );
+
+        // Get pending orders that should be in the modal/floating panel (including existing ones)
+        const pendingOrders = latestOrders.filter((order: Order) => 
+          order.orderChannel === 'customerApp' && 
+          order.paymentStatus === 'Paid' &&
+          order.orderAccepted === 'pending'
         );
 
         // Update kitchen status for existing orders
@@ -601,8 +638,8 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
           return existingOrder;
         });
 
-        // Combine with new orders and active orders
-        const combinedOrders = [...updatedExistingOrders, ...newIncomingOrders, ...activeOrders];
+        // Combine with new orders, active orders, and pending orders
+        const combinedOrders = [...updatedExistingOrders, ...newIncomingOrders, ...activeOrders, ...pendingOrders];
 
         // Filter out duplicates and sort by time
         const uniqueOrders = Array.from(
@@ -616,29 +653,32 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
       // Update pendingDecisionOrders - only include orders that haven't been accepted/declined
       setPendingDecisionOrders(prev => {
-        const newSet = new Set(prev);
+        const newSet = new Set<string>();
         latestOrders.forEach((order: Order) => {
-          // Add to pending decisions if:
-          // 1. It's a new order (in newIncomingOrders)
-          // 2. orderAccepted is undefined/null (no decision made)
-          if (newIncomingOrders.some((newOrder: Order) => newOrder.id === order.id) &&
-              (order.orderAccepted === undefined || order.orderAccepted === null)) {
+          // Add to pending decisions if order meets all criteria for pending decision
+          if (order.orderChannel === 'customerApp' && 
+              order.paymentStatus === 'Paid' &&
+              order.orderAccepted === "pending") {
             newSet.add(order.id);
-          }
-          // Remove from pending decisions if:
-          // 1. Order has been accepted or declined
-          if (order.orderAccepted === true || order.orderAccepted === false) {
-            newSet.delete(order.id);
           }
         });
         return newSet;
       });
 
-      // Show modal for new orders
-      if (newIncomingOrders.length > 0) {
+      // Show modal for pending orders that need decisions
+      const shouldShowModal = latestOrders.some((order: Order) => 
+        order.orderChannel === 'customerApp' && 
+        order.paymentStatus === 'Paid' &&
+        order.orderAccepted === 'pending'
+      );
+
+      if (shouldShowModal) {
         setShowNewOrderModal(true);
-        const audio = new Audio('/orderRinging.mp3');
-        audio.play().catch(() => {});
+        // Only play sound for truly new orders
+        if (newIncomingOrders.length > 0) {
+          const audio = new Audio('/orderRinging.mp3');
+          audio.play().catch(() => {});
+        }
       }
 
       // Update lastOrderIds with all current order IDs
@@ -702,7 +742,12 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
           ? order.orderChannel === 'restaurantPortal'
           : true;
 
-        return matchesSearch && matchesTab;
+        // Exclude customerApp orders that are still pending (they should only appear in the new order modal)
+        // Also exclude customerApp orders that don't have "Paid" payment status
+        const shouldShowInTable = !(order.orderChannel === 'customerApp' && 
+          (order.orderAccepted === 'pending' || order.paymentStatus !== 'Paid'));
+
+        return matchesSearch && matchesTab && shouldShowInTable;
       });
 
     // Calculate pagination
@@ -925,11 +970,14 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
   const handleAcceptNewOrders = useCallback(async (orderId: string) => {
     const acceptedOrder = newOrders.find(order => order.id === orderId);
     if (acceptedOrder) {
+        // Add loading state
+        setModalLoadingOrderIds(prev => new Set(prev).add(orderId));
+        
         try {
             // Use the ACCEPT_DECLINE endpoint
             await api.patch('/accept/decline/orders', {
                 orderNumber: acceptedOrder.orderNumber,
-                orderAccepted: true
+                orderAccepted: "accepted"
             });
 
             // Add to main orders table
@@ -947,10 +995,8 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                 return newSet;
             });
             
-            // Close the modal if it was the last order
-            if (newOrders.length === 1) {
-                setShowNewOrderModal(false);
-            }
+            // Always close the modal after successful accept
+            setShowNewOrderModal(false);
 
             // Refresh the entire table
             if (selectedDate && selectedBranchId) {
@@ -960,7 +1006,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
             // Update the order in newOrders to mark it as accepted but keep it in the list
             setNewOrders(prev => prev.map(order => 
                 order.id === orderId 
-                    ? { ...order, orderAccepted: true }
+                    ? { ...order, orderAccepted: "accepted" as const }
                     : order
             ));
         } catch (error) {
@@ -968,6 +1014,13 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
             addNotification({
                 type: 'order_status',
                 message: 'Failed to accept order. Please try again.'
+            });
+        } finally {
+            // Remove loading state
+            setModalLoadingOrderIds(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(orderId);
+                return newSet;
             });
         }
     }
@@ -977,17 +1030,20 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
   const handleDeclineNewOrders = useCallback(async (orderId: string) => {
     const declinedOrder = newOrders.find(order => order.id === orderId);
     if (declinedOrder) {
+      // Add loading state
+      setModalLoadingOrderIds(prev => new Set(prev).add(orderId));
+      
       try {
         // Use the ACCEPT_DECLINE endpoint
         await api.patch('/accept/decline/orders', {
           orderNumber: declinedOrder.orderNumber,
-          orderAccepted: false
+          orderAccepted: "declined"
         });
 
         // Add to main orders table with declined status
         setOrders(prev => [{
           ...declinedOrder,
-          orderAccepted: false,
+          orderAccepted: "declined" as const,
           kitchenStatus: 'cancelled'
         }, ...prev]);
 
@@ -1003,9 +1059,8 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
           return newSet;
         });
         
-        if (newOrders.length === 1) {
-          setShowNewOrderModal(false);
-        }
+        // Always close the modal after successful decline
+        setShowNewOrderModal(false);
 
         // Refresh the entire table
         if (selectedDate && selectedBranchId) {
@@ -1016,6 +1071,13 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         addNotification({
           type: 'order_status',
           message: 'Failed to decline order. Please try again.'
+        });
+      } finally {
+        // Remove loading state
+        setModalLoadingOrderIds(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(orderId);
+          return newSet;
         });
       }
     }
@@ -1257,9 +1319,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                     <div 
                       key={order.id} 
                       style={{ borderBottom: '1px solid #eaeaea', gridTemplateColumns: '80px 1fr 1.2fr 0.8fr 80px 1fr 1fr' }}
-                      className={`grid grid-cols-7 p-3 gap-2 hover:bg-[#f9f9f9] transition-all duration-200 ${
-                        isTableLoading ? 'opacity-50' : ''
-                      }`}
+                      className="grid grid-cols-7 p-3 gap-2 hover:bg-[#f9f9f9] transition-all duration-200"
                     >
                       <div className="text-[12px] leading-[20px] font-sans text-[#444] truncate">{order.orderNumber}</div>
                       <div className="flex items-center gap-2 min-w-0">
@@ -1413,6 +1473,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
             onAccept={handleAcceptNewOrders}
             onDecline={handleDeclineNewOrders}
             newOrders={newOrders}
+            modalLoadingOrderIds={modalLoadingOrderIds}
           />
         </div>
       )}

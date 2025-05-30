@@ -92,6 +92,8 @@
     "paid": "Paid",
     "accept": "Accept",
     "decline": "Decline",
+    "accepting": "Accepting...",
+    "declining": "Declining...",
     "orderReceived": "Order Received",
     "newOrderReceived": "New Order Received!",
     "noOrderDetails": "No order details available",
