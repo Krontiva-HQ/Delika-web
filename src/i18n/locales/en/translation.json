@@ -95,11 +95,12 @@
     "orderReceived": "Order Received",
     "newOrderReceived": "New Order Received!",
     "noOrderDetails": "No order details available",
+    "addMenuItem": "Add Menu Item",
     "detail": {
       "customerInfo": "Customer Info",
       "courierInfo": "Courier Info",
-      "name": "Name",
-      "phone": "Phone",
+      "name": "Customer Name",
+      "phone": "Customer Phone",
       "notAssigned": "Not Assigned",
       "orderReceived": "Order Received",
       "orderPickedUp": "Order Picked Up",
@@ -121,8 +122,8 @@
       "serviceType": "Service Type",
       "scheduledTime": "Scheduled Time",
       "noScheduledTime": "No scheduled time",
-      "pickup": "Pickup",
-      "dropoff": "Dropoff"
+      "pickup": "Select Branch for Pickup",
+      "dropoff": "Enter Delivery Location"
     },
     "tabs": {
       "all": "All Orders"
