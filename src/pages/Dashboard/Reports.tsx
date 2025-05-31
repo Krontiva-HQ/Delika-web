@@ -1008,155 +1008,325 @@ const Reports: FunctionComponent = () => {
       case "Orders Report":
         return (
           <>
-            <div className="grid grid-cols-7 bg-[#f9f9f9] p-4" style={{ borderBottom: '1px solid #eaeaea' }}>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Customer Name</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Phone Number</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Courier Name</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Order Date</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Food Price GH₵</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Delivery Price GH₵</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Price GH₵</div>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Total Orders</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">{orderDetails.length}</div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Total Revenue</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  GH₵ {orderDetails.reduce((sum, order) => sum + (order.totalPrice || 0), 0).toFixed(2)}
+                </div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Average Order Value</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  GH₵ {(orderDetails.reduce((sum, order) => sum + (order.totalPrice || 0), 0) / (orderDetails.length || 1)).toFixed(2)}
+                </div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Delivery Revenue</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  GH₵ {orderDetails.reduce((sum, order) => sum + (order.deliveryPrice || 0), 0).toFixed(2)}
+                </div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
             </div>
 
-            {paginateData(orderDetails).map((order, index) => (
-              <div key={index} className="border-b border-gray-200">
-                <div 
-                  className="grid grid-cols-7 p-4 hover:bg-[#f9f9f9] cursor-pointer"
-                  onClick={() => toggleRowExpansion(index)}
-                >
-                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.customerName}</div>
-                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.customerPhone}</div>
-                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.courierName}</div>
-                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.orderDate}</div>
-                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.amount?.toFixed(2) || '0.00'}</div>
-                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.deliveryPrice?.toFixed(2) || '0.00'}</div>
-                  <div className="text-[14px] leading-[22px] font-sans text-[#444] flex items-center gap-2">
-                    {order.totalPrice?.toFixed(2) || '0.00'}
-                    <svg 
-                      className={`w-4 h-4 transition-transform ${expandedRows.has(index) ? 'transform rotate-180' : ''}`} 
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
+            {/* Orders Table */}
+            <div className="bg-white dark:bg-[#1a1a1a] rounded-lg border border-gray-100 dark:border-gray-800 overflow-hidden">
+              <div className="grid grid-cols-7 bg-gray-50 dark:bg-[#2a2a2a] p-4">
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Customer Name</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Phone Number</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Courier Name</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Order Date</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Food Price GH₵</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Delivery Price GH₵</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Price GH₵</div>
+              </div>
 
-                {expandedRows.has(index) && (
-                  <div className="bg-gray-50 p-4 border-t border-gray-100">
-                    <div className="text-sm font text-gray-600 mb-2 font-sans">Products:</div>
-                    <div className="grid gap-2">
-                      {/* Add header for products table */}
-                      <div className="grid grid-cols-3 gap-4 bg-white p-2 rounded-md font-medium text-[14px] font-sans text-[#666]">
-                        <span>Product Name</span>
-                        <span>Quantity</span>
-                        <span>Unit Price (GH₵)</span>
-                      </div>
-
-                      {order.products.map((product, idx) => (
-                        <div 
-                          key={idx} 
-                          className="grid grid-cols-3 gap-4 bg-white p-2 rounded-md items-center"
-                        >
-                          <span className="text-[14px] font-sans text-[#444]">{product.name}</span>
-                          <span className="text-[14px] font-sans text-[#666] bg-gray-100 px-2 py-1 rounded w-fit">
-                            x{product.quantity}
-                          </span>
-                          <span className="text-[14px] font-sans text-[#444]">
-                            {Number(product.price).toFixed(2) || '0.00'}
-                          </span>
-                        </div>
-                      ))}
+              {paginateData(orderDetails).map((order, index) => (
+                <div key={index} className="border-t border-gray-100 dark:border-gray-800">
+                  <div 
+                    className="grid grid-cols-7 p-4 hover:bg-gray-50 dark:hover:bg-[#2a2a2a] cursor-pointer transition-colors"
+                    onClick={() => toggleRowExpansion(index)}
+                  >
+                    <div className="text-sm text-gray-900 dark:text-gray-100">{order.customerName}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">{order.customerPhone}</div>
+                    <div className="text-sm text-gray-900 dark:text-gray-100">{order.courierName}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">{order.orderDate}</div>
+                    <div className="text-sm text-gray-900 dark:text-gray-100">{order.amount?.toFixed(2) || '0.00'}</div>
+                    <div className="text-sm text-gray-900 dark:text-gray-100">{order.deliveryPrice?.toFixed(2) || '0.00'}</div>
+                    <div className="text-sm text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                      {order.totalPrice?.toFixed(2) || '0.00'}
+                      <svg 
+                        className={`w-4 h-4 transition-transform ${expandedRows.has(index) ? 'transform rotate-180' : ''}`} 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
                     </div>
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {expandedRows.has(index) && (
+                    <div className="bg-gray-50 dark:bg-[#2a2a2a] p-4 border-t border-gray-100 dark:border-gray-800">
+                      <div className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">Products:</div>
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-3 gap-4 bg-white dark:bg-[#1a1a1a] p-2 rounded-md">
+                          <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Product Name</div>
+                          <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Quantity</div>
+                          <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Unit Price (GH₵)</div>
+                        </div>
+
+                        {order.products.map((product, idx) => (
+                          <div 
+                            key={idx} 
+                            className="grid grid-cols-3 gap-4 bg-white dark:bg-[#1a1a1a] p-2 rounded-md items-center"
+                          >
+                            <div className="text-sm text-gray-900 dark:text-gray-100">{product.name}</div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded w-fit">
+                              x{product.quantity}
+                            </div>
+                            <div className="text-sm text-gray-900 dark:text-gray-100">
+                              {Number(product.price).toFixed(2) || '0.00'}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
 
             {renderPagination(orderDetails.length)}
           </>
         );
       case "Top Sold Items":
+        const totalQuantitySold = mostSellingItems.reduce((sum, item) => sum + item.totalQuantitySold, 0);
+        const totalRevenue = mostSellingItems.reduce((sum, item) => sum + item.totalRevenue, 0);
+        const averagePrice = totalQuantitySold > 0 ? totalRevenue / totalQuantitySold : 0;
+
         return (
           <>
-            <div className="grid grid-cols-4 bg-[#f9f9f9] p-4" style={{ borderBottom: '1px solid #eaeaea' }}>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Item Name</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Quantity Sold</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Revenue GH₵</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Last Sold</div>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Total Items Sold</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">{totalQuantitySold}</div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Total Revenue</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  GH₵ {totalRevenue.toFixed(2)}
+                </div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Average Price</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  GH₵ {averagePrice.toFixed(2)}
+                </div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Unique Items</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  {mostSellingItems.length}
+                </div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
             </div>
 
-            {paginateData(mostSellingItems).map((item, index) => (
-              <div 
-                key={index}
-                className="grid grid-cols-4 p-4 hover:bg-[#f9f9f9]"
-                style={{ borderBottom: '1px solid #eaeaea' }}
-              >
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{item.name}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{item.totalQuantitySold}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{item.totalRevenue.toFixed(2)}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{item.lastSoldDate}</div>
+            {/* Items Table */}
+            <div className="bg-white dark:bg-[#1a1a1a] rounded-lg border border-gray-100 dark:border-gray-800 overflow-hidden">
+              <div className="grid grid-cols-4 bg-gray-50 dark:bg-[#2a2a2a] p-4">
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Item Name</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Quantity Sold</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Revenue GH₵</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Last Sold</div>
               </div>
-            ))}
+
+              {paginateData(mostSellingItems).map((item, index) => (
+                <div 
+                  key={index}
+                  className="grid grid-cols-4 p-4 border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition-colors"
+                >
+                  <div className="text-sm text-gray-900 dark:text-gray-100">{item.name}</div>
+                  <div className="text-sm text-gray-900 dark:text-gray-100">{item.totalQuantitySold}</div>
+                  <div className="text-sm text-gray-900 dark:text-gray-100">{item.totalRevenue.toFixed(2)}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">{item.lastSoldDate}</div>
+                </div>
+              ))}
+            </div>
 
             {renderPagination(mostSellingItems.length)}
           </>
         );
-      case "Customer Report": 
+      case "Customer Report":
+        const totalCustomers = customerReports.length;
+        const totalCustomerOrders = customerReports.reduce((sum, customer) => sum + customer.totalOrders, 0);
+        const totalCustomerSpent = customerReports.reduce((sum, customer) => sum + customer.totalSpent, 0);
+        const averageOrderValue = totalCustomerOrders > 0 ? totalCustomerSpent / totalCustomerOrders : 0;
+
         return (
           <>
-            <div className="grid grid-cols-5 bg-[#f9f9f9] p-4" style={{ borderBottom: '1px solid #eaeaea' }}>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Customer Name</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Phone Number</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Orders</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Spent GH₵</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Last Order</div>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Total Customers</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">{totalCustomers}</div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Total Orders</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">{totalCustomerOrders}</div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Total Revenue</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  GH₵ {totalCustomerSpent.toFixed(2)}
+                </div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Average Order Value</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  GH₵ {averageOrderValue.toFixed(2)}
+                </div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
             </div>
 
-            {paginateData(customerReports).map((customer, index) => (
-              <div 
-                key={index}
-                className="grid grid-cols-5 p-4 hover:bg-[#f9f9f9]"
-                style={{ borderBottom: '1px solid #eaeaea' }}
-              >
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{customer.customerName}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{customer.phoneNumber}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{customer.totalOrders}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{customer.totalSpent.toFixed(2)}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{customer.lastOrderDate}</div>
+            {/* Customers Table */}
+            <div className="bg-white dark:bg-[#1a1a1a] rounded-lg border border-gray-100 dark:border-gray-800 overflow-hidden">
+              <div className="grid grid-cols-5 bg-gray-50 dark:bg-[#2a2a2a] p-4">
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Customer Name</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Phone Number</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Orders</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Spent GH₵</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Last Order</div>
               </div>
-            ))}
+
+              {paginateData(customerReports).map((customer, index) => (
+                <div 
+                  key={index}
+                  className="grid grid-cols-5 p-4 border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition-colors"
+                >
+                  <div className="text-sm text-gray-900 dark:text-gray-100">{customer.customerName}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">{customer.phoneNumber}</div>
+                  <div className="text-sm text-gray-900 dark:text-gray-100">{customer.totalOrders}</div>
+                  <div className="text-sm text-gray-900 dark:text-gray-100">{customer.totalSpent.toFixed(2)}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">{customer.lastOrderDate}</div>
+                </div>
+              ))}
+            </div>
 
             {renderPagination(customerReports.length)}
           </>
         );
       case "Delivery Report":
+        const totalDeliveries = deliveryReports.length;
+        const totalDeliveryRevenue = deliveryReports.reduce((sum, report) => sum + report.deliveryPrice, 0);
+        const averageDeliveryPrice = totalDeliveries > 0 ? totalDeliveryRevenue / totalDeliveries : 0;
+        const uniqueRiders = new Set(deliveryReports.map(report => report.courierPhone)).size;
+
         return (
           <>
-            <div className="grid grid-cols-6 bg-[#f9f9f9] p-4" style={{ borderBottom: '1px solid #eaeaea' }}>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Courier Name</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Courier Phone</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Customer Name</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Order Date</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Delivery Price GH₵</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Delivery Location</div>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Total Deliveries</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">{totalDeliveries}</div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Total Revenue</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  GH₵ {totalDeliveryRevenue.toFixed(2)}
+                </div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Average Delivery Price</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  GH₵ {averageDeliveryPrice.toFixed(2)}
+                </div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Active Riders</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">{uniqueRiders}</div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
             </div>
 
-            {paginateData(deliveryReports).map((report, index) => (
-              <div 
-                key={index}
-                className="grid grid-cols-6 p-4 hover:bg-[#f9f9f9]"
-                style={{ borderBottom: '1px solid #eaeaea' }}
-              >
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.courierName}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.courierPhone}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.customerName}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.orderDate}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.deliveryPrice.toFixed(2)}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.deliveryLocation}</div>
+            {/* Delivery Table */}
+            <div className="bg-white dark:bg-[#1a1a1a] rounded-lg border border-gray-100 dark:border-gray-800 overflow-hidden">
+              <div className="grid grid-cols-6 bg-gray-50 dark:bg-[#2a2a2a] p-4">
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Courier Name</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Courier Phone</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Customer Name</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Order Date</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Delivery Price GH₵</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Delivery Location</div>
               </div>
-            ))}
+
+              {paginateData(deliveryReports).map((report, index) => (
+                <div 
+                  key={index}
+                  className="grid grid-cols-6 p-4 border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition-colors"
+                >
+                  <div className="text-sm text-gray-900 dark:text-gray-100">{report.courierName}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">{report.courierPhone}</div>
+                  <div className="text-sm text-gray-900 dark:text-gray-100">{report.customerName}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">{report.orderDate}</div>
+                  <div className="text-sm text-gray-900 dark:text-gray-100">{report.deliveryPrice.toFixed(2)}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">{report.deliveryLocation}</div>
+                </div>
+              ))}
+            </div>
 
             {renderPagination(deliveryReports.length)}
           </>

@@ -822,7 +822,7 @@ const Settings: FunctionComponent = () => {
   const handleEditRider = (rider: Rider) => {
     // Add your edit rider logic here
   };
-
+ 
   // Add state for refreshing riders
   const [refreshRiders, setRefreshRiders] = useState(false);
 
@@ -879,18 +879,18 @@ const Settings: FunctionComponent = () => {
                   {t('settings.tabs.changePassword')}
                 </div>
                 <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
-                  activeTab === 'restaurant' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
-                }`}
-                onClick={() => setActiveTab('restaurant')}
-                >
-                  {t('settings.tabs.aboutRestaurant')}
-                </div>
-                <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
                   activeTab === 'restaurant-settings' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
                 }`}
                 onClick={() => setActiveTab('restaurant-settings')}
                 >
                   {t('settings.tabs.restaurantSettings')}
+                </div>
+                <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
+                  activeTab === 'restaurant' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
+                }`}
+                onClick={() => setActiveTab('restaurant')}
+                >
+                  {t('settings.tabs.aboutRestaurant')}
                 </div>
               </div>
             </section>
@@ -1088,81 +1088,6 @@ const Settings: FunctionComponent = () => {
                 <div className="self-stretch flex flex-col items-start justify-start gap-[10px]">
                   {renderPasswordChangeSection()}
                   {resetError && <div className="text-red-500 font-sans">{resetError}</div>}
-                </div>
-              ) : activeTab === 'restaurant' ? (
-                <div className="self-stretch flex flex-col sm:flex-row items-start justify-start gap-[20px] sm:gap-[30px] p-4">
-                  <div className="relative rounded-[8px] bg-gray-100 dark:bg-gray-800 overflow-hidden group cursor-pointer w-full sm:w-[200px] h-[200px]">
-                    {restaurantLogoUrl || previewImage ? (
-                      <img
-                        className="w-full h-full object-cover"
-                        alt="Restaurant Logo"
-                        src={previewImage || restaurantLogoUrl || undefined}
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = "/placeholder-restaurant.png";
-                        }}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <div className="text-gray-400 dark:text-gray-500 flex flex-col items-center">
-                          <FaCamera className="text-2xl sm:text-3xl mb-2" />
-                          <span className="text-[11px] sm:text-sm">Upload Logo</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <div className="flex-1 flex flex-col items-start justify-start gap-[20px] sm:gap-[49px]">
-                    <div className="self-stretch grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-x-[26px] sm:gap-y-[24px]">
-                      <div className="w-full sm:w-[392px] bg-transparent flex flex-col items-start justify-start gap-[1px]">
-                        <b className="self-stretch relative text-[12px] sm:text-[14px] leading-[22px] font-sans text-black dark:text-white">
-                          Restaurant Name
-                        </b>
-                        <input
-                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] sm:text-[14px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[8px] box-border h-[40px] sm:h-[49px] pt-[13.5px] px-[20px] pb-[12.5px]"
-                          type="text"
-                          value={restaurantFormData.restaurantName}
-                          readOnly
-                        />
-                      </div>
-
-                      <div className="w-full sm:w-[392px] bg-transparent flex flex-col items-start justify-start gap-[1px]">
-                        <b className="self-stretch relative text-[12px] sm:text-[14px] leading-[22px] font-sans text-black dark:text-white">
-                          Restaurant Email
-                        </b>
-                        <input
-                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] sm:text-[14px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[8px] box-border h-[40px] sm:h-[49px] pt-[13.5px] px-[20px] pb-[12.5px]"
-                          type="email"
-                          value={restaurantFormData.restaurantEmail}
-                          readOnly
-                        />
-                      </div>
-
-                      <div className="w-full sm:w-[392px] bg-transparent flex flex-col items-start justify-start gap-[1px]">
-                        <b className="self-stretch relative text-[12px] sm:text-[14px] leading-[22px] font-sans text-black dark:text-white">
-                          Restaurant Phone Number
-                        </b>
-                        <input
-                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] sm:text-[14px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[8px] box-border h-[40px] sm:h-[49px] pt-[13.5px] px-[20px] pb-[12.5px]"
-                          type="tel"
-                          value={restaurantFormData.restaurantPhoneNumber}
-                          readOnly
-                        />
-                      </div>
-
-                      <div className="w-full sm:w-[392px] bg-transparent flex flex-col items-start justify-start gap-[1px]">
-                        <b className="self-stretch relative text-[12px] sm:text-[14px] leading-[22px] font-sans text-black dark:text-white">
-                          Restaurant Address
-                        </b>
-                        <input
-                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] sm:text-[14px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[8px] box-border h-[40px] sm:h-[49px] pt-[13.5px] px-[20px] pb-[12.5px]"
-                          type="text"
-                          value={restaurantFormData.restaurantAddress}
-                          readOnly
-                        />
-                      </div>
-                    </div>
-                  </div>
                 </div>
               ) : activeTab === 'restaurant-settings' ? (
                 <div className="self-stretch flex flex-col items-start justify-start gap-[20px] p-4 sm:p-6">
@@ -1430,9 +1355,82 @@ const Settings: FunctionComponent = () => {
                     </>
                   )}
                 </div>
-              ) : (
-                null
-              )}
+              ) : activeTab === 'restaurant' ? (
+                <div className="self-stretch flex flex-col sm:flex-row items-start justify-start gap-[20px] sm:gap-[30px] p-4">
+                  <div className="relative rounded-[8px] bg-gray-100 dark:bg-gray-800 overflow-hidden group cursor-pointer w-full sm:w-[200px] h-[200px]">
+                    {restaurantLogoUrl || previewImage ? (
+                      <img
+                        className="w-full h-full object-cover"
+                        alt="Restaurant Logo"
+                        src={previewImage || restaurantLogoUrl || undefined}
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = "/placeholder-restaurant.png";
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="text-gray-400 dark:text-gray-500 flex flex-col items-center">
+                          <FaCamera className="text-2xl sm:text-3xl mb-2" />
+                          <span className="text-[11px] sm:text-sm">Upload Logo</span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <div className="flex-1 flex flex-col items-start justify-start gap-[20px] sm:gap-[49px]">
+                    <div className="self-stretch grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-x-[26px] sm:gap-y-[24px]">
+                      <div className="w-full sm:w-[392px] bg-transparent flex flex-col items-start justify-start gap-[1px]">
+                        <b className="self-stretch relative text-[12px] sm:text-[14px] leading-[22px] font-sans text-black dark:text-white">
+                          Restaurant Name
+                        </b>
+                        <input
+                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] sm:text-[14px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[8px] box-border h-[40px] sm:h-[49px] pt-[13.5px] px-[20px] pb-[12.5px]"
+                          type="text"
+                          value={restaurantFormData.restaurantName}
+                          readOnly
+                        />
+                      </div>
+
+                      <div className="w-full sm:w-[392px] bg-transparent flex flex-col items-start justify-start gap-[1px]">
+                        <b className="self-stretch relative text-[12px] sm:text-[14px] leading-[22px] font-sans text-black dark:text-white">
+                          Restaurant Email
+                        </b>
+                        <input
+                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] sm:text-[14px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[8px] box-border h-[40px] sm:h-[49px] pt-[13.5px] px-[20px] pb-[12.5px]"
+                          type="email"
+                          value={restaurantFormData.restaurantEmail}
+                          readOnly
+                        />
+                      </div>
+
+                      <div className="w-full sm:w-[392px] bg-transparent flex flex-col items-start justify-start gap-[1px]">
+                        <b className="self-stretch relative text-[12px] sm:text-[14px] leading-[22px] font-sans text-black dark:text-white">
+                          Restaurant Phone Number
+                        </b>
+                        <input
+                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] sm:text-[14px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[8px] box-border h-[40px] sm:h-[49px] pt-[13.5px] px-[20px] pb-[12.5px]"
+                          type="tel"
+                          value={restaurantFormData.restaurantPhoneNumber}
+                          readOnly
+                        />
+                      </div>
+
+                      <div className="w-full sm:w-[392px] bg-transparent flex flex-col items-start justify-start gap-[1px]">
+                        <b className="self-stretch relative text-[12px] sm:text-[14px] leading-[22px] font-sans text-black dark:text-white">
+                          Restaurant Address
+                        </b>
+                        <input
+                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] sm:text-[14px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[8px] box-border h-[40px] sm:h-[49px] pt-[13.5px] px-[20px] pb-[12.5px]"
+                          type="text"
+                          value={restaurantFormData.restaurantAddress}
+                          readOnly
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </form>
         </section>
