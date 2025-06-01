@@ -21,19 +21,92 @@ import { api } from '@/services/api';
 import { useUserProfile } from '../hooks/useUserProfile';
 
 // Option type for dropdowns
-type Option = { label: string; value: string };
+type Option = {
+  label: string;
+  value: string;
+  foodType: string;
+  foodPrice: string;
+  foodDescription: string;
+  foodImage: {
+    access: string;
+    path: string;
+    name: string;
+    type: string;
+    size: number;
+    mime: string;
+    meta: {
+      width: number;
+      height: number;
+    };
+    url: string;
+  };
+  foodTypeImage: {
+    access: string;
+    path: string;
+    name: string;
+    type: string;
+    size: number;
+    mime: string;
+    meta: {
+      width: number;
+      height: number;
+    };
+    url: string;
+  };
+  categoryId: string;
+  branchId: string;
+  created_at: number;
+  updatedAt: string;
+};
 
 export interface Extra {
   id: string;
   variant: string;
   title: string;
   inventoryId?: string;
+  foodImage?: {
+    access: string;
+    path: string;
+    name: string;
+    type: string;
+    size: number;
+    mime: string;
+    meta: {
+      width: number;
+      height: number;
+    };
+    url: string;
+  } | null;
+  foodDescription?: string;
+  foodPrice?: string;
+  foodType?: string;
+  categoryId?: string;
+  created_at?: number;
+  updatedAt?: string;
 }
 
 export interface ExtraGroup {
   id: string;
   title: string;
-  extras: Extra[];
+  extrasTitle: string;
+  extrasDetails: {
+    foodName: string;
+    foodPrice: number;
+    foodDescription: string;
+    foodImage: {
+      access: string;
+      path: string;
+      name: string;
+      type: string;
+      size: number;
+      mime: string;
+      meta: {
+        width: number;
+        height: number;
+      };
+      url: string;
+    };
+  }[];
 }
 
 interface AddExtrasModalProps {
@@ -48,6 +121,37 @@ interface FoodItem {
   foodName: string;
   foodPrice: string;
   restaurantName: string;
+  foodDescription?: string;
+  foodImage: {
+    access: string;
+    path: string;
+    name: string;
+    type: string;
+    size: number;
+    mime: string;
+    meta: {
+      width: number;
+      height: number;
+    };
+    url: string;
+  };
+  foodTypeImage: {
+    access: string;
+    path: string;
+    name: string;
+    type: string;
+    size: number;
+    mime: string;
+    meta: {
+      width: number;
+      height: number;
+    };
+    url: string;
+  };
+  categoryId: string;
+  branchId: string;
+  created_at: number;
+  updatedAt: string;
 }
 
 const steps = [
@@ -80,6 +184,7 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
   const [currentGroup, setCurrentGroup] = useState<ExtraGroup | null>(null);
   const [foodTypes, setFoodTypes] = useState<Option[]>([]);
   const [loading, setLoading] = useState(false);
+  const [foodItemsData, setFoodItemsData] = useState<FoodItem[]>([]);
 
   const { restaurantData } = useUserProfile();
 
@@ -87,7 +192,10 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
     const fetchFoodTypes = async () => {
       try {
         setLoading(true);
+        console.log('Fetching food types from endpoint:', 'https://api-server.krontiva.africa/api:uEBBwbSs/delika_inventory_table');
         const response = await axios.get('https://api-server.krontiva.africa/api:uEBBwbSs/delika_inventory_table');
+        console.log('Full API Response:', response.data);
+        
         const data = response.data as FoodItem[];
         
         // Filter for restaurant ID and get unique food types
@@ -95,12 +203,24 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
           item.restaurantName === restaurantData.id
         );
         
-        // Get unique food types and create options
+        console.log('Filtered data for restaurant:', filteredData);
+        
+        // Get unique food types and create options while maintaining all data
         const uniqueFoodTypes = filteredData.map(item => ({
           label: item.foodName,
-          value: item.id
+          value: item.id,
+          foodType: item.foodType,
+          foodPrice: item.foodPrice,
+          foodDescription: item.foodDescription || '',
+          foodImage: item.foodImage,
+          foodTypeImage: item.foodTypeImage,
+          categoryId: item.categoryId,
+          branchId: item.branchId,
+          created_at: item.created_at,
+          updatedAt: item.updatedAt
         }));
         
+        console.log('Processed food types options with full data:', uniqueFoodTypes);
         setFoodTypes(uniqueFoodTypes);
       } catch (error) {
         console.error('Error fetching food types:', error);
@@ -119,12 +239,18 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
       setCurrentGroup({
         id: Date.now().toString(),
         title: groupTitle,
-        extras: []
+        extrasTitle: groupTitle,
+        extrasDetails: []
       });
       setActiveStep(1);
     } else if (activeStep === 1) {
       if (currentGroup) {
-        setExtraGroups([...extraGroups, currentGroup]);
+        setExtraGroups([...extraGroups, {
+          id: currentGroup.id,
+          title: currentGroup.title,
+          extrasTitle: currentGroup.title,
+          extrasDetails: currentGroup.extrasDetails
+        }]);
         setCurrentGroup(null);
         setGroupTitle('');
         setActiveStep(2);
@@ -142,15 +268,20 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
   const handleAddVariant = () => {
     if (currentGroup && variant) {
       const selectedOption = foodTypes.find(opt => opt.value === variant);
-      setCurrentGroup({
-        ...currentGroup,
-        extras: [...currentGroup.extras, {
-          id: Date.now().toString(),
-          variant: selectedOption ? selectedOption.label : variant,
-          inventoryId: selectedOption ? selectedOption.value : variant,
-          title: currentGroup.title
-        }]
-      });
+      console.log('Selected variant with full data:', selectedOption);
+      
+      if (selectedOption) {
+        setCurrentGroup({
+          ...currentGroup,
+          extrasTitle: currentGroup.title,
+          extrasDetails: [...(currentGroup.extrasDetails || []), {
+            foodName: selectedOption.label,
+            foodPrice: Number(selectedOption.foodPrice),
+            foodDescription: selectedOption.foodDescription || '',
+            foodImage: selectedOption.foodImage
+          }]
+        });
+      }
       setVariant('');
     }
   };
@@ -159,7 +290,7 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
     if (currentGroup) {
       setCurrentGroup({
         ...currentGroup,
-        extras: currentGroup.extras.filter(extra => extra.id !== id)
+        extrasDetails: currentGroup.extrasDetails.filter(extra => extra.foodName !== id)
       });
     }
   };
@@ -347,15 +478,15 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
                 </Button>
               </div>
 
-              {currentGroup && currentGroup.extras.length > 0 && (
+              {currentGroup && currentGroup.extrasDetails.length > 0 && (
                 <div className="bg-white rounded-lg p-3 border border-gray-200">
-                  <h4 className="text-xs font-medium text-gray-700 mb-2">Added Variants ({currentGroup.extras.length})</h4>
+                  <h4 className="text-xs font-medium text-gray-700 mb-2">Added Variants ({currentGroup.extrasDetails.length})</h4>
                   <div className="flex flex-wrap gap-1">
-                    {currentGroup.extras.map((extra) => (
+                    {currentGroup.extrasDetails.map((extra) => (
                       <Chip
-                        key={extra.id}
-                        label={extra.variant}
-                        onDelete={() => handleRemoveVariant(extra.id)}
+                        key={extra.foodName}
+                        label={extra.foodName}
+                        onDelete={() => handleRemoveVariant(extra.foodName)}
                         deleteIcon={<X className="w-3 h-3" />}
                         size="small"
                         sx={{
@@ -445,13 +576,13 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
                     </div>
                     <div className="p-3">
                       <p className="text-xs text-gray-600 mb-2">
-                        {group.extras.length} variant{group.extras.length !== 1 ? 's' : ''} added
+                        {group.extrasDetails.length} variant{group.extrasDetails.length !== 1 ? 's' : ''} added
                       </p>
                       <div className="flex flex-wrap gap-1">
-                        {group.extras.map((extra) => (
+                        {group.extrasDetails.map((extra) => (
                           <Chip
-                            key={extra.id}
-                            label={extra.variant}
+                            key={extra.foodName}
+                            label={extra.foodName}
                             size="small"
                             sx={{
                               backgroundColor: '#fff3ea',
@@ -590,7 +721,7 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
               onClick={handleNext}
               disabled={
                 (activeStep === 0 && !groupTitle) ||
-                (activeStep === 1 && (!currentGroup || currentGroup.extras.length === 0))
+                (activeStep === 1 && (!currentGroup || currentGroup.extrasDetails.length === 0))
               }
               variant="contained"
               size="small"
