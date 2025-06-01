@@ -26,6 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Switch } from '../../components/ui/switch';
 import { Button as UIButton } from '../../components/ui/button';
 import AddExtrasModal from '../../components/AddExtrasModal';
+import axios from 'axios';
 
 interface MenuItem {
   id: string;
@@ -40,7 +41,7 @@ interface MenuItem {
 interface EditInventoryModalProps {
   item: MenuItem | null;
   onClose: () => void;
-  onSave: (id: string, newPrice: number, available: boolean) => void;
+  onSave: (id: string, newPrice: number, available: boolean, itemExtras: ExtraGroup[]) => void;
   isUpdating: boolean;
   updateError: string | null;
   branchId: string;
@@ -67,8 +68,9 @@ interface ExtraDetail {
 }
 
 interface ExtraGroup {
-  delika_inventory_table_id: string;
+  id: string;
   extrasTitle: string;
+  delika_inventory_table_id?: string;
   extrasDetails: ExtraDetail[];
 }
 
@@ -252,37 +254,110 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
   const { updateInventory, isLoading: isUpdating, error: updateError } = useUpdateInventory();
 
   const handleItemClick = (item: MenuItem) => {
+    console.log('Selected item with extras:', item);
     setSelectedItem(item);
   };
 
-  const handleUpdateItem = async (id: string, newPrice: number, available: boolean) => {
+  const handleUpdateItem = async (id: string, newPrice: number, available: boolean, itemExtras: ExtraGroup[]) => {
     if (!selectedItem) return;
 
     try {
-      await updateInventory({
-        menuId: activeId,
-        newPrice: newPrice.toString(),
-        name: selectedItem.name,
-        description: selectedItem.description || '',
-        available: available
-      });
+      // Convert image URL to file if it's a URL
+      let imageData = null;
+      if (selectedItem.image.startsWith('http')) {
+        const response = await fetch(selectedItem.image);
+        const blob = await response.blob();
+        const imageFile = new File([blob], 'image.jpg', { type: 'image/jpeg' });
+        imageData = {
+          name: imageFile.name,
+          size: imageFile.size,
+          type: imageFile.type,
+          error: 0,
+          tmp_name: '/tmp/php' + Math.random().toString(36).substring(7),
+          full_path: imageFile.name
+        };
+      }
 
-      // Add notification
+      // Format extras data to match API requirements
+      const formattedExtras = itemExtras.map(extra => ({
+        id: extra.id,
+        extrasTitle: extra.extrasTitle,
+        delika_inventory_table_id: extra.delika_inventory_table_id || selectedItem.id,
+        extrasDetails: extra.extrasDetails.map(detail => ({
+          foodName: detail.foodName,
+          foodPrice: detail.foodPrice,
+          foodDescription: detail.foodDescription || '',
+          foodImage: detail.foodImage
+        }))
+      }));
+
+      // Log the extras formatting
+      console.group('Extras Formatting');
+      console.log('Original extras:', itemExtras);
+      console.log('Formatted extras:', formattedExtras);
+      console.groupEnd();
+
+      // Prepare the complete item data in the exact format needed
+      const updateData = {
+        id: selectedItem.id,
+        name: selectedItem.name,
+        price: Number(newPrice),
+        description: selectedItem.description || '',
+        available: available,
+        image: imageData,
+        extras: formattedExtras
+      };
+
+      // Log the complete data being sent
+      console.group('Update Request Data');
+      console.log('Full update data:', JSON.stringify(updateData, null, 2));
+      console.log('ID:', updateData.id);
+      console.log('Name:', updateData.name);
+      console.log('Price:', updateData.price);
+      console.log('Description:', updateData.description);
+      console.log('Available:', updateData.available);
+      console.log('Image Data:', updateData.image);
+      console.log('Formatted Extras with IDs:', formattedExtras);
+      console.groupEnd();
+
+      const response = await axios.patch(
+        'https://api-server.krontiva.africa/api:uEBBwbSs/update/inventory/item',
+        updateData,
+        {
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      console.group('Update Response');
+      console.log('Response status:', response.status);
+      console.log('Response data:', response.data);
+      console.groupEnd();
+
       addNotification({
         type: 'inventory_update',
-        message: `${selectedItem.name} has been updated (Price: ${newPrice})`
+        message: `${selectedItem.name} has been updated successfully`
       });
 
-      // Close modal
       setSelectedItem(null);
-
-      // Store the active view in localStorage
       localStorage.setItem('dashboardActiveView', 'inventory');
-      
-      // Force a complete page refresh
       window.location.href = '/dashboard?view=inventory';
 
     } catch (error) {
+      if (axios.isAxiosError(error)) {
+        console.error('Error updating item:', error);
+        console.error('Error details:', {
+          message: error.message,
+          response: error.response?.data
+        });
+      } else {
+        console.error('Unexpected error:', error);
+      }
+      addNotification({
+        type: 'inventory_update',
+        message: 'Failed to update item. Please try again.'
+      });
     }
   };
 
@@ -298,13 +373,11 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       image: item.image
     });
     const [showAddExtrasModal, setShowAddExtrasModal] = useState(false);
-    const [itemExtras, setItemExtras] = useState(item.extras || []);
-    const { t } = useTranslation();
+    const [itemExtras, setItemExtras] = useState<ExtraGroup[]>(item.extras || []);
 
     const handleEditToggle = () => {
       setIsEditing(!isEditing);
       if (!isEditing) {
-        // Reset form when entering edit mode
         setEditForm({
           name: item.name,
           description: item.description || '',
@@ -313,30 +386,28 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       }
     };
 
-    const handleFormChange = (field: string, value: string) => {
-      setEditForm(prev => ({
-        ...prev,
-        [field]: value
-      }));
-    };
-
-    const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-      const file = event.target.files?.[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          setEditForm(prev => ({
-            ...prev,
-            image: e.target?.result as string
-          }));
-        };
-        reader.readAsDataURL(file);
-      }
-    };
-
-    const handleAddExtras = (newExtras: any[]) => {
-      setItemExtras([...itemExtras, ...newExtras]);
+    const handleAddExtras = (newExtras: ExtraGroup[]) => {
+      console.group('Adding New Extras');
+      console.log('Current extras:', itemExtras);
+      console.log('New extras being added:', newExtras);
+      const updatedExtras = [...itemExtras, ...newExtras];
+      console.log('Combined extras:', updatedExtras);
+      console.groupEnd();
+      
+      setItemExtras(updatedExtras);
       setShowAddExtrasModal(false);
+    };
+
+    const handleSave = () => {
+      console.group('Saving Item');
+      console.log('Item ID:', item.id);
+      console.log('New Price:', price);
+      console.log('Available:', available);
+      console.log('Current Extras:', itemExtras);
+      console.groupEnd();
+
+      // Pass all the necessary data including extras
+      onSave(item.id, price, available, itemExtras);
     };
 
     return (
@@ -420,7 +491,10 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                           <Input
                             id="item-name"
                             value={editForm.name}
-                            onChange={(e) => handleFormChange('name', e.target.value)}
+                            onChange={(e) => setEditForm(prev => ({
+                              ...prev,
+                              name: e.target.value
+                            }))}
                             placeholder="Enter item name"
                             className="border-gray-300 focus:border-[#fd683e] focus:ring-[#fd683e]"
                           />
@@ -432,7 +506,10 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                           <Textarea
                             id="item-description"
                             value={editForm.description}
-                            onChange={(e) => handleFormChange('description', e.target.value)}
+                            onChange={(e) => setEditForm(prev => ({
+                              ...prev,
+                              description: e.target.value
+                            }))}
                             placeholder="Enter item description"
                             rows={3}
                             className="border-gray-300 focus:border-[#fd683e] focus:ring-[#fd683e] resize-none"
@@ -501,44 +578,32 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                   <CardContent>
                     {itemExtras && itemExtras.length > 0 ? (
                       <div className="space-y-3 max-h-[200px] overflow-y-auto">
-                        {(() => {
-                          // Group extras by extrasTitle
-                          const groupedExtras = itemExtras.reduce((acc, extraGroup) => {
-                            const title = extraGroup.extrasTitle;
-                            if (!acc[title]) {
-                              acc[title] = [];
-                            }
-                            acc[title].push(...extraGroup.extrasDetails);
-                            return acc;
-                          }, {} as Record<string, ExtraDetail[]>);
-
-                          return Object.entries(groupedExtras).map(([title, details], groupIndex) => (
-                            <div key={groupIndex} className="border border-gray-200 rounded-lg p-3 bg-gray-50 dark:bg-[#201a18]">
-                              <h4 className="text-sm font-medium text-gray-800 dark:text-white mb-2 flex items-center gap-2">
-                                <div className="w-2 h-2 bg-[#fd683e] rounded-full"></div>
-                                {title}
-                              </h4>
-                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                {details.map((extraDetail, detailIndex) => (
-                                  <div key={detailIndex} className="bg-white dark:bg-[#2c2522] rounded-lg border border-gray-200 p-2 text-center hover:shadow-sm transition-shadow">
-                                    <img
-                                      src={optimizeImageUrl(extraDetail.foodImage.url)}
-                                      alt={extraDetail.foodName}
-                                      className="w-full h-10 object-contain rounded mb-2"
-                                      loading="lazy"
-                                    />
-                                    <div className="text-xs font-medium text-gray-800 dark:text-white leading-tight mb-1">
-                                      {extraDetail.foodName}
-                                    </div>
-                                    <div className="text-xs font-semibold text-[#fd683e]">
-                                      GH₵{extraDetail.foodPrice}
-                                    </div>
+                        {itemExtras.map((group, index) => (
+                          <div key={index} className="border border-gray-200 rounded-lg p-3 bg-gray-50 dark:bg-[#201a18]">
+                            <h4 className="text-sm font-medium text-gray-800 dark:text-white mb-2 flex items-center gap-2">
+                              <div className="w-2 h-2 bg-[#fd683e] rounded-full"></div>
+                              {group.extrasTitle}
+                            </h4>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                              {group.extrasDetails.map((detail, detailIndex) => (
+                                <div key={detailIndex} className="bg-white dark:bg-[#2c2522] rounded-lg border border-gray-200 p-2 text-center hover:shadow-sm transition-shadow">
+                                  <img
+                                    src={optimizeImageUrl(detail.foodImage.url)}
+                                    alt={detail.foodName}
+                                    className="w-full h-10 object-contain rounded mb-2"
+                                    loading="lazy"
+                                  />
+                                  <div className="text-xs font-medium text-gray-800 dark:text-white leading-tight mb-1">
+                                    {detail.foodName}
                                   </div>
-                                ))}
-                              </div>
+                                  <div className="text-xs font-semibold text-[#fd683e]">
+                                    GH₵{detail.foodPrice}
+                                  </div>
+                                </div>
+                              ))}
                             </div>
-                          ));
-                        })()}
+                          </div>
+                        ))}
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -629,7 +694,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                             </UIButton>
                           )}
                           <UIButton
-                            onClick={() => onSave(item.id, price, available)}
+                            onClick={handleSave}
                             className="flex-1 bg-[#fd683e] hover:bg-[#e54d0e]"
                           >
                             <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -971,7 +1036,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         <EditInventoryModal
           item={selectedItem}
           onClose={() => setSelectedItem(null)}
-          onSave={handleUpdateItem}
+          onSave={(id, newPrice, available, itemExtras) => handleUpdateItem(id, newPrice, available, itemExtras)}
           isUpdating={isUpdating}
           updateError={updateError}
           branchId={selectedBranchId || userProfile.branchId}
