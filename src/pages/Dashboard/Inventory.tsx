@@ -292,7 +292,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       const formattedExtras = itemExtras.map(extra => ({
         extrasTitle: extra.extrasTitle,
         delika_inventory_table_id: extra.delika_inventory_table_id,
-        extrasDetails: extra.extrasDetails
       }));
 
       // Prepare the complete item data in the new format
