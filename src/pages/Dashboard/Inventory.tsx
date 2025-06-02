@@ -295,7 +295,9 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         new_item_price: Number(newPrice),
         image: imageData,
         available: available,
-        extras: formattedExtras
+        extras: formattedExtras,
+        restaurantId: userProfile.restaurantId,
+        branchId: userProfile.role === 'Admin' ? selectedBranchId : userProfile.branchId
       };
 
       // Log the complete data being sent
