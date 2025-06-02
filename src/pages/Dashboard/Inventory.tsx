@@ -36,6 +36,7 @@ interface MenuItem {
   description?: string;
   available: boolean;
   extras?: ExtraGroup[];
+  value?: string;
 }
 
 interface EditInventoryModalProps {
@@ -65,6 +66,7 @@ interface ExtraDetail {
     };
     url: string;
   };
+  value?: string;  // Add value property for variant ID
 }
 
 interface ExtraGroup {
@@ -262,6 +264,14 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
     if (!selectedItem) return;
 
     try {
+      console.group('Update Item - Detailed Values');
+      console.log('Selected Item Full Object:', selectedItem);
+      console.log('ID Parameter:', id);
+      console.log('Selected Item ID:', selectedItem.id);
+      console.log('Selected Item Value:', selectedItem.value);
+      console.log('Extras:', itemExtras);
+      console.groupEnd();
+
       // Convert image URL to file if it's a URL
       let imageData = null;
       if (selectedItem.image.startsWith('http')) {
@@ -281,7 +291,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       // Format extras data to match API requirements
       const formattedExtras = itemExtras.map(extra => ({
         extrasTitle: extra.extrasTitle,
-        delika_inventory_table_id: selectedItem.id,
+        delika_inventory_table_id: extra.delika_inventory_table_id,
         extrasDetails: extra.extrasDetails
       }));
 
@@ -297,7 +307,8 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         available: available,
         extras: formattedExtras,
         restaurantId: userProfile.restaurantId,
-        branchId: userProfile.role === 'Admin' ? selectedBranchId : userProfile.branchId
+        branchId: userProfile.role === 'Admin' ? selectedBranchId : userProfile.branchId,
+        value: selectedItem.id  // Using the actual ID from the selectedItem
       };
 
       // Log the complete data being sent
@@ -375,8 +386,23 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       console.group('Adding New Extras');
       console.log('Current extras:', itemExtras);
       console.log('New extras being added:', newExtras);
-      const updatedExtras = [...itemExtras, ...newExtras];
-      console.log('Combined extras:', updatedExtras);
+      
+      // Map the new extras to include the correct delika_inventory_table_id
+      const extrasWithCorrectId = newExtras.map(extra => {
+        const selectedVariant = extra.extrasDetails[0];
+        console.log('Selected variant with full data:', selectedVariant);
+        console.log('Variant value from extrasDetails:', selectedVariant?.value);
+        
+        return {
+          ...extra,
+          extrasTitle: extra.extrasTitle,
+          extrasDetails: extra.extrasDetails,
+          delika_inventory_table_id: selectedVariant?.value || selectedVariant?.foodName || '' // Use the value from the selected variant
+        };
+      });
+
+      const updatedExtras = [...itemExtras, ...extrasWithCorrectId];
+      console.log('Combined extras with IDs:', updatedExtras);
       console.groupEnd();
       
       setItemExtras(updatedExtras);
@@ -384,11 +410,15 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
     };
 
     const handleSave = () => {
-      console.group('Saving Item');
+      console.group('Saving Item - Detailed Values');
+      console.log('Full Item Object:', item);
       console.log('Item ID:', item.id);
+      console.log('Item Value:', item.value);
+      console.log('Selected Item Full Data:', selectedItem);
       console.log('New Price:', price);
       console.log('Available:', available);
       console.log('Current Extras:', itemExtras);
+      console.log('Edit Form Data:', editForm);
       console.groupEnd();
 
       onSave(item.id, price, available, itemExtras, editForm.name, editForm.description);

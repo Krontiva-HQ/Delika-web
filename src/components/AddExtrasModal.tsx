@@ -106,6 +106,7 @@ export interface ExtraGroup {
       };
       url: string;
     };
+    value?: string;
   }[];
 }
 
@@ -278,7 +279,8 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
             foodName: selectedOption.label,
             foodPrice: Number(selectedOption.foodPrice),
             foodDescription: selectedOption.foodDescription || '',
-            foodImage: selectedOption.foodImage
+            foodImage: selectedOption.foodImage,
+            value: selectedOption.value
           }]
         });
       }
