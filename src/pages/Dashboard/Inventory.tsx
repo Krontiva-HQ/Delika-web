@@ -41,7 +41,7 @@ interface MenuItem {
 interface EditInventoryModalProps {
   item: MenuItem | null;
   onClose: () => void;
-  onSave: (id: string, newPrice: number, available: boolean, itemExtras: ExtraGroup[]) => void;
+  onSave: (id: string, newPrice: number, available: boolean, itemExtras: ExtraGroup[], name: string, description: string) => void;
   isUpdating: boolean;
   updateError: string | null;
   branchId: string;
@@ -258,7 +258,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
     setSelectedItem(item);
   };
 
-  const handleUpdateItem = async (id: string, newPrice: number, available: boolean, itemExtras: ExtraGroup[]) => {
+  const handleUpdateItem = async (id: string, newPrice: number, available: boolean, itemExtras: ExtraGroup[], name: string, description: string) => {
     if (!selectedItem) return;
 
     try {
@@ -280,44 +280,27 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
 
       // Format extras data to match API requirements
       const formattedExtras = itemExtras.map(extra => ({
-        id: extra.id,
         extrasTitle: extra.extrasTitle,
-        delika_inventory_table_id: extra.delika_inventory_table_id || selectedItem.id,
-        extrasDetails: extra.extrasDetails.map(detail => ({
-          foodName: detail.foodName,
-          foodPrice: detail.foodPrice,
-          foodDescription: detail.foodDescription || '',
-          foodImage: detail.foodImage
-        }))
+        delika_inventory_table_id: selectedItem.id,
+        extrasDetails: extra.extrasDetails
       }));
 
-      // Log the extras formatting
-      console.group('Extras Formatting');
-      console.log('Original extras:', itemExtras);
-      console.log('Formatted extras:', formattedExtras);
-      console.groupEnd();
-
-      // Prepare the complete item data in the exact format needed
+      // Prepare the complete item data in the new format
       const updateData = {
-        id: selectedItem.id,
-        name: selectedItem.name,
-        price: Number(newPrice),
-        description: selectedItem.description || '',
-        available: available,
+        old_name: selectedItem.name,
+        old_item_description: selectedItem.description || '',
+        old_item_price: selectedItem.price,
+        new_name: name,
+        new_item_description: description || '',
+        new_item_price: Number(newPrice),
         image: imageData,
+        available: available,
         extras: formattedExtras
       };
 
       // Log the complete data being sent
       console.group('Update Request Data');
       console.log('Full update data:', JSON.stringify(updateData, null, 2));
-      console.log('ID:', updateData.id);
-      console.log('Name:', updateData.name);
-      console.log('Price:', updateData.price);
-      console.log('Description:', updateData.description);
-      console.log('Available:', updateData.available);
-      console.log('Image Data:', updateData.image);
-      console.log('Formatted Extras with IDs:', formattedExtras);
       console.groupEnd();
 
       const response = await axios.patch(
@@ -406,8 +389,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       console.log('Current Extras:', itemExtras);
       console.groupEnd();
 
-      // Pass all the necessary data including extras
-      onSave(item.id, price, available, itemExtras);
+      onSave(item.id, price, available, itemExtras, editForm.name, editForm.description);
     };
 
     return (
@@ -1036,7 +1018,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         <EditInventoryModal
           item={selectedItem}
           onClose={() => setSelectedItem(null)}
-          onSave={(id, newPrice, available, itemExtras) => handleUpdateItem(id, newPrice, available, itemExtras)}
+          onSave={(id, newPrice, available, itemExtras, name, description) => handleUpdateItem(id, newPrice, available, itemExtras, name, description)}
           isUpdating={isUpdating}
           updateError={updateError}
           branchId={selectedBranchId || userProfile.branchId}
