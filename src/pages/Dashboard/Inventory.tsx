@@ -269,7 +269,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       console.log('ID Parameter:', id);
       console.log('Selected Item ID:', selectedItem.id);
       console.log('Selected Item Value:', selectedItem.value);
-      console.log('Extras:', itemExtras);
+      console.log('Item Extras:', itemExtras);
       console.groupEnd();
 
       // Convert image URL to file if it's a URL
@@ -288,14 +288,11 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         };
       }
 
-      // Format extras data to match API requirements - flatten the grouped structure
-      const formattedExtras = itemExtras.flatMap(group => 
-        // For each group, create separate entries for each detail
-        group.extrasDetails.map(detail => ({
-          extrasTitle: group.extrasTitle,
-          delika_inventory_table_id: detail.value || group.delika_inventory_table_id || ''
-        }))
-      );
+      // Format extras data for API - flatten the grouped structure
+      const formattedExtras = itemExtras.map(group => ({
+        extrasTitle: group.extrasTitle,
+        delika_inventory_table_id: group.delika_inventory_table_id || ''
+      })).filter(extra => extra.delika_inventory_table_id !== '');
 
       console.log('Formatted extras for API:', formattedExtras);
 
@@ -409,53 +406,16 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       console.log('Current extras:', itemExtras);
       console.log('New extras being added:', newExtras);
       
-      // Group the new extras with existing ones by extrasTitle
-      const mergedExtras = [...itemExtras];
+      // Simply combine both arrays to maintain all entries
+      const combinedExtras = [
+        ...(itemExtras || []), // Current extras
+        ...newExtras           // New extras
+      ];
       
-      newExtras.forEach(newGroup => {
-        const existingGroupIndex = mergedExtras.findIndex(
-          group => group.extrasTitle.toLowerCase() === newGroup.extrasTitle.toLowerCase()
-        );
-        
-        if (existingGroupIndex >= 0) {
-          // Merge with existing group
-          const existingGroup = mergedExtras[existingGroupIndex];
-          
-          // Add new details, avoiding duplicates
-          newGroup.extrasDetails.forEach(detail => {
-            if (!existingGroup.extrasDetails.some(existing => 
-              existing.foodName === detail.foodName
-            )) {
-              existingGroup.extrasDetails.push({
-                foodName: detail.foodName,
-                foodPrice: detail.foodPrice,
-                foodDescription: detail.foodDescription || '',
-                foodImage: detail.foodImage,
-                value: detail.value || newGroup.delika_inventory_table_id || ''
-              });
-            }
-          });
-        } else {
-          // Add as new group with all details
-          mergedExtras.push({
-            id: `${Date.now()}-${Math.random().toString(36).substring(2)}`,
-            extrasTitle: newGroup.extrasTitle,
-            delika_inventory_table_id: newGroup.delika_inventory_table_id || '',
-            extrasDetails: newGroup.extrasDetails.map(detail => ({
-              foodName: detail.foodName,
-              foodPrice: detail.foodPrice,
-              foodDescription: detail.foodDescription || '',
-              foodImage: detail.foodImage,
-              value: detail.value || newGroup.delika_inventory_table_id || ''
-            }))
-          });
-        }
-      });
-      
-      console.log('Merged extras:', mergedExtras);
+      console.log('Combined extras:', combinedExtras);
       console.groupEnd();
       
-      setItemExtras(mergedExtras);
+      setItemExtras(combinedExtras);
       setShowAddExtrasModal(false);
     };
 

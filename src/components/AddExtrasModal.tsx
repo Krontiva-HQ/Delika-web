@@ -421,20 +421,8 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
   const handleSave = () => {
     console.log('Current groups state before saving:', extraGroups);
     
-    // First, group the extras by their extrasTitle
-    const groupedExtras = extraGroups.reduce((acc, group) => {
-      // For each detail in the group, create a separate entry with the same extrasTitle
-      group.extrasDetails.forEach(detail => {
-        acc.push({
-          extrasTitle: group.extrasTitle,
-          delika_inventory_table_id: detail.value || group.delika_inventory_table_id || ''
-        });
-      });
-      return acc;
-    }, [] as Array<{ extrasTitle: string; delika_inventory_table_id: string }>);
-
-    console.log('Saving extras in API format:', groupedExtras);
-    onAdd(extraGroups); // Pass the full groups for UI state
+    // Keep the full groups structure for UI state
+    onAdd(extraGroups);
     
     // Reset the state
     setExtraGroups([]);
