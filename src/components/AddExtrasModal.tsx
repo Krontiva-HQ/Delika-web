@@ -87,8 +87,8 @@ export interface Extra {
 
 export interface ExtraGroup {
   id: string;
-  title: string;
   extrasTitle: string;
+  delika_inventory_table_id?: string;
   extrasDetails: {
     foodName: string;
     foodPrice: number;
@@ -114,6 +114,7 @@ interface AddExtrasModalProps {
   open: boolean;
   onClose: () => void;
   onAdd: (groups: ExtraGroup[]) => void;
+  initialExtras?: ExtraGroup[];
 }
 
 interface FoodItem {
@@ -177,6 +178,7 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
   open,
   onClose,
   onAdd,
+  initialExtras = []
 }) => {
   const [activeStep, setActiveStep] = useState(0);
   const [groupTitle, setGroupTitle] = useState('');
@@ -188,6 +190,35 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
   const [foodItemsData, setFoodItemsData] = useState<FoodItem[]>([]);
 
   const { restaurantData } = useUserProfile();
+
+  useEffect(() => {
+    if (open) {
+      // Reset state when modal opens
+      setActiveStep(0);
+      setGroupTitle('');
+      setCurrentGroup(null);
+      
+      // If we have initial extras, set them in the extraGroups state
+      if (initialExtras?.length > 0) {
+        // Ensure each group has a unique ID and all required fields
+        const extrasWithIds = initialExtras.map(group => ({
+          ...group,
+          id: group.id || `${Date.now()}-${Math.random().toString(36).substring(2)}`,
+          extrasTitle: group.extrasTitle,
+          delika_inventory_table_id: group.delika_inventory_table_id || '',
+          extrasDetails: group.extrasDetails || []
+        }));
+        
+        console.log('Setting initial extras with guaranteed IDs:', extrasWithIds);
+        setExtraGroups(extrasWithIds);
+        // Move to review step since we have existing extras
+        setActiveStep(2);
+      } else {
+        // No initial extras, start fresh
+        setExtraGroups([]);
+      }
+    }
+  }, [open, initialExtras]);
 
   useEffect(() => {
     const fetchFoodTypes = async () => {
@@ -238,20 +269,23 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
   const handleNext = () => {
     if (activeStep === 0) {
       setCurrentGroup({
-        id: Date.now().toString(),
-        title: groupTitle,
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
         extrasTitle: groupTitle,
+        delika_inventory_table_id: '',
         extrasDetails: []
       });
       setActiveStep(1);
     } else if (activeStep === 1) {
       if (currentGroup) {
-        setExtraGroups([...extraGroups, {
+        const newGroup = {
           id: currentGroup.id,
-          title: currentGroup.title,
-          extrasTitle: currentGroup.title,
+          extrasTitle: currentGroup.extrasTitle,
+          delika_inventory_table_id: currentGroup.delika_inventory_table_id || currentGroup.extrasDetails[0]?.value || '',
           extrasDetails: currentGroup.extrasDetails
-        }]);
+        };
+        
+        console.log('Adding new group:', newGroup);
+        setExtraGroups([...extraGroups, newGroup]);
         setCurrentGroup(null);
         setGroupTitle('');
         setActiveStep(2);
@@ -274,7 +308,7 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
       if (selectedOption) {
         setCurrentGroup({
           ...currentGroup,
-          extrasTitle: currentGroup.title,
+          delika_inventory_table_id: selectedOption.value,
           extrasDetails: [...(currentGroup.extrasDetails || []), {
             foodName: selectedOption.label,
             foodPrice: Number(selectedOption.foodPrice),
@@ -298,13 +332,35 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
   };
 
   const handleRemoveGroup = (id: string) => {
-    setExtraGroups(extraGroups.filter(group => group.id !== id));
+    if (!id) {
+      console.error('No ID provided for group removal');
+      return;
+    }
+
+    console.log('Attempting to remove group with id:', id);
+    console.log('Current groups:', extraGroups);
+
+    const updatedGroups = extraGroups.filter(group => {
+      if (!group.id) {
+        console.warn('Found group without ID:', group);
+        return true; // Keep groups without IDs
+      }
+      return group.id !== id;
+    });
+
+    if (updatedGroups.length === extraGroups.length) {
+      console.warn('No group was removed. ID not found:', id);
+    } else {
+      console.log('Successfully removed group. Remaining groups:', updatedGroups);
+    }
+
+    setExtraGroups(updatedGroups);
   };
 
   const handleEditGroup = (group: ExtraGroup) => {
     setCurrentGroup(group);
-    setGroupTitle(group.title);
-    setExtraGroups(extraGroups.filter(g => g.id !== group.id));
+    setGroupTitle(group.extrasTitle);
+    setExtraGroups(prevGroups => prevGroups.filter(g => g.id !== group.id));
     setActiveStep(1);
   };
 
@@ -314,7 +370,26 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
   };
 
   const handleSave = () => {
-    onAdd(extraGroups);
+    console.log('Current groups state before saving:', extraGroups);
+    
+    // Ensure all groups have the required fields before saving
+    const groupsToSave = extraGroups.map(group => ({
+      id: group.id,
+      extrasTitle: group.extrasTitle,
+      delika_inventory_table_id: group.delika_inventory_table_id || group.extrasDetails[0]?.value || '',
+      extrasDetails: group.extrasDetails.map(detail => ({
+        foodName: detail.foodName,
+        foodPrice: detail.foodPrice,
+        foodDescription: detail.foodDescription || '',
+        foodImage: detail.foodImage,
+        value: detail.value
+      }))
+    }));
+    
+    console.log('Saving groups with all fields:', groupsToSave);
+    onAdd(groupsToSave);
+    
+    // Reset the state
     setExtraGroups([]);
     setActiveStep(0);
     onClose();
@@ -366,6 +441,28 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
               <p className="text-sm text-gray-600">Give your extras group a descriptive title</p>
             </div>
             
+            {extraGroups.length > 0 && (
+              <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                <h4 className="text-sm font-medium text-gray-700 mb-2">Existing Groups ({extraGroups.length})</h4>
+                <div className="flex flex-wrap gap-2">
+                  {extraGroups.map((group) => (
+                    <Chip
+                      key={group.id}
+                      label={group.extrasTitle}
+                      size="small"
+                      sx={{
+                        backgroundColor: '#fff3ea',
+                        color: '#fd683e',
+                        fontWeight: 500,
+                        fontSize: '11px',
+                        height: '24px',
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+            
             <div className="bg-gray-50 rounded-lg p-4">
               <TextField
                 fullWidth
@@ -408,7 +505,7 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
           <div className="space-y-4">
             <div className="text-center space-y-1">
               <h3 className="text-lg font-semibold text-gray-900">Add Variants</h3>
-              <p className="text-sm text-gray-600">Adding variants for: <span className="font-medium text-[#fd683e]">{currentGroup?.title}</span></p>
+              <p className="text-sm text-gray-600">Adding variants for: <span className="font-medium text-[#fd683e]">{currentGroup?.extrasTitle}</span></p>
             </div>
 
             <div className="bg-gray-50 rounded-lg p-4 space-y-3">
@@ -550,7 +647,7 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
                 {extraGroups.map((group) => (
                   <div key={group.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                     <div className="bg-[#201a18] text-white px-3 py-2 flex items-center justify-between">
-                      <h4 className="font-semibold text-sm">{group.title}</h4>
+                      <h4 className="font-semibold text-sm text-white">{group.extrasTitle}</h4>
                       <div className="flex gap-1">
                         <IconButton
                           onClick={() => handleEditGroup(group)}

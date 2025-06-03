@@ -302,7 +302,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         new_name: name,
         new_item_description: description || '',
         new_item_price: Number(newPrice),
-        image: imageData,
         available: available,
         extras: formattedExtras,
         restaurantId: userProfile.restaurantId,
@@ -386,25 +385,9 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       console.log('Current extras:', itemExtras);
       console.log('New extras being added:', newExtras);
       
-      // Map the new extras to include the correct delika_inventory_table_id
-      const extrasWithCorrectId = newExtras.map(extra => {
-        const selectedVariant = extra.extrasDetails[0];
-        console.log('Selected variant with full data:', selectedVariant);
-        console.log('Variant value from extrasDetails:', selectedVariant?.value);
-        
-        return {
-          ...extra,
-          extrasTitle: extra.extrasTitle,
-          extrasDetails: extra.extrasDetails,
-          delika_inventory_table_id: selectedVariant?.value || selectedVariant?.foodName || '' // Use the value from the selected variant
-        };
-      });
-
-      const updatedExtras = [...itemExtras, ...extrasWithCorrectId];
-      console.log('Combined extras with IDs:', updatedExtras);
-      console.groupEnd();
-      
-      setItemExtras(updatedExtras);
+      // Replace the existing extras with the new ones
+      // This ensures we use exactly what was saved in the modal
+      setItemExtras(newExtras);
       setShowAddExtrasModal(false);
     };
 
@@ -730,6 +713,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
           open={showAddExtrasModal}
           onClose={() => setShowAddExtrasModal(false)}
           onAdd={handleAddExtras}
+          initialExtras={itemExtras}
         />
       </>
     );
