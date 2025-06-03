@@ -291,8 +291,17 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       // Format extras data to match API requirements
       const formattedExtras = itemExtras.map(extra => ({
         extrasTitle: extra.extrasTitle,
-        delika_inventory_table_id: extra.delika_inventory_table_id,
+        delika_inventory_table_id: extra.delika_inventory_table_id || extra.extrasDetails[0]?.value || '',
+        extrasDetails: extra.extrasDetails.map(detail => ({
+          foodName: detail.foodName,
+          foodPrice: detail.foodPrice,
+          foodDescription: detail.foodDescription || '',
+          foodImage: detail.foodImage,
+          value: detail.value || detail.foodImage?.url || ''
+        }))
       }));
+
+      console.log('Formatted extras for API:', formattedExtras);
 
       // Prepare the complete item data in the new format
       const updateData = {
@@ -303,7 +312,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         new_item_description: description || '',
         new_item_price: Number(newPrice),
         available: available,
-        extras: formattedExtras,
+        extras: formattedExtras,  // Using the fully formatted extras data
         restaurantId: userProfile.restaurantId,
         branchId: userProfile.role === 'Admin' ? selectedBranchId : userProfile.branchId,
         value: selectedItem.id  // Using the actual ID from the selectedItem
@@ -385,9 +394,41 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       console.log('Current extras:', itemExtras);
       console.log('New extras being added:', newExtras);
       
-      // Replace the existing extras with the new ones
-      // This ensures we use exactly what was saved in the modal
-      setItemExtras(newExtras);
+      // Merge the new extras with existing ones, grouping by extrasTitle
+      const mergedExtras = [...itemExtras];
+      
+      newExtras.forEach(newGroup => {
+        const existingGroupIndex = mergedExtras.findIndex(
+          group => group.extrasTitle.toLowerCase() === newGroup.extrasTitle.toLowerCase()
+        );
+        
+        if (existingGroupIndex >= 0) {
+          // Merge with existing group
+          const existingGroup = mergedExtras[existingGroupIndex];
+          const mergedDetails = [...existingGroup.extrasDetails];
+          
+          // Add new details, avoiding duplicates
+          newGroup.extrasDetails.forEach(detail => {
+            if (!mergedDetails.some(existing => existing.foodName === detail.foodName)) {
+              mergedDetails.push(detail);
+            }
+          });
+          
+          mergedExtras[existingGroupIndex] = {
+            ...existingGroup,
+            extrasDetails: mergedDetails,
+            delika_inventory_table_id: existingGroup.delika_inventory_table_id || newGroup.delika_inventory_table_id
+          };
+        } else {
+          // Add new group
+          mergedExtras.push(newGroup);
+        }
+      });
+      
+      console.log('Merged extras:', mergedExtras);
+      console.groupEnd();
+      
+      setItemExtras(mergedExtras);
       setShowAddExtrasModal(false);
     };
 
