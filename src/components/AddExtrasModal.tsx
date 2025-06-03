@@ -198,19 +198,33 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
       setGroupTitle('');
       setCurrentGroup(null);
       
-      // If we have initial extras, set them in the extraGroups state
+      // If we have initial extras, group them by extrasTitle
       if (initialExtras?.length > 0) {
-        // Ensure each group has a unique ID and all required fields
-        const extrasWithIds = initialExtras.map(group => ({
-          ...group,
-          id: group.id || `${Date.now()}-${Math.random().toString(36).substring(2)}`,
-          extrasTitle: group.extrasTitle,
-          delika_inventory_table_id: group.delika_inventory_table_id || '',
-          extrasDetails: group.extrasDetails || []
-        }));
+        // Group extras by their title
+        const groupedExtras = initialExtras.reduce((acc, extra) => {
+          const existingGroup = acc.find(g => g.extrasTitle === extra.extrasTitle);
+          
+          if (existingGroup) {
+            // Add details to existing group if not already present
+            extra.extrasDetails.forEach(detail => {
+              if (!existingGroup.extrasDetails.some(existing => existing.foodName === detail.foodName)) {
+                existingGroup.extrasDetails.push(detail);
+              }
+            });
+          } else {
+            // Create new group
+            acc.push({
+              id: `${Date.now()}-${Math.random().toString(36).substring(2)}`,
+              extrasTitle: extra.extrasTitle,
+              delika_inventory_table_id: extra.delika_inventory_table_id || '',
+              extrasDetails: [...extra.extrasDetails]
+            });
+          }
+          return acc;
+        }, [] as ExtraGroup[]);
         
-        console.log('Setting initial extras with guaranteed IDs:', extrasWithIds);
-        setExtraGroups(extrasWithIds);
+        console.log('Setting grouped initial extras:', groupedExtras);
+        setExtraGroups(groupedExtras);
         // Move to review step since we have existing extras
         setActiveStep(2);
       } else {
@@ -302,48 +316,24 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
           // If it exists, merge the details and ensure no duplicates
           const updatedGroups = [...extraGroups];
           const existingDetails = updatedGroups[existingGroupIndex].extrasDetails;
-          const newDetails = currentGroup.extrasDetails;
           
-          // Merge details, avoiding duplicates based on foodName
-          const mergedDetails = [...existingDetails];
-          newDetails.forEach(detail => {
-            if (!mergedDetails.some(existing => existing.foodName === detail.foodName)) {
-              mergedDetails.push(detail);
+          // Add new details, avoiding duplicates
+          currentGroup.extrasDetails.forEach(detail => {
+            if (!existingDetails.some(existing => existing.foodName === detail.foodName)) {
+              existingDetails.push(detail);
             }
           });
           
           updatedGroups[existingGroupIndex] = {
             ...updatedGroups[existingGroupIndex],
-            extrasDetails: mergedDetails
+            extrasDetails: existingDetails,
+            delika_inventory_table_id: updatedGroups[existingGroupIndex].delika_inventory_table_id || currentGroup.delika_inventory_table_id
           };
+          
           setExtraGroups(updatedGroups);
         } else {
-          // If it's a new group, check if there are any groups with same title
-          const sameTitle = extraGroups.find(g => 
-            g.extrasTitle.toLowerCase() === currentGroup.extrasTitle.toLowerCase()
-          );
-          
-          if (sameTitle) {
-            // Merge with existing group
-            const updatedGroups = extraGroups.map(group => {
-              if (group.extrasTitle.toLowerCase() === currentGroup.extrasTitle.toLowerCase()) {
-                return {
-                  ...group,
-                  extrasDetails: [
-                    ...group.extrasDetails,
-                    ...currentGroup.extrasDetails.filter(detail => 
-                      !group.extrasDetails.some(existing => existing.foodName === detail.foodName)
-                    )
-                  ]
-                };
-              }
-              return group;
-            });
-            setExtraGroups(updatedGroups);
-          } else {
-            // Add as new group
-            setExtraGroups([...extraGroups, currentGroup]);
-          }
+          // If it's a new group, add it
+          setExtraGroups([...extraGroups, currentGroup]);
         }
         
         setCurrentGroup(null);
@@ -433,38 +423,18 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
     
     // First, group the extras by their extrasTitle
     const groupedExtras = extraGroups.reduce((acc, group) => {
-      const existingGroup = acc.find(g => g.extrasTitle === group.extrasTitle);
-      
-      if (existingGroup) {
-        // If a group with this title exists, add the details to it
-        existingGroup.extrasDetails = [
-          ...existingGroup.extrasDetails,
-          ...group.extrasDetails
-        ];
-        // Update the delika_inventory_table_id if it's not set
-        if (!existingGroup.delika_inventory_table_id && group.delika_inventory_table_id) {
-          existingGroup.delika_inventory_table_id = group.delika_inventory_table_id;
-        }
-      } else {
-        // If no group exists with this title, create a new one
+      // For each detail in the group, create a separate entry with the same extrasTitle
+      group.extrasDetails.forEach(detail => {
         acc.push({
-          id: group.id,
           extrasTitle: group.extrasTitle,
-          delika_inventory_table_id: group.delika_inventory_table_id || group.extrasDetails[0]?.value || '',
-          extrasDetails: group.extrasDetails.map(detail => ({
-            foodName: detail.foodName,
-            foodPrice: detail.foodPrice,
-            foodDescription: detail.foodDescription || '',
-            foodImage: detail.foodImage,
-            value: detail.value
-          }))
+          delika_inventory_table_id: detail.value || group.delika_inventory_table_id || ''
         });
-      }
+      });
       return acc;
-    }, [] as ExtraGroup[]);
+    }, [] as Array<{ extrasTitle: string; delika_inventory_table_id: string }>);
 
-    console.log('Saving grouped extras:', groupedExtras);
-    onAdd(groupedExtras);
+    console.log('Saving extras in API format:', groupedExtras);
+    onAdd(extraGroups); // Pass the full groups for UI state
     
     // Reset the state
     setExtraGroups([]);

@@ -288,18 +288,14 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         };
       }
 
-      // Format extras data to match API requirements
-      const formattedExtras = itemExtras.map(extra => ({
-        extrasTitle: extra.extrasTitle,
-        delika_inventory_table_id: extra.delika_inventory_table_id || extra.extrasDetails[0]?.value || '',
-        extrasDetails: extra.extrasDetails.map(detail => ({
-          foodName: detail.foodName,
-          foodPrice: detail.foodPrice,
-          foodDescription: detail.foodDescription || '',
-          foodImage: detail.foodImage,
-          value: detail.value || detail.foodImage?.url || ''
+      // Format extras data to match API requirements - flatten the grouped structure
+      const formattedExtras = itemExtras.flatMap(group => 
+        // For each group, create separate entries for each detail
+        group.extrasDetails.map(detail => ({
+          extrasTitle: group.extrasTitle,
+          delika_inventory_table_id: detail.value || group.delika_inventory_table_id || ''
         }))
-      }));
+      );
 
       console.log('Formatted extras for API:', formattedExtras);
 
@@ -312,16 +308,13 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         new_item_description: description || '',
         new_item_price: Number(newPrice),
         available: available,
-        extras: formattedExtras,  // Using the fully formatted extras data
+        extras: formattedExtras,
         restaurantId: userProfile.restaurantId,
         branchId: userProfile.role === 'Admin' ? selectedBranchId : userProfile.branchId,
-        value: selectedItem.id  // Using the actual ID from the selectedItem
+        value: selectedItem.id
       };
 
-      // Log the complete data being sent
-      console.group('Update Request Data');
-      console.log('Full update data:', JSON.stringify(updateData, null, 2));
-      console.groupEnd();
+      console.log('Update data being sent:', updateData);
 
       const response = await axios.patch(
         'https://api-server.krontiva.africa/api:uEBBwbSs/update/inventory/item',
@@ -376,7 +369,29 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       image: item.image
     });
     const [showAddExtrasModal, setShowAddExtrasModal] = useState(false);
-    const [itemExtras, setItemExtras] = useState<ExtraGroup[]>(item.extras || []);
+    
+    // Group the initial extras by extrasTitle
+    const [itemExtras, setItemExtras] = useState<ExtraGroup[]>(() => {
+      if (!item.extras) return [];
+      
+      return Object.values(item.extras.reduce((acc, extra) => {
+        if (!acc[extra.extrasTitle]) {
+          acc[extra.extrasTitle] = {
+            id: `${Date.now()}-${Math.random().toString(36).substring(2)}`,
+            extrasTitle: extra.extrasTitle,
+            delika_inventory_table_id: extra.delika_inventory_table_id || '',
+            extrasDetails: []
+          };
+        }
+        // Add details if they don't already exist
+        if (!acc[extra.extrasTitle].extrasDetails.some(
+          detail => detail.foodName === extra.extrasDetails[0]?.foodName
+        )) {
+          acc[extra.extrasTitle].extrasDetails.push(...extra.extrasDetails);
+        }
+        return acc;
+      }, {} as Record<string, ExtraGroup>));
+    });
 
     const handleEditToggle = () => {
       setIsEditing(!isEditing);
@@ -394,7 +409,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       console.log('Current extras:', itemExtras);
       console.log('New extras being added:', newExtras);
       
-      // Merge the new extras with existing ones, grouping by extrasTitle
+      // Group the new extras with existing ones by extrasTitle
       const mergedExtras = [...itemExtras];
       
       newExtras.forEach(newGroup => {
@@ -405,23 +420,35 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         if (existingGroupIndex >= 0) {
           // Merge with existing group
           const existingGroup = mergedExtras[existingGroupIndex];
-          const mergedDetails = [...existingGroup.extrasDetails];
           
           // Add new details, avoiding duplicates
           newGroup.extrasDetails.forEach(detail => {
-            if (!mergedDetails.some(existing => existing.foodName === detail.foodName)) {
-              mergedDetails.push(detail);
+            if (!existingGroup.extrasDetails.some(existing => 
+              existing.foodName === detail.foodName
+            )) {
+              existingGroup.extrasDetails.push({
+                foodName: detail.foodName,
+                foodPrice: detail.foodPrice,
+                foodDescription: detail.foodDescription || '',
+                foodImage: detail.foodImage,
+                value: detail.value || newGroup.delika_inventory_table_id || ''
+              });
             }
           });
-          
-          mergedExtras[existingGroupIndex] = {
-            ...existingGroup,
-            extrasDetails: mergedDetails,
-            delika_inventory_table_id: existingGroup.delika_inventory_table_id || newGroup.delika_inventory_table_id
-          };
         } else {
-          // Add new group
-          mergedExtras.push(newGroup);
+          // Add as new group with all details
+          mergedExtras.push({
+            id: `${Date.now()}-${Math.random().toString(36).substring(2)}`,
+            extrasTitle: newGroup.extrasTitle,
+            delika_inventory_table_id: newGroup.delika_inventory_table_id || '',
+            extrasDetails: newGroup.extrasDetails.map(detail => ({
+              foodName: detail.foodName,
+              foodPrice: detail.foodPrice,
+              foodDescription: detail.foodDescription || '',
+              foodImage: detail.foodImage,
+              value: detail.value || newGroup.delika_inventory_table_id || ''
+            }))
+          });
         }
       });
       
@@ -616,16 +643,16 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                     {itemExtras && itemExtras.length > 0 ? (
                       <div className="space-y-3 max-h-[200px] overflow-y-auto">
                         {itemExtras.map((group, index) => (
-                          <div key={index} className="border border-gray-200 rounded-lg p-3 bg-gray-50 dark:bg-[#201a18]">
+                          <div key={group.id || index} className="border border-gray-200 rounded-lg p-3 bg-gray-50 dark:bg-[#201a18]">
                             <h4 className="text-sm font-medium text-gray-800 dark:text-white mb-2 flex items-center gap-2">
                               <div className="w-2 h-2 bg-[#fd683e] rounded-full"></div>
                               {group.extrasTitle}
                             </h4>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                               {group.extrasDetails.map((detail, detailIndex) => (
-                                <div key={detailIndex} className="bg-white dark:bg-[#2c2522] rounded-lg border border-gray-200 p-2 text-center hover:shadow-sm transition-shadow">
+                                <div key={`${detail.foodName}-${detailIndex}`} className="bg-white dark:bg-[#2c2522] rounded-lg border border-gray-200 p-2 text-center hover:shadow-sm transition-shadow">
                                   <img
-                                    src={optimizeImageUrl(detail.foodImage.url)}
+                                    src={detail.foodImage.url}
                                     alt={detail.foodName}
                                     className="w-full h-10 object-contain rounded mb-2"
                                     loading="lazy"
