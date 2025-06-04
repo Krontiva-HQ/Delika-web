@@ -288,11 +288,13 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         };
       }
 
-      // Format extras data for API - flatten the grouped structure
-      const formattedExtras = itemExtras.map(group => ({
-        extrasTitle: group.extrasTitle,
-        delika_inventory_table_id: group.delika_inventory_table_id || ''
-      })).filter(extra => extra.delika_inventory_table_id !== '');
+      // Format extras data for API - flatten to individual items
+      const formattedExtras = itemExtras.flatMap(group =>
+        group.extrasDetails.map(detail => ({
+          extrasTitle: group.extrasTitle,
+          delika_inventory_table_id: detail.value || ''
+        })).filter(extra => extra.delika_inventory_table_id !== '')
+      );
 
       console.log('Formatted extras for API:', formattedExtras);
 
@@ -406,16 +408,12 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       console.log('Current extras:', itemExtras);
       console.log('New extras being added:', newExtras);
       
-      // Simply combine both arrays to maintain all entries
-      const combinedExtras = [
-        ...(itemExtras || []), // Current extras
-        ...newExtras           // New extras
-      ];
-      
-      console.log('Combined extras:', combinedExtras);
+      // Replace the entire extras with the new edited extras
+      // The newExtras already contains the complete edited list after any removals/additions
+      console.log('Setting complete extras:', newExtras);
       console.groupEnd();
       
-      setItemExtras(combinedExtras);
+      setItemExtras(newExtras);
       setShowAddExtrasModal(false);
     };
 
