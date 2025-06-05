@@ -198,32 +198,48 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
       setGroupTitle('');
       setCurrentGroup(null);
       
-      // If we have initial extras, group them by extrasTitle
+      // If we have initial extras, group them by extrasTitle and restore value properties
       if (initialExtras?.length > 0) {
-        // Group extras by their title
+        // Group extras by their title and restore missing value properties
         const groupedExtras = initialExtras.reduce((acc, extra) => {
           const existingGroup = acc.find(g => g.extrasTitle === extra.extrasTitle);
           
+          // Process extrasDetails to restore value properties by matching with available food items
+          const processedDetails = extra.extrasDetails.map(detail => {
+            // Find matching food item by foodName to get the value (delika_inventory_table_id)
+            const matchingFoodItem = foodTypes.find(foodItem => 
+              foodItem.label === detail.foodName || 
+              foodItem.foodName === detail.foodName
+            );
+            
+            console.log(`Matching ${detail.foodName} with available food items:`, matchingFoodItem);
+            
+            return {
+              ...detail,
+              value: matchingFoodItem?.value || detail.value || '' // Restore value from matching food item
+            };
+          });
+          
           if (existingGroup) {
-            // Add details to existing group if not already present
-            extra.extrasDetails.forEach(detail => {
+            // Add processed details to existing group if not already present
+            processedDetails.forEach(detail => {
               if (!existingGroup.extrasDetails.some(existing => existing.foodName === detail.foodName)) {
                 existingGroup.extrasDetails.push(detail);
               }
             });
           } else {
-            // Create new group
+            // Create new group with processed details
             acc.push({
               id: `${Date.now()}-${Math.random().toString(36).substring(2)}`,
               extrasTitle: extra.extrasTitle,
               delika_inventory_table_id: extra.delika_inventory_table_id || '',
-              extrasDetails: [...extra.extrasDetails]
+              extrasDetails: processedDetails
             });
           }
           return acc;
         }, [] as ExtraGroup[]);
         
-        console.log('Setting grouped initial extras:', groupedExtras);
+        console.log('Setting grouped initial extras with restored values:', groupedExtras);
         setExtraGroups(groupedExtras);
         // Move to review step since we have existing extras
         setActiveStep(2);
@@ -232,7 +248,7 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
         setExtraGroups([]);
       }
     }
-  }, [open, initialExtras]);
+  }, [open, initialExtras, foodTypes]);
 
   useEffect(() => {
     const fetchFoodTypes = async () => {

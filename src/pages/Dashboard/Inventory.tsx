@@ -292,7 +292,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       const formattedExtras = itemExtras.flatMap(group =>
         group.extrasDetails.map(detail => ({
           extrasTitle: group.extrasTitle,
-          delika_inventory_table_id: detail.value || ''
+          delika_inventory_table_id: detail.value || group.delika_inventory_table_id || ''
         })).filter(extra => extra.delika_inventory_table_id !== '')
       );
 
