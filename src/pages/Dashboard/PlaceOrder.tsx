@@ -21,7 +21,12 @@ import BatchSummaryModal from '../../components/BatchSummaryModal';
 import { ArrowLeftIcon } from '@heroicons/react/24/solid';
 import { getAvailableDeliveryMethods } from '../../permissions/DashboardPermissions';
 import { hasAutoCalculatePrice, calculateDeliveryFee, getDeliveryPriceInfo } from '../../permissions/DashboardPermissions';
-import { Rider } from "../../components/RidersTable";import { useTranslation } from 'react-i18next';// Add the API key directly if needed
+import { Rider } from "../../components/RidersTable";
+import { useTranslation } from 'react-i18next';
+import { Card, CardContent, CardFooter } from "../../components/ui/card";
+import { Badge } from "../../components/ui/badge";
+
+// Add the API key directly if needed
 const GOOGLE_MAPS_API_KEY = 'AIzaSyAdv28EbwKXqvlKo2henxsKMD-4EKB20l8';
 
 interface PlaceOrderProps {
@@ -1151,90 +1156,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             <b className="font-sans text-lg font-semibold">Add Menu Item</b>
             {/* Add this scrollable container */}
             <div className="flex-1 overflow-y-auto max-h-[75vh] pr-2">
-                {/* Menu Items Section */}
-                <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-4">
-                  <div className="self-stretch relative leading-[20px] font-sans">Menu</div>
-                  <div className="w-full">
-                    <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                      Select Category
-                    </div>
-                    <StyledSelect
-                      fullWidth
-                      value={selectedCategory}
-                      onChange={(event: SelectChangeEvent<unknown>, child: React.ReactNode) => {
-                        setSelectedCategory(event.target.value as string);
-                      }}
-                      variant="outlined"
-                      size="small"
-                      className="mb-2"
-                      displayEmpty
-                    >
-                      <MenuItem value="" disabled>
-                        Select Category
-                      </MenuItem>
-                      {categories.map((category) => (
-                        <MenuItem key={category.value} value={category.label}>
-                          {category.label}
-                        </MenuItem>
-                      ))}
-                    </StyledSelect>
-                  </div>
-                </div>
-
-              {/* Items Selection */}
-                <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] text-[#6f7070] pt-4">
-                  <div className="flex-1 flex flex-col items-start justify-start gap-[6px]">
-                    <div className="self-stretch relative leading-[20px] font-sans text-black">Items</div>
-                    <div className="relative w-full">
-                      <button
-                        onClick={() => setIsItemsDropdownOpen(!isItemsDropdownOpen)}
-                        className="w-full p-2 text-left border-[#efefef] border-[1px] border-solid rounded-md bg-white"
-                      >
-                        <div className="text-[14px] leading-[22px] font-sans">
-                          {selectedItem || "Select Item"}
-                        </div>
-                      </button>
-                      
-                      {isItemsDropdownOpen && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
-                          {categoryItems.map((item) => (
-                            <div
-                              key={item.name}
-                              className={`p-2 ${
-                                item.available 
-                                  ? 'hover:bg-gray-100 cursor-pointer'
-                                  : 'cursor-not-allowed opacity-100'
-                              }`}
-                              onClick={() => {
-                                if (item.available) {   
-                                  setSelectedItem(item.name);
-                                  setIsItemsDropdownOpen(false);
-                                  addItem(item);
-                                }
-                              }}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <span className="text-[14px] leading-[22px] font-sans">
-                                    {item.name}
-                                  </span>
-                                  {!item.available && (
-                                    <span className="ml-2 text-[12px] text-red-500">
-                                      Out of stock
-                                    </span>
-                                  )}
-                                </div>
-                                <span className="text-[14px] leading-[22px] font-sans">
-                                  GH₵ {item.price}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+              {/* Enhanced Menu Selection */}
+              {renderEnhancedMenuSelection()}
 
               {/* Selected Items */}
                 <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
@@ -1657,88 +1580,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 </div>
               </div>
              
-              {/* Menu Items Section */}
-              <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-4">
-                <div className="self-stretch relative leading-[20px] font-sans">Menu</div>
-                <div className="w-full">
-                  <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                    Select Category
-                  </div>
-                  <StyledSelect
-                    fullWidth
-                    value={selectedCategory}
-                    onChange={(event: SelectChangeEvent<unknown>, child: React.ReactNode) => {
-                      setSelectedCategory(event.target.value as string);
-                    }}
-                    variant="outlined"
-                    size="small"
-                    className="mb-2"
-                    displayEmpty
-                  >
-                    <MenuItem value="" disabled>
-                      Select Category
-                    </MenuItem>
-                    {categories.map((category) => (
-                      <MenuItem key={category.value} value={category.label}>
-                        {category.label}
-                      </MenuItem>
-                    ))}
-                  </StyledSelect>
-                </div>
-              </div>
-              <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] text-[#6f7070] pt-4">
-                <div className="flex-1 flex flex-col items-start justify-start gap-[6px]">
-                  <div className="self-stretch relative leading-[20px] font-sans text-black">Items</div>
-                  <div className="relative w-full">
-                    <button
-                      onClick={() => setIsItemsDropdownOpen(!isItemsDropdownOpen)}
-                      className="w-full p-2 text-left border-[#efefef] border-[1px] border-solid rounded-md bg-white"
-                    >
-                      <div className="text-[14px] leading-[22px] font-sans">
-                        {selectedItem || "Select Item"}
-                      </div>
-                    </button>
-                    
-                    {isItemsDropdownOpen && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
-                        {categoryItems.map((item) => (
-                          <div
-                            key={item.name}
-                            className={`p-2 ${
-                              item.available 
-                                ? 'hover:bg-gray-100 cursor-pointer'
-                                : 'cursor-not-allowed opacity-100'
-                            }`}
-                            onClick={() => {
-                              if (item.available) {   
-                                setSelectedItem(item.name);
-                                setIsItemsDropdownOpen(false);
-                                addItem(item);
-                              }
-                            }}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <span className="text-[14px] leading-[22px] font-sans">
-                                  {item.name}
-                                </span>
-                                {!item.available && (
-                                  <span className="ml-2 text-[12px] text-red-500">
-                                    Out of stock
-                                  </span>
-                                )}
-                              </div>
-                              <span className="text-[14px] leading-[22px] font-sans">
-                                GH₵ {item.price}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              {/* Enhanced Menu Selection */}
+              {renderEnhancedMenuSelection()}
               <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
                 <div className="self-stretch relative leading-[20px] font-sans text-black">Selected Items</div>
                 {selectedItems.map((item, index) => (
@@ -2130,90 +1973,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             
             {/* Scrollable container */}
             <div className="flex-1 overflow-y-auto max-h-[75vh] pr-2">
-                {/* Menu Items Section */}
-                <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-4">
-                  <div className="self-stretch relative leading-[20px] font-sans">Menu</div>
-                  <div className="w-full">
-                    <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                      Select Category
-                    </div>
-                    <StyledSelect
-                      fullWidth
-                      value={selectedCategory}
-                      onChange={(event: SelectChangeEvent<unknown>, child: React.ReactNode) => {
-                        setSelectedCategory(event.target.value as string);
-                      }}
-                      variant="outlined"
-                      size="small"
-                      className="mb-2"
-                      displayEmpty
-                    >
-                      <MenuItem value="" disabled>
-                        Select Category
-                      </MenuItem>
-                      {categories.map((category) => (
-                        <MenuItem key={category.value} value={category.label}>
-                          {category.label}
-                        </MenuItem>
-                      ))}
-                    </StyledSelect>
-                  </div>
-                </div>
-
-              {/* Items Selection */}
-                <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] text-[#6f7070] pt-4">
-                  <div className="flex-1 flex flex-col items-start justify-start gap-[6px]">
-                    <div className="self-stretch relative leading-[20px] font-sans text-black">Items</div>
-                    <div className="relative w-full">
-                      <button
-                        onClick={() => setIsItemsDropdownOpen(!isItemsDropdownOpen)}
-                        className="w-full p-2 text-left border-[#efefef] border-[1px] border-solid rounded-md bg-white"
-                      >
-                        <div className="text-[14px] leading-[22px] font-sans">
-                          {selectedItem || "Select Item"}
-                        </div>
-                      </button>
-                      
-                      {isItemsDropdownOpen && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
-                          {categoryItems.map((item) => (
-                            <div
-                              key={item.name}
-                              className={`p-2 ${
-                                item.available 
-                                  ? 'hover:bg-gray-100 cursor-pointer'
-                                  : 'cursor-not-allowed opacity-100'
-                              }`}
-                              onClick={() => {
-                                if (item.available) {   
-                                  setSelectedItem(item.name);
-                                  setIsItemsDropdownOpen(false);
-                                  addItem(item);
-                                }
-                              }}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <span className="text-[14px] leading-[22px] font-sans">
-                                    {item.name}
-                                  </span>
-                                  {!item.available && (
-                                    <span className="ml-2 text-[12px] text-red-500">
-                                      Out of stock
-                                    </span>
-                                  )}
-                                </div>
-                                <span className="text-[14px] leading-[22px] font-sans">
-                                  GH₵ {item.price}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+              {/* Enhanced Menu Selection */}
+              {renderEnhancedMenuSelection()}
 
               {/* Selected Items */}
                 <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
@@ -2479,95 +2240,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             <b className="font-sans text-lg font-semibold">Add Menu Item</b>
             {/* Add this scrollable container */}
             <div className="flex-1 overflow-y-auto max-h-[75vh] pr-2">
-              {/* Menu Items Section */}
-              <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-4">
-                <div className="self-stretch relative leading-[20px] font-sans">Menu</div>
-                <div className="w-full">
-                  <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                    Select Category
-                  </div>
-                  <StyledSelect
-                    fullWidth
-                    value={selectedCategory}
-                    onChange={(event: SelectChangeEvent<unknown>, child: React.ReactNode) => {
-                      setSelectedCategory(event.target.value as string);
-                    }}
-                    variant="outlined"
-                    size="small"
-                    className="mb-2"
-                    displayEmpty
-                  >
-                    <MenuItem value="" disabled>
-                      Select Category
-                    </MenuItem>
-                    {categories.map((category) => (
-                      <MenuItem key={category.value} value={category.label}>
-                        {category.label}
-                      </MenuItem>
-                    ))}
-                  </StyledSelect>
-                </div>
-              </div>
-              <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] text-[#6f7070] pt-4">
-                <div className="flex-1 flex flex-col items-start justify-start gap-[6px]">
-                  <div className="self-stretch relative leading-[20px] font-sans text-black">Items</div>
-                  <div className="relative w-full">
-                    <button
-                      onClick={() => setIsItemsDropdownOpen(!isItemsDropdownOpen)}
-                      className="w-full p-2 text-left border-[#efefef] border-[1px] border-solid rounded-md bg-white"
-                    >
-                      <div className="text-[14px] leading-[22px] font-sans">
-                        {selectedItem || "Select Item"}
-                      </div>
-                    </button>
-                    
-                    {isItemsDropdownOpen && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
-                        {categoryItems.map((item) => (
-                          <div
-                            key={item.name}
-                            className={`p-2 ${
-                              item.available 
-                                ? 'hover:bg-gray-100 cursor-pointer'
-                                : 'cursor-not-allowed opacity-100'
-                            }`}
-                            onClick={() => {
-                              if (item.available) {
-                                setSelectedItem(item.name);
-                                setIsItemsDropdownOpen(false);
-                                // Add the item to selected items with initial quantity of 1
-                                const newItem: SelectedItem = {
-                                  name: item.name,
-                                  quantity: 1,
-                                  price: parseFloat(item.price as string),
-                                  image: item.image || ''
-                                };
-                                setSelectedItems(prev => [...prev, newItem]);
-                              }
-                            }}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <span className="text-[14px] leading-[22px] font-sans">
-                                  {item.name}
-                                </span>
-                                {!item.available && (
-                                  <span className="ml-2 text-[12px] text-red-500">
-                                    Out of stock
-                                  </span>
-                                )}
-                              </div>
-                              <span className="text-[14px] leading-[22px] font-sans">
-                                GH₵ {item.price}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
+              {/* Enhanced Menu Selection */}
+              {renderEnhancedMenuSelection()}
               <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
                 <div className="self-stretch relative leading-[20px] font-sans text-black">Selected Items</div>
                 {selectedItems.map((item, index) => (
@@ -2634,18 +2308,18 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             </div>
 
               {/* Navigation Button */}
-              <div className="flex justify-between mt-8 pt-4 border-t">
+              <div className="w-full mt-8 pt-4 border-t">
               <button
                 onClick={handleNextStep}
-                disabled={!isDeliveryPriceValid()}
-                className={`self-stretch rounded-[4px] border-[1px] border-solid overflow-hidden 
-                            flex flex-row items-center justify-center py-[9px] px-[90px] 
-                            cursor-pointer text-[10px] text-[#fff] mt-4
-                            ${isDeliveryPriceValid() 
-                              ? 'bg-[#fd683e] border-[#f5fcf8] hover:opacity-90' 
+                disabled={selectedItems.length === 0}
+                className={`w-full rounded-[4px] border-[1px] border-solid overflow-hidden 
+                            flex flex-row items-center justify-center py-[12px] px-[20px] 
+                            cursor-pointer text-sm text-[#fff] font-sans
+                            ${selectedItems.length > 0
+                              ? 'bg-[#fd683e] border-[#fd683e] hover:opacity-90' 
                               : 'bg-gray-400 border-gray-300 cursor-not-allowed'}`}
               >
-                <div className="relative leading-[16px] font-sans text-[#fff]">{t('common.next')}</div>
+                Next
               </button>
             </div>
           </>
@@ -2721,61 +2395,67 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 </div>
               </div>
 
-              {/* Payment Buttons */}
-              <div className="flex gap-4 w-full mt-6">
-                <button
-                  className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg text-white font-sans text-sm ${
-                    isDeliveryPriceValid() ? 'bg-[#fd683e] hover:bg-[#fd683e]/90' : 'bg-gray-400 cursor-not-allowed'
-                  }`}
-                  onClick={() => handlePlaceOrder('cash')}
-                  disabled={!isDeliveryPriceValid() || isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Processing...
-                    </div>
-                  ) : (
-                    'Cash'
-                  )}
-                </button>
-  
-                <button
-                  className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg text-white font-sans text-sm ${
-                    isDeliveryPriceValid() ? 'bg-[#fd683e] hover:bg-[#fd683e]/90' : 'bg-gray-400 cursor-not-allowed'
-                  }`}
-                  onClick={() => handlePlaceOrder('momo')}
-                  disabled={!isDeliveryPriceValid() || isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Processing...
-                    </div>
-                  ) : (
-                    'MoMo'
-                  )}
-                </button>
-  
-                <button
-                  className={`flex items-center justify-center gap-2 px-6 py-3 rounded-lg text-white font-sans text-sm ${
-                    isDeliveryPriceValid() ? 'bg-[#fd683e] hover:bg-[#fd683e]/90' : 'bg-gray-400 cursor-not-allowed'
-                  }`}
-                  onClick={() => handlePlaceOrder('visa')}
-                  disabled={!isDeliveryPriceValid() || isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Processing...
-                    </div>
-                  ) : (
-                    'Visa Card'
-                  )}
-                </button>
-              </div>
-            </>
-          );
+             {/* Payment Buttons - Keep outside scrollable area */}
+             <div className="flex gap-4 w-full pt-4 mt-4">
+              <button
+                className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
+                           py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
+                           ${!isDeliveryPriceValid() || isSubmitting
+                             ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
+                             : 'bg-[#201a18] border-[#201a18]'}`}
+                onClick={() => handlePlaceOrder('cash')}
+                disabled={!isDeliveryPriceValid() || isSubmitting}
+              >
+                {isSubmitting ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Processing...
+                  </div>
+                ) : (
+                  'Cash'
+                )}
+              </button>
+
+              <button
+                className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
+                           py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
+                           ${!isDeliveryPriceValid() || isSubmitting
+                             ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
+                             : 'bg-[#fd683e] border-[#fd683e]'}`}
+                onClick={() => handlePlaceOrder('momo')}
+                disabled={!isDeliveryPriceValid() || isSubmitting}
+              >
+                {isSubmitting ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Processing...
+                  </div>
+                ) : (
+                  'MoMo'
+                )}
+              </button>
+
+              <button
+                className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
+                           py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
+                           ${!isDeliveryPriceValid() || isSubmitting
+                             ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
+                             : 'bg-[#4CAF50] border-[#4CAF50]'}`}
+                onClick={() => handlePlaceOrder('visa')}
+                disabled={!isDeliveryPriceValid() || isSubmitting}
+              >
+                {isSubmitting ? (
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Processing...
+                  </div>
+                ) : (
+                  'Visa Card'
+                )}
+              </button>
+            </div>
+          </>
+        );
       default:
         return null;
     }
@@ -3097,6 +2777,116 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   const handleBackToDeliveryType = () => {
     setDeliveryMethod(null);
     resetFormState();
+  };
+
+  // New enhanced menu selection component
+  const renderEnhancedMenuSelection = () => {
+    return (
+      <>
+        {/* Category Selection */}
+        <div className="mb-6">
+          <div className="text-lg font-semibold mb-4 font-sans">Select Category</div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {categories.map((category) => (
+              <button
+                key={category.value}
+                onClick={() => setSelectedCategory(category.label)}
+                className={`p-4 rounded-lg border-2 transition-all font-sans text-sm font-medium ${
+                  selectedCategory === category.label
+                    ? 'border-[#fd683e] bg-[#fff5f3] text-[#fd683e]'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                {category.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Items Grid - Only show when category is selected */}
+        {selectedCategory && (
+          <div className="mb-6">
+            <div className="text-lg font-semibold mb-4 font-sans">
+              Select Items from {selectedCategory}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-60 overflow-y-auto">
+              {categoryItems.map((item) => (
+                <Card 
+                  key={item.name}
+                  className={`cursor-pointer transition-all hover:shadow-md ${
+                    !item.available ? 'opacity-60' : ''
+                  }`}
+                  onClick={() => {
+                    if (item.available) {
+                      addItem(item);
+                    }
+                  }}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      {/* Product Image */}
+                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                        {item.foodImage?.url || item.image ? (
+                          <img
+                            src={item.foodImage?.url || item.image}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).src = '/placeholder-food.png';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-400">
+                            <span className="text-xs">No Image</span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Product Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-col h-full">
+                          <div className="flex-1">
+                            <h3 className="font-medium text-sm font-sans text-gray-900 break-words leading-tight">
+                              {item.name}
+                            </h3>
+                          </div>
+                          
+                          {/* Price and Stock Status */}
+                          <div className="flex items-center justify-between mt-2">
+                            <p className="text-sm font-sans text-[#fd683e] font-semibold">
+                              GH₵ {item.price}
+                            </p>
+                            
+                            {/* Stock Status */}
+                            <div className="ml-2">
+                              {item.available ? (
+                                <Badge variant="default" className="bg-green-100 text-green-800 text-xs whitespace-nowrap">
+                                  In Stock
+                                </Badge>
+                              ) : (
+                                <Badge variant="destructive" className="text-xs whitespace-nowrap">
+                                  Out of Stock
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            
+            {categoryItems.length === 0 && (
+              <div className="text-center py-8 text-gray-500 font-sans">
+                No items available in this category
+              </div>
+            )}
+          </div>
+        )}
+      </>
+    );
   };
 
   const isWalkInValid = () => {

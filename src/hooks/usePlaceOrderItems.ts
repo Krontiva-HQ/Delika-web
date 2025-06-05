@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '../services/api';
 import { useUserProfile } from './useUserProfile';
 
@@ -44,18 +44,18 @@ interface PlaceOrderItemsHook {
 export const usePlaceOrderItems = (selectedBranchId?: string): PlaceOrderItemsHook => {
   const { userProfile, isAdmin } = useUserProfile();
   const [selectedCategory, setSelectedCategory] = useState<string>('');
-  const [categoryItems, setCategoryItems] = useState<MenuItem[]>([]);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [categories, setCategories] = useState<{ label: string; value: string; }[]>([]);
+  const [fullMenuData, setFullMenuData] = useState<any[]>([]);
 
   // Determine which branchId to use
   const effectiveBranchId = isAdmin 
     ? selectedBranchId  // Use selected branch for Admin
     : userProfile?.branchId; // Use profile branch for non-Admin
 
-  // Fetch categories
+  // Fetch all menu data once and cache it
   useEffect(() => {
-    const fetchCategories = async () => {
+    const fetchMenuData = async () => {
       if (!userProfile?.restaurantId || !effectiveBranchId) return;
 
       try {
@@ -64,7 +64,10 @@ export const usePlaceOrderItems = (selectedBranchId?: string): PlaceOrderItemsHo
           branchId: effectiveBranchId
         });
         
+        // Cache the full menu data
+        setFullMenuData(response.data);
         
+        // Extract categories
         const formattedCategories = response.data.map((cat: Category) => ({
           label: cat.foodType || 'Unnamed Category',
           value: cat.id || cat._id || ''
@@ -76,39 +79,26 @@ export const usePlaceOrderItems = (selectedBranchId?: string): PlaceOrderItemsHo
         
         setCategories(uniqueCategories);
       } catch (error) {
+        console.error('Error fetching menu data:', error);
       }
     };
 
-    fetchCategories();
-  }, [userProfile?.restaurantId, effectiveBranchId]); // Re-fetch when branch changes
-
-  // Fetch items for selected category
-  const fetchCategoryItems = useCallback(async (categoryId: string) => {
-    if (!userProfile?.restaurantId || !effectiveBranchId) return;
-
-    try {
-      const response = await api.post('/get/all/menu', {
-        restaurantId: userProfile.restaurantId,
-        branchId: effectiveBranchId
-      });
-
-      // Find the category and get its foods array
-      const category = response.data.find((cat: any) => cat.id === categoryId || cat._id === categoryId);
-      if (category && category.foods) {
-        setCategoryItems(category.foods);
-      }
-    } catch (error) {
-    }
+    fetchMenuData();
   }, [userProfile?.restaurantId, effectiveBranchId]);
 
-  useEffect(() => {
-    if (selectedCategory) {
-      const category = categories.find(cat => cat.label === selectedCategory);
-      if (category) {
-        fetchCategoryItems(category.value);
-      }
-    }
-  }, [selectedCategory, categories, fetchCategoryItems]);
+  // Fast local filtering using useMemo - no API calls needed!
+  const categoryItems = useMemo(() => {
+    if (!selectedCategory || !fullMenuData.length) return [];
+    
+    const category = categories.find(cat => cat.label === selectedCategory);
+    if (!category) return [];
+    
+    const categoryData = fullMenuData.find((cat: any) => 
+      (cat.id === category.value || cat._id === category.value)
+    );
+    
+    return categoryData?.foods || [];
+  }, [selectedCategory, categories, fullMenuData]);
 
   const convertUrlToFile = async (url: string): Promise<File> => {
     try {
