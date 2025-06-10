@@ -317,67 +317,27 @@ export interface OrderDetails {
 
 // Add the service functions
 export const addItemToCategory = (formData: FormData) => {
-  console.log('📤 API: addItemToCategory called with FormData:');
-  
-  // Create a new FormData instance
-  const updatedFormData = new FormData();
-  updatedFormData.append('path', '/add/item/to/category');
-  
-  // Log and append each field
-  Array.from(formData.entries()).forEach(([key, value]) => {
-    if (key === 'path') return;
-    console.log(`Processing ${key}:`, value);
-    
-    if (key === 'foods' && value instanceof Blob) {
-      // Keep foods as a JSON Blob
-      updatedFormData.append(key, value);
-    } else if (key === 'foodPhoto' && value instanceof File) {
-      console.log('📸 Processing foodPhoto:', {
-        name: value.name,
-        type: value.type,
-        size: value.size
-      });
-      updatedFormData.append(key, value);
-    } else {
-      updatedFormData.append(key, value);
-    }
-  });
-  
   const headers = {
     'Content-Type': 'multipart/form-data',
     'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
   };
 
-  console.log('📤 Final request payload:', {
-    url: API_ENDPOINTS.CATEGORY.ADD_ITEM,
-    headers,
-    formData: Object.fromEntries(updatedFormData.entries())
-  });
-
-  return api.patch<{data: any; status: number}>(
+  return directApi.patch<{data: any; status: number}>(
     API_ENDPOINTS.CATEGORY.ADD_ITEM, 
-    updatedFormData, 
+    formData, 
     { headers }
   );
 };
 
 export const createCategory = (formData: FormData) => {
-  const updatedFormData = new FormData();
-  updatedFormData.append('path', '/create/new/category');
-  
-  Array.from(formData.entries()).forEach(([key, value]) => {
-    if (key === 'path') return;
-    updatedFormData.append(key, value);
-  });
-  
   const headers = {
     'Content-Type': 'multipart/form-data',
     'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
   };
 
-  return api.post(
+  return directApi.post(
     API_ENDPOINTS.CATEGORY.CREATE, 
-    updatedFormData, 
+    formData, 
     { headers }
   );
 };
