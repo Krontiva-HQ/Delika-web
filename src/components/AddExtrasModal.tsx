@@ -208,8 +208,7 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
           const processedDetails = extra.extrasDetails.map(detail => {
             // Find matching food item by foodName to get the value (delika_inventory_table_id)
             const matchingFoodItem = foodTypes.find(foodItem => 
-              foodItem.label === detail.foodName || 
-              foodItem.foodName === detail.foodName
+              foodItem.label === detail.foodName
             );
             
             console.log(`Matching ${detail.foodName} with available food items:`, matchingFoodItem);
@@ -271,6 +270,7 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
         const uniqueFoodTypes = filteredData.map(item => ({
           label: item.foodName,
           value: item.id,
+          foodName: item.foodName,
           foodType: item.foodType,
           foodPrice: item.foodPrice,
           foodDescription: item.foodDescription || '',

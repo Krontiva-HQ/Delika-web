@@ -91,7 +91,25 @@ interface InventoryItem {
 
 interface ExtraItem {
   extrasTitle: string;
-  inventoryId: string;
+  extrasDetails: {
+    foodName: string;
+    foodPrice: number;
+    foodDescription: string;
+    foodImage: {
+      access: string;
+      path: string;
+      name: string;
+      type: string;
+      size: number;
+      mime: string;
+      meta: {
+        width: number;
+        height: number;
+      };
+      url: string;
+    };
+  }[];
+  delika_inventory_table_id?: string;
 }
 
 const AddInventory: FunctionComponent<AddInventoryProps> = ({ 
@@ -356,12 +374,11 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
 
   const handleExtrasAdd = (groups: ExtraGroup[]) => {
     // Transform the groups into the format we need for the API
-    const transformedExtras = groups.flatMap(group =>
-      group.extras.map(extra => ({
-        extrasTitle: group.title,
-        inventoryId: extra.inventoryId || ""
-      }))
-    );
+    const transformedExtras = groups.map(group => ({
+      extrasTitle: group.extrasTitle,
+      extrasDetails: group.extrasDetails,
+      delika_inventory_table_id: group.delika_inventory_table_id || ""
+    }));
     setExtraGroups(transformedExtras);
     setExtrasModalOpen(false);
   };
