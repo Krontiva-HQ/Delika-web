@@ -92,6 +92,8 @@
     "paid": "Paid",
     "accept": "Accept",
     "decline": "Decline",
+    "accepting": "Accepting...",
+    "declining": "Declining...",
     "orderReceived": "Order Received",
     "newOrderReceived": "New Order Received!",
     "noOrderDetails": "No order details available",
@@ -162,7 +164,8 @@
       "schedule": "Schedule Delivery",
       "scheduleDescription": "Schedule delivery for a later time",
       "walkInDescription": "Customer picks up the order in person"
-    }
+    },
+    "noPendingOrders": "No pending orders"
   },
   "inventory": {
     "title": "Items",

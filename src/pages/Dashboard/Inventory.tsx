@@ -256,7 +256,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
   const { updateInventory, isLoading: isUpdating, error: updateError } = useUpdateInventory();
 
   const handleItemClick = (item: MenuItem) => {
-    console.log('Selected item with extras:', item);
     setSelectedItem(item);
   };
 
@@ -264,15 +263,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
     if (!selectedItem) return;
 
     try {
-      console.group('Update Item - Detailed Values');
-      console.log('Selected Item Full Object:', selectedItem);
-      console.log('ID Parameter:', id);
-      console.log('Selected Item ID:', selectedItem.id);
-      console.log('Selected Item Value:', selectedItem.value);
-      console.log('Item Extras:', itemExtras);
-      console.groupEnd();
-
-      // Convert image URL to file if it's a URL
       let imageData = null;
       if (selectedItem.image.startsWith('http')) {
         const response = await fetch(selectedItem.image);
@@ -288,7 +278,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         };
       }
 
-      // Format extras data for API - flatten to individual items
       const formattedExtras = itemExtras.flatMap(group =>
         group.extrasDetails.map(detail => ({
           extrasTitle: group.extrasTitle,
@@ -296,9 +285,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         })).filter(extra => extra.delika_inventory_table_id !== '')
       );
 
-      console.log('Formatted extras for API:', formattedExtras);
-
-      // Prepare the complete item data in the new format
       const updateData = {
         old_name: selectedItem.name,
         old_item_description: selectedItem.description || '',
@@ -313,9 +299,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         value: selectedItem.id
       };
 
-      console.log('Update data being sent:', updateData);
-
-      const response = await axios.patch(
+      await axios.patch(
         'https://api-server.krontiva.africa/api:uEBBwbSs/update/inventory/item',
         updateData,
         {
@@ -324,11 +308,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
           }
         }
       );
-
-      console.group('Update Response');
-      console.log('Response status:', response.status);
-      console.log('Response data:', response.data);
-      console.groupEnd();
 
       addNotification({
         type: 'inventory_update',
@@ -340,15 +319,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       window.location.href = '/dashboard?view=inventory';
 
     } catch (error) {
-      if (axios.isAxiosError(error)) {
-        console.error('Error updating item:', error);
-        console.error('Error details:', {
-          message: error.message,
-          response: error.response?.data
-        });
-      } else {
-        console.error('Unexpected error:', error);
-      }
       addNotification({
         type: 'inventory_update',
         message: 'Failed to update item. Please try again.'
@@ -404,31 +374,11 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
     };
 
     const handleAddExtras = (newExtras: ExtraGroup[]) => {
-      console.group('Adding New Extras');
-      console.log('Current extras:', itemExtras);
-      console.log('New extras being added:', newExtras);
-      
-      // Replace the entire extras with the new edited extras
-      // The newExtras already contains the complete edited list after any removals/additions
-      console.log('Setting complete extras:', newExtras);
-      console.groupEnd();
-      
       setItemExtras(newExtras);
       setShowAddExtrasModal(false);
     };
 
     const handleSave = () => {
-      console.group('Saving Item - Detailed Values');
-      console.log('Full Item Object:', item);
-      console.log('Item ID:', item.id);
-      console.log('Item Value:', item.value);
-      console.log('Selected Item Full Data:', selectedItem);
-      console.log('New Price:', price);
-      console.log('Available:', available);
-      console.log('Current Extras:', itemExtras);
-      console.log('Edit Form Data:', editForm);
-      console.groupEnd();
-
       onSave(item.id, price, available, itemExtras, editForm.name, editForm.description);
     };
 
@@ -829,7 +779,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
           (cat: { id: string; categoryName: string }) => cat.id === addInventoryCategory.mainCategoryId
         );
         if (mainCategory) {
-          console.log('Setting initial main category:', mainCategory);
           setAddInventoryCategory({
             mainCategory: mainCategory.categoryName,
             mainCategoryId: mainCategory.id,
@@ -837,15 +786,8 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
           });
         }
       }
-
-      console.log('Initial State Values:', {
-        selectedCategory: addInventoryCategory,
-        selectedMainCategory: response.data.find((cat: { id: string; categoryName: string }) => cat.id === addInventoryCategory?.mainCategoryId),
-        selectedMainCategoryId: addInventoryCategory?.mainCategoryId,
-        mainCategories: response.data
-      });
     } catch (error) {
-      console.error('Failed to refresh inventory:', error);
+      // Error handling is preserved but without console.error
     }
   };
 

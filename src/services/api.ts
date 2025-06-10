@@ -118,7 +118,11 @@ export const API_ENDPOINTS = {
     GET_ALL: '/get/all/menu',
     GET_ALL_CATEGORIES: '/get/menu/categories',
     UPDATE_INVENTORY: '/update/inventory/price/quantity',
-    GET_ALL_INVENTORY: '/get/inventory/by/restaurant'
+    GET_ALL_INVENTORY: '/get/inventory/by/restaurant',
+    UPDATE_INVENTORY_ITEM: '/update/inventory/item'
+  },
+  INVENTORY: {
+    GET_ALL: '/delika_inventory_table'
   },
   AUDIT: {
     GET_ALL: '/delikaquickshipper_audit_table'
@@ -744,4 +748,36 @@ export const calculateDeliveryPriceAPI = async (
     { headers }
   );
   return response.data;
+};
+
+// Add new inventory service functions
+export const getAllInventory = async () => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  return api.get(API_ENDPOINTS.INVENTORY.GET_ALL, { headers });
+};
+
+export const updateInventoryItem = async (data: {
+  old_name: string;
+  old_item_description: string;
+  old_item_price: number;
+  new_name: string;
+  new_item_description: string;
+  new_item_price: number;
+  available: boolean;
+  extras: Array<{
+    extrasTitle: string;
+    delika_inventory_table_id: string;
+  }>;
+  restaurantId: string;
+  branchId: string;
+  value: string;
+}) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  return api.patch(API_ENDPOINTS.MENU.UPDATE_INVENTORY_ITEM, data, { headers });
 };

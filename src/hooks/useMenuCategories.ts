@@ -107,17 +107,13 @@ export const useMenuCategories = () => {
       
       try {
         const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
-        console.log('Fetching menu data with params:', {
-          restaurantId: userProfile.restaurantId || '',
-          branchId: userProfile?.role === 'Admin' ? selectedBranchId : userProfile?.branchId || '',
-        });
+      
         
         const response = await api.post<APICategory[]>('/get/all/menu', {
           restaurantId: userProfile.restaurantId || '',
           branchId: userProfile?.role === 'Admin' ? selectedBranchId : userProfile?.branchId || '',
         });
         
-        console.log('Raw /get/all/menu Response:', response.data);
         
         const transformedCategories = response.data
           .map(category => ({
@@ -140,7 +136,6 @@ export const useMenuCategories = () => {
           }))
           .sort((a, b) => a.name.localeCompare(b.name));
         
-        console.log('Transformed Categories:', transformedCategories);
         
         setCategories(transformedCategories);
       } catch (err) {

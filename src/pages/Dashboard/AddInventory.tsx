@@ -127,14 +127,6 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   const { categories, isLoading } = useMenuCategories();
   const { userProfile } = useUserProfile();
 
-  // Add console logs for initial props and state
-  console.log('AddInventory Props:', {
-    preSelectedCategory,
-    branchId
-  });
-
-  console.log('Initial Categories from useMenuCategories:', categories);
-
   const [textfieldOpen, setTextfieldOpen] = useState(false);
   const [textfieldAnchorEl, setTextfieldAnchorEl] = useState<null | HTMLElement>(null);
   const [categoryAnchorEl, setCategoryAnchorEl] = useState<null | HTMLElement>(null);
@@ -176,15 +168,6 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   const [extraPrice, setExtraPrice] = useState('');
   const [extraGroups, setExtraGroups] = useState<ExtraItem[]>([]);
 
-  // Add console log for initial state values with ID
-  console.log('Initial State Values:', {
-    selectedCategory,
-    selectedMainCategory,
-    selectedMainCategoryId,
-    mainCategories
-  });
-
-  // Update useEffect to use categoryTable data
   useEffect(() => {
     const fetchMainCategories = async () => {
       setIsLoadingMainCategories(true);
@@ -202,7 +185,6 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
           // If adding from top button, fetch all categories from API
           try {
             const response = await api.get('/get/menu/categories');
-            console.log('All Categories from API:', response.data);
             allMainCategories = response.data;
           } catch (error) {
             console.error('Failed to fetch categories:', error);
@@ -231,7 +213,6 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
     }
   }, [categories, preSelectedCategory]);
 
-  // Add useEffect to fetch inventory items
   useEffect(() => {
     const fetchInventoryItems = async () => {
       try {

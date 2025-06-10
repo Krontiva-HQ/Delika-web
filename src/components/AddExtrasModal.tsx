@@ -17,7 +17,7 @@ import {
   Chip,
 } from '@mui/material';
 import { X, Plus, Trash2, Edit3, ChevronLeft, ChevronRight, Check } from 'lucide-react';
-import { api } from '@/services/api';
+import { api, getAllInventory } from '../services/api';
 import { useUserProfile } from '../hooks/useUserProfile';
 
 // Option type for dropdowns
@@ -211,8 +211,6 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
               foodItem.label === detail.foodName
             );
             
-            console.log(`Matching ${detail.foodName} with available food items:`, matchingFoodItem);
-            
             return {
               ...detail,
               value: matchingFoodItem?.value || detail.value || '' // Restore value from matching food item
@@ -238,7 +236,6 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
           return acc;
         }, [] as ExtraGroup[]);
         
-        console.log('Setting grouped initial extras with restored values:', groupedExtras);
         setExtraGroups(groupedExtras);
         // Move to review step since we have existing extras
         setActiveStep(2);
@@ -253,18 +250,14 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
     const fetchFoodTypes = async () => {
       try {
         setLoading(true);
-        console.log('Fetching food types from endpoint:', 'https://api-server.krontiva.africa/api:uEBBwbSs/delika_inventory_table');
-        const response = await axios.get('https://api-server.krontiva.africa/api:uEBBwbSs/delika_inventory_table');
-        console.log('Full API Response:', response.data);
-        
-        const data = response.data as FoodItem[];
+        const response = await getAllInventory();
+        const foodTypes = response.data;
+        const data = foodTypes as FoodItem[];
         
         // Filter for restaurant ID and get unique food types
         const filteredData = data.filter(item => 
           item.restaurantName === restaurantData.id
         );
-        
-        console.log('Filtered data for restaurant:', filteredData);
         
         // Get unique food types and create options while maintaining all data
         const uniqueFoodTypes = filteredData.map(item => ({
@@ -282,7 +275,6 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
           updatedAt: item.updatedAt
         }));
         
-        console.log('Processed food types options with full data:', uniqueFoodTypes);
         setFoodTypes(uniqueFoodTypes);
       } catch (error) {
         console.error('Error fetching food types:', error);
@@ -369,7 +361,6 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
   const handleAddVariant = () => {
     if (currentGroup && variant) {
       const selectedOption = foodTypes.find(opt => opt.value === variant);
-      console.log('Selected variant with full data:', selectedOption);
       
       if (selectedOption) {
         setCurrentGroup({
@@ -403,9 +394,6 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
       return;
     }
 
-    console.log('Attempting to remove group with id:', id);
-    console.log('Current groups:', extraGroups);
-
     // Find the group to be removed
     const groupToRemove = extraGroups.find(group => group.id === id);
     if (!groupToRemove) {
@@ -418,7 +406,6 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
       group.extrasTitle.toLowerCase() !== groupToRemove.extrasTitle.toLowerCase()
     );
 
-    console.log('Groups after removal:', updatedGroups);
     setExtraGroups(updatedGroups);
   };
 
@@ -435,8 +422,6 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
   };
 
   const handleSave = () => {
-    console.log('Current groups state before saving:', extraGroups);
-    
     // Keep the full groups structure for UI state
     onAdd(extraGroups);
     
