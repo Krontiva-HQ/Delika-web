@@ -75,14 +75,6 @@ interface MenuCategory {
   foods: FoodItem[];
 }
 
-interface AddItemParams {
-  name: string;
-  price: string;
-  description: string;
-  available: boolean;
-  // ... other properties ...
-}
-
 interface InventoryItem {
   id: string;
   foodName: string;
@@ -91,25 +83,39 @@ interface InventoryItem {
 
 interface ExtraItem {
   extrasTitle: string;
-  extrasDetails: {
-    foodName: string;
-    foodPrice: number;
-    foodDescription: string;
-    foodImage: {
-      access: string;
-      path: string;
-      name: string;
-      type: string;
-      size: number;
-      mime: string;
-      meta: {
-        width: number;
-        height: number;
-      };
-      url: string;
-    };
+  inventoryId: string;
+}
+
+interface AddItemParams {
+  categoryId: string;
+  name: string;
+  price: string;
+  description: string;
+  available: boolean;
+  foodPhoto: File | null;
+  mainCategoryId: string;
+  mainCategory: string;
+  extras: ExtraItem[];
+  onSuccess?: () => void;
+}
+
+interface AddCategoryParams {
+  foodType: string;
+  restaurantName: string;
+  branchName: string;
+  foodTypePhoto: File | null;
+  foodsPhoto: File | null;
+  foods: {
+    name: string;
+    price: string;
+    description: string;
+    quantity: string;
+    available: boolean;
+    extras: ExtraItem[];
   }[];
-  delika_inventory_table_id?: string;
+  mainCategory: string;
+  categoryId: string;
+  onSuccess?: () => void;
 }
 
 const AddInventory: FunctionComponent<AddInventoryProps> = ({ 
@@ -373,12 +379,13 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   };
 
   const handleExtrasAdd = (groups: ExtraGroup[]) => {
-    // Transform the groups into the format we need for the API
-    const transformedExtras = groups.map(group => ({
-      extrasTitle: group.extrasTitle,
-      extrasDetails: group.extrasDetails,
-      delika_inventory_table_id: group.delika_inventory_table_id || ""
-    }));
+    // Transform the groups into the format needed for the API
+    const transformedExtras: ExtraItem[] = groups.flatMap(group =>
+      group.extrasDetails.map(detail => ({
+        extrasTitle: group.extrasTitle,
+        inventoryId: detail.value || ""
+      }))
+    );
     setExtraGroups(transformedExtras);
     setExtrasModalOpen(false);
   };
