@@ -168,6 +168,9 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   const [extraPrice, setExtraPrice] = useState('');
   const [extraGroups, setExtraGroups] = useState<ExtraItem[]>([]);
 
+  // Add state to store and display extras groups
+  const [addedExtrasGroups, setAddedExtrasGroups] = useState<ExtraGroup[]>([]);
+
   useEffect(() => {
     const fetchMainCategories = async () => {
       setIsLoadingMainCategories(true);
@@ -360,6 +363,9 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   };
 
   const handleExtrasAdd = (groups: ExtraGroup[]) => {
+    // Store the full groups data for display
+    setAddedExtrasGroups(groups);
+    
     // Transform the groups into the format needed for the API
     const transformedExtras: ExtraItem[] = groups.flatMap(group =>
       group.extrasDetails.map(detail => ({
@@ -552,6 +558,45 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
 
   const handleCategoryCancel = () => {
     setShowCategoryForm(false);
+  };
+
+  const renderAddedExtras = () => {
+    if (!extrasAvailable || addedExtrasGroups.length === 0) return null;
+
+    return (
+      <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
+        <div className="self-stretch relative leading-[20px] font-sans font-medium text-sm">Added Extras</div>
+        <div className="w-full bg-gray-50 rounded-lg p-3">
+          <div className="grid grid-cols-2 gap-2">
+            {addedExtrasGroups.map((group) => (
+              <div key={group.id} className="bg-white border border-gray-100 rounded-md overflow-hidden">
+                <div className="bg-[#201a18] text-white px-2.5 py-1.5 text-xs font-medium">
+                  {group.extrasTitle}
+                </div>
+                <div className="p-2">
+                  <div className="flex flex-wrap gap-1">
+                    {group.extrasDetails.map((extra) => (
+                      <div
+                        key={extra.foodName}
+                        className="bg-[#fff3ea] text-[#fd683e] px-2 py-0.5 rounded text-[10px] font-medium"
+                      >
+                        {extra.foodName}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={() => setExtrasModalOpen(true)}
+            className="w-full mt-2 py-1.5 px-3 border border-[#fd683e] border-dashed text-[#fd683e] rounded-md text-xs font-medium hover:bg-[#fff3ea] transition-colors"
+          >
+            Edit Extras
+          </button>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -950,26 +995,32 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
               </div>
               <div className="flex flex-row items-center justify-between w-full">
                 <span className="relative leading-[22px] font-sans">Extras available</span>
-                <Switch
-                  checked={extrasAvailable}
-                  onChange={(e) => setExtrasAvailable(e.target.checked)}
-                  color="primary"
-                  inputProps={{ 'aria-label': 'Extras available switch' }}
-                />
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={extrasAvailable}
+                    onChange={(e) => setExtrasAvailable(e.target.checked)}
+                    color="primary"
+                    inputProps={{ 'aria-label': 'Extras available switch' }}
+                  />
+                  {extrasAvailable && addedExtrasGroups.length === 0 && (
+                    <button
+                      className="px-4 py-1 bg-[#fd4d4d] text-white rounded text-sm font-sans hover:bg-[#e54d0e] transition-colors"
+                      onClick={() => setExtrasModalOpen(true)}
+                    >
+                      Add Extras
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
-            {extrasAvailable && !showExtrasForm && (
-              <button
-                className="mt-4 px-6 py-2 bg-[#fd4d4d] text-white rounded font-sans"
-                onClick={() => setExtrasModalOpen(true)}
-              >
-                Next
-              </button>
-            )}
+
+            {/* Add the extras display section */}
+            {renderAddedExtras()}
+
             <button
               className={`cursor-pointer border-[#f5fcf8] border-[1px] border-solid py-[9px] px-[90px] 
                          bg-[#fd683e] self-stretch rounded-[4px] overflow-hidden 
-                         flex flex-row items-center justify-center
+                         flex flex-row items-center justify-center mt-4
                          ${!isFormValid() ? 'opacity-50 cursor-not-allowed bg-gray-400' : 'hover:bg-[#e54d0e]'}
                          transition-all duration-200`}
               onClick={onButtonAddItemClick}
@@ -987,6 +1038,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
         open={extrasModalOpen}
         onClose={() => setExtrasModalOpen(false)}
         onAdd={handleExtrasAdd}
+        initialExtras={addedExtrasGroups}
       />
     </>
   );

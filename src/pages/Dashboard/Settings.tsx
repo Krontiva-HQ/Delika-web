@@ -827,7 +827,8 @@ const Settings: FunctionComponent = () => {
   const [refreshRiders, setRefreshRiders] = useState(false);
 
   // Update the language change handler to change the application language
-  const handleLanguageChange = (newLanguage: string) => {
+  const handleLanguageChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const newLanguage = event.target.value;
     setLanguage(newLanguage);
     
     // Change the application language
@@ -1104,13 +1105,13 @@ const Settings: FunctionComponent = () => {
                               {t('settings.restaurant.language')}
                             </b>
                             <select
-                              className="w-full border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] sm:text-[14px] bg-white dark:bg-black text-black dark:text-white rounded-[8px] h-[40px] sm:h-[45px] px-[12px] sm:px-[16px]"
                               value={language}
-                              onChange={(e) => handleLanguageChange(e.target.value)}
+                              onChange={handleLanguageChange}
+                              className="block w-full px-3 py-2 text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                             >
                               <option value="en">English</option>
-                              <option value="fr">Français</option>
-                              <option value="es">Español</option>
+                              <option value="fr" disabled className="text-gray-400">Français (Coming Soon)</option>
+                              <option value="es" disabled className="text-gray-400">Español (Coming Soon)</option>
                             </select>
                           </div>
                         </div>
