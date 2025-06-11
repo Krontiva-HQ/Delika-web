@@ -8,12 +8,6 @@ interface AddItemParams {
   description: string;
   available: boolean;
   foodPhoto: File | null;
-  mainCategoryId: string;
-  mainCategory: string;
-  extras?: Array<{
-    extrasTitle: string;
-    inventoryId: string;
-  }>;
   onSuccess?: () => void;
 }
 
@@ -33,25 +27,8 @@ export const useAddItemToCategory = () => {
     description,
     available,
     foodPhoto,
-    mainCategoryId,
-    mainCategory,
-    extras,
     onSuccess
   }: AddItemParams): Promise<AddItemResponse> => {
-    console.log('🔥 useAddItemToCategory hook called - DIRECT API APPROACH 🔥', {
-      categoryId,
-      name,
-      price,
-      description,
-      mainCategoryId,
-      extras,
-      foodPhoto: foodPhoto ? {
-        name: foodPhoto.name,
-        type: foodPhoto.type,
-        size: foodPhoto.size
-      } : null
-    });
-    
     setIsLoading(true);
     setError(null);
 
@@ -59,68 +36,33 @@ export const useAddItemToCategory = () => {
       const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
       
       const formData = new FormData();
-      formData.append('path', 'add/item/to/category');
       formData.append('categoryId', categoryId);
-      formData.append('mainCategoryId', mainCategoryId);
+      formData.append('restaurantName', userProfile.restaurantId || '');
+      formData.append('branchName', userProfile.branchId || '');
       
-      // Create foods object
+      // Create foods as a single object
       const foods = {
         name,
         price,
         description,
-        quantity: "1",
         available,
-        extras: (extras || []).map(extra => ({
-          extrasTitle: extra.extrasTitle,
-          inventoryId: extra.inventoryId
-        }))
+        quantity: "1" // Adding default quantity
       };
-
-      // Append foods as a JSON object
-      formData.append('foods', new Blob([JSON.stringify(foods)], { type: 'application/json' }));
       
-      // Append extras as indexed fields
-      if (extras && extras.length > 0) {
-        extras.forEach((extra, idx) => {
-          formData.append(`extras[${idx}][extrasTitle]`, extra.extrasTitle);
-          formData.append(`extras[${idx}][inventoryId]`, extra.inventoryId);
-        });
+      // Append foods as JSON string
+      formData.append('foods', JSON.stringify(foods));
+      
+      if (!foodPhoto) {
+        throw new Error('Missing file resource.');
       }
 
-      formData.append('restaurantName', userProfile.restaurantId || '');
-      formData.append('branchName', userProfile.branchId || '');
-      
-      if (foodPhoto) {
-        console.log('📸 Adding foodPhoto to FormData:', {
-          name: foodPhoto.name,
-          type: foodPhoto.type,
-          size: foodPhoto.size
-        });
-        formData.append('foodPhoto', foodPhoto);
-      } else {
-        console.warn('⚠️ No foodPhoto provided');
-      }
+      formData.append('foodPhoto', foodPhoto);
 
-      // Log the full FormData payload before posting
-      console.log('🚀 Posting item with FormData:');
-      Array.from(formData.entries()).forEach(pair => {
-        if (pair[1] instanceof Blob && pair[0] === 'foods') {
-          (pair[1] as Blob).text().then(text => {
-            console.log(pair[0] + ':', text);
-          });
-        } else {
-          console.log(pair[0] + ':', pair[1]);
-        }
-      });
-
-      console.log('🔥 Calling API directly - AddItemToCategory 🔥');
       const response = await addItemToCategory(formData);
-      console.log('✅ API Response:', { status: response.status, data: response.data });
       onSuccess?.();
       return response;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred';
-      console.error('❌ API Error:', err);
       setError(message);
       throw err;
     } finally {

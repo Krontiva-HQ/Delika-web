@@ -18,7 +18,7 @@ const api = axios.create({
 
 // Create a direct API instance that doesn't use the proxy
 const directApi = axios.create({
-  baseURL: PROXY_URL, // Use proxy for direct API as well
+  baseURL: API_BASE_URL, // Use direct API URL
   headers: {
     'Content-Type': 'application/json',
     'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
@@ -116,13 +116,7 @@ export const API_ENDPOINTS = {
   },
   MENU: {
     GET_ALL: '/get/all/menu',
-    GET_ALL_CATEGORIES: '/get/menu/categories',
-    UPDATE_INVENTORY: '/update/inventory/price/quantity',
-    GET_ALL_INVENTORY: '/get/inventory/by/restaurant',
-    UPDATE_INVENTORY_ITEM: '/update/inventory/item'
-  },
-  INVENTORY: {
-    GET_ALL: '/delika_inventory_table'
+    UPDATE_INVENTORY: '/update/inventory/price/quantity'
   },
   AUDIT: {
     GET_ALL: '/delikaquickshipper_audit_table'
@@ -596,7 +590,11 @@ export const placeOrder = async (formData: FormData) => {
       fromLongitude: jsonData['pickup[0][fromLongitude]']
     }],
     pickupName: jsonData.pickupName,
-    products: products,
+    products: products.map((product) => ({
+      name: product.name,
+      price: product.price,
+      quantity: product.quantity,
+    })),
     restaurantId: jsonData.restaurantId,
     distance: jsonData.deliveryDistance,
     trackingUrl: jsonData.trackingUrl || '',
@@ -606,6 +604,7 @@ export const placeOrder = async (formData: FormData) => {
     scheduledTime: jsonData['scheduleTime[scheduleDateTime]'] ? 
       jsonData['scheduleTime[scheduleDateTime]'] : undefined
   };
+
 
   const headers = {
     'Content-Type': 'application/json',
@@ -673,71 +672,51 @@ export const deleteRider = async (params: {
   });
 };
 
-// Add delivery price calculation endpoint
-export const CALCULATE_DELIVERY_PRICE_URL =
-  'https://api-server.krontiva.africa/api:uEBBwbSs/calculate/delivery/price';
-
-export interface CalculateDeliveryPriceParams {
-  pickup: { fromLongitude: string | number; fromLatitude: string | number };
-  dropOff: { toLongitude: string | number; toLatitude: string | number };
-  rider?: boolean;
-  pedestrian?: boolean;
-}
-
-export interface CalculateDeliveryPriceResponse {
-  riderFee: number;
-  pedestrianFee: number;
+// Add delivery price calculation function
+export interface DeliveryPriceParams {
   distance: number;
-}
-
-export const calculateDeliveryPriceAPI = async (
-  params: CalculateDeliveryPriceParams
-): Promise<CalculateDeliveryPriceResponse> => {
-  const headers = {
-    'Content-Type': 'application/json',
-    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
-  };
-  const response = await axios.post<CalculateDeliveryPriceResponse>(
-    CALCULATE_DELIVERY_PRICE_URL,
-    {
-      pickup: params.pickup,
-      dropOff: params.dropOff,
-      rider: params.rider ?? false,
-      pedestrian: params.pedestrian ?? false
-    },
-    { headers }
-  );
-  return response.data;
-};
-
-// Add new inventory service functions
-export const getAllInventory = async () => {
-  const headers = {
-    'Content-Type': 'application/json',
-    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
-  };
-  return api.get(API_ENDPOINTS.INVENTORY.GET_ALL, { headers });
-};
-
-export const updateInventoryItem = async (data: {
-  old_name: string;
-  old_item_description: string;
-  old_item_price: number;
-  new_name: string;
-  new_item_description: string;
-  new_item_price: number;
-  available: boolean;
-  extras: Array<{
-    extrasTitle: string;
-    delika_inventory_table_id: string;
-  }>;
   restaurantId: string;
   branchId: string;
-  value: string;
-}) => {
+}
+
+export const calculateDeliveryPriceAPI = async (params: DeliveryPriceParams) => {
   const headers = {
     'Content-Type': 'application/json',
     'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
   };
-  return api.patch(API_ENDPOINTS.MENU.UPDATE_INVENTORY_ITEM, data, { headers });
+  
+  return api.post('/calculate/delivery/price', params, { headers });
+};
+
+// Add inventory management functions
+export interface InventoryItem {
+  id: string;
+  name: string;
+  price: number;
+  description?: string;
+  available: boolean;
+  image?: {
+    url: string;
+    meta?: any;
+    mime?: string;
+    name?: string;
+    path?: string;
+    size?: number;
+    type?: string;
+    access?: string;
+  };
+  category?: string;
+  created_at?: number;
+}
+
+export const getAllInventory = async (params: { restaurantId: string; branchId: string }) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+  };
+  
+  return api.get<InventoryItem[]>('/get/all/inventory', { 
+    params,
+    headers 
+  });
 };
