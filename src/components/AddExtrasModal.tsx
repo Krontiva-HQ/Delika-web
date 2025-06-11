@@ -191,75 +191,71 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
 
   const { restaurantData } = useUserProfile();
 
+  // First useEffect to handle modal open/close
   useEffect(() => {
     if (open) {
       // Reset state when modal opens
       setActiveStep(0);
       setGroupTitle('');
       setCurrentGroup(null);
-      
-      // If we have initial extras, group them by extrasTitle and restore value properties
-      if (initialExtras?.length > 0) {
-        // Group extras by their title and restore missing value properties
-        const groupedExtras = initialExtras.reduce((acc, extra) => {
-          const existingGroup = acc.find(g => g.extrasTitle === extra.extrasTitle);
-          
-          // Process extrasDetails to restore value properties by matching with available food items
-          const processedDetails = extra.extrasDetails.map(detail => {
-            // Find matching food item by foodName to get the value (delika_inventory_table_id)
-            const matchingFoodItem = foodTypes.find(foodItem => 
-              foodItem.label === detail.foodName
-            );
-            
-            return {
-              ...detail,
-              value: matchingFoodItem?.value || detail.value || '' // Restore value from matching food item
-            };
-          });
-          
-          if (existingGroup) {
-            // Add processed details to existing group if not already present
-            processedDetails.forEach(detail => {
-              if (!existingGroup.extrasDetails.some(existing => existing.foodName === detail.foodName)) {
-                existingGroup.extrasDetails.push(detail);
-              }
-            });
-          } else {
-            // Create new group with processed details
-            acc.push({
-              id: `${Date.now()}-${Math.random().toString(36).substring(2)}`,
-              extrasTitle: extra.extrasTitle,
-              delika_inventory_table_id: extra.delika_inventory_table_id || '',
-              extrasDetails: processedDetails
-            });
-          }
-          return acc;
-        }, [] as ExtraGroup[]);
-        
-        setExtraGroups(groupedExtras);
-        // Move to review step since we have existing extras
-        setActiveStep(2);
-      } else {
-        // No initial extras, start fresh
-        setExtraGroups([]);
-      }
     }
-  }, [open, initialExtras, foodTypes]);
+  }, [open]);
 
+  // Separate useEffect to handle initial extras
+  useEffect(() => {
+    if (open && initialExtras?.length > 0 && foodTypes.length > 0) {
+      // Group extras by their title and restore value properties
+      const groupedExtras = initialExtras.reduce((acc, extra) => {
+        const existingGroup = acc.find(g => g.extrasTitle === extra.extrasTitle);
+        
+        const processedDetails = extra.extrasDetails.map(detail => {
+          const matchingFoodItem = foodTypes.find(foodItem => 
+            foodItem.label === detail.foodName
+          );
+          
+          return {
+            ...detail,
+            value: matchingFoodItem?.value || detail.value || ''
+          };
+        });
+        
+        if (existingGroup) {
+          processedDetails.forEach(detail => {
+            if (!existingGroup.extrasDetails.some(existing => existing.foodName === detail.foodName)) {
+              existingGroup.extrasDetails.push(detail);
+            }
+          });
+          return acc;
+        }
+        
+        return [...acc, {
+          id: `${Date.now()}-${Math.random().toString(36).substring(2)}`,
+          extrasTitle: extra.extrasTitle,
+          delika_inventory_table_id: extra.delika_inventory_table_id || '',
+          extrasDetails: processedDetails
+        }];
+      }, [] as ExtraGroup[]);
+      
+      setExtraGroups(groupedExtras);
+      setActiveStep(2);
+    }
+  }, [open, initialExtras, foodTypes.length]);
+
+  // Separate useEffect for fetching food types
   useEffect(() => {
     const fetchFoodTypes = async () => {
+      if (!open || !restaurantData.id) return;
+
       try {
         setLoading(true);
         const response = await getAllInventory();
         const foodTypes = response.data;
         const data = foodTypes as FoodItem[];
         
-        // Filter for restaurant ID and get unique food types
         const filteredData = data.filter(item => 
           item.restaurantName === restaurantData.id
         );
         
-        // Get unique food types and create options while maintaining all data
         const uniqueFoodTypes = filteredData.map(item => ({
           label: item.foodName,
           value: item.id,
@@ -283,9 +279,7 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
       }
     };
 
-    if (open) {
-      fetchFoodTypes();
-    }
+    fetchFoodTypes();
   }, [open, restaurantData.id]);
 
   const handleNext = () => {
