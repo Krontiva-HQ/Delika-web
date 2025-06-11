@@ -9,16 +9,16 @@ const IS_PRODUCTION = import.meta.env.PROD || import.meta.env.ENV === 'productio
 
 // Create API instance with simplified configuration
 const api = axios.create({
-  baseURL: PROXY_URL, // Always use proxy
+  baseURL: IS_PRODUCTION ? API_BASE_URL : PROXY_URL,
   headers: {
     'Content-Type': 'application/json',
     'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
   }
 });
 
-// Create a direct API instance that doesn't use the proxy
+// Create a direct API instance that always uses the direct API URL
 const directApi = axios.create({
-  baseURL: PROXY_URL, // Use proxy for direct API as well
+  baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
     'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`

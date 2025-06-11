@@ -59,7 +59,6 @@ export const useAddItemToCategory = () => {
       const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
       
       const formData = new FormData();
-      formData.append('path', 'add/item/to/category');
       formData.append('categoryId', categoryId);
       formData.append('mainCategoryId', mainCategoryId);
       
