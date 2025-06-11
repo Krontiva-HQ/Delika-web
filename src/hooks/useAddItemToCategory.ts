@@ -59,34 +59,32 @@ export const useAddItemToCategory = () => {
       const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
       
       const formData = new FormData();
-      formData.append('path', '/add/item/to/category');
       formData.append('categoryId', categoryId);
       formData.append('mainCategoryId', mainCategoryId);
       
-     // Create foods object
-const foods = {
-  name,
-  price,
-  description,
-  quantity: "1",
-  available,
-  extras: (extras || []).map(extra => ({
-    extrasTitle: extra.extrasTitle,
-    inventoryId: extra.inventoryId
-  }))
-};
+      // Create foods object
+      const foods = {
+        name,
+        price,
+        description,
+        quantity: "1",
+        available,
+        extras: (extras || []).map(extra => ({
+          extrasTitle: extra.extrasTitle,
+          inventoryId: extra.inventoryId
+        }))
+      };
 
       // Append foods as a JSON object
       formData.append('foods', new Blob([JSON.stringify(foods)], { type: 'application/json' }));
       
-    // Append extras as indexed fields
-if (extras && extras.length > 0) {
-  extras.forEach((extra, idx) => {
-    formData.append(`extras[${idx}][extrasTitle]`, extra.extrasTitle);
-    formData.append(`extras[${idx}][inventoryId]`, extra.inventoryId);
-  });
-}
-
+      // Append extras as indexed fields
+      if (extras && extras.length > 0) {
+        extras.forEach((extra, idx) => {
+          formData.append(`extras[${idx}][extrasTitle]`, extra.extrasTitle);
+          formData.append(`extras[${idx}][inventoryId]`, extra.inventoryId);
+        });
+      }
 
       formData.append('restaurantName', userProfile.restaurantId || '');
       formData.append('branchName', userProfile.branchId || '');
@@ -103,7 +101,7 @@ if (extras && extras.length > 0) {
       }
 
       // Log the full FormData payload before posting
-      console.log('🚀 Posting to /add/item/to/category with FormData:');
+      console.log('🚀 Posting item with FormData:');
       Array.from(formData.entries()).forEach(pair => {
         if (pair[1] instanceof Blob && pair[0] === 'foods') {
           (pair[1] as Blob).text().then(text => {

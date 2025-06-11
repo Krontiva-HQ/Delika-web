@@ -60,17 +60,16 @@ export const useAddCategory = () => {
     setIsLoading(true);
     try {
       const formData = new FormData();
-      formData.append('path', '/create/new/category');
       formData.append('foodType', foodType);
       formData.append('restaurantName', restaurantName);
       formData.append('branchName', branchName);
       formData.append('mainCategory', mainCategory);
       formData.append('categoryId', categoryId);
       
-      // Process the first food item (assuming single food item like useAddItemToCategory)
+      // Process the first food item
       const firstFood = foods[0];
       if (firstFood) {
-        // Create foods object (single object, not array)
+        // Create foods object
         const foodsObject = {
           name: firstFood.name,
           price: firstFood.price,
@@ -83,10 +82,10 @@ export const useAddCategory = () => {
           }))
         };
 
-        // Append foods as a JSON object (same as useAddItemToCategory)
+        // Append foods as a JSON object
         formData.append('foods', new Blob([JSON.stringify(foodsObject)], { type: 'application/json' }));
         
-        // Append extras as indexed fields (same as useAddItemToCategory)
+        // Append extras as indexed fields
         if (firstFood.extras && firstFood.extras.length > 0) {
           firstFood.extras.forEach((extra, idx) => {
             formData.append(`extras[${idx}][extrasTitle]`, extra.extrasTitle);
@@ -119,7 +118,7 @@ export const useAddCategory = () => {
       }
 
       // Log the full FormData payload before posting
-      console.log('🚀 Posting to /add/category with FormData:');
+      console.log('🚀 Posting category with FormData:');
       Array.from(formData.entries()).forEach(pair => {
         if (pair[1] instanceof Blob && pair[0] === 'foods') {
           (pair[1] as Blob).text().then(text => {

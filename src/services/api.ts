@@ -323,7 +323,7 @@ export const addItemToCategory = (formData: FormData) => {
   };
 
   return directApi.patch<{data: any; status: number}>(
-    API_ENDPOINTS.CATEGORY.ADD_ITEM, 
+    '/add/item/to/category', 
     formData, 
     { headers }
   );
@@ -336,7 +336,7 @@ export const createCategory = (formData: FormData) => {
   };
 
   return directApi.post(
-    API_ENDPOINTS.CATEGORY.CREATE, 
+    '/create/new/category', 
     formData, 
     { headers }
   );
