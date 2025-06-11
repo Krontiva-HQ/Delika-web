@@ -273,7 +273,6 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
         
         setFoodTypes(uniqueFoodTypes);
       } catch (error) {
-        console.error('Error fetching food types:', error);
       } finally {
         setLoading(false);
       }
@@ -384,14 +383,12 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
 
   const handleRemoveGroup = (id: string) => {
     if (!id) {
-      console.error('No ID provided for group removal');
       return;
     }
 
     // Find the group to be removed
     const groupToRemove = extraGroups.find(group => group.id === id);
     if (!groupToRemove) {
-      console.warn('No group found with ID:', id);
       return;
     }
 

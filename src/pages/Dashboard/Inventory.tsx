@@ -252,12 +252,71 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
   const [selectedCardIndex, setSelectedCardIndex] = useState(0);
 
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
-  const [activeCategoryFoods, setActiveCategoryFoods] = useState<MenuItem[]>([]);
+  const [categoryItems, setCategoryItems] = useState<MenuItem[]>([]);
+  const [isLoadingItems, setIsLoadingItems] = useState(false);
   const { updateInventory, isLoading: isUpdating, error: updateError } = useUpdateInventory();
+
+  // Update items when category changes
+  useEffect(() => {
+    const loadCategoryItems = async () => {
+      if (!activeId) {
+        setCategoryItems([]);
+        return;
+      }
+
+      setIsLoadingItems(true);
+      try {
+        const activeCategory = remoteCategories.find(category => category.id === activeId);
+        if (!activeCategory?.foods) {
+          setCategoryItems([]);
+          return;
+        }
+
+        // Add a small delay to make the loading state visible
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        // Map only the foods from the active category
+        const items = activeCategory.foods.map((food: CategoryFood) => ({
+          id: food.name,
+          image: food.foodImage.url,
+          name: food.name,
+          price: Number(food.price),
+          description: food.description || '',
+          available: food.available ?? false,
+          extras: food.extras || []
+        }));
+
+  
+
+        setCategoryItems(items);
+      } finally {
+        setIsLoadingItems(false);
+      }
+    };
+
+    loadCategoryItems();
+  }, [activeId, remoteCategories]);
+
+  // Filter items based on search
+  const filteredItems = useMemo(() => {
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      return categoryItems.filter(item =>
+        item.name.toLowerCase().includes(lowerQuery)
+      );
+    }
+    return categoryItems;
+  }, [categoryItems, searchQuery]);
 
   const handleItemClick = (item: MenuItem) => {
     setSelectedItem(item);
   };
+
+  // Update the category click handler to clear items first
+  const handleCategoryClick = useCallback((categoryId: string) => {
+    setCategoryItems([]); // Clear items first
+    setActiveId(categoryId); // Then set new category
+  }, []);
 
   const handleUpdateItem = async (id: string, newPrice: number, available: boolean, itemExtras: ExtraGroup[], name: string, description: string) => {
     if (!selectedItem) return;
@@ -714,53 +773,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
     }
   }, [remoteCategories]);
 
-  // Update activeCategoryFoods when activeId changes
-  useEffect(() => {
-    if (activeId && remoteCategories.length > 0) {
-      const activeCategory = remoteCategories.find(category => category.id === activeId);
-
-      if (activeCategory) {
-        const activeFoods = Array.isArray(activeCategory.foods) ? activeCategory.foods : [];
-        setActiveCategoryFoods(
-          activeFoods.map((food: CategoryFood) => ({
-            id: food.name,
-            image: food.foodImage.url,
-            name: food.name,
-            price: Number(food.price),
-            description: food.description,
-            available: food.available ?? false,
-            extras: food.extras || []
-          }))
-        );
-      }
-    }
-  }, [activeId, remoteCategories]);
-
-  // Filter items across all categories
-  const filteredItems = useMemo(() => {
-    if (!searchQuery) {
-      return activeCategoryFoods;
-    }
-
-    const lowerQuery = searchQuery.toLowerCase();
-    
-    const allItems = remoteCategories.flatMap(category => 
-      category.foods.map((food: CategoryFood) => ({
-        id: food.name,
-        image: food.foodImage.url,
-        name: food.name,
-        price: Number(food.price),
-        description: food.description || '',
-        available: food.available ?? false,
-        extras: food.extras || []
-      }))
-    );
-
-    return allItems.filter(item =>
-      item.name.toLowerCase().includes(lowerQuery)
-    );
-  }, [remoteCategories, searchQuery, activeCategoryFoods]);
-
   // Update refreshInventory to use selectedBranchId
   const refreshInventory = async () => {
     try {
@@ -787,11 +799,125 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         }
       }
     } catch (error) {
-      // Error handling is preserved but without console.error
     }
   };
 
   const [categories, setCategories] = useState<Category[]>([]);
+
+  // Update the category click in the JSX
+  const renderCategories = () => (
+    remoteCategories.map((category) => (
+      <div 
+        key={category.id}
+        onClick={() => handleCategoryClick(category.id)}
+        className={`flex-none w-[180px] rounded-[8px] border-[1px] border-solid border-[#eaeaea]
+                    flex flex-row items-center justify-start p-3 gap-[10px] 
+                    text-center text-[#5e5c57] transition-all duration-300
+                    hover:bg-[#FFFCF7] cursor-pointer
+                    ${category.id === activeId ? 'bg-[#FFFCF7] dark:bg-[#2c2522]' : 'bg-[#F7F7F7] dark:bg-[#201a18]'}`}
+      >
+        <img
+          className="w-[40px] h-[40px] rounded-full object-cover"
+          alt={`${category.name} category`}
+          src={optimizeImageUrl(category.image)}
+          loading="eager"
+          draggable="false"
+        />
+        <div className="flex flex-col items-start justify-start">
+          <div className="text-[16px] leading-[20px] font-medium text-[#333] font-sans">
+            {category.name}
+          </div>
+          <div className="text-[13px] leading-[16px] text-[#999] text-left font-sans">
+            {category.itemCount} items
+          </div>
+        </div>
+      </div>
+    ))
+  );
+
+  // Update the menu items grid section to show loading state
+  const renderMenuItemsGrid = () => (
+    <div className="grid grid-cols-1 min-[433px]:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
+      {isLoadingItems ? (
+        // Loading skeleton
+        Array(6).fill(0).map((_, index) => (
+          <div 
+            key={`skeleton-${index}`}
+            className="w-full bg-white dark:bg-[#2c2522] rounded-[12px] border-[#eaeaeb] border-[1px] border-solid 
+                      overflow-hidden flex flex-col animate-pulse"
+          >
+            <div className="relative w-full h-[180px] bg-gray-200 dark:bg-gray-700" />
+            <div className="p-4 flex flex-col gap-2">
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+              <div className="flex items-center gap-2 mt-1">
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
+              </div>
+            </div>
+          </div>
+        ))
+      ) : filteredItems.length > 0 ? (
+        <>
+          {filteredItems.map((item) => (
+            <div 
+              key={item.id}
+              className="w-full bg-white dark:bg-[#2c2522] rounded-[12px] border-[#eaeaeb] border-[1px] border-solid 
+                        overflow-hidden flex flex-col hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => handleItemClick(item)}
+            >
+              <div className="relative w-full">
+                <OptimizedImage
+                  src={item.image}
+                  alt={item.name}
+                  className="w-full h-[180px] object-cover"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                />
+              </div>
+              <div className="p-4 flex flex-col gap-1">
+                <div className="flex-1 min-w-0">
+                  <div className="text-[14px] font-medium text-[#333] dark:text-white font-sans truncate overflow-hidden whitespace-nowrap">
+                    {item.name}
+                  </div>
+                  <div className="text-[12px] font-medium text-[#606060] dark:text-[#a2a2a2] font-sans">
+                    GH₵{item.price}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <FiShoppingCart className="text-[13px] text-[#a2a2a2]" />
+                  <Badge 
+                    className={item.available 
+                      ? "text-[11px] h-5 bg-green-100 text-green-800 border-green-200 hover:bg-green-200" 
+                      : "text-[11px] h-5 bg-red-100 text-red-800 border-red-200 hover:bg-red-200"}
+                  >
+                    {item.available ? t('inventory.available') : t('inventory.unavailable')}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          ))}
+          {/* Add Item Card */}
+          <div
+            className="flex flex-col items-center justify-center bg-[#F7F7F7] dark:bg-[#201a18] rounded-[12px] border border-[#eaeaeb] min-h-[260px] cursor-pointer transition hover:shadow-md"
+            onClick={() => {
+              const activeCategory = remoteCategories.find(cat => cat.id === activeId);
+              if (activeCategory) {
+                onAddItemButtonClick(activeCategory);
+              }
+            }}
+          >
+            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-[#fd4d4d]/10 mb-2">
+              <span className="text-4xl text-[#fd4d4d]">+</span>
+            </div>
+            <span className="text-base font-sans text-[#222]">Add item</span>
+          </div>
+        </>
+      ) : (
+        <div className="col-span-full text-center py-4 text-gray-500 font-sans">
+          {t('inventory.noItems')}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="h-full w-full bg-white dark:bg-[#201a18] m-0 p-0">
@@ -872,33 +998,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                 ) : categoriesError ? (
                   <div className="flex justify-center p-4 text-red-500 font-sans">{categoriesError}</div>
                 ) : (
-                  remoteCategories.map((category) => (
-                    <div 
-                      key={category.id}
-                      onClick={() => setActiveId(category.id)}
-                      className={`flex-none w-[180px] rounded-[8px] border-[1px] border-solid border-[#eaeaea]
-                                  flex flex-row items-center justify-start p-3 gap-[10px] 
-                                  text-center text-[#5e5c57] transition-all duration-300
-                                  hover:bg-[#FFFCF7] cursor-pointer
-                                  ${category.id === activeId ? 'bg-[#FFFCF7] dark:bg-[#2c2522]' : 'bg-[#F7F7F7] dark:bg-[#201a18]'}`}
-                    >
-                      <img
-                        className="w-[40px] h-[40px] rounded-full object-cover"
-                        alt={`${category.name} category`}
-                        src={optimizeImageUrl(category.image)}
-                        loading="eager"
-                        draggable="false"
-                      />
-                      <div className="flex flex-col items-start justify-start">
-                        <div className="text-[16px] leading-[20px] font-medium text-[#333] font-sans">
-                          {category.name}
-                        </div>
-                        <div className="text-[13px] leading-[16px] text-[#999] text-left font-sans">
-                          {category.itemCount} items
-                        </div>
-                      </div>
-                    </div>
-                  ))
+                  renderCategories()
                 )}
               </div>
             </div>
@@ -920,68 +1020,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         </section>
 
         {/* Menu Items Grid - Using filteredItems */}
-        <div className="grid grid-cols-1 min-[433px]:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
-          {filteredItems.length > 0 ? (
-            <>
-              {filteredItems.map((item) => (
-                <div 
-                  key={item.id}
-                  className="w-full bg-white dark:bg-[#2c2522] rounded-[12px] border-[#eaeaeb] border-[1px] border-solid 
-                            overflow-hidden flex flex-col hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => handleItemClick(item)}
-                >
-                  <div className="relative w-full">
-                    <OptimizedImage
-                      src={item.image}
-                      alt={item.name}
-                      className="w-full h-[180px] object-cover"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    />
-                  </div>
-                  <div className="p-4 flex flex-col gap-1">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[14px] font-medium text-[#333] dark:text-white font-sans truncate overflow-hidden whitespace-nowrap">
-                        {item.name}
-                      </div>
-                      <div className="text-[12px] font-medium text-[#606060] dark:text-[#a2a2a2] font-sans">
-                      GH₵{item.price}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <FiShoppingCart className="text-[13px] text-[#a2a2a2]" />
-                      <Badge 
-                        className={item.available 
-                          ? "text-[11px] h-5 bg-green-100 text-green-800 border-green-200 hover:bg-green-200" 
-                          : "text-[11px] h-5 bg-red-100 text-red-800 border-red-200 hover:bg-red-200"}
-                      >
-                        {item.available ? t('inventory.available') : t('inventory.unavailable')}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {/* Add Item Card */}
-              <div
-                className="flex flex-col items-center justify-center bg-[#F7F7F7] dark:bg-[#201a18] rounded-[12px] border border-[#eaeaeb] min-h-[260px] cursor-pointer transition hover:shadow-md"
-                onClick={() => {
-                  const activeCategory = remoteCategories.find(cat => cat.id === activeId);
-                  if (activeCategory) {
-                    onAddItemButtonClick(activeCategory);
-                  }
-                }}
-              >
-                <div className="flex items-center justify-center w-16 h-16 rounded-full bg-[#fd4d4d]/10 mb-2">
-                  <span className="text-4xl text-[#fd4d4d]">+</span>
-                </div>
-                <span className="text-base font-sans text-[#222]">Add item</span>
-              </div>
-            </>
-          ) : (
-            <div className="col-span-full text-center py-4 text-gray-500 font-sans">
-              {t('inventory.noItems')}
-            </div>
-          )}
-        </div>
+        {renderMenuItemsGrid()}
       </div>
 
       {/* Add the modal */}

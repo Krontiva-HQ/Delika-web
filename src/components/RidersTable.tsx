@@ -38,11 +38,9 @@ const RidersTable: FunctionComponent<RidersTableProps> = ({ branchName, onDelete
         setIsLoading(true);
         setError(null);
         const response = await getRidersByBranch(branchName);
-        console.log('API Response:', response.data);
         setRiders(response.data);
       } catch (err) {
         setError('Failed to fetch riders');
-        console.error('Error fetching riders:', err);
       } finally {
         setIsLoading(false);
       }
@@ -60,7 +58,6 @@ const RidersTable: FunctionComponent<RidersTableProps> = ({ branchName, onDelete
     const userIdToDelete = rider.userId || rider.userTable?.id;
     
     if (onDeleteRider && userIdToDelete) {
-      console.log('Calling onDeleteRider with userId:', userIdToDelete);
       onDeleteRider(userIdToDelete);
     } else {
       console.error('Cannot delete rider: Missing user ID', {

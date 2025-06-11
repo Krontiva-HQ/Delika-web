@@ -339,18 +339,18 @@ const Settings: FunctionComponent = () => {
             <div key={member.id} className="grid grid-cols-[150px_1fr_1fr_1fr_80px] sm:grid-cols-[200px_1fr_1fr_1fr_100px] items-center gap-2 p-3 border-t border-gray-200 dark:border-[#333] font-sans bg-white dark:bg-black text-black dark:text-white">
               <div className="text-[11px] sm:text-[12px] flex items-center gap-1 min-h-[24px]">
                 <img 
-                  src={member.image?.url || '/default-profile.jpg'} 
-                  alt={member.fullName}
+                  src={member.userTable?.image?.url || '/default-profile.jpg'} 
+                  alt={member.userTable?.fullName || 'User'}
                   className="w-6 h-6 rounded-full object-cover"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.src = '/default-profile.jpg';
                   }}
-                />z
-                <span className="truncate">{member.fullName}</span>
+                />
+                <span className="truncate">{member.userTable?.fullName || 'N/A'}</span>
               </div>
-              <div className="text-[11px] sm:text-[12px] truncate">{member.email}</div>
-              <div className="text-[11px] sm:text-[12px] truncate">{member.branchesTable?.branchName || 'N/A'}</div>
+              <div className="text-[11px] sm:text-[12px] truncate">{member.userTable?.email || 'N/A'}</div>
+              <div className="text-[11px] sm:text-[12px] truncate">{member.branchTable?.branchName || 'N/A'}</div>
               <div className="text-[11px] sm:text-[12px] truncate">{member.role}</div>
               <div className="flex items-center gap-1">
                 <button 
@@ -369,11 +369,21 @@ const Settings: FunctionComponent = () => {
                     e.preventDefault();
                     e.stopPropagation();
                     setMemberToEdit({
-                      ...member,
-                      address: member.address || 'N/A',
-                      city: member.city || 'N/A',
-                      postalCode: member.postalCode || 'N/A',
-                      country: member.country || 'N/A'
+                      id: member.id,
+                      fullName: member.userTable?.fullName || '',
+                      email: member.userTable?.email || '',
+                      role: member.role || '',
+                      Status: member.userTable?.Status || false,
+                      created_at: member.created_at,
+                      userName: member.userTable?.userName || '',
+                      city: member.userTable?.city || 'N/A',
+                      phoneNumber: member.userTable?.phoneNumber || '',
+                      address: member.userTable?.address || 'N/A',
+                      postalCode: member.userTable?.postalCode || 'N/A',
+                      country: member.userTable?.country || 'N/A',
+                      restaurantId: member.restaurantId,
+                      branchId: member.branchId,
+                      image: member.userTable?.image
                     });
                     setIsEditMemberOpen(true);
                   }}
@@ -659,11 +669,7 @@ const Settings: FunctionComponent = () => {
       // Find the user's name from teamMembers
       const deletedMember = teamMembers.find(member => member.id === userToDelete);
       
-      addNotification({
-        type: 'user_deleted',
-        message: `Team member **${deletedMember?.fullName || 'Unknown'}** has been removed`
-      });
-      
+     
       setDeleteModalOpen(false);
       setUserToDelete(null);
     } catch (error) {

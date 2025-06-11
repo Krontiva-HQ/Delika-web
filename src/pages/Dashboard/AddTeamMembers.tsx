@@ -45,7 +45,6 @@ const AddTeamMember: FunctionComponent<AddTeamMemberProps> = ({ onClose, restaur
         const response = await getBranchesByRestaurant(restaurantId);
         setBranches(response.data);
       } catch (error) {
-        console.error('Error fetching branches:', error);
       } finally {
         setIsLoading(false);
       }
