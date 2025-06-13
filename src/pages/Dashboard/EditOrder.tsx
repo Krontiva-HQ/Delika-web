@@ -282,7 +282,7 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
 
       {/* Order Status Dropdown */}
       <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
-        <div className="self-stretch relative leading-[20px] font-sans text-black">
+        <div className="self-stretch leading-[18px] font-sans text-black">
           Order Status
         </div>
         <select
@@ -291,49 +291,13 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
           value={orderStatus}
           onChange={handleOrderStatusChange}
         >
-          {isFromTransactions ? (
-            order.Walkin ? (
-              <>
-                <option value="Preparing">Preparing</option>
-                <option value="Prepared">Prepared</option>
-                <option value="Delivered">Delivered</option>
-                <option value="Cancelled">Cancelled</option>
-              </>
-            ) : (
-              <>
-                <option value="Preparing">Preparing</option>
-                <option value="Prepared">Prepared</option>
-                <option value="ReadyForPickup">Ready For Pickup</option>
-                <option value="Assigned">Assigned</option>
-                <option value="Pickup">Pickup</option>
-                <option value="OnTheWay">On The Way</option>
-                <option value="Delivered">Delivered</option>
-                <option value="Cancelled">Cancelled</option>
-                <option value="DeliveryFailed">Delivery Failed</option>
-              </>
-            )
-          ) : (
-            order.Walkin ? (
-              <>
-                <option value="Preparing">Preparing</option>
-                <option value="Prepared">Prepared</option>
-                <option value="Delivered">Delivered</option>
-                <option value="Cancelled">Cancelled</option>
-              </>
-            ) : (
-              <>
-                <option value="Preparing">Preparing</option>
-                <option value="Prepared">Prepared</option>
-                <option value="ReadyForPickup">Ready For Pickup</option>
-                <option value="Assigned">Assigned</option>
-                <option value="Pickup">Pickup</option>
-                <option value="OnTheWay">On The Way</option>
-                <option value="Delivered">Delivered</option>
-                <option value="Cancelled">Cancelled</option>
-                <option value="DeliveryFailed">Delivery Failed</option>
-              </>
-            )
-          )}
+          <option value="ReadyForPickup">Ready For Pickup</option>
+          <option value="Assigned">Assigned</option>
+          <option value="Pickup">Pickup</option>
+          <option value="OnTheWay">On The Way</option>
+          <option value="Delivered">Delivered</option>
+          <option value="Cancelled">Cancelled</option>
+          <option value="DeliveryFailed">Delivery Failed</option>
         </select>
       </div>
 
@@ -439,7 +403,7 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
 
       {/* Order Status Dropdown */}
       <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
-        <div className="self-stretch relative leading-[20px] font-sans text-black">
+        <div className="self-stretch leading-[18px] font-sans text-black">
           Order Status
         </div>
         <select
@@ -448,49 +412,13 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
           value={orderStatus}
           onChange={handleOrderStatusChange}
         >
-          {isFromTransactions ? (
-            order.Walkin ? (
-              <>
-                <option value="Preparing">Preparing</option>
-                <option value="Prepared">Prepared</option>
-                <option value="Delivered">Delivered</option>
-                <option value="Cancelled">Cancelled</option>
-              </>
-            ) : (
-              <>
-                <option value="Preparing">Preparing</option>
-                <option value="Prepared">Prepared</option>
-                <option value="ReadyForPickup">Ready For Pickup</option>
-                <option value="Assigned">Assigned</option>
-                <option value="Pickup">Pickup</option>
-                <option value="OnTheWay">On The Way</option>
-                <option value="Delivered">Delivered</option>
-                <option value="Cancelled">Cancelled</option>
-                <option value="DeliveryFailed">Delivery Failed</option>
-              </>
-            )
-          ) : (
-            order.Walkin ? (
-              <>
-                <option value="Preparing">Preparing</option>
-                <option value="Prepared">Prepared</option>
-                <option value="Delivered">Delivered</option>
-                <option value="Cancelled">Cancelled</option>
-              </>
-            ) : (
-              <>
-                <option value="Preparing">Preparing</option>
-                <option value="Prepared">Prepared</option>
-                <option value="ReadyForPickup">Ready For Pickup</option>
-                <option value="Assigned">Assigned</option>
-                <option value="Pickup">Pickup</option>
-                <option value="OnTheWay">On The Way</option>
-                <option value="Delivered">Delivered</option>
-                <option value="Cancelled">Cancelled</option>
-                <option value="DeliveryFailed">Delivery Failed</option>
-              </>
-            )
-          )}
+          <option value="ReadyForPickup">Ready For Pickup</option>
+          <option value="Assigned">Assigned</option>
+          <option value="Pickup">Pickup</option>
+          <option value="OnTheWay">On The Way</option>
+          <option value="Delivered">Delivered</option>
+          <option value="Cancelled">Cancelled</option>
+          <option value="DeliveryFailed">Delivery Failed</option>
         </select>
       </div>
 

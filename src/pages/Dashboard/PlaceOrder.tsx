@@ -380,15 +380,25 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         setCurrentStep(3);
       }
     } else if (deliveryMethod === 'schedule' || deliveryMethod === 'batch-delivery') {
-      if (!isDeliveryPriceValid()) {
-        addNotification({
-          type: 'order_status',
-          message: 'Please enter a valid delivery price to proceed'
-        });
-        return;
+      if (currentStep === 1) {
+        if (!isDeliveryPriceValid()) {
+          addNotification({
+            type: 'order_status',
+            message: 'Please enter a valid delivery price to proceed'
+          });
+          return;
+        }
+        setCurrentStep(isFullServiceEnabled ? 2 : 3);
+      } else if (currentStep === 2 && isFullServiceEnabled) {
+        if (selectedItems.length === 0) {
+          addNotification({
+            type: 'order_status',
+            message: 'Please select at least one item to proceed'
+          });
+          return;
+        }
+        setCurrentStep(3);
       }
-      // If FullService is false, skip case 2 and go directly to case 3
-      setCurrentStep(isFullServiceEnabled ? 2 : 3);
     } else {
       if (!isDeliveryPriceValid()) {
         addNotification({
@@ -2809,73 +2819,91 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             <div className="text-lg font-semibold mb-4 font-sans">
               Select Items from {selectedCategory}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-60 overflow-y-auto">
-              {categoryItems.map((item) => (
-                <Card 
-                  key={item.name}
-                  className={`cursor-pointer transition-all hover:shadow-md ${
-                    !item.available ? 'opacity-60' : ''
-                  }`}
-                  onClick={() => {
-                    if (item.available) {
-                      addItem(item);
-                    }
-                  }}
-                >
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      {/* Product Image */}
-                      <div className="w-16 h-16 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
-                        {item.foodImage?.url || item.image ? (
-                          <img
-                            src={item.foodImage?.url || item.image}
-                            alt={item.name}
-                            className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/placeholder-food.png';
-                            }}
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400">
-                            <span className="text-xs">No Image</span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Product Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-col h-full">
-                          <div className="flex-1">
-                            <h3 className="font-medium text-sm font-sans text-gray-900 break-words leading-tight">
-                              {item.name}
-                            </h3>
-                          </div>
-                          
-                          {/* Price and Stock Status */}
-                          <div className="flex items-center justify-between mt-2">
-                            <p className="text-sm font-sans text-[#fd683e] font-semibold">
-                              GH₵ {item.price}
-                            </p>
-                            
-                            {/* Stock Status */}
-                            <div className="ml-2">
-                              {item.available ? (
-                                <Badge variant="default" className="bg-green-100 text-green-800 text-xs whitespace-nowrap">
-                                  In Stock
-                                </Badge>
+            {/* Two-row horizontal scrolling grid with placeholder for odd items */}
+            <div className="overflow-x-auto pb-4">
+              <div className="grid grid-rows-2 auto-cols-max grid-flow-col gap-3" style={{ minWidth: 'min-content' }}>
+                {(() => {
+                  const cards = categoryItems.map((item) => {
+                    const isSelected = selectedItems.some(selected => selected.name === item.name);
+                    return (
+                      <Card 
+                        key={item.name}
+                        className={`cursor-pointer transition-all hover:shadow-md w-[220px] ${
+                          !item.available ? 'opacity-60' : ''
+                        } ${
+                          isSelected ? 'ring-2 ring-[#fd683e] ring-offset-1' : ''
+                        }`}
+                        onClick={() => {
+                          if (item.available) {
+                            if (isSelected) {
+                              setSelectedItems(prev => prev.filter(i => i.name !== item.name));
+                            } else {
+                              addItem(item);
+                            }
+                          }
+                        }}
+                      >
+                        <CardContent className="p-3">
+                          <div className="flex items-center gap-2">
+                            {/* Product Image */}
+                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                              {item.foodImage?.url || item.image ? (
+                                <img
+                                  src={item.foodImage?.url || item.image}
+                                  alt={item.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = '/placeholder-food.png';
+                                  }}
+                                />
                               ) : (
-                                <Badge variant="destructive" className="text-xs whitespace-nowrap">
-                                  Out of Stock
-                                </Badge>
+                                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                  <span className="text-[10px]">No Image</span>
+                                </div>
                               )}
                             </div>
+                            {/* Product Info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex flex-col h-full">
+                                <div className="flex-1">
+                                  <h3 className="font-medium text-xs font-sans text-gray-900 break-words leading-tight">
+                                    {item.name}
+                                  </h3>
+                                </div>
+                                {/* Price and Stock Status */}
+                                <div className="flex items-center justify-between mt-1">
+                                  <p className="text-xs font-sans text-[#fd683e] font-semibold">
+                                    GH₵ {item.price}
+                                  </p>
+                                  {/* Stock Status */}
+                                  <div className="ml-2">
+                                    {item.available ? (
+                                      <Badge variant="default" className="bg-green-100 text-green-800 text-xs whitespace-nowrap">
+                                        In Stock
+                                      </Badge>
+                                    ) : (
+                                      <Badge variant="destructive" className="text-xs whitespace-nowrap">
+                                        Out of Stock
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                        </CardContent>
+                      </Card>
+                    );
+                  });
+                  // If odd, add a transparent placeholder
+                  if (cards.length % 2 !== 0) {
+                    cards.push(
+                      <div key="placeholder" className="w-[220px] h-0 invisible" />
+                    );
+                  }
+                  return cards;
+                })()}
+              </div>
             </div>
             
             {categoryItems.length === 0 && (

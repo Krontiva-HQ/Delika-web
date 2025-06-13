@@ -2,8 +2,6 @@
 
 import { FunctionComponent, useState, useMemo, useEffect, useRef } from "react";
 import { Button, Menu } from "@mui/material";
-import Select from 'react-select';
-import countryList from 'react-select-country-list';
 import { IoMdAdd } from "react-icons/io";
 import { SlOptionsVertical } from "react-icons/sl";
 import { FaCamera } from "react-icons/fa";
@@ -39,14 +37,11 @@ const Settings: FunctionComponent = () => {
   const { t } = useTranslation();
   const [textfield4AnchorEl, setTextfield4AnchorEl] = useState<null | HTMLElement>(null);
   const [textfield9AnchorEl, setTextfield9AnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedCountry, setSelectedCountry] = useState('');
-  const [country, setCountry] = useState<{ value: string; label: string } | null>(null);
   const [activeTab, setActiveTab] = useState('edit');
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const { currentLanguage } = useLanguageChange();
   const [riderAssignment, setRiderAssignment] = useState<'auto' | 'manual'>('auto');
   const [priceCalculation, setPriceCalculation] = useState<'auto' | 'manual'>('auto');
-  const options = useMemo(() => countryList().getData(), []);
   const [userData, setUserData] = useState<UserResponse | null>(null);
   
   // Update service settings state to match API parameters
@@ -137,57 +132,6 @@ const Settings: FunctionComponent = () => {
     });
   };
 
-  const customStyles = {
-    control: (provided: any) => ({
-      ...provided,
-      height: '50px',
-      backgroundColor: 'var(--bg-color, white)',
-      borderColor: 'var(--border-color, #edf0f2)',
-      borderRadius: '8px',
-      boxShadow: 'none',
-      '&:hover': {
-        borderColor: 'var(--border-hover-color, #d1d5db)'
-      }
-    }),
-    singleValue: (provided: any) => ({
-      ...provided,
-      color: 'var(--text-color, black)',
-      fontFamily: 'inherit',
-      fontSize: '14px'
-    }),
-    input: (provided: any) => ({
-      ...provided,
-      color: 'var(--text-color, black)',
-      fontFamily: 'inherit',
-      fontSize: '14px'
-    }),
-    menu: (provided: any) => ({
-      ...provided,
-      backgroundColor: 'var(--bg-color, white)',
-      border: '1px solid var(--border-color, #edf0f2)'
-    }),
-    option: (provided: any, state: { isSelected: any; }) => ({
-      ...provided,
-      backgroundColor: state.isSelected ? 'var(--selected-bg, #f3f4f6)' : 'var(--bg-color, white)',
-      color: 'var(--text-color, black)',
-      '&:hover': {
-        backgroundColor: 'var(--hover-bg, #f9fafb)'
-      },
-      fontFamily: 'inherit',
-      fontSize: '14px'
-    }),
-    placeholder: (provided: any) => ({
-      ...provided,
-      color: 'var(--placeholder-color, #6b7280)',
-      fontFamily: 'inherit',
-      fontSize: '14px'
-    })
-  };
-
-  const changeHandler = (selectedOption: { value: string; label: string } | null) => {
-    setCountry(selectedOption);
-  };
-
   const handleInputChange = (field: keyof UserResponse, value: string) => {
     if (userData) {
       setUserData({ ...userData, [field]: value });
@@ -213,16 +157,6 @@ const Settings: FunctionComponent = () => {
 
     fetchUserData();
   }, []);
-
-  // Add this useEffect to set initial country when userData loads
-  useEffect(() => {
-    if (userData?.country) {
-      const countryOption = options.find(option => option.value === userData.country);
-      if (countryOption) {
-        setCountry(countryOption);
-      }
-    }
-  }, [userData, options]);
 
   // Redirect Store Clerks if they try to access team members tab
   useEffect(() => {
@@ -424,7 +358,6 @@ const Settings: FunctionComponent = () => {
     formData.append('userName', userData.userName);
     formData.append('fullName', userData.fullName);
     formData.append('phoneNumber', userData.phoneNumber);
-    formData.append('country', country?.value || '');
     formData.append('address', userData.address);
     formData.append('city', userData.city);
     formData.append('postalCode', userData.postalCode);
@@ -1060,19 +993,6 @@ const Settings: FunctionComponent = () => {
                           value={userData?.postalCode || ''}
                           onChange={(e) => handleInputChange('postalCode', e.target.value)}
                           disabled={!userData}
-                        />
-                      </div>
-                      <div className="w-[350px] bg-transparent flex flex-col items-start justify-start gap-[0px]">
-                        <b className="self-stretch relative text-[12px] leading-[20px] font-sans text-black dark:text-white">
-                          Country
-                        </b>
-                        <Select
-                          options={options}
-                          value={country}
-                          onChange={changeHandler}
-                          className="self-stretch"
-                          styles={customStyles}
-                          placeholder="country"
                         />
                       </div>
                     </div>
