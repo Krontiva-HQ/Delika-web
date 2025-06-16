@@ -2828,10 +2828,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                     return (
                       <Card 
                         key={item.name}
-                        className={`cursor-pointer transition-all hover:shadow-md w-[220px] ${
+                        className={`cursor-pointer w-[220px] ${
                           !item.available ? 'opacity-60' : ''
-                        } ${
-                          isSelected ? 'ring-2 ring-[#fd683e] ring-offset-1' : ''
                         }`}
                         onClick={() => {
                           if (item.available) {
@@ -2845,6 +2843,17 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                       >
                         <CardContent className="p-3">
                           <div className="flex items-center gap-2">
+                            {/* Selection Checkbox */}
+                            {item.available && (
+                              <div className="absolute top-2 right-2">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  className="h-4 w-4 rounded border-gray-300 text-[#fd683e] focus:ring-[#fd683e]"
+                                  onChange={() => {}} // Handled by card click
+                                />
+                              </div>
+                            )}
                             {/* Product Image */}
                             <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                               {item.foodImage?.url || item.image ? (
@@ -2878,9 +2887,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                                   {/* Stock Status */}
                                   <div className="ml-2">
                                     {item.available ? (
-                                      <Badge variant="default" className="bg-green-100 text-green-800 text-xs whitespace-nowrap">
-                                        In Stock
-                                      </Badge>
+                                      <Badge
+                                      variant="default"
+                                      className="bg-green-100 text-green-800 text-xs whitespace-nowrap hover:bg-green-100 hover:text-green-800"
+                                    >
+                                      In Stock
+                                    </Badge>
                                     ) : (
                                       <Badge variant="destructive" className="text-xs whitespace-nowrap">
                                         Out of Stock
