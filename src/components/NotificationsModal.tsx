@@ -1,6 +1,6 @@
 import { FC } from 'react';
 import { IoIosCloseCircleOutline } from "react-icons/io";
-import { FiPackage, FiUser, FiDollarSign, FiBox, FiLock, FiEdit } from 'react-icons/fi';
+import { FiPackage, FiUser, FiDollarSign, FiBox, FiLock, FiEdit, FiTrash2 } from 'react-icons/fi';
 import { useNotifications } from '../context/NotificationContext';
 
 type NotificationType = 'order_created' | 'order_status' | 'inventory_update' | 'transaction_status' | 
@@ -13,7 +13,7 @@ interface NotificationsModalProps {
 }
 
 const NotificationsModal: FC<NotificationsModalProps> = ({ isOpen, onClose }) => {
-  const { notifications, markAsRead, removeNotification } = useNotifications();
+  const { notifications, markAsRead, removeNotification, clearAllNotifications } = useNotifications();
 
   if (!isOpen) return null;
 
@@ -23,6 +23,10 @@ const NotificationsModal: FC<NotificationsModalProps> = ({ isOpen, onClose }) =>
     setTimeout(() => {
       removeNotification(notificationId);
     }, 500);
+  };
+
+  const handleClearAll = () => {
+    clearAllNotifications();
   };
 
   const getIcon = (type: string) => {
@@ -56,9 +60,20 @@ const NotificationsModal: FC<NotificationsModalProps> = ({ isOpen, onClose }) =>
       >
         <div className="p-3 sm:p-4 border-b border-gray-100 dark:border-gray-800 flex justify-between items-center sticky top-0 bg-white dark:bg-black">
           <h2 className="font-['Inter'] text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Notifications</h2>
-          <button onClick={onClose} className="bg-transparent p-1 sm:p-0">
-            <IoIosCloseCircleOutline className="w-5 h-5 sm:w-6 sm:h-6 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" />
-          </button>
+          <div className="flex items-center gap-2">
+            {notifications.length > 0 && (
+              <button 
+                onClick={handleClearAll}
+                className="bg-transparent p-1 sm:p-2 text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
+                title="Clear all notifications"
+              >
+                <FiTrash2 className="w-4 h-4 sm:w-5 sm:h-5" />
+              </button>
+            )}
+            <button onClick={onClose} className="bg-transparent p-1 sm:p-0">
+              <IoIosCloseCircleOutline className="w-5 h-5 sm:w-6 sm:h-6 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200" />
+            </button>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto">
           {notifications.length === 0 ? (

@@ -24,6 +24,7 @@ interface NotificationContextType {
   }) => void;
   deleteNotification: (id: string) => void;
   unreadCount: number;
+  clearAllNotifications: () => void;
 }
 
 export const NotificationContext = createContext<NotificationContextType>({
@@ -33,6 +34,7 @@ export const NotificationContext = createContext<NotificationContextType>({
   addNotification: () => {},
   deleteNotification: () => {},
   unreadCount: 0,
+  clearAllNotifications: () => {},
 });
 
 export const NotificationProvider: FC<{ children: ReactNode }> = ({ children }) => {
@@ -82,6 +84,10 @@ export const NotificationProvider: FC<{ children: ReactNode }> = ({ children }) 
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
+  const clearAllNotifications = () => {
+    setNotifications([]);
+  };
+
   return (
     <NotificationContext.Provider
       value={{
@@ -90,7 +96,8 @@ export const NotificationProvider: FC<{ children: ReactNode }> = ({ children }) 
         removeNotification,
         addNotification,
         deleteNotification,
-        unreadCount
+        unreadCount,
+        clearAllNotifications
       }}
     >
       {children}

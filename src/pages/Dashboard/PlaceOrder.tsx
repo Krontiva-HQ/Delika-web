@@ -25,6 +25,7 @@ import { Rider } from "../../components/RidersTable";
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent, CardFooter } from "../../components/ui/card";
 import { Badge } from "../../components/ui/badge";
+import ServiceTypeModal from './ServiceTypeModal';
 
 // Add the API key directly if needed
 const GOOGLE_MAPS_API_KEY = 'AIzaSyAdv28EbwKXqvlKo2henxsKMD-4EKB20l8';
@@ -465,9 +466,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     
     try {
       setIsSubmitting(true);
-      console.log('Starting order placement...');
-      console.log('AutoAssign Status:', restaurantData?.AutoAssign);
-      console.log('Selected Rider userId:', selectedRider);
 
       const formData = new FormData();
       
@@ -537,26 +535,16 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       // Handle rider assignment based on AutoAssign setting
       if (restaurantData?.AutoAssign) {
         // If AutoAssign is enabled, don't send courierId
-        console.log('AutoAssign is enabled - letting system assign rider');
       } else if (selectedRider) {
         // If AutoAssign is disabled and a rider is selected, send the courierId
-        console.log('AutoAssign is disabled - assigning selected rider:', selectedRider);
         formData.append('courierId', selectedRider);
       } else {
         // If AutoAssign is disabled but no rider is selected, show error
         throw new Error(t('orders.error.noRiderSelected'));
       }
 
-      // Log all form data before submission
-      console.log('Final Form Data:');
-      formData.forEach((value, key) => {
-        console.log(`${key}:`, value);
-      });
-
       // Use the placeOrder function from api.ts
-      console.log('Submitting order to API...');
       const response = await placeOrder(formData);
-      console.log('API Response:', response);
 
       if (!response.data) {
         throw new Error(t('orders.error.failedToPlaceOrder'));
@@ -597,7 +585,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       }
 
     } catch (error) {
-      console.error('Order placement failed:', error);
       addNotification({
         type: 'order_status',
         message: error instanceof Error ? error.message : t('orders.error.failedToPlaceOrder')
@@ -607,19 +594,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     }
   };
 
-  const calculateDeliveryFee = (distance: number): number => {
-    if (distance <= 1) {
-        return 15; // Fixed fee for distances up to 1km
-    } else if (distance <= 2) {
-        return 20; // Fixed fee for distances between 1km and 2km
-    } else if (distance <= 10) {
-        // For distances > 2km and <= 10km: 17 cedis base price + 2.5 cedis per km beyond 2km
-        return 17 + ((distance - 2) * 2.5);
-    } else {
-        // For distances above 10km: 3.5 * distance + 20
-        return (3.5 * distance) + 20;
-    }
-};
+
 
   // Add validation effects
   useEffect(() => {
@@ -2247,7 +2222,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             
             <b className="font-sans text-lg font-semibold gap-2 mb-4">Walk-In Order</b>
 
-            <b className="font-sans text-lg font-semibold">Add Menu Item</b>
             {/* Add this scrollable container */}
             <div className="flex-1 overflow-y-auto max-h-[75vh] pr-2">
               {/* Enhanced Menu Selection */}
@@ -2336,7 +2310,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         );
         case 2:
           return (
-            <>
+            <div className="flex flex-col h-full">
+              {/* Header - Fixed */}
               <div className="flex items-center mb-6">
                 <button
                   className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent"
@@ -2347,125 +2322,128 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 </button>
               </div>
               
-              <b className="font-sans text-lg font-semibold gap-2 mb-4">Walk-In Order</b>
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto pr-2">
+                <b className="font-sans text-lg font-semibold gap-2 mb-4">Walk-In Order</b>
 
-              <b className="font-sans text-lg font-semibold mb-6">Customer Details</b>
-  
-              {/* Order Summary Section */}
-              <div className="mb-6 bg-[#f9fafb] rounded-lg p-4 font-sans">
-                <div className="font-sans text-lg font-semibold mb-3">Order Summary</div>
-                <div className="space-y-3">
-                  {selectedItems.map((item, index) => (
-                    <div key={index} className="flex justify-between items-center text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{item.quantity}x</span>
-                        <span>{item.name}</span>
+                <b className="font-sans text-lg font-semibold mb-6">Customer Details</b>
+
+                {/* Order Summary Section */}
+                <div className="mb-6 bg-[#f9fafb] rounded-lg p-4 font-sans">
+                  <div className="font-sans text-lg font-semibold mb-3">Order Summary</div>
+                  <div className="space-y-3">
+                    {selectedItems.map((item, index) => (
+                      <div key={index} className="flex justify-between items-center text-sm">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{item.quantity}x</span>
+                          <span>{item.name}</span>
+                        </div>
+                        <span className="text-gray-600">GH₵ {(item.price * item.quantity).toFixed(2)}</span>
                       </div>
-                      <span className="text-gray-600">GH₵ {(item.price * item.quantity).toFixed(2)}</span>
-                    </div>
-                  ))}
-                  <div className="border-t border-gray-200 pt-2 mt-2">
-                    <div className="flex justify-between items-center font-medium">
-                      <span>Total Items:</span>
-                      <span>{selectedItems.reduce((sum, item) => sum + item.quantity, 0)}</span>
+                    ))}
+                    <div className="border-t border-gray-200 pt-2 mt-2">
+                      <div className="flex justify-between items-center font-medium">
+                        <span>Total Items:</span>
+                        <span>{selectedItems.reduce((sum, item) => sum + item.quantity, 0)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Customer Details Section */}
-              <div className="self-stretch flex flex-col gap-4">
-                <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
+                {/* Customer Details Section */}
+                <div className="self-stretch flex flex-col gap-4">
+                  <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
+                    <div className="self-stretch relative leading-[20px] font-sans text-black">
+                      Customer Name
+                    </div>
+                    <input
+                      className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
+                                text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-center py-[10px] px-[12px] text-black"
+                      placeholder="customer name"
+                      type="text"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Total Price Section */}
+                <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
                   <div className="self-stretch relative leading-[20px] font-sans text-black">
-                    Customer Name
+                    Total Price
                   </div>
-                  <input
-                    className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                              text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-center py-[10px] px-[12px] text-black"
-                    placeholder="customer name"
-                    type="text"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Total Price Section */}
-              <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
-                <div className="self-stretch relative leading-[20px] font-sans text-black">
-                  Total Price
-                </div>
-                <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
-                  <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
-                    <div className="relative leading-[20px] font-sans">GH₵</div>
-                  </div>
-                  <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
-                    <div className="relative leading-[20px] font-sans">{calculateTotal()}</div>
+                  <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
+                    <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
+                      <div className="relative leading-[20px] font-sans">GH₵</div>
+                    </div>
+                    <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
+                      <div className="relative leading-[20px] font-sans">{calculateTotal()}</div>
+                    </div>
                   </div>
                 </div>
               </div>
 
-             {/* Payment Buttons - Keep outside scrollable area */}
-             <div className="flex gap-4 w-full pt-4 mt-4">
-              <button
-                className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
-                           py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                           ${!isDeliveryPriceValid() || isSubmitting
-                             ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
-                             : 'bg-[#201a18] border-[#201a18]'}`}
-                onClick={() => handlePlaceOrder('cash')}
-                disabled={!isDeliveryPriceValid() || isSubmitting}
-              >
-                {isSubmitting ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Processing...
-                  </div>
-                ) : (
-                  'Cash'
-                )}
-              </button>
+              {/* Payment Buttons - Fixed at bottom */}
+              <div className="flex gap-4 w-full pt-4 mt-4">
+                <button
+                  className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
+                             py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
+                             ${!isDeliveryPriceValid() || isSubmitting || customerName.trim() === ''
+                               ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
+                               : 'bg-[#201a18] border-[#201a18]'}`}
+                  onClick={() => handlePlaceOrder('cash')}
+                  disabled={!isDeliveryPriceValid() || isSubmitting || customerName.trim() === ''}
+                >
+                  {isSubmitting ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Processing...
+                    </div>
+                  ) : (
+                    'Cash'
+                  )}
+                </button>
 
-              <button
-                className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
-                           py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                           ${!isDeliveryPriceValid() || isSubmitting
-                             ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
-                             : 'bg-[#fd683e] border-[#fd683e]'}`}
-                onClick={() => handlePlaceOrder('momo')}
-                disabled={!isDeliveryPriceValid() || isSubmitting}
-              >
-                {isSubmitting ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Processing...
-                  </div>
-                ) : (
-                  'MoMo'
-                )}
-              </button>
+                <button
+                  className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
+                             py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
+                             ${!isDeliveryPriceValid() || isSubmitting || customerName.trim() === ''
+                               ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
+                               : 'bg-[#fd683e] border-[#fd683e]'}`}
+                  onClick={() => handlePlaceOrder('momo')}
+                  disabled={!isDeliveryPriceValid() || isSubmitting || customerName.trim() === ''}
+                >
+                  {isSubmitting ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Processing...
+                    </div>
+                  ) : (
+                    'MoMo'
+                  )}
+                </button>
 
-              <button
-                className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
-                           py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                           ${!isDeliveryPriceValid() || isSubmitting
-                             ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
-                             : 'bg-[#4CAF50] border-[#4CAF50]'}`}
-                onClick={() => handlePlaceOrder('visa')}
-                disabled={!isDeliveryPriceValid() || isSubmitting}
-              >
-                {isSubmitting ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Processing...
-                  </div>
-                ) : (
-                  'Visa Card'
-                )}
-              </button>
+                <button
+                  className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
+                             py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
+                             ${!isDeliveryPriceValid() || isSubmitting || customerName.trim() === ''
+                               ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
+                               : 'bg-[#4CAF50] border-[#4CAF50]'}`}
+                  onClick={() => handlePlaceOrder('visa')}
+                  disabled={!isDeliveryPriceValid() || isSubmitting || customerName.trim() === ''}
+                >
+                  {isSubmitting ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Processing...
+                    </div>
+                  ) : (
+                    'Visa Card'
+                  )}
+                </button>
+              </div>
             </div>
-          </>
-        );
+          );
       default:
         return null;
     }
@@ -2820,17 +2798,15 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               Select Items from {selectedCategory}
             </div>
             {/* Two-row horizontal scrolling grid with placeholder for odd items */}
-            <div className="overflow-x-auto pb-4">
-              <div className="grid grid-rows-2 auto-cols-max grid-flow-col gap-3" style={{ minWidth: 'min-content' }}>
+            <div className="overflow-x-auto pb-2">
+              <div className="grid grid-rows-2 auto-cols-max grid-flow-col gap-2" style={{ minWidth: 'min-content' }}>
                 {(() => {
                   const cards = categoryItems.map((item) => {
                     const isSelected = selectedItems.some(selected => selected.name === item.name);
                     return (
-                      <Card 
+                      <Card
                         key={item.name}
-                        className={`cursor-pointer w-[220px] ${
-                          !item.available ? 'opacity-60' : ''
-                        }`}
+                        className={`cursor-pointer w-[220px] relative ${!item.available ? 'grayscale opacity-60' : ''} ${isSelected ? 'border-2 border-[#fd683e]' : ''}`}
                         onClick={() => {
                           if (item.available) {
                             if (isSelected) {
@@ -2841,21 +2817,17 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                           }
                         }}
                       >
+                        {isSelected && (
+                          <div className="absolute top-1.5 right-1.5 bg-[#fd683e] rounded-full p-0.5">
+                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                        )}
                         <CardContent className="p-3">
                           <div className="flex items-center gap-2">
-                            {/* Selection Checkbox */}
-                            {item.available && (
-                              <div className="absolute top-2 right-2">
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  className="h-4 w-4 rounded border-gray-300 text-[#fd683e] focus:ring-[#fd683e]"
-                                  onChange={() => {}} // Handled by card click
-                                />
-                              </div>
-                            )}
                             {/* Product Image */}
-                            <div className="w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
+                            <div className={`w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 ${!item.available ? 'grayscale' : ''}`}>
                               {item.foodImage?.url || item.image ? (
                                 <img
                                   src={item.foodImage?.url || item.image}
@@ -2872,34 +2844,17 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                               )}
                             </div>
                             {/* Product Info */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex flex-col h-full">
-                                <div className="flex-1">
-                                  <h3 className="font-medium text-xs font-sans text-gray-900 break-words leading-tight">
-                                    {item.name}
-                                  </h3>
-                                </div>
-                                {/* Price and Stock Status */}
-                                <div className="flex items-center justify-between mt-1">
-                                  <p className="text-xs font-sans text-[#fd683e] font-semibold">
-                                    GH₵ {item.price}
-                                  </p>
-                                  {/* Stock Status */}
-                                  <div className="ml-2">
-                                    {item.available ? (
-                                      <Badge
-                                      variant="default"
-                                      className="bg-green-100 text-green-800 text-xs whitespace-nowrap hover:bg-green-100 hover:text-green-800"
-                                    >
-                                      In Stock
-                                    </Badge>
-                                    ) : (
-                                      <Badge variant="destructive" className="text-xs whitespace-nowrap">
-                                        Out of Stock
-                                      </Badge>
-                                    )}
-                                  </div>
-                                </div>
+                            <div className="flex flex-col h-full">
+                              <div className="flex-1">
+                                <h3 className="font-medium text-xs font-sans text-gray-900 break-words leading-tight">
+                                  {item.name}
+                                </h3>
+                              </div>
+                              {/* Price */}
+                              <div className="flex items-center justify-between mt-1">
+                                <p className="text-xs font-sans text-gray-900 font-semibold">
+                                  GH₵ {item.price}
+                                </p>
                               </div>
                             </div>
                           </div>
@@ -2917,7 +2872,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 })()}
               </div>
             </div>
-            
             {categoryItems.length === 0 && (
               <div className="text-center py-8 text-gray-500 font-sans">
                 No items available in this category
@@ -2957,7 +2911,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           setRiders(response.data);
         }
       } catch (err) {
-        console.error('Error fetching riders:', err);
         addNotification({
           type: 'order_status',
           message: 'Failed to fetch riders. Please try again.'
@@ -2977,12 +2930,9 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   const renderRiderSelection = () => {
     // Only show rider selection when AutoAssign is false
     if (restaurantData?.AutoAssign) {
-      console.log('AutoAssign is enabled, hiding rider selection');
       return null;
     }
 
-    console.log('Available Riders:', riders);
-    console.log('Currently Selected Rider userId:', selectedRider);
 
     return (
       <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
@@ -3016,13 +2966,11 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   // Update the rider selection handler to store userId instead of rider id
   const handleRiderSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const riderId = e.target.value;
-    console.log('Selected Rider ID:', riderId);
     
     // Find the selected rider's userId from the riders array
     const selectedRiderData = riders.find(rider => rider.id === riderId);
     const userId = selectedRiderData?.userTable?.id || selectedRiderData?.userId || '';
     
-    console.log('Selected Rider userId:', userId);
     setSelectedRider(userId);
   };
 
@@ -3035,91 +2983,27 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className={`bg-white p-4 sm:p-8 rounded-lg relative flex flex-col ${
-        !deliveryMethod ? 'max-w-[900px] min-w-[300px] sm:min-w-[400px]' : 'w-full sm:w-[600px] mx-4 sm:mx-0'
-      }`}>
+      <div className="bg-white p-10 rounded-lg relative flex flex-col overflow-y-auto max-h-[90vh] w-full sm:w-[900px] mx-4 sm:mx-0">
         <button
           onClick={onClose}
-          className="absolute top-2 sm:top-4 right-2 sm:right-4 text-gray-500 hover:text-gray-700 bg-transparent z-50"
+          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 bg-transparent z-50"
         >
-          <IoIosCloseCircleOutline className="w-6 h-6 sm:w-8 sm:h-8" />
+          <IoIosCloseCircleOutline className="w-8 h-8" />
         </button>
-
         {!deliveryMethod ? (
-          // Initial delivery method selection modal
-          <div className="flex flex-col items-center w-full">
-            <h2 className="text-2xl font-semibold mb-8 font-sans">Select Service Type</h2>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center w-full">
-              {/* Show On-Demand section if OnDemand permission is enabled */}
-              {deliveryMethods.onDemand && (
-                <div
-                  onClick={() => handleDeliveryMethodSelect('on-demand')}
-                  className="flex flex-col items-center p-4 sm:p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-full sm:w-[140px] h-[100px] sm:h-[140px] justify-center"
-                >
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 mb-2 sm:mb-4">
-                    <img src="/on-demand-delivery.svg" alt="On-Demand" className="w-full h-full" />
-                  </div>
-                  <span className="text-center font-medium text-xs sm:text-sm font-sans">On Demand<br/>Delivery</span>
-                </div>
-              )}
-
-              {/* Show Full Service section if FullService permission is enabled */}
-              {deliveryMethods.fullService && (
-                <div
-                  onClick={() => handleDeliveryMethodSelect('full-service')}
-                  className="flex flex-col items-center p-4 sm:p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-full sm:w-[140px] h-[100px] sm:h-[140px] justify-center"
-                >
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 mb-2 sm:mb-4">
-                    <img src="/full-service.svg" alt="Full-service" className="w-full h-full" />
-                  </div>
-                  <span className="text-center font-medium text-xs sm:text-sm font-sans">Full-service<br/>Delivery</span>
-                </div>
-              )}
-
-              {/* Show Schedule section if Schedule permission is enabled */}
-              {deliveryMethods.schedule && (
-                <div
-                  onClick={() => handleDeliveryMethodSelect('schedule')}
-                  className="flex flex-col items-center p-4 sm:p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-full sm:w-[140px] h-[100px] sm:h-[140px] justify-center"
-                >
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 mb-2 sm:mb-4">
-                    <img src="/schedule-delivery.svg" alt="Schedule" className="w-full h-full" />
-                  </div>
-                  <span className="text-center font-medium text-xs sm:text-sm font-sans">Schedule<br/>Delivery</span>
-                </div>
-              )}
-
-              {/* Show Batch section if Batch permission is enabled */}
-              {deliveryMethods.batchDelivery && (
-                <div
-                  onClick={() => handleDeliveryMethodSelect('batch-delivery')}
-                  className="flex flex-col items-center p-4 sm:p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-full sm:w-[140px] h-[100px] sm:h-[140px] justify-center"
-                >
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 mb-2 sm:mb-4">
-                    <img src="/batch-delivery.svg" alt="Batch" className="w-full h-full" />
-                  </div>
-                  <span className="text-center font-medium text-xs sm:text-sm font-sans">Batch<br/>Delivery</span>
-                </div>
-              )}
-
-              {/* Show Walk-In section if WalkIn permission is enabled */}
-              {deliveryMethods.walkIn && (
-                <div
-                  onClick={() => handleDeliveryMethodSelect('walk-in')}
-                  className="flex flex-col items-center p-4 sm:p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-full sm:w-[140px] h-[100px] sm:h-[140px] justify-center"
-                >
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 mb-2 sm:mb-4">
-                    <img src="/dining-out.png" alt="Walk-In" className="w-full h-full" />
-                  </div>
-                  <span className="text-center font-medium text-xs sm:text-sm font-sans">Walk-In<br/>Service</span>
-                </div>
-              )}
-            </div>
-          </div>
+          <ServiceTypeModal
+            onSelect={handleDeliveryMethodSelect}
+            onClose={onClose}
+            deliveryMethods={{
+              onDemand: !!deliveryMethods.onDemand,
+              fullService: !!deliveryMethods.fullService,
+              schedule: !!deliveryMethods.schedule,
+              batchDelivery: !!deliveryMethods.batchDelivery,
+              walkIn: !!deliveryMethods.walkIn,
+            }}
+          />
         ) : (
-          // Existing order placement modal content 
           <>
-            {/* Main content */}
             {renderStepContent()}
           </>
         )}
