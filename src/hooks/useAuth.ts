@@ -213,13 +213,14 @@ export const useAuth = () => {
       });
       
       if (response.data.otpValidate === 'otpFound') {
-        // Set verification flags and user data
-        const userData = JSON.parse(userProfile);
-        
-        // Use Promise.all to ensure all state updates are complete
+        // Get the real token from the backend (if not already)
+        const token = response.data.authToken || localStorage.getItem('authToken');
+        localStorage.setItem('authToken', token);
+        // Fetch and store user profile
+        const userProfileResponse = await getAuthenticatedUser();
+        const userData = userProfileResponse.data;
         await Promise.all([
-          // For phone login, we'll create a temporary auth token since the API doesn't provide one
-          localStorage.setItem('authToken', `phone_auth_${userData.id}`),
+          localStorage.setItem('userProfile', JSON.stringify(userData)),
           localStorage.setItem('2faVerified', 'true'),
           new Promise<void>((resolve) => {
             setUser(userData);
