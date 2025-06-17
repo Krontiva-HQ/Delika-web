@@ -1,3 +1,4 @@
+import React from 'react';
 import { FunctionComponent, useState, useEffect, useRef } from "react";
 import { FaLocationDot } from "react-icons/fa6";
 import { useParams, useNavigate } from 'react-router-dom';
@@ -10,6 +11,7 @@ import { useUserProfile } from '../../hooks/useUserProfile';
 import { useTranslation } from 'react-i18next';
 import { formatDate, translateOrderStatus, translateKitchenStatus } from '../../i18n/i18n';
 import dayjs from 'dayjs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 
 interface InvoiceData {
   invoiceNumber: string;
@@ -29,6 +31,11 @@ interface InvoiceData {
     unitPrice: number;
     quantity: number;
     totalPrice: number;
+    extras?: Array<{
+      extrasName: string;
+      extrasQuantity: number;
+      extrasPrice: number;
+    }>;
   }[];
   payment: {
     method: string;
@@ -153,6 +160,7 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
         unitPrice: parseFloat(product.price) || 0,
         quantity: parseInt(product.quantity) || 0,
         totalPrice: (parseFloat(product.price) || 0) * (parseInt(product.quantity) || 0),
+        extras: product.extras || [],
       })),
       payment: {
         method: paymentStatus,
@@ -286,8 +294,8 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
           
           // Quantity, unit price, and total aligned in columns
           pdf.text(order.quantity.toString(), 35, yPos);
-          pdf.text(`GHS ${order.unitPrice.toFixed(2)}`, 45, yPos);
-          pdf.text(`GHS ${order.totalPrice.toFixed(2)}`, 60, yPos);
+          pdf.text(`₵${Number(order.unitPrice).toFixed(2)}`, 45, yPos);
+          pdf.text(`₵${Number(order.totalPrice).toFixed(2)}`, 60, yPos);
           
           yPos += (nameLines.length * 4) + 2;
         });
@@ -299,17 +307,17 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
 
       // Totals
       pdf.text('Subtotal:', leftMargin, yPos);
-      pdf.text(`GHS ${invoiceData.payment.subTotal.toFixed(2)}`, 75, yPos, { align: 'right' });
+      pdf.text(`₵${invoiceData.payment.subTotal.toFixed(2)}`, 75, yPos, { align: 'right' });
       yPos += 4;
       
       pdf.text('Delivery:', leftMargin, yPos);
-      pdf.text(`GHS ${invoiceData.payment.deliveryCost.toFixed(2)}`, 75, yPos, { align: 'right' });
+      pdf.text(`₵${invoiceData.payment.deliveryCost.toFixed(2)}`, 75, yPos, { align: 'right' });
       yPos += 4;
       
       // Grand total
       pdf.setFontSize(8);
       pdf.text('Total:', leftMargin, yPos);
-      pdf.text(`GHS ${invoiceData.payment.grandTotal.toFixed(2)}`, 75, yPos, { align: 'right' });
+      pdf.text(`₵${invoiceData.payment.grandTotal.toFixed(2)}`, 75, yPos, { align: 'right' });
       yPos += 6;
 
       // Payment method
@@ -446,57 +454,35 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
 
             {/* Customer and Orders Info */}
             <div className="flex-1 border-[2px] border-[rgba(167,161,158,0.1)] bg-[#FFFFFF] rounded-lg p-4 pb-1 mb-6">
-              <div className="flex gap-4">
+              <div className="flex flex-row gap-8 mb-6">
                 {/* Customer Info */}
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold mb-4 font-sans">{t('orders.detail.customerInfo')}</h3>
-                  <div className="flex flex-col gap-2 font-sans text-xs">
-                    <div className="flex">
-                      <span className="text-gray-500 w-11">{t('orders.detail.name')}:</span>
-                      <span>{invoiceData.customer.name}</span>
-                    </div>
-                    <div className="flex">
-                      <span className="text-gray-500 w-11">{t('orders.detail.phone')}:</span>
-                      <span>{invoiceData.customer.phone}</span>
-                    </div>
+                <div className="flex-1 bg-white rounded-lg p-4 border">
+                  <h3 className="text-lg font-semibold mb-4">Customer Info</h3>
+                  <div className="grid grid-cols-2 gap-y-2 text-sm">
+                    <span className="text-gray-500">Name:</span>
+                    <span>{invoiceData.customer.name}</span>
+                    <span className="text-gray-500">Phone:</span>
+                    <span>{invoiceData.customer.phone}</span>
                   </div>
                 </div>
-
                 {/* Courier Info */}
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold mb-4 font-sans">{t('orders.detail.courierInfo')}</h3>
-                  <div className="flex flex-col gap-2 font-sans text-xs">
-                    <div className="flex">
-                      <span className="text-gray-500 w-11">{t('orders.detail.name')}:</span>
-                      <span>{invoiceData.courierName || t('orders.detail.notAssigned')}</span>
-                    </div>
-                    <div className="flex">
-                      <span className="text-gray-500 w-11">{t('orders.detail.phone')}:</span>
-                      <span>{invoiceData.courierPhoneNumber || t('orders.detail.notAssigned')}</span>
-                    </div>
+                <div className="flex-1 bg-white rounded-lg p-4 border">
+                  <h3 className="text-lg font-semibold mb-4">Courier Info</h3>
+                  <div className="grid grid-cols-2 gap-y-2 text-sm">
+                    <span className="text-gray-500">Name:</span>
+                    <span>{invoiceData.courierName}</span>
+                    <span className="text-gray-500">Phone:</span>
+                    <span>{invoiceData.courierPhoneNumber}</span>
                   </div>
                 </div>
-
-                {/* Order Status Info */}
-                <div className="flex-1 -ml-24">
-                  <h3 className="text-lg font-semibold mb-2 font-sans mr-24">{t('orders.orderStatus')}</h3>
-                  <ul className="list-none font-sans text-xs -ml-10">
-                    <li className="flex items-center mb-[2px]">
-                      <span className={`${invoiceData.timeline.received ? 'text-red-500' : 'text-gray-400'} mr-1 w-2`}>•</span>
-                      <span>{t('orders.detail.orderReceived')} | <strong>{invoiceData.timeline.received || ''}</strong></span>
-                    </li>
-                    <li className="flex items-center mb-[2px]">
-                      <span className={`${invoiceData.timeline.pickedUp ? 'text-red-500' : 'text-gray-400'} mr-1 w-2`}>•</span>
-                      <span>{t('orders.detail.orderPickedUp')} | <strong>{invoiceData.timeline.pickedUp || t('orders.detail.pending')}</strong></span>
-                    </li>
-                    <li className="flex items-center mb-[2px]">
-                      <span className={`${invoiceData.timeline.onWay ? 'text-red-500' : 'text-gray-400'} mr-1 w-2`}>•</span>
-                      <span>{t('orders.detail.orderOnWay')} | <strong>{invoiceData.timeline.onWay || t('orders.detail.pending')}</strong></span>
-                    </li>
-                    <li className="flex items-center">
-                      <span className={`${invoiceData.timeline.completed ? 'text-red-500' : 'text-gray-400'} mr-1 w-2`}>•</span>
-                      <span>{t('orders.detail.orderComplete')} | <strong>{invoiceData.timeline.completed || t('orders.detail.pending')}</strong></span>
-                    </li>
+                {/* Order Status */}
+                <div className="flex-1 bg-white rounded-lg p-4 border">
+                  <h3 className="text-lg font-semibold mb-4">Order Status</h3>
+                  <ul className="list-none text-sm">
+                    <li>Order Received | <strong>{invoiceData.timeline.received || 'Pending'}</strong></li>
+                    <li>Order Picked Up | <strong>{invoiceData.timeline.pickedUp || 'Pending'}</strong></li>
+                    <li>Order On Way | <strong>{invoiceData.timeline.onWay || 'Pending'}</strong></li>
+                    <li>Order Complete | <strong>{invoiceData.timeline.completed || 'Pending'}</strong></li>
                   </ul>
                 </div>
               </div>
@@ -505,38 +491,39 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
               {/* Order Table */}
               {invoiceData.orders.length > 0 && (
                 <div className="mb-6 w-full border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden bg-white">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-[#ffffff]" style={{ borderBottom: '1px solid #eaeaea' }}>
-                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">#</th>
-                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Product</th>
-                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Unit Price</th>
-                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Quantity</th>
-                        <th className="text-right p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>#</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead>Unit Price ₵</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead className="text-right">Total ₵</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {invoiceData.orders.map((order, idx) => (
-                        <tr key={order.id} className="hover:bg-[#f9f9f9]" style={{ borderBottom: '1px solid #eaeaea' }}>
-                          <td className="p-2 text-[12px] leading-[20px] font-sans text-[#444]">{idx + 1}</td>
-                          <td className="p-2">
-                            <span className="text-[12px] leading-[20px] font-sans text-[#444]">
-                              {order.productName}
-                            </span>
-                          </td>
-                          <td className="p-2 text-[12px] leading-[20px] font-sans text-[#666]">
-                            GHS{Number(order.unitPrice).toFixed(2)}
-                          </td>
-                          <td className="p-2 text-[12px] leading-[20px] font-sans text-[#666]">
-                            {order.quantity}
-                          </td>
-                          <td className="p-2 text-right text-[12px] leading-[20px] font-sans text-[#444]">
-                            GHS{Number(order.totalPrice).toFixed(2)}
-                          </td>
-                        </tr>
+                        <React.Fragment key={order.id}>
+                          <TableRow>
+                            <TableCell className="font-sans align-top">{idx + 1}</TableCell>
+                            <TableCell className="font-sans font-semibold align-top">{order.productName}</TableCell>
+                            <TableCell className="font-sans align-top">{Number(order.unitPrice).toFixed(2)}</TableCell>
+                            <TableCell className="font-sans align-top">{order.quantity}</TableCell>
+                            <TableCell className="font-sans align-top text-right">{Number(order.totalPrice).toFixed(2)}</TableCell>
+                          </TableRow>
+                          {order.extras && order.extras.length > 0 && order.extras.map((extra, eIdx) => (
+                            <TableRow key={eIdx}>
+                              <TableCell className="font-sans"></TableCell>
+                              <TableCell className="font-sans pl-8 text-xs text-gray-500">• {extra.extrasName}</TableCell>
+                              <TableCell className="font-sans text-xs text-gray-500">{Number(extra.extrasPrice).toFixed(2)}</TableCell>
+                              <TableCell className="font-sans text-xs text-gray-500">{extra.extrasQuantity}</TableCell>
+                              <TableCell className="font-sans text-xs text-gray-500 text-right">{(Number(extra.extrasPrice) * Number(extra.extrasQuantity)).toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </React.Fragment>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               )}
 
@@ -570,16 +557,16 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                   {invoiceData.orders.length > 0 && (
                     <div className="text-[12px] leading-[20px] font-sans">
                       <p className="text-[#666] mb-2 font-bold">{t('orders.detail.subTotal')}</p>
-                      <p className="text-[#444]">GHS{invoiceData.payment.subTotal}</p>
+                      <p className="text-[#444]">₵{invoiceData.payment.subTotal}</p>
                     </div>
                   )}
                   <div className="text-[12px] leading-[20px] font-sans">
                     <p className="text-[#666] mb-2 font-bold">{t('orders.detail.deliveryCost')}</p>
-                    <p className="text-[#444]">GHS{invoiceData.payment.deliveryCost}</p>
+                    <p className="text-[#444]">₵{invoiceData.payment.deliveryCost}</p>
                   </div>
                   <div className="text-[12px] leading-[20px] font-sans">
                     <p className="text-[#666] mb-2 font-bold">{t('orders.detail.grandTotal')}</p>
-                    <p className="text-[#444] font-medium">GHS{invoiceData.payment.grandTotal}</p>
+                    <p className="text-[#444] font-medium">₵{invoiceData.payment.grandTotal}</p>
                   </div>
                 </div>
               </div>
