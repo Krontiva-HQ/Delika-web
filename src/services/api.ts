@@ -89,7 +89,9 @@ export const API_ENDPOINTS = {
   AUTH: {
     ME: '/auth/me',
     LOGIN: '/auth/login',
+    LOGIN_PHONE: '/auth/login/restaurant/staff/phoneNumber',
     VERIFY_OTP: '/verify/otp/code',
+    VERIFY_OTP_PHONE: '/verify/otp/code/phoneNumber',
     RESET_PASSWORD: '/reset/user/password/email',
     CHANGE_PASSWORD: '/change/password'
   },
@@ -147,6 +149,12 @@ export const API_ENDPOINTS = {
 export const login = async (credentials: { email: string; password: string }) => {
   try {
     const response = await api.post(API_ENDPOINTS.AUTH.LOGIN, credentials);
+    await Promise.all([
+      localStorage.removeItem('2faVerified'),
+      localStorage.removeItem('userProfile'),
+      localStorage.setItem('authToken', response.data.authToken),
+      localStorage.setItem('loginMethod', 'email')
+    ]);
     return response;
   } catch (error) {
     throw error;
@@ -215,9 +223,11 @@ export interface UserResponse {
 }
 
 export const getAuthenticatedUser = () => {
+  const token = localStorage.getItem('authToken');
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+    'X-Xano-Authorization': token,
+    'X-Xano-Authorization-Only': 'true'
   };
   return api.get<UserResponse>(API_ENDPOINTS.AUTH.ME, { headers });
 };
@@ -741,3 +751,65 @@ export const updateInventoryItem = async (data: {
   };
   return api.patch(API_ENDPOINTS.MENU.UPDATE_INVENTORY_ITEM, data, { headers });
 };
+
+// Add phone login response interface
+export interface PhoneLoginResponse extends UserResponse {
+  onTrip: boolean;
+  session: boolean;
+  Location: {
+    lat: number;
+    long: number;
+  };
+  deviceId: string;
+  tripCount: number;
+  countryCode: string;
+  // Default values for required UserResponse properties
+  branchesTable: {
+    id: string;
+    branchName: string;
+    branchLocation: string;
+  };
+  _restaurantTable: Array<{
+    id: string;
+    restaurantName: string;
+    language: string;
+    AutoAssign: boolean;
+    AutoCalculatePrice: boolean;
+  }>;
+}
+
+// Update phone login function to use UserResponse type
+export const loginWithPhone = async (phoneNumber: string) => {
+  try {
+    const response = await api.post<string>(API_ENDPOINTS.AUTH.LOGIN_PHONE, { phoneNumber });
+    localStorage.setItem('loginPhoneNumber', phoneNumber);
+    await Promise.all([
+      localStorage.removeItem('2faVerified'),
+      localStorage.removeItem('userProfile'),
+      localStorage.setItem('authToken', response.data),
+      localStorage.setItem('loginMethod', 'phone')
+    ]);
+    return {
+      data: {
+        data: {
+          authToken: response.data // The response.data is the JWT token
+        }
+      }
+    };
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const verifyPhoneOTP = async (data: { 
+  OTP: number,
+  contact: string 
+}) => {
+  const response = await api.post(API_ENDPOINTS.AUTH.VERIFY_OTP_PHONE, data);
+  return response;
+};
+
+const loginMethod = localStorage.getItem('loginMethod'); // 'email' or 'phone'
+
+localStorage.removeItem('loginMethod');
+localStorage.removeItem('loginPhoneNumber');

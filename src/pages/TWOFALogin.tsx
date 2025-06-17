@@ -8,16 +8,22 @@ const TWOFALogin: FunctionComponent = () => {
   const { isAuthenticated } = useAuth();
 
   useEffect(() => {
-    // Check if user came from login (has auth token)
+    // Check login method and requirements
     const authToken = localStorage.getItem('authToken');
+    const phoneNumber = localStorage.getItem('loginPhoneNumber');
+    const userProfile = localStorage.getItem('userProfile');
     const is2FAVerified = localStorage.getItem('2faVerified');
 
-    if (!authToken) {
-      // If no auth token, redirect back to login
-      navigate('/login');
-    } else if (is2FAVerified === 'true') {
+    if (is2FAVerified === 'true') {
       // If already 2FA verified, go to dashboard
       navigate('/dashboard');
+      return;
+    }
+
+    // For email login, we need auth token
+    // For phone login, we need user profile and phone number
+    if (!authToken && (!userProfile || !phoneNumber)) {
+      navigate('/login');
     }
   }, [navigate, isAuthenticated]);
 
