@@ -7,12 +7,17 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.API_BA
 const PROXY_URL = '/api'; // Simplified proxy URL
 const IS_PRODUCTION = import.meta.env.PROD || import.meta.env.ENV === 'production';
 
+// Remove hardcoded token and use environment variable
+if (!import.meta.env.VITE_XANO_AUTH_TOKEN) {
+  throw new Error('VITE_XANO_AUTH_TOKEN is not defined in environment variables');
+}
+
 // Create API instance with simplified configuration
 const api = axios.create({
   baseURL: IS_PRODUCTION ? API_BASE_URL : PROXY_URL,
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   }
 });
 
@@ -21,14 +26,11 @@ const directApi = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   }
 });
 
 export { api, directApi };
-
-// Add a debug flag (you can control this via env variable)
-const DEBUG_API = false;
 
 // Add this helper function at the top of the file
 const safebtoa = (str: string) => {
@@ -42,18 +44,7 @@ const safebtoa = (str: string) => {
 
 // Add token helper
 const getAuthToken = () => {
-  const token = import.meta.env.VITE_XANO_AUTH_TOKEN || import.meta.env.XANO_AUTH_TOKEN;
-  if (!token) {
-  }
-  return token;
-};
-
-// Add debug logging for requests
-const logRequest = (method: string, url: string, headers: any, body?: any) => {
-  if (body) {
-  }
-  if (!headers.Authorization || headers.Authorization === 'undefined') {
-  }
+  return `${import.meta.env.VITE_XANO_AUTH_TOKEN}`;
 };
 
 // Add request interceptor for auth
@@ -62,11 +53,7 @@ api.interceptors.request.use((config) => {
     const apiKey = import.meta.env.API_KEY || 'api:uEBBwbSs';
     config.headers['Authorization'] = `Basic ${safebtoa(apiKey)}`;
   } else {
-    const token = import.meta.env.VITE_AUTH_TOKEN || localStorage.getItem('authToken');
-    if (token) {
-      config.headers['X-Xano-Authorization'] = token;
-      config.headers['X-Xano-Authorization-Only'] = 'true';
-    }
+    config.headers['Authorization'] = `${import.meta.env.VITE_XANO_AUTH_TOKEN}`;
   }
   return config;
 });
@@ -235,7 +222,7 @@ export const getAuthenticatedUser = () => {
 export const deleteUser = async (userId: string) => {
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
   return api.delete(API_ENDPOINTS.USER.DELETE(userId), {
     data: { delikaquickshipper_user_table_id: userId },
@@ -247,7 +234,7 @@ export const updateUser = async (data: FormData | Record<string, any>) => {
   const userId = data instanceof FormData ? data.get('userId') : data.userId;
   const headers = {
     'Content-Type': data instanceof FormData ? 'multipart/form-data' : 'application/json',
-    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
   return api.patch(API_ENDPOINTS.USER.UPDATE(userId as string), data, { headers });
 };
@@ -264,7 +251,7 @@ export const getDashboardData = async (data: {
 export const getOrderDetails = (orderNumber: string) => {
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
   return api.get<OrderDetails>(API_ENDPOINTS.ORDERS.GET_DETAILS(orderNumber), { headers });
 };
@@ -329,7 +316,7 @@ export interface OrderDetails {
 export const addItemToCategory = (formData: FormData) => {
   const headers = {
     'Content-Type': 'multipart/form-data',
-    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
 
   return directApi.patch<{data: any; status: number}>(
@@ -342,7 +329,7 @@ export const addItemToCategory = (formData: FormData) => {
 export const createCategory = (formData: FormData) => {
   const headers = {
     'Content-Type': 'multipart/form-data',
-    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
 
   return directApi.post(
@@ -366,7 +353,7 @@ export interface AddMemberParams {
 export const addMember = (params: AddMemberParams) => {
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
   return api.post(API_ENDPOINTS.TEAM.ADD_MEMBER, params, { headers });
 };
@@ -379,8 +366,6 @@ export const getTeamMembers = async (data: { restaurantId: string; branchId: str
     'Authorization': token
   };
 
-  logRequest('POST', API_ENDPOINTS.TEAM.GET_MEMBERS, headers, requestParams);
-
   return api.post(API_ENDPOINTS.TEAM.GET_MEMBERS, JSON.stringify(requestParams), {
     headers
   });
@@ -389,7 +374,7 @@ export const getTeamMembers = async (data: { restaurantId: string; branchId: str
 export const getTeamMembersAdmin = (data: { restaurantId: string }) => {
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
   return api.post(API_ENDPOINTS.TEAM.GET_MEMBERS_ADMIN, data, { headers });
 };
@@ -398,24 +383,20 @@ export const updateTeamMember = async (data: FormData) => {
   const userId = data.get('userId');
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
   return api.patch(API_ENDPOINTS.TEAM.UPDATE_MEMBER(userId as string), data, { headers });
 };
 
 // Background refresh operations
 export const filterOrdersByDate = async (params: { restaurantId: string; branchId: string; date: string }) => {
-  const requestParams = params;
-  const token = getAuthToken();
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': token
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
 
-  logRequest('GET', API_ENDPOINTS.ORDERS.FILTER_BY_DATE, headers, requestParams);
-
   return api.get(API_ENDPOINTS.ORDERS.FILTER_BY_DATE, {
-    params: requestParams,
+    params: params,
     headers
   });
 };
@@ -423,7 +404,7 @@ export const filterOrdersByDate = async (params: { restaurantId: string; branchI
 export const getAllOrdersPerBranch = (params: { restaurantId: string; branchId: string }) => {
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
   return api.get(API_ENDPOINTS.ORDERS.GET_ALL_PER_BRANCH, { 
     params,
@@ -434,7 +415,7 @@ export const getAllOrdersPerBranch = (params: { restaurantId: string; branchId: 
 export const getAuditLogs = (params: { restaurantId: string; branchId: string }) => {
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
   return api.get(API_ENDPOINTS.AUDIT.GET_ALL, { 
     params,
@@ -458,7 +439,7 @@ export interface Branch {
 export const getBranchesByRestaurant = (restaurantId: string) => {
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
   return api.get<Branch[]>(API_ENDPOINTS.BRANCHES.GET_BY_RESTAURANT(restaurantId), { headers });
 };
@@ -492,8 +473,6 @@ export const editOrder = async (params: EditOrderParams) => {
     'Authorization': token
   };
 
-  logRequest('PATCH', API_ENDPOINTS.ORDERS.EDIT, headers, requestParams);
-
   return api.patch(API_ENDPOINTS.ORDERS.EDIT, JSON.stringify(requestParams), {
     headers
   });
@@ -515,8 +494,6 @@ export const updateInventory = async (params: UpdateInventoryParams) => {
     'Authorization': token
   };
 
-  logRequest('PATCH', API_ENDPOINTS.MENU.UPDATE_INVENTORY, headers, requestParams);
-
   return api.patch(API_ENDPOINTS.MENU.UPDATE_INVENTORY, JSON.stringify(requestParams), {
     headers
   });
@@ -530,8 +507,6 @@ export const getAllMenu = async (data: { restaurantId: string; branchId: string 
     'Content-Type': 'application/json',
     'Authorization': token
   };
-
-  logRequest('POST', API_ENDPOINTS.MENU.GET_ALL, headers, requestParams);
 
   return api.post(API_ENDPOINTS.MENU.GET_ALL, JSON.stringify(requestParams), {
     headers
@@ -619,7 +594,7 @@ export const placeOrder = async (formData: FormData) => {
 
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
 
   return api.post(API_ENDPOINTS.ORDERS.PLACE_ORDER, orderPayload, { headers });
@@ -638,7 +613,7 @@ export const updateRestaurantPreferences = async (preferences: RestaurantPrefere
     const response = await api.patch(API_ENDPOINTS.RESTAURANT.UPDATE_PREFERENCES, preferences, {
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+        'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
       }
     });
     return response.data;
@@ -658,8 +633,6 @@ export const getRidersByBranch = async (branchId: string) => {
     'Authorization': token
   };
 
-  logRequest('GET', API_ENDPOINTS.RIDERS.GET_BY_BRANCH, headers, requestParams);
-
   return api.get(API_ENDPOINTS.RIDERS.GET_BY_BRANCH, {
     params: requestParams,
     headers
@@ -672,7 +645,7 @@ export const deleteRider = async (params: {
 }) => {
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
   return api.delete(API_ENDPOINTS.RIDERS.DELETE, { 
     data: {
@@ -705,7 +678,7 @@ export const calculateDeliveryPriceAPI = async (
 ): Promise<CalculateDeliveryPriceResponse> => {
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
   const response = await axios.post<CalculateDeliveryPriceResponse>(
     CALCULATE_DELIVERY_PRICE_URL,
@@ -724,7 +697,7 @@ export const calculateDeliveryPriceAPI = async (
 export const getAllInventory = async () => {
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
   return api.get(API_ENDPOINTS.INVENTORY.GET_ALL, { headers });
 };
@@ -747,7 +720,7 @@ export const updateInventoryItem = async (data: {
 }) => {
   const headers = {
     'Content-Type': 'application/json',
-    'Authorization': `${import.meta.env.XANO_AUTH_TOKEN}`
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
   return api.patch(API_ENDPOINTS.MENU.UPDATE_INVENTORY_ITEM, data, { headers });
 };
