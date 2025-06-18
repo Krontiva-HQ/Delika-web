@@ -21,6 +21,7 @@ import LoadingSpinner from './components/LoadingSpinner';
 import { checkAuthStatus } from './services/auth';
 import { initGoogleMaps } from './utils/googleMaps';
 import 'react-toastify/dist/ReactToastify.css';
+import DocumentTitle from './components/DocumentTitle';
 
 
 // Protected Route Component
@@ -97,6 +98,7 @@ function App() {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <DocumentTitle />
       <Routes>
         {/* Public Routes */}
         <Route element={<PublicRoute />}>
