@@ -187,6 +187,7 @@
     "subCategory": "Sub Category",
     "category": "Category",
     "selectCategory": "Select Category",
+    "selectSubCategory": "Select Sub Category",
     "addCategory": "Add New Category",
     "newCategoryName": "Enter new category",
     "uploadImage": "Add Image",

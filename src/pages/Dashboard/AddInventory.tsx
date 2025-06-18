@@ -171,50 +171,26 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   // Add state to store and display extras groups
   const [addedExtrasGroups, setAddedExtrasGroups] = useState<ExtraGroup[]>([]);
 
-  useEffect(() => {
-    const fetchMainCategories = async () => {
-      setIsLoadingMainCategories(true);
-      try {
-        let allMainCategories: Array<{ id: string; categoryName: string }> = [];
-
-        if (preSelectedCategory?.subCategory) {
-          // If adding from within a category, use pre-selected categories
-          const selectedCat = categories.find(cat => cat.name === preSelectedCategory.subCategory);
-          allMainCategories = selectedCat?.categoryTable?.map(tableCat => ({
-            id: tableCat.id,
-            categoryName: tableCat.categoryName
-          })) || [];
-        } else {
-          // If adding from top button, fetch all categories from API
-          try {
-            const response = await api.get('/get/menu/categories');
-            allMainCategories = response.data;
-          } catch (error) {
-            console.error('Failed to fetch categories:', error);
-          }
-        }
-
-        console.log('Main Categories:', allMainCategories);
-        setMainCategories(allMainCategories);
-
-        // Only set pre-selected values if we're adding from within a category
-        if (preSelectedCategory?.subCategory && allMainCategories.length > 0) {
-          const mainCat = allMainCategories[0];
-          setSelectedMainCategory(mainCat.categoryName);
-          setSelectedMainCategoryId(mainCat.id);
-          setSelectedCategory(preSelectedCategory.subCategory);
-        }
-      } catch (error) {
-        console.error('Failed to process main categories:', error);
-      } finally {
-        setIsLoadingMainCategories(false);
-      }
-    };
-
-    if (categories.length > 0) {
-      fetchMainCategories();
+  const fetchMainCategories = async () => {
+    setIsLoadingMainCategories(true);
+    try {
+      console.log('Fetching main categories from API...');
+      const response = await api.get(API_ENDPOINTS.MENU.GET_ALL_CATEGORIES);
+      console.log('Main categories API Response:', response.data);
+      const categories = response.data || [];
+      setMainCategories(categories);
+    } catch (error: any) {
+      console.error('Failed to fetch main categories:', {
+        error: error,
+        message: error.message,
+        status: error?.response?.status,
+        data: error?.response?.data
+      });
+      setMainCategories([]);
+    } finally {
+      setIsLoadingMainCategories(false);
     }
-  }, [categories, preSelectedCategory]);
+  };
 
   useEffect(() => {
     const fetchInventoryItems = async () => {
@@ -285,6 +261,8 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   };
 
   const handleCategoryClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    console.log('Categories available:', categories);
+    console.log('Current selected category:', selectedCategory);
     setCategoryAnchorEl(event.currentTarget);
   };
 
@@ -518,8 +496,14 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const handleMainCategoryClick = (event: React.MouseEvent<HTMLDivElement>) => {
+  const handleMainCategoryClick = async (event: React.MouseEvent<HTMLDivElement>) => {
+    console.log('Main category dropdown clicked');
     setMainCategoryAnchorEl(event.currentTarget);
+    
+    // Only fetch if we haven't loaded categories yet
+    if (mainCategories.length === 0) {
+      await fetchMainCategories();
+    }
   };
 
   const handleMainCategoryClose = (category?: { id: string; categoryName: string }) => {
@@ -657,6 +641,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                         mt: 1,
                         width: dropdownRef.current?.offsetWidth,
                         maxWidth: 'unset',
+                        maxHeight: '400px',
                         boxShadow: '0px 4px 15px rgba(0, 0, 0, 0.1)',
                         borderRadius: '8px',
                         '& .MuiList-root': {
@@ -723,7 +708,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                                flex flex-row items-center justify-between py-[14px] px-[20px] 
                                ${selectedCategory ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-[#e0e0e0]'}`}
                     >
-                      <span>{selectedCategory || t('inventory.selectCategory')}</span>
+                      <span>{selectedCategory || t('inventory.selectSubCategory')}</span>
                       <FaChevronDown className={`text-black text-[12px] ${selectedCategory ? 'opacity-50' : ''}`} />
                     </div>
                   ) : (
