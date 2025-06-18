@@ -174,18 +174,10 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   const fetchMainCategories = async () => {
     setIsLoadingMainCategories(true);
     try {
-      console.log('Fetching main categories from API...');
       const response = await api.get(API_ENDPOINTS.MENU.GET_ALL_CATEGORIES);
-      console.log('Main categories API Response:', response.data);
       const categories = response.data || [];
       setMainCategories(categories);
     } catch (error: any) {
-      console.error('Failed to fetch main categories:', {
-        error: error,
-        message: error.message,
-        status: error?.response?.status,
-        data: error?.response?.data
-      });
       setMainCategories([]);
     } finally {
       setIsLoadingMainCategories(false);
@@ -261,16 +253,10 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   };
 
   const handleCategoryClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    console.log('Categories available:', categories);
-    console.log('Current selected category:', selectedCategory);
     setCategoryAnchorEl(event.currentTarget);
   };
 
   const handleCategoryClose = (category?: string) => {
-    console.log('Category Selection:', {
-      selectedCategory: category,
-      previousCategory: selectedCategory
-    });
     if (category) {
       setSelectedCategory(category);
     }
@@ -497,7 +483,6 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleMainCategoryClick = async (event: React.MouseEvent<HTMLDivElement>) => {
-    console.log('Main category dropdown clicked');
     setMainCategoryAnchorEl(event.currentTarget);
     
     // Only fetch if we haven't loaded categories yet
@@ -507,11 +492,6 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   };
 
   const handleMainCategoryClose = (category?: { id: string; categoryName: string }) => {
-    console.log('Main Category Selection:', {
-      selectedCategory: category,
-      previousMainCategory: selectedMainCategory,
-      previousMainCategoryId: selectedMainCategoryId
-    });
     if (category) {
       setSelectedMainCategory(category.categoryName);
       setSelectedMainCategoryId(category.id);
