@@ -618,12 +618,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                               {group.extrasDetails.map((detail, detailIndex) => (
                                 <div key={`${detail.foodName}-${detailIndex}`} className="bg-white dark:bg-[#2c2522] rounded-lg border border-gray-200 p-2 text-center hover:shadow-sm transition-shadow">
-                                  <img
-                                    src={detail.foodImage.url}
-                                    alt={detail.foodName}
-                                    className="w-full h-10 object-contain rounded mb-2"
-                                    loading="lazy"
-                                  />
                                   <div className="text-xs font-medium text-gray-800 dark:text-white leading-tight mb-1">
                                     {detail.foodName}
                                   </div>

@@ -84,6 +84,7 @@ interface InventoryItem {
 interface ExtraItem {
   extrasTitle: string;
   inventoryId: string;
+  new?: boolean;
 }
 
 interface AddItemParams {
@@ -192,37 +193,24 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
           return;
         }
 
-        console.log('Starting inventory fetch with params:', {
-          restaurantId: userProfile.restaurantId,
-          endpoint: '/get/inventory/by/restaurant'
-        });
-
-        // Use direct API call with the full URL
         const response = await api.get('/get/inventory/by/restaurant', {
           params: {
             restaurantId: userProfile.restaurantId
           }
         });
 
-        console.log('Raw API Response:', response);
-
         if (!response.data) {
-          console.error('No data received from API');
           setInventoryItems([]);
           return;
         }
 
-        // Check if response.data is an array and has items
         if (Array.isArray(response.data)) {
-          console.log('Received inventory items:', response.data);
           if (response.data.length > 0) {
             setInventoryItems(response.data);
           } else {
-            console.log('Inventory array is empty');
             setInventoryItems([]);
           }
         } else {
-          console.error('Invalid response format - expected array but got:', typeof response.data);
           setInventoryItems([]);
         }
       } catch (error: any) {
@@ -303,15 +291,22 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
 
   const isFormValid = () => {
     if (showCategoryForm) {
-      // New category: require newCategory, newCategoryImage, itemName, shortDetails, selectedImage, price, selectedMainCategory
+      // New category: require newCategory, newCategoryImage, itemName, shortDetails, selectedImage, price
       return (
         newCategory.trim() !== '' &&
         newCategoryImage !== null &&
         itemName.trim() !== '' &&
         shortDetails.trim() !== '' &&
         selectedImage !== null &&
-        price.trim() !== '' &&
-        selectedMainCategory.trim() !== ''
+        price.trim() !== ''
+      );
+    } else if (preSelectedCategory) {
+      // Pre-selected category: only require itemName, shortDetails, selectedImage, price
+      return (
+        itemName.trim() !== '' &&
+        shortDetails.trim() !== '' &&
+        selectedImage !== null &&
+        price.trim() !== ''
       );
     } else {
       // Existing category: require selectedCategory, itemName, shortDetails, selectedImage, price, selectedMainCategory
@@ -334,9 +329,11 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
     const transformedExtras: ExtraItem[] = groups.flatMap(group =>
       group.extrasDetails.map(detail => ({
         extrasTitle: group.extrasTitle,
-        inventoryId: detail.value || ""
+        inventoryId: detail.value || "",
+        new: detail.isNew || false
       }))
     );
+
     setExtraGroups(transformedExtras);
     setExtrasModalOpen(false);
   };
@@ -345,41 +342,13 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
     try {
       const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
       
-      // Add detailed console logs
-      console.log('🔍 Form Validation State:', {
-        itemName: itemName.trim() !== '',
-        shortDetails: shortDetails.trim() !== '',
-        selectedImage: selectedImage !== null,
-        price: price.trim() !== '',
-        available: available !== null,
-        selectedMainCategory: selectedMainCategory.trim() !== '',
-        selectedCategory: selectedCategory.trim() !== '',
-        showCategoryForm: showCategoryForm,
-        newCategory: newCategory.trim() !== '',
-        newCategoryImage: newCategoryImage !== null
-      });
 
-      console.log('📦 Form Data:', {
-        showCategoryForm,
-        selectedCategory,
-        selectedMainCategory,
-        selectedMainCategoryId,
-        itemName,
-        price,
-        shortDetails,
-        available,
-        extras: extraGroups,
-        photoFile: photoFile ? {
-          name: photoFile.name,
-          type: photoFile.type,
-          size: photoFile.size
-        } : null,
-        newCategoryFile: newCategoryFile ? {
-          name: newCategoryFile.name,
-          type: newCategoryFile.type,
-          size: newCategoryFile.size
-        } : null
-      });
+
+      // --- TRANSFORM EXTRAS TO ALWAYS INCLUDE 'new' PROPERTY ---
+      const transformedExtras = extraGroups.map(extra => ({
+        ...extra,
+        new: typeof extra.new === 'boolean' ? extra.new : false
+      }));
 
       if (!userProfile.restaurantId || !userProfile.branchId) {
         alert('Please log in again. Restaurant or branch information is missing.');
@@ -387,13 +356,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
       }
 
       if (showCategoryForm) {
-        console.log('Adding new category with item', {
-          foodType: newCategory,
-          restaurantId: userProfile.restaurantId,
-          branchId: userProfile.branchId,
-          categoryId: selectedMainCategoryId
-        });
-        
+
         await addCategory({
           foodType: newCategory,
           restaurantName: userProfile.restaurantId,
@@ -406,7 +369,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
             description: shortDetails,
             quantity: "0",
             available: available,
-            extras: extraGroups
+            extras: transformedExtras
           }],
           mainCategory: selectedMainCategory,
           categoryId: selectedMainCategoryId,
@@ -424,15 +387,26 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
           return;
         }
 
-        console.log('Adding item to category', {
+        console.log('Adding item to category with extras:', {
           categoryId: selectedCategoryData.id,
           mainCategoryId: selectedMainCategoryId,
           name: itemName,
           restaurantId: userProfile.restaurantId,
           branchId: userProfile.branchId,
-          extras: extraGroups
+          extras: transformedExtras
         });
-        
+        // --- LOG FINAL PAYLOAD ---
+        console.log('🚀 Final payload to API (addItem):', {
+          categoryId: selectedCategoryData.id,
+          name: itemName,
+          price,
+          description: shortDetails,
+          available,
+          foodPhoto: photoFile,
+          mainCategoryId: selectedMainCategoryId,
+          mainCategory: selectedMainCategory,
+          extras: transformedExtras
+        });
         await addItem({
           categoryId: selectedCategoryData.id,
           name: itemName,
@@ -442,7 +416,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
           foodPhoto: photoFile,
           mainCategoryId: selectedMainCategoryId,
           mainCategory: selectedMainCategory,
-          extras: extraGroups,
+          extras: transformedExtras,
           onSuccess: () => {
             onInventoryUpdated?.();
             onClose();
@@ -450,7 +424,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
         });
       }
 
-      // Reset all states including the new categoryId
+      // Reset all states
       setItemName('');
       setPrice('');
       setAvailable(true);
@@ -463,7 +437,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
       setNewCategory('');
       setNewCategoryImage(null);
       setNewCategoryFile(null);
-      setExtraGroups([]); // Reset extras as well
+      setExtraGroups([]); // Reset extras
       
     } catch (error) {
       console.error('Failed to save item:', error);

@@ -62,6 +62,7 @@ type Option = {
 export interface Extra {
   id: string;
   variant: string;
+  new: boolean;
   title: string;
   inventoryId?: string;
   foodImage?: {
@@ -89,25 +90,30 @@ export interface ExtraGroup {
   id: string;
   extrasTitle: string;
   delika_inventory_table_id?: string;
-  extrasDetails: {
-    foodName: string;
-    foodPrice: number;
-    foodDescription: string;
-    foodImage: {
-      access: string;
-      path: string;
-      name: string;
-      type: string;
-      size: number;
-      mime: string;
-      meta: {
-        width: number;
-        height: number;
-      };
-      url: string;
+  extrasDetails: ExtraDetail[];
+}
+
+export interface ExtraDetail {
+  foodName: string;
+  foodPrice: number;
+  foodDescription: string;
+  foodImage: {
+    access: string;
+    path: string;
+    name: string;
+    type: string;
+    size: number;
+    mime: string;
+    meta: {
+      width: number;
+      height: number;
     };
-    value?: string;
-  }[];
+    url: string;
+  };
+  value?: string;
+  isNew?: boolean;
+  branchId?: string;
+  restaurantId?: string;
 }
 
 interface AddExtrasModalProps {
@@ -156,6 +162,24 @@ interface FoodItem {
   updatedAt: string;
 }
 
+interface ApiPayload {
+  value: string;
+  new: boolean;
+  extras: {
+    extrasTitle: string;
+    delika_inventory_table_id: string;
+  }[];
+  branchId: string;
+  new_name: string;
+  old_name: string;
+  available: boolean;
+  restaurantId: string;
+  new_item_price: number;
+  old_item_price: number;
+  new_item_description: string;
+  old_item_description: string;
+}
+
 const steps = [
   {
     id: 1,
@@ -188,6 +212,13 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
   const [foodTypes, setFoodTypes] = useState<Option[]>([]);
   const [loading, setLoading] = useState(false);
   const [foodItemsData, setFoodItemsData] = useState<FoodItem[]>([]);
+  
+  // New state for variant creation
+  const [newVariant, setNewVariant] = useState({
+    name: '',
+    price: '',
+    description: ''
+  });
 
   const { restaurantData } = useUserProfile();
 
@@ -318,7 +349,7 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
           const updatedGroups = [...extraGroups];
           const existingDetails = updatedGroups[existingGroupIndex].extrasDetails;
           
-          // Add new details, avoiding duplicates
+          // Add new details, avoiding duplicates and preserving isNew flag
           currentGroup.extrasDetails.forEach(detail => {
             if (!existingDetails.some(existing => existing.foodName === detail.foodName)) {
               existingDetails.push(detail);
@@ -356,16 +387,19 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
       const selectedOption = foodTypes.find(opt => opt.value === variant);
       
       if (selectedOption) {
+        const existingVariantDetails: ExtraDetail = {
+          foodName: selectedOption.label,
+          foodPrice: Number(selectedOption.foodPrice),
+          foodDescription: selectedOption.foodDescription || '',
+          foodImage: selectedOption.foodImage,
+          value: selectedOption.value,
+          isNew: false  // Mark as existing variant
+        };
+
         setCurrentGroup({
           ...currentGroup,
           delika_inventory_table_id: selectedOption.value,
-          extrasDetails: [...(currentGroup.extrasDetails || []), {
-            foodName: selectedOption.label,
-            foodPrice: Number(selectedOption.foodPrice),
-            foodDescription: selectedOption.foodDescription || '',
-            foodImage: selectedOption.foodImage,
-            value: selectedOption.value
-          }]
+          extrasDetails: [...(currentGroup.extrasDetails || []), existingVariantDetails]
         });
       }
       setVariant('');
@@ -413,13 +447,59 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
   };
 
   const handleSave = () => {
-    // Keep the full groups structure for UI state
-    onAdd(extraGroups);
+    // Transform the groups to ensure each variant has the new flag
+    const groupsWithFlags = extraGroups.map(group => ({
+      ...group,
+      extrasDetails: group.extrasDetails.map(detail => ({
+        ...detail,
+        isNew: detail.isNew || false // Ensure isNew is set
+      }))
+    }));
+    
+    // Pass the transformed groups to parent
+    onAdd(groupsWithFlags);
     
     // Reset the state
     setExtraGroups([]);
     setActiveStep(0);
     onClose();
+  };
+
+  const handleCreateVariant = () => {
+    if (!currentGroup || !newVariant.name || !newVariant.price) return;
+
+    const newVariantDetails: ExtraDetail = {
+      foodName: newVariant.name,
+      foodPrice: Number(newVariant.price),
+      foodDescription: newVariant.description,
+      foodImage: {
+        access: "public",
+        path: "",
+        name: "",
+        type: "image",
+        size: 0,
+        mime: "image/jpeg",
+        meta: {
+          width: 0,
+          height: 0
+        },
+        url: ""
+      },
+      value: `new-${Date.now()}`,
+      isNew: true  // Mark as new variant
+    };
+
+    setCurrentGroup({
+      ...currentGroup,
+      extrasDetails: [...currentGroup.extrasDetails, newVariantDetails]
+    });
+
+    // Reset the form
+    setNewVariant({
+      name: '',
+      price: '',
+      description: ''
+    });
   };
 
   const StepIndicator = () => (
@@ -536,10 +616,11 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
             </div>
 
             <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2">
                 <FormControl fullWidth size="small">
                   <InputLabel 
                     sx={{ 
+                      fontFamily: 'var(--font-sans)',
                       color: '#6b7280',
                       '&.Mui-focused': {
                         color: '#fd683e',
@@ -558,6 +639,7 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
                       onChange={(e: SelectChangeEvent) => setVariant(e.target.value as string)}
                       label="Select Variant"
                       sx={{ 
+                        fontFamily: 'var(--font-sans)',
                         backgroundColor: 'white',
                         borderRadius: '8px',
                         '& .MuiOutlinedInput-notchedOutline': {
@@ -572,25 +654,129 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
                         },
                       }}
                     >
+                      <MenuItem 
+                        value="" 
+                        disabled 
+                        sx={{ 
+                          fontFamily: 'var(--font-sans)',
+                          color: '#6b7280' 
+                        }}
+                      >
+                        Select a variant
+                      </MenuItem>
                       {foodTypes.map(opt => (
-                        <MenuItem key={opt.value} value={opt.value}>
+                        <MenuItem 
+                          key={opt.value} 
+                          value={opt.value}
+                          sx={{ 
+                            fontFamily: 'var(--font-sans)',
+                          }}
+                        >
                           {opt.label}
                         </MenuItem>
                       ))}
                     </Select>
                   )}
                 </FormControl>
+
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-gray-200" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-gray-50 px-2 text-gray-500 font-medium">or</span>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-lg p-4 border border-gray-200 space-y-3">
+                  <h4 className="text-sm font-medium text-gray-900">Create New Variant</h4>
+                  <div className="space-y-3">
+                    <TextField
+                      fullWidth
+                      label="Variant Name"
+                      size="small"
+                      placeholder="Enter variant name"
+                      value={newVariant.name}
+                      onChange={(e) => setNewVariant(prev => ({ ...prev, name: e.target.value }))}
+                      sx={{
+                        '& .MuiInputBase-root': {
+                          fontFamily: 'var(--font-sans)',
+                        },
+                        '& .MuiInputLabel-root': {
+                          fontFamily: 'var(--font-sans)',
+                        },
+                      }}
+                    />
+                    <TextField
+                      fullWidth
+                      label="Price"
+                      type="number"
+                      size="small"
+                      placeholder="Enter price"
+                      value={newVariant.price}
+                      onChange={(e) => setNewVariant(prev => ({ ...prev, price: e.target.value }))}
+                      sx={{
+                        '& .MuiInputBase-root': {
+                          fontFamily: 'var(--font-sans)',
+                        },
+                        '& .MuiInputLabel-root': {
+                          fontFamily: 'var(--font-sans)',
+                        },
+                      }}
+                    />
+                    <TextField
+                      fullWidth
+                      label="Description"
+                      multiline
+                      rows={2}
+                      size="small"
+                      placeholder="Enter description"
+                      value={newVariant.description}
+                      onChange={(e) => setNewVariant(prev => ({ ...prev, description: e.target.value }))}
+                      sx={{
+                        '& .MuiInputBase-root': {
+                          fontFamily: 'var(--font-sans)',
+                        },
+                        '& .MuiInputLabel-root': {
+                          fontFamily: 'var(--font-sans)',
+                        },
+                      }}
+                    />
+                    <Button
+                      variant="contained"
+                      fullWidth
+                      size="small"
+                      onClick={handleCreateVariant}
+                      disabled={!newVariant.name || !newVariant.price}
+                      sx={{
+                        backgroundColor: '#fd683e',
+                        textTransform: 'none',
+                        fontFamily: 'var(--font-sans)',
+                        fontWeight: 600,
+                        '&:hover': {
+                          backgroundColor: '#e54d0e',
+                        },
+                        '&:disabled': {
+                          backgroundColor: '#ffd2b3',
+                        },
+                      }}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Create Variant
+                    </Button>
+                  </div>
+                </div>
+
                 <Button
                   variant="contained"
                   onClick={handleAddVariant}
                   disabled={!variant}
-                  className="h-10 px-4 shrink-0"
+                  size="small"
                   sx={{
                     backgroundColor: '#fd683e',
-                    borderRadius: '8px',
                     textTransform: 'none',
+                    fontFamily: 'var(--font-sans)',
                     fontWeight: 600,
-                    minWidth: '80px',
                     '&:hover': {
                       backgroundColor: '#e54d0e',
                     },
@@ -599,8 +785,8 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
                     },
                   }}
                 >
-                  <Plus className="w-4 h-4 mr-1" />
-                  Add
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Selected Variant
                 </Button>
               </div>
 
@@ -616,6 +802,7 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
                         deleteIcon={<X className="w-3 h-3" />}
                         size="small"
                         sx={{
+                          fontFamily: 'var(--font-sans)',
                           backgroundColor: '#fff3ea',
                           color: '#fd683e',
                           fontWeight: 500,
@@ -708,11 +895,18 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
                         {group.extrasDetails.map((extra) => (
                           <Chip
                             key={extra.foodName}
-                            label={extra.foodName}
+                            label={
+                              <div className="flex items-center gap-1">
+                                <span>{extra.foodName}</span>
+                                {extra.isNew && (
+                                  <span className="bg-[#fd683e] text-white text-[8px] px-1 rounded">NEW</span>
+                                )}
+                              </div>
+                            }
                             size="small"
                             sx={{
-                              backgroundColor: '#fff3ea',
-                              color: '#fd683e',
+                              backgroundColor: extra.isNew ? '#fff3ea' : '#f3f4f6',
+                              color: extra.isNew ? '#fd683e' : '#6b7280',
                               fontWeight: 500,
                               fontSize: '10px',
                               height: '20px',
