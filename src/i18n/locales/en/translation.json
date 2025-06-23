@@ -278,9 +278,9 @@
       },
       "selectionRules": {
         "title": "Selection Rules:",
-        "onDemand": "When On Demand is selected: You cannot select Full Service or Walk-In.",
-        "fullService": "When Full Service is selected: You cannot select On Demand, Batch Delivery, or Scheduled Delivery.",
-        "walkIn": "When Walk-In is selected: You cannot select On Demand, Batch Delivery, or Scheduled Delivery."
+        "onDemand": "When On Demand is selected: Delivery only, no food is added",
+        "fullService": "When Full Service is selected:  Food is added to the delivery.",
+        "walkIn": "When Walk-In is selected: The user walks into the restaurant to place the order."
       }
     }
   }

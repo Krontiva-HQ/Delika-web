@@ -482,7 +482,7 @@ const Settings: FunctionComponent = () => {
               <input
                 className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[8px] box-border h-[50px] pt-[17.5px] px-[20px] pb-[16.5px] font-sans text-[14px] placeholder-gray-500"
                 type="email"
-                value={userProfile.email || ''}
+                value={userData?.email || ''}
                 disabled
               />
             </div>
@@ -811,13 +811,15 @@ const Settings: FunctionComponent = () => {
                     {t('settings.tabs.teamMembers')}
                   </div>
                 )}
-                <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
-                  activeTab === 'password' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
-                }`}
-                onClick={() => setActiveTab('password')}
-                >
-                  {t('settings.tabs.changePassword')}
-                </div>
+                {userProfile.email && (
+                  <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
+                    activeTab === 'password' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
+                  }`}
+                  onClick={() => setActiveTab('password')}
+                  >
+                    {t('settings.tabs.changePassword')}
+                  </div>
+                )}
                 <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
                   activeTab === 'restaurant-settings' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
                 }`}
@@ -1011,7 +1013,7 @@ const Settings: FunctionComponent = () => {
               ) : activeTab === 'team' ? (
                 // Team members table
                 renderTeamMembersTable()
-              ) : activeTab === 'password' ? (
+              ) : activeTab === 'password' && userProfile.email ? (
                 <div className="self-stretch flex flex-col items-start justify-start gap-[10px]">
                   {renderPasswordChangeSection()}
                   {resetError && <div className="text-red-500 font-sans">{resetError}</div>}

@@ -17,7 +17,7 @@ import {
   Chip,
 } from '@mui/material';
 import { X, Plus, Trash2, Edit3, ChevronLeft, ChevronRight, Check } from 'lucide-react';
-import { api, getAllInventory } from '../services/api';
+import { api, getAllInventory, createExtrasItem } from '../services/api';
 import { useUserProfile } from '../hooks/useUserProfile';
 
 // Option type for dropdowns
@@ -121,6 +121,7 @@ interface AddExtrasModalProps {
   onClose: () => void;
   onAdd: (groups: ExtraGroup[]) => void;
   initialExtras?: ExtraGroup[];
+  mode?: 'select' | 'create'; // 'select' = only select, 'create' = only create, undefined = both
 }
 
 interface FoodItem {
@@ -202,7 +203,8 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
   open,
   onClose,
   onAdd,
-  initialExtras = []
+  initialExtras = [],
+  mode,
 }) => {
   const [activeStep, setActiveStep] = useState(0);
   const [groupTitle, setGroupTitle] = useState('');
@@ -220,17 +222,17 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
     description: ''
   });
 
-  const { restaurantData } = useUserProfile();
+  const { restaurantData, userProfile } = useUserProfile();
 
   // First useEffect to handle modal open/close
   useEffect(() => {
     if (open) {
-      // Reset state when modal opens
-      setActiveStep(0);
+      // If mode is 'create', open directly to step 1 (Add Variants)
+      setActiveStep(mode === 'create' ? 1 : 0);
       setGroupTitle('');
       setCurrentGroup(null);
     }
-  }, [open]);
+  }, [open, mode]);
 
   // Separate useEffect to handle initial extras
   useEffect(() => {
@@ -311,6 +313,19 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
 
     fetchFoodTypes();
   }, [open, restaurantData.id]);
+
+  useEffect(() => {
+    if (open && mode === 'create') {
+      setActiveStep(1);
+      setGroupTitle('New Group');
+      setCurrentGroup({
+        id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+        extrasTitle: 'New Group',
+        delika_inventory_table_id: '',
+        extrasDetails: []
+      });
+    }
+  }, [open, mode]);
 
   const handleNext = () => {
     if (activeStep === 0) {
@@ -539,6 +554,196 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
   );
 
   const renderStepContent = () => {
+    // If mode is 'create', only show case 1 (Add Variants)
+    if (mode === 'create') {
+      return (
+        <div className="space-y-4">
+          <div className="text-center space-y-1">
+            <h3 className="text-lg font-semibold text-gray-900">Add Variants</h3>
+            <p className="text-sm text-gray-600">Adding variants for: <span className="font-medium text-[#fd683e]">{currentGroup?.extrasTitle || 'New Group'}</span></p>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+            <div className="flex flex-col gap-2">
+              {/* Only show create new variant, but remove the Create Variant button in create mode */}
+              <div className="bg-white rounded-lg p-4 border border-gray-200 space-y-3">
+                <h4 className="text-sm font-medium text-gray-900">Create New Variant</h4>
+                <div className="space-y-3">
+                  <TextField
+                    fullWidth
+                    label="Variant Name"
+                    size="small"
+                    placeholder="Enter variant name"
+                    value={newVariant.name}
+                    onChange={(e) => setNewVariant(prev => ({ ...prev, name: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newVariant.name && newVariant.price) {
+                        handleCreateVariant();
+                      }
+                    }}
+                    sx={{
+                      '& .MuiInputBase-root': {
+                        fontFamily: 'var(--font-sans)',
+                      },
+                      '& .MuiInputLabel-root': {
+                        fontFamily: 'var(--font-sans)',
+                      },
+                      '& label.Mui-focused': {
+                        color: '#fd683e',
+                      },
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: '#fd683e',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: '#fd683e',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#fd683e',
+                          borderWidth: 2,
+                        },
+                      },
+                    }}
+                  />
+                  <TextField
+                    fullWidth
+                    label="Price"
+                    type="number"
+                    size="small"
+                    placeholder="Enter price"
+                    value={newVariant.price}
+                    onChange={(e) => setNewVariant(prev => ({ ...prev, price: e.target.value }))}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newVariant.name && newVariant.price) {
+                        handleCreateVariant();
+                      }
+                    }}
+                    sx={{
+                      '& .MuiInputBase-root': {
+                        fontFamily: 'var(--font-sans)',
+                      },
+                      '& .MuiInputLabel-root': {
+                        fontFamily: 'var(--font-sans)',
+                      },
+                      '& label.Mui-focused': {
+                        color: '#fd683e',
+                      },
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: '#fd683e',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: '#fd683e',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#fd683e',
+                          borderWidth: 2,
+                        },
+                      },
+                    }}
+                  />
+                  <TextField
+                    fullWidth
+                    label="Description"
+                    multiline
+                    rows={2}
+                    size="small"
+                    placeholder="Enter description"
+                    value={newVariant.description}
+                    onChange={(e) => setNewVariant(prev => ({ ...prev, description: e.target.value }))}
+                    onBlur={() => {
+                      if (newVariant.name && newVariant.price) {
+                        handleCreateVariant();
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newVariant.name && newVariant.price) {
+                        handleCreateVariant();
+                      }
+                    }}
+                    sx={{
+                      '& .MuiInputBase-root': {
+                        fontFamily: 'var(--font-sans)',
+                      },
+                      '& .MuiInputLabel-root': {
+                        fontFamily: 'var(--font-sans)',
+                      },
+                      '& label.Mui-focused': {
+                        color: '#fd683e',
+                      },
+                      '& .MuiOutlinedInput-root': {
+                        '& fieldset': {
+                          borderColor: '#fd683e',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: '#fd683e',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: '#fd683e',
+                          borderWidth: 2,
+                        },
+                      },
+                    }}
+                  />
+                  <Button
+                    variant="contained"
+                    fullWidth
+                    size="small"
+                    onClick={handleCreateVariant}
+                    disabled={!newVariant.name || !newVariant.price}
+                    sx={{
+                      backgroundColor: '#fd683e',
+                      textTransform: 'none',
+                      fontFamily: 'var(--font-sans)',
+                      fontWeight: 600,
+                      mt: 1,
+                      '&:hover': {
+                        backgroundColor: '#e54d0e',
+                      },
+                      '&:disabled': {
+                        backgroundColor: '#ffd2b3',
+                      },
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Variant
+                  </Button>
+                </div>
+              </div>
+            </div>
+            {currentGroup && currentGroup.extrasDetails.length > 0 && (
+              <div className="bg-white rounded-lg p-3 border border-gray-200">
+                <h4 className="text-xs font-medium text-gray-700 mb-2">Added Variants ({currentGroup.extrasDetails.length})</h4>
+                <div className="flex flex-wrap gap-1">
+                  {currentGroup.extrasDetails.map((extra) => (
+                    <Chip
+                      key={extra.foodName}
+                      label={extra.foodName}
+                      onDelete={() => handleRemoveVariant(extra.foodName)}
+                      deleteIcon={<X className="w-3 h-3" />}
+                      size="small"
+                      sx={{
+                        fontFamily: 'var(--font-sans)',
+                        backgroundColor: '#fff3ea',
+                        color: '#fd683e',
+                        fontWeight: 500,
+                        fontSize: '11px',
+                        height: '24px',
+                        '& .MuiChip-deleteIcon': {
+                          color: '#fd683e',
+                          '&:hover': {
+                            color: '#e54d0e',
+                          },
+                        },
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
     switch (activeStep) {
       case 0:
         return (
@@ -612,142 +817,80 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
           <div className="space-y-4">
             <div className="text-center space-y-1">
               <h3 className="text-lg font-semibold text-gray-900">Add Variants</h3>
-              <p className="text-sm text-gray-600">Adding variants for: <span className="font-medium text-[#fd683e]">{currentGroup?.extrasTitle}</span></p>
+              <p className="text-sm text-gray-600">Adding variants for: <span className="font-medium text-[#fd683e]">{currentGroup?.extrasTitle || 'New Group'}</span></p>
             </div>
 
             <div className="bg-gray-50 rounded-lg p-4 space-y-3">
               <div className="flex flex-col gap-2">
-                <FormControl fullWidth size="small">
-                  <InputLabel 
-                    sx={{ 
-                      fontFamily: 'var(--font-sans)',
-                      color: '#6b7280',
-                      '&.Mui-focused': {
-                        color: '#fd683e',
-                      },
-                    }}
-                  >
-                    Select Variant
-                  </InputLabel>
-                  {loading ? (
-                    <div className="flex justify-center items-center h-10 bg-white rounded-lg border border-gray-200">
-                      <CircularProgress sx={{ color: '#fd683e' }} size={20} />
-                    </div>
-                  ) : (
-                    <Select
-                      value={variant}
-                      onChange={(e: SelectChangeEvent) => setVariant(e.target.value as string)}
-                      label="Select Variant"
-                      sx={{ 
-                        fontFamily: 'var(--font-sans)',
-                        backgroundColor: 'white',
-                        borderRadius: '8px',
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#e5e7eb',
-                        },
-                        '&:hover .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#fd683e',
-                        },
-                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                          borderColor: '#fd683e',
-                          borderWidth: '2px',
-                        },
-                      }}
-                    >
-                      <MenuItem 
-                        value="" 
-                        disabled 
+                {/* Only show select variant if mode is not 'select' */}
+                {mode === 'select' && (
+                  <>
+                    <FormControl fullWidth size="small">
+                      <InputLabel 
                         sx={{ 
                           fontFamily: 'var(--font-sans)',
-                          color: '#6b7280' 
+                          color: '#6b7280',
+                          '&.Mui-focused': {
+                            color: '#fd683e',
+                          },
                         }}
                       >
-                        Select a variant
-                      </MenuItem>
-                      {foodTypes.map(opt => (
-                        <MenuItem 
-                          key={opt.value} 
-                          value={opt.value}
+                        Select Variant
+                      </InputLabel>
+                      {loading ? (
+                        <div className="flex justify-center items-center h-10 bg-white rounded-lg border border-gray-200">
+                          <CircularProgress sx={{ color: '#fd683e' }} size={20} />
+                        </div>
+                      ) : (
+                        <Select
+                          value={variant}
+                          onChange={(e: SelectChangeEvent) => setVariant(e.target.value as string)}
+                          label="Select Variant"
                           sx={{ 
                             fontFamily: 'var(--font-sans)',
+                            backgroundColor: 'white',
+                            borderRadius: '8px',
+                            '& .MuiOutlinedInput-notchedOutline': {
+                              borderColor: '#e5e7eb',
+                            },
+                            '&:hover .MuiOutlinedInput-notchedOutline': {
+                              borderColor: '#fd683e',
+                            },
+                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                              borderColor: '#fd683e',
+                              borderWidth: '2px',
+                            },
                           }}
                         >
-                          {opt.label}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  )}
-                </FormControl>
-
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-gray-200" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-gray-50 px-2 text-gray-500 font-medium">or</span>
-                  </div>
-                </div>
-
-                <div className="bg-white rounded-lg p-4 border border-gray-200 space-y-3">
-                  <h4 className="text-sm font-medium text-gray-900">Create New Variant</h4>
-                  <div className="space-y-3">
-                    <TextField
-                      fullWidth
-                      label="Variant Name"
-                      size="small"
-                      placeholder="Enter variant name"
-                      value={newVariant.name}
-                      onChange={(e) => setNewVariant(prev => ({ ...prev, name: e.target.value }))}
-                      sx={{
-                        '& .MuiInputBase-root': {
-                          fontFamily: 'var(--font-sans)',
-                        },
-                        '& .MuiInputLabel-root': {
-                          fontFamily: 'var(--font-sans)',
-                        },
-                      }}
-                    />
-                    <TextField
-                      fullWidth
-                      label="Price"
-                      type="number"
-                      size="small"
-                      placeholder="Enter price"
-                      value={newVariant.price}
-                      onChange={(e) => setNewVariant(prev => ({ ...prev, price: e.target.value }))}
-                      sx={{
-                        '& .MuiInputBase-root': {
-                          fontFamily: 'var(--font-sans)',
-                        },
-                        '& .MuiInputLabel-root': {
-                          fontFamily: 'var(--font-sans)',
-                        },
-                      }}
-                    />
-                    <TextField
-                      fullWidth
-                      label="Description"
-                      multiline
-                      rows={2}
-                      size="small"
-                      placeholder="Enter description"
-                      value={newVariant.description}
-                      onChange={(e) => setNewVariant(prev => ({ ...prev, description: e.target.value }))}
-                      sx={{
-                        '& .MuiInputBase-root': {
-                          fontFamily: 'var(--font-sans)',
-                        },
-                        '& .MuiInputLabel-root': {
-                          fontFamily: 'var(--font-sans)',
-                        },
-                      }}
-                    />
+                          <MenuItem 
+                            value="" 
+                            disabled 
+                            sx={{ 
+                              fontFamily: 'var(--font-sans)',
+                              color: '#6b7280' 
+                            }}
+                          >
+                            Select a variant
+                          </MenuItem>
+                          {foodTypes.map(opt => (
+                            <MenuItem 
+                              key={opt.value} 
+                              value={opt.value}
+                              sx={{ 
+                                fontFamily: 'var(--font-sans)',
+                              }}
+                            >
+                              {opt.label}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      )}
+                    </FormControl>
                     <Button
                       variant="contained"
-                      fullWidth
+                      onClick={handleAddVariant}
+                      disabled={!variant}
                       size="small"
-                      onClick={handleCreateVariant}
-                      disabled={!newVariant.name || !newVariant.price}
                       sx={{
                         backgroundColor: '#fd683e',
                         textTransform: 'none',
@@ -762,32 +905,170 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
                       }}
                     >
                       <Plus className="w-4 h-4 mr-2" />
-                      Create Variant
+                      Add Selected Variant
                     </Button>
-                  </div>
-                </div>
+                  </>
+                )}
 
-                <Button
-                  variant="contained"
-                  onClick={handleAddVariant}
-                  disabled={!variant}
-                  size="small"
-                  sx={{
-                    backgroundColor: '#fd683e',
-                    textTransform: 'none',
-                    fontFamily: 'var(--font-sans)',
-                    fontWeight: 600,
-                    '&:hover': {
-                      backgroundColor: '#e54d0e',
-                    },
-                    '&:disabled': {
-                      backgroundColor: '#ffd2b3',
-                    },
-                  }}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Selected Variant
-                </Button>
+                {/* Only show create new variant if mode is not 'select' */}
+                {mode !== 'select' && (
+                  <>
+                    {mode !== 'create' && (
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t border-gray-200" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                          <span className="bg-gray-50 px-2 text-gray-500 font-medium">or</span>
+                        </div>
+                      </div>
+                    )}
+                    <div className="bg-white rounded-lg p-4 border border-gray-200 space-y-3">
+                      <h4 className="text-sm font-medium text-gray-900">Create New Variant</h4>
+                      <div className="space-y-3">
+                        <TextField
+                          fullWidth
+                          label="Variant Name"
+                          size="small"
+                          placeholder="Enter variant name"
+                          value={newVariant.name}
+                          onChange={(e) => setNewVariant(prev => ({ ...prev, name: e.target.value }))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && newVariant.name && newVariant.price) {
+                              handleCreateVariant();
+                            }
+                          }}
+                          sx={{
+                            '& .MuiInputBase-root': {
+                              fontFamily: 'var(--font-sans)',
+                            },
+                            '& .MuiInputLabel-root': {
+                              fontFamily: 'var(--font-sans)',
+                            },
+                            '& label.Mui-focused': {
+                              color: '#fd683e',
+                            },
+                            '& .MuiOutlinedInput-root': {
+                              '& fieldset': {
+                                borderColor: '#fd683e',
+                              },
+                              '&:hover fieldset': {
+                                borderColor: '#fd683e',
+                              },
+                              '&.Mui-focused fieldset': {
+                                borderColor: '#fd683e',
+                                borderWidth: 2,
+                              },
+                            },
+                          }}
+                        />
+                        <TextField
+                          fullWidth
+                          label="Price"
+                          type="number"
+                          size="small"
+                          placeholder="Enter price"
+                          value={newVariant.price}
+                          onChange={(e) => setNewVariant(prev => ({ ...prev, price: e.target.value }))}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && newVariant.name && newVariant.price) {
+                              handleCreateVariant();
+                            }
+                          }}
+                          sx={{
+                            '& .MuiInputBase-root': {
+                              fontFamily: 'var(--font-sans)',
+                            },
+                            '& .MuiInputLabel-root': {
+                              fontFamily: 'var(--font-sans)',
+                            },
+                            '& label.Mui-focused': {
+                              color: '#fd683e',
+                            },
+                            '& .MuiOutlinedInput-root': {
+                              '& fieldset': {
+                                borderColor: '#fd683e',
+                              },
+                              '&:hover fieldset': {
+                                borderColor: '#fd683e',
+                              },
+                              '&.Mui-focused fieldset': {
+                                borderColor: '#fd683e',
+                                borderWidth: 2,
+                              },
+                            },
+                          }}
+                        />
+                        <TextField
+                          fullWidth
+                          label="Description"
+                          multiline
+                          rows={2}
+                          size="small"
+                          placeholder="Enter description"
+                          value={newVariant.description}
+                          onChange={(e) => setNewVariant(prev => ({ ...prev, description: e.target.value }))}
+                          onBlur={() => {
+                            if (newVariant.name && newVariant.price) {
+                              handleCreateVariant();
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && newVariant.name && newVariant.price) {
+                              handleCreateVariant();
+                            }
+                          }}
+                          sx={{
+                            '& .MuiInputBase-root': {
+                              fontFamily: 'var(--font-sans)',
+                            },
+                            '& .MuiInputLabel-root': {
+                              fontFamily: 'var(--font-sans)',
+                            },
+                            '& label.Mui-focused': {
+                              color: '#fd683e',
+                            },
+                            '& .MuiOutlinedInput-root': {
+                              '& fieldset': {
+                                borderColor: '#fd683e',
+                              },
+                              '&:hover fieldset': {
+                                borderColor: '#fd683e',
+                              },
+                              '&.Mui-focused fieldset': {
+                                borderColor: '#fd683e',
+                                borderWidth: 2,
+                              },
+                            },
+                          }}
+                        />
+                        <Button
+                          variant="contained"
+                          fullWidth
+                          size="small"
+                          onClick={handleCreateVariant}
+                          disabled={!newVariant.name || !newVariant.price}
+                          sx={{
+                            backgroundColor: '#fd683e',
+                            textTransform: 'none',
+                            fontFamily: 'var(--font-sans)',
+                            fontWeight: 600,
+                            mt: 1,
+                            '&:hover': {
+                              backgroundColor: '#e54d0e',
+                            },
+                            '&:disabled': {
+                              backgroundColor: '#ffd2b3',
+                            },
+                          }}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Variant
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               {currentGroup && currentGroup.extrasDetails.length > 0 && (
@@ -969,7 +1250,7 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
       <div className="flex items-center justify-between p-4 border-b border-gray-200">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Add Extras</h2>
-          <p className="text-sm text-gray-600 mt-0.5">{steps[activeStep].description}</p>
+          {mode !== 'create' && <p className="text-sm text-gray-600 mt-0.5">{steps[activeStep].description}</p>}
         </div>
         <IconButton
           onClick={onClose}
@@ -983,88 +1264,138 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
       </div>
 
       <DialogContent sx={{ p: 4 }}>
-        <StepIndicator />
+        {mode !== 'create' && <StepIndicator />}
         {renderStepContent()}
       </DialogContent>
 
       {/* Footer */}
-      <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-gray-50">
-        <div className="flex gap-2">
-          {activeStep > 0 && (
-            <Button
-              onClick={handleBack}
-              variant="outlined"
-              size="small"
-              sx={{
-                borderColor: '#d1d5db',
-                color: '#6b7280',
-                textTransform: 'none',
-                fontWeight: 600,
-                '&:hover': {
-                  borderColor: '#9ca3af',
-                  backgroundColor: 'white',
-                },
-              }}
-            >
-              <ChevronLeft className="w-4 h-4 mr-1" />
-              Back
-            </Button>
-          )}
-        </div>
-
-        <div className="flex gap-2">
-          {activeStep === 2 ? (
-            <Button
-              onClick={handleSave}
-              disabled={extraGroups.length === 0}
-              variant="contained"
-              size="small"
-              sx={{
-                backgroundColor: '#fd683e',
-                textTransform: 'none',
-                fontWeight: 600,
-                px: 3,
-                py: 1,
-                '&:hover': {
-                  backgroundColor: '#e54d0e',
-                },
-                '&:disabled': {
-                  backgroundColor: '#ffd2b3',
-                },
-              }}
-            >
-              <Check className="w-4 h-4 mr-1" />
-              Save All Extras
-            </Button>
-          ) : (
-            <Button
-              onClick={handleNext}
-              disabled={
-                (activeStep === 0 && !groupTitle) ||
-                (activeStep === 1 && (!currentGroup || currentGroup.extrasDetails.length === 0))
+      {mode === 'create' ? (
+        <div className="flex items-center justify-end p-4 border-t border-gray-200 bg-gray-50">
+          <Button
+            onClick={async () => {
+              if (currentGroup && currentGroup.extrasDetails.length > 0) {
+                if (mode === 'create') {
+                  try {
+                    const payload = {
+                      restaurantName: restaurantData.id || null,
+                      branchName: userProfile.branchId || null,
+                      extras: currentGroup.extrasDetails.map(detail => ({
+                        variantName: detail.foodName,
+                        variantPrice: detail.foodPrice,
+                        variantDescription: detail.foodDescription
+                      }))
+                    };
+                    await createExtrasItem(payload);
+                  } catch (e) {
+                    // Optionally handle error (show toast, etc)
+                  }
+                }
+                onAdd([currentGroup]);
+                setCurrentGroup(null);
+                setGroupTitle('');
+                onClose();
               }
-              variant="contained"
-              size="small"
-              sx={{
-                backgroundColor: '#fd683e',
-                textTransform: 'none',
-                fontWeight: 600,
-                px: 3,
-                py: 1,
-                '&:hover': {
-                  backgroundColor: '#e54d0e',
-                },
-                '&:disabled': {
-                  backgroundColor: '#ffd2b3',
-                },
-              }}
-            >
-              Next
-              <ChevronRight className="w-4 h-4 ml-1" />
-            </Button>
-          )}
+            }}
+            disabled={!currentGroup || currentGroup.extrasDetails.length === 0}
+            variant="contained"
+            size="small"
+            sx={{
+              backgroundColor: '#fd683e',
+              textTransform: 'none',
+              fontWeight: 600,
+              px: 3,
+              py: 1,
+              '&:hover': {
+                backgroundColor: '#e54d0e',
+              },
+              '&:disabled': {
+                backgroundColor: '#ffd2b3',
+              },
+            }}
+          >
+            <Check className="w-4 h-4 mr-1" />
+            Create Extras
+          </Button>
         </div>
-      </div>
+      ) : (
+        <div className="flex items-center justify-between p-4 border-t border-gray-200 bg-gray-50">
+          <div className="flex gap-2">
+            {activeStep > 0 && (
+              <Button
+                onClick={handleBack}
+                variant="outlined"
+                size="small"
+                sx={{
+                  borderColor: '#d1d5db',
+                  color: '#6b7280',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  '&:hover': {
+                    borderColor: '#9ca3af',
+                    backgroundColor: 'white',
+                  },
+                }}
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" />
+                Back
+              </Button>
+            )}
+          </div>
+
+          <div className="flex gap-2">
+            {activeStep === 2 ? (
+              <Button
+                onClick={handleSave}
+                disabled={extraGroups.length === 0}
+                variant="contained"
+                size="small"
+                sx={{
+                  backgroundColor: '#fd683e',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  px: 3,
+                  py: 1,
+                  '&:hover': {
+                    backgroundColor: '#e54d0e',
+                  },
+                  '&:disabled': {
+                    backgroundColor: '#ffd2b3',
+                  },
+                }}
+              >
+                <Check className="w-4 h-4 mr-1" />
+                Save All Extras
+              </Button>
+            ) : (
+              <Button
+                onClick={handleNext}
+                disabled={
+                  (activeStep === 0 && !groupTitle) ||
+                  (activeStep === 1 && (!currentGroup || currentGroup.extrasDetails.length === 0))
+                }
+                variant="contained"
+                size="small"
+                sx={{
+                  backgroundColor: '#fd683e',
+                  textTransform: 'none',
+                  fontWeight: 600,
+                  px: 3,
+                  py: 1,
+                  '&:hover': {
+                    backgroundColor: '#e54d0e',
+                  },
+                  '&:disabled': {
+                    backgroundColor: '#ffd2b3',
+                  },
+                }}
+              >
+                Next
+                <ChevronRight className="w-4 h-4 ml-1" />
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
     </Dialog>
   );
 };

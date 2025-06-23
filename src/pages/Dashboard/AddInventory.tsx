@@ -225,7 +225,6 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
     };
 
     if (showExtrasForm) {
-      console.log('Extras form opened, fetching inventory...');
       fetchInventoryItems();
     }
   }, [showExtrasForm, userProfile.restaurantId]);
@@ -978,6 +977,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
         onClose={() => setExtrasModalOpen(false)}
         onAdd={handleExtrasAdd}
         initialExtras={addedExtrasGroups}
+        mode="select"
       />
     </>
   );

@@ -113,6 +113,7 @@ export const API_ENDPOINTS = {
   INVENTORY: {
     GET_ALL: '/delika_inventory_table'
   },
+  CREATE_EXTRAS_ITEM: '/create/extras/item',
   AUDIT: {
     GET_ALL: '/delikaquickshipper_audit_table'
   },
@@ -786,3 +787,12 @@ const loginMethod = localStorage.getItem('loginMethod'); // 'email' or 'phone'
 
 localStorage.removeItem('loginMethod');
 localStorage.removeItem('loginPhoneNumber');
+
+// Create extras item
+export const createExtrasItem = async (payload: any) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.post(API_ENDPOINTS.CREATE_EXTRAS_ITEM, payload, { headers });
+};

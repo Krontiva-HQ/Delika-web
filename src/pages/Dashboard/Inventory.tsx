@@ -25,6 +25,7 @@ import { Label } from '../../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Switch } from '../../components/ui/switch';
 import { Button as UIButton } from '../../components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import AddExtrasModal from '../../components/AddExtrasModal';
 import axios from 'axios';
 
@@ -119,6 +120,52 @@ interface InventoryProps {
   searchQuery?: string;
 }
 
+// Add new interface for the action selection dialog
+interface ActionSelectionDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onSelectAction: (action: 'menu-item' | 'extras') => void;
+}
+
+const ActionSelectionDialog: FunctionComponent<ActionSelectionDialogProps> = ({
+  open,
+  onClose,
+  onSelectAction
+}) => {
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Choose Action</DialogTitle>
+          <DialogDescription>
+            Select whether you want to add a menu item or add extras.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-4 py-4">
+          <button
+            className="flex flex-col items-center justify-center p-6 bg-white dark:bg-[#2c2522] border border-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-[#201a18] transition-colors"
+            onClick={() => onSelectAction('menu-item')}
+          >
+            <div className="w-12 h-12 bg-[#fd683e]/10 rounded-full flex items-center justify-center mb-3">
+              <IoMdAdd className="w-6 h-6 text-[#fd683e]" />
+            </div>
+            <span className="text-sm font-medium text-gray-900 dark:text-white">Add Menu Item</span>
+          </button>
+          <button
+            className="flex flex-col items-center justify-center p-6 bg-white dark:bg-[#2c2522] border border-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-[#201a18] transition-colors"
+            onClick={() => onSelectAction('extras')}
+          >
+            <div className="w-12 h-12 bg-[#fd683e]/10 rounded-full flex items-center justify-center mb-3">
+              <IoMdAdd className="w-6 h-6 text-[#fd683e]" />
+            </div>
+            <span className="text-sm font-medium text-gray-900 dark:text-white">Add Extras</span>
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
   const navigate = useNavigate();
   const { addNotification } = useNotifications();
@@ -192,19 +239,34 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
 
   const [activeId, setActiveId] = useState<string | null>(null);
 
+  const [showActionDialog, setShowActionDialog] = useState(false);
+  const [showAddExtrasModal, setShowAddExtrasModal] = useState(false);
+  const [addExtrasModalMode, setAddExtrasModalMode] = useState<'create' | 'select'>('create');
+
+  const handleActionSelect = (action: 'menu-item' | 'extras') => {
+    setShowActionDialog(false);
+    if (action === 'menu-item') {
+      setAddInventoryCategory(null);
+      setShowAddInventory(true);
+    } else {
+      setAddExtrasModalMode('create');
+      setShowAddExtrasModal(true);
+    }
+  };
+
   const onAddItemButtonClick = useCallback((category?: Category) => {
     if (category) {
       // If adding from within a category, only set the subcategory info
       setAddInventoryCategory({
-        mainCategory: "",  // Don't pre-fill main category
-        mainCategoryId: "", // Don't pre-fill main category ID
-        subCategory: category.name // Only pre-fill subcategory
+        mainCategory: "",
+        mainCategoryId: "",
+        subCategory: category.name
       });
+      setShowAddInventory(true);
     } else {
-      // If adding from the top button, don't pre-fill any category
-      setAddInventoryCategory(null);
+      // If adding from the top button, show the action selection dialog
+      setShowActionDialog(true);
     }
-    setShowAddInventory(true);
   }, []);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -594,7 +656,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                       </CardTitle>
                       {isEditing && (
                         <UIButton
-                          onClick={() => setShowAddExtrasModal(true)}
+                          onClick={() => { setAddExtrasModalMode('select'); setShowAddExtrasModal(true); }}
                           size="sm"
                           className="h-8 px-3 text-xs bg-[#fd683e] hover:bg-[#e54d0e] text-white"
                         >
@@ -736,14 +798,19 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
             </div>
           </div>
         </Modal>
-
-        {/* Add Extras Modal */}
-        <AddExtrasModal
-          open={showAddExtrasModal}
-          onClose={() => setShowAddExtrasModal(false)}
-          onAdd={handleAddExtras}
-          initialExtras={itemExtras}
-        />
+        {/* Add Extras Modal for editing inventory */}
+        {showAddExtrasModal && (
+          <AddExtrasModal
+            open={showAddExtrasModal}
+            onClose={() => setShowAddExtrasModal(false)}
+            onAdd={(groups) => {
+              setItemExtras(groups);
+              setShowAddExtrasModal(false);
+            }}
+            initialExtras={itemExtras}
+            mode={addExtrasModalMode}
+          />
+        )}
       </>
     );
   };
@@ -1017,7 +1084,14 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         {renderMenuItemsGrid()}
       </div>
 
-      {/* Add the modal */}
+      {/* Add the action selection dialog */}
+      <ActionSelectionDialog
+        open={showActionDialog}
+        onClose={() => setShowActionDialog(false)}
+        onSelectAction={handleActionSelect}
+      />
+
+      {/* Add Inventory Modal */}
       {showAddInventory && (
         <AddInventory 
           onClose={handleAddInventoryClose}
@@ -1029,7 +1103,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         />
       )}
 
-      {/* Add the edit modal */}
+      {/* Edit Inventory Modal */}
       {selectedItem && (
         <EditInventoryModal
           item={selectedItem}
@@ -1038,6 +1112,19 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
           isUpdating={isUpdating}
           updateError={updateError}
           branchId={selectedBranchId || userProfile.branchId}
+        />
+      )}
+
+      {/* Only render AddExtrasModal here if not in edit modal context */}
+      {!selectedItem && showAddExtrasModal && (
+        <AddExtrasModal
+          open={showAddExtrasModal}
+          onClose={() => setShowAddExtrasModal(false)}
+          onAdd={(groups) => {
+            setShowAddExtrasModal(false);
+          }}
+          initialExtras={[]}
+          mode={addExtrasModalMode}
         />
       )}
     </div>

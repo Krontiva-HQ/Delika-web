@@ -677,7 +677,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         // Only play sound for truly new orders
         if (newIncomingOrders.length > 0) {
           const audio = new Audio('/orderRinging.mp3');
-          audio.play().catch(() => {});
+          audio.play().catch((e) => { console.error('Audio play failed', e); });
         }
       }
 
@@ -1107,6 +1107,17 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       });
     }
   };
+
+  // Play sound when a new pending order appears in the New Order modal
+  useEffect(() => {
+    if (
+      showNewOrderModal &&
+      newOrders.some(order => order.orderAccepted === "pending" && order.paymentStatus === "Paid")
+    ) {
+      const audio = new Audio('/orderRinging.mp3');
+      audio.play().catch((e) => { console.error('Audio play failed', e); });
+    }
+  }, [newOrders, showNewOrderModal]);
 
   return (
     <div className="h-full w-full bg-white m-0 p-0">
