@@ -5,9 +5,8 @@ interface RateLimitInfo {
 }
 
 export class RateLimiter {
-  private static readonly MAX_ATTEMPTS = 80;
-  private static readonly INITIAL_WAIT = 30; // 30 minutes
-  private static readonly MAX_WAIT = 100; // 100 minutes
+  private static readonly MAX_ATTEMPTS = 5;
+  private static readonly LOCKOUT_MINUTES = 5; // 5 minutes lockout
 
   static getRateLimitInfo(email: string): RateLimitInfo {
     const stored = localStorage.getItem(`rateLimit_${email}`);
@@ -38,12 +37,8 @@ export class RateLimiter {
     info.lastAttemptTime = now;
 
     if (info.attempts >= this.MAX_ATTEMPTS) {
-      // Calculate lockout duration using exponential backoff
-      const waitMinutes = Math.min(
-        this.INITIAL_WAIT * Math.pow(2, info.attempts - this.MAX_ATTEMPTS),
-        this.MAX_WAIT
-      );
-      info.lockedUntil = now + (waitMinutes * 60 * 1000);
+      // Fixed 5-minute lockout
+      info.lockedUntil = now + (this.LOCKOUT_MINUTES * 60 * 1000);
     }
 
     localStorage.setItem(`rateLimit_${email}`, JSON.stringify(info));

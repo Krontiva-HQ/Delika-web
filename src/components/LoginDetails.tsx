@@ -1,4 +1,4 @@
-import { FunctionComponent, useState, ChangeEvent } from "react";
+import { FunctionComponent, useState, ChangeEvent, useEffect, useRef } from "react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from '../hooks/useAuth';
@@ -25,6 +25,7 @@ const LoginDetails: FunctionComponent<LoginDetailsProps> = ({ onSubmit }) => {
   const { login, loginWithPhoneNumber, isLoading, error } = useAuth();
   const { setEmail } = useEmail();
   const { sendTwoFAEmail } = useTwoFAEmail();
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -113,10 +114,51 @@ const LoginDetails: FunctionComponent<LoginDetailsProps> = ({ onSubmit }) => {
           navigate('/2fa-login');
         }
       } catch (err: any) {
-        setValidationError(err.message || 'Login failed');
+        if (err.status === 500 || err.message === 'Invalid phone number. Please try again.') {
+          setValidationError('Invalid phone number. Please try again.');
+        } else {
+          setValidationError(err.message || 'Login failed');
+        }
       }
     }
   };
+
+  // Check rate limit on mount and when email changes
+  useEffect(() => {
+    if (loginMethod === 'email' && formData.email) {
+      const { limited, waitTime } = RateLimiter.isRateLimited(formData.email);
+      setIsRateLimited(limited);
+      setWaitTime(waitTime);
+      if (limited) {
+        setValidationError(`Too many failed attempts. Try again in ${waitTime} minutes.`);
+      }
+    }
+    // Cleanup any previous interval
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData.email, loginMethod]);
+
+  // Live countdown for lockout
+  useEffect(() => {
+    if (isRateLimited && formData.email) {
+      intervalRef.current = setInterval(() => {
+        const { limited, waitTime } = RateLimiter.isRateLimited(formData.email);
+        setIsRateLimited(limited);
+        setWaitTime(waitTime);
+        if (limited) {
+          setValidationError(`Too many failed attempts. Try again in ${waitTime} minutes.`);
+        } else {
+          setValidationError(null);
+          if (intervalRef.current) clearInterval(intervalRef.current);
+        }
+      }, 60000); // update every minute
+      return () => {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+      };
+    }
+  }, [isRateLimited, formData.email]);
 
   return (
     <div className="font-sans min-h-screen w-full relative bg-white overflow-hidden text-right text-[12px] text-[#fe5b18]">

@@ -184,7 +184,11 @@ export const useAuth = () => {
       
       throw new Error('Login failed');
     } catch (err: any) {
-      const errorMessage = err.message || 'Login failed. Please try again.';
+      let errorMessage = err.message || 'Login failed. Please try again.';
+      // If error is 500 during phone login, show invalid phone number message
+      if (err.status === 500) {
+        errorMessage = 'Invalid phone number. Please try again.';
+      }
       setError(errorMessage);
       return { success: false, error: errorMessage };
     } finally {

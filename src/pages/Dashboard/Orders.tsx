@@ -334,9 +334,11 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     // setShowFloatingPanel(true);
   }, []);
 
-  // Filter only CustomerApp orders that are not accepted yet
+  // Filter only CustomerApp orders that are not accepted yet and match the selected date
   const pendingCustomerAppOrders = newOrders.filter(order => 
-    order.orderChannel === 'customerApp' && order.paymentStatus === 'Paid'
+    order.orderChannel === 'customerApp' && 
+    order.paymentStatus === 'Paid' &&
+    selectedDate && dayjs(order.orderDate).isSame(selectedDate, 'day')
   );
 
   // Floating panel for pending orders
