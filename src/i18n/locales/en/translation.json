@@ -177,9 +177,9 @@
     "search": "Search inventory",
     "filter": "Filter",
     "sortBy": "Sort by",
-    "name": "Name",
-    "price": "Price",
-    "description": "Short Details",
+    "name": "Food Name",
+    "price": "Food Price",
+    "description": "Food Description",
     "availability": "Available",
     "available": "In Stock",
     "unavailable": "Out of Stock",
@@ -190,7 +190,7 @@
     "selectSubCategory": "Select Sub Category",
     "addCategory": "Add New Category",
     "newCategoryName": "Enter new category",
-    "uploadImage": "Add Image",
+    "uploadImage": "Add Food Image",
     "dragAndDrop": "Drag and drop an image here",
     "or": "or",
     "browseFiles": "click to select",
@@ -205,6 +205,16 @@
     "errorAdding": "Error adding item",
     "errorUpdating": "Error updating item",
     "errorDeleting": "Error deleting item",
+    "placeholders": {
+      "name": "Food name",
+      "description": "Food description",
+      "price": "Food price"
+    },
+    "validation": {
+      "nameRequired": "Food name is required",
+      "descriptionRequired": "Food description is required",
+      "priceRequired": "Food price is required"
+    },
     "required": "Required"
   },
   "settings": {

@@ -30,6 +30,76 @@ import ServiceTypeModal from './ServiceTypeModal';
 // Add the API key directly if needed
 const GOOGLE_MAPS_API_KEY = 'AIzaSyAdv28EbwKXqvlKo2henxsKMD-4EKB20l8';
 
+// Add these type definitions at the top if not present
+// @ts-ignore
+// eslint-disable-next-line
+// These are available in browsers with Web Bluetooth API, but may not be in TS env
+// Fallback to 'any' if not available
+
+// PrinterService Web Implementation - based on web-example.html
+class WebPrinterService {
+  static generateTSPL(receiptData: any) {
+    const { orderNumber, customerName, paymentMethod, items, totalPrice } = receiptData;
+    
+    let tsplCommands = 'SIZE 50 mm, 60 mm\n';
+    tsplCommands += 'CLS\n';
+    
+    // Order number at top - X margin: 100 (updated from 2)
+    tsplCommands += `TEXT 100,10,"4",0,2,2,"${orderNumber}"\n`;
+    
+    // Customer name - X margin: 100 (updated from 2)
+    tsplCommands += `TEXT 100,60,"3",0,1,1,"${customerName}"\n`;
+    // Payment method - X margin: 200 (updated from 160)
+    tsplCommands += `TEXT 200,60,"3",0,1,1,"${paymentMethod}"\n`;
+    
+    // Items list with bullet points - X margin: 100 (updated from 2)
+    let yPosition = 100;
+    items.forEach((item: any, index: number) => {
+      tsplCommands += `TEXT 100,${yPosition},"3",0,1,1,"• ${item.name} x${item.quantity}"\n`;
+      yPosition += 25;
+    });
+    
+    
+    // Add timestamp - X margin: 100 (updated from 2)
+    const timestamp = new Date().toLocaleString();
+    tsplCommands += `TEXT 100,${yPosition + 100},"2",0,1,1,"${timestamp}"\n`;
+    
+    tsplCommands += 'PRINT 1\n';
+    
+    return tsplCommands;
+  }
+  
+  static async sendRawBytesInChunks(characteristic: any, data: string, chunkSize = 20) {
+    const encoder = new TextEncoder();
+    const rawBytes = encoder.encode(data);
+    
+    for (let i = 0; i < rawBytes.length; i += chunkSize) {
+      const chunk = rawBytes.slice(i, i + chunkSize);
+      
+      try {
+        await characteristic.writeValueWithoutResponse(chunk.buffer);
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        await characteristic.writeValueWithResponse(chunk.buffer);
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+  }
+  
+  static async printReceipt(characteristic: any, receiptData: any) {
+    try {
+      const tsplCommands = this.generateTSPL(receiptData);
+      
+      await this.sendRawBytesInChunks(characteristic, tsplCommands, 20);
+      
+      return true;
+      
+    } catch (error) {
+      throw error;
+    }
+  }
+}
+
 interface PlaceOrderProps {
   onClose: () => void;
   onOrderPlaced: () => void;
@@ -166,6 +236,13 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userData, setUserData] = useState<UserResponse | null>(null);
   const [distance, setDistance] = useState<number | null>(null);
+
+  // Printer state variables
+  const [connectedDevice, setConnectedDevice] = useState<{name: string, gatt: any} | null>(null);
+  const [printCharacteristic, setPrintCharacteristic] = useState<any | null>(null);
+  const [showPrinterModal, setShowPrinterModal] = useState(false);
+  const [printerConnectionStatus, setPrinterConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
+  const [hasShownPrinterModal, setHasShownPrinterModal] = useState(false);
   const { 
     categories, 
     categoryItems, 
@@ -333,6 +410,106 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     const deliveryAmount = deliveryPrice ? parseFloat(deliveryPrice) : 0;
     const total = Math.round(itemsTotal + deliveryAmount);
     return `${total}.00`;
+  };
+
+  // Printer connection functions
+  const checkWebBluetoothSupport = () => {
+    return typeof navigator !== 'undefined' && typeof (navigator as any).bluetooth !== 'undefined';
+  };
+
+  const connectToPrinter = async () => {
+    if (!checkWebBluetoothSupport()) {
+      addNotification({
+        type: 'order_status',
+        message: 'Web Bluetooth is not supported in this browser'
+      });
+      return;
+    }
+
+    try {
+      setPrinterConnectionStatus('connecting');
+      
+      const device = await navigator.bluetooth.requestDevice({
+        filters: [
+          { namePrefix: 'DL' },
+          { namePrefix: 'Deli' },
+          { namePrefix: 'Thermal' },
+          { namePrefix: 'Printer' }
+        ],
+        optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', '49535343-fe7d-4ae5-8fa9-9fafd205e455']
+      });
+    
+      const server = await device.gatt!.connect();
+      
+      let service;
+      try {
+        service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
+      } catch {
+        service = await server.getPrimaryService('49535343-fe7d-4ae5-8fa9-9fafd205e455');
+      }
+      
+      let characteristic;
+      try {
+        characteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
+      } catch {
+        characteristic = await service.getCharacteristic('49535343-8841-43f4-a8d4-ecbe34729bb3');
+      }
+      
+      // Store connection
+      setConnectedDevice({ name: device.name || 'Unknown Device', gatt: server });
+      setPrintCharacteristic(characteristic);
+      setPrinterConnectionStatus('connected');
+      setShowPrinterModal(false);
+      
+      addNotification({
+        type: 'order_created',
+        message: `Connected to printer: ${device.name}`
+      });
+      
+    } catch (error) {
+      setPrinterConnectionStatus('error');
+      addNotification({
+        type: 'order_status',
+        message: 'Failed to connect to printer'
+      });
+    }
+  };
+
+  const disconnectPrinter = () => {
+    if (connectedDevice && connectedDevice.gatt) {
+      connectedDevice.gatt.disconnect();
+    }
+    
+    setConnectedDevice(null);
+    setPrintCharacteristic(null);
+    setPrinterConnectionStatus('disconnected');
+    addNotification({
+      type: 'order_status',
+      message: 'Disconnected from printer'
+    });
+  };
+
+  const printReceipt = async (orderData: any) => {
+    if (!printCharacteristic) {
+      addNotification({
+        type: 'order_status',
+        message: 'Please connect to a printer first'
+      });
+      return;
+    }
+
+    try {
+      await WebPrinterService.printReceipt(printCharacteristic, orderData);
+      addNotification({
+        type: 'order_created',
+        message: 'Receipt printed successfully!'
+      });
+    } catch (error) {   
+      addNotification({
+        type: 'order_status',
+        message: 'Failed to print receipt'
+      });
+    }
   };
 
   // Add this handler function
@@ -574,6 +751,35 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         addNotification({
           type: 'order_created',
           message: t('orders.success.batchOrderAdded')
+        });
+      } else if (deliveryMethod === 'walk-in') {
+        // For walk-in orders, handle printing
+        const orderData = {
+          orderNumber: `#${Date.now().toString().slice(-6)}`,
+          customerName,
+          paymentMethod: paymentType.toUpperCase(),
+          items: selectedItems.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price
+          })),
+          totalPrice: calculateTotal()
+        };
+
+        // Show printer connection modal on first use
+        if (!hasShownPrinterModal && checkWebBluetoothSupport()) {
+          setShowPrinterModal(true);
+          setHasShownPrinterModal(true);
+        } else if (printCharacteristic) {
+          // Print receipt if already connected
+          await printReceipt(orderData);
+        }
+
+        // Close modal and show success
+        onOrderPlaced();
+        addNotification({
+          type: 'order_created',
+          message: t('orders.success.orderPlaced')
         });
       } else {
         // For non-batch orders, close the modal and show success
@@ -2328,6 +2534,64 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
                 <b className="font-sans text-lg font-semibold mb-6">Customer Details</b>
 
+              {/* Printer Status Section */}
+              <div className="mb-6 bg-[#f9fafb] rounded-lg p-4 font-sans">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="font-sans text-sm font-medium">🖨️ Printer Status</div>
+                  {printerConnectionStatus === 'connected' && connectedDevice && (
+                    <button
+                      onClick={() => {
+                        const orderData = {
+                          orderNumber: `#${Date.now().toString().slice(-6)}`,
+                          customerName: customerName || 'Customer',
+                          paymentMethod: ' ',
+                          items: selectedItems.map(item => ({
+                            name: item.name,
+                            quantity: item.quantity,
+                            price: item.price
+                          })),
+                          totalPrice: calculateTotal()
+                        };
+                        printReceipt(orderData);
+                      }}
+                      className="px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+                    >
+                      Print
+                    </button>
+                  )}
+                </div>
+                <div className={`p-2 rounded text-xs ${
+                  printerConnectionStatus === 'connected' 
+                    ? 'bg-green-100 text-green-800' 
+                    : printerConnectionStatus === 'connecting'
+                    ? 'bg-blue-100 text-blue-800'
+                    : printerConnectionStatus === 'error'
+                    ? 'bg-red-100 text-red-800'
+                    : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {printerConnectionStatus === 'connected' && connectedDevice && (
+                    <span>✅ Connected to {connectedDevice.name}</span>
+                  )}
+                  {printerConnectionStatus === 'connecting' && (
+                    <span>🔄 Connecting to printer...</span>
+                  )}
+                  {printerConnectionStatus === 'error' && (
+                    <span>❌ Failed to connect to printer</span>
+                  )}
+                  {printerConnectionStatus === 'disconnected' && (
+                    <span>📱 No printer connected</span>
+                  )}
+                </div>
+                {printerConnectionStatus === 'disconnected' && checkWebBluetoothSupport() && (
+                  <button
+                    onClick={() => setShowPrinterModal(true)}
+                    className="mt-2 px-3 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600"
+                  >
+                    Connect Printer
+                  </button>
+                )}
+              </div>
+
                 {/* Order Summary Section */}
                 <div className="mb-6 bg-[#f9fafb] rounded-lg p-4 font-sans">
                   <div className="font-sans text-lg font-semibold mb-3">Order Summary</div>
@@ -2981,6 +3245,90 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     setHasCalculatedDelivery(false);
   }, [pickupLocation]);
 
+  // Printer Connection Modal Component
+  const renderPrinterModal = () => {
+    if (!showPrinterModal) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">🖨️ Connect to Printer</h2>
+            <button
+              onClick={() => setShowPrinterModal(false)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <IoIosCloseCircleOutline size={24} />
+            </button>
+          </div>
+          
+          <div className="mb-4">
+            <div className={`p-3 rounded-lg mb-4 ${
+              printerConnectionStatus === 'connected' 
+                ? 'bg-green-100 text-green-800' 
+                : printerConnectionStatus === 'connecting'
+                ? 'bg-blue-100 text-blue-800'
+                : printerConnectionStatus === 'error'
+                ? 'bg-red-100 text-red-800'
+                : 'bg-gray-100 text-gray-800'
+            }`}>
+              {printerConnectionStatus === 'connected' && connectedDevice && (
+                <span>✅ Connected to {connectedDevice.name}</span>
+              )}
+              {printerConnectionStatus === 'connecting' && (
+                <span>🔄 Connecting to printer...</span>
+              )}
+              {printerConnectionStatus === 'error' && (
+                <span>❌ Failed to connect to printer</span>
+              )}
+              {printerConnectionStatus === 'disconnected' && (
+                <span>📱 Ready to connect to printer</span>
+              )}
+            </div>
+            
+            <p className="text-sm text-gray-600 mb-4">
+              Connect to a thermal printer to automatically print receipts for walk-in orders.
+            </p>
+          </div>
+
+          <div className="flex gap-3">
+            {printerConnectionStatus !== 'connected' ? (
+              <button
+                onClick={connectToPrinter}
+                disabled={printerConnectionStatus === 'connecting'}
+                className={`flex-1 py-2 px-4 rounded-lg font-medium ${
+                  printerConnectionStatus === 'connecting'
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-500 text-white hover:bg-blue-600'
+                }`}
+              >
+                {printerConnectionStatus === 'connecting' ? 'Connecting...' : 'Connect Printer'}
+              </button>
+            ) : (
+              <button
+                onClick={disconnectPrinter}
+                className="flex-1 py-2 px-4 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600"
+              >
+                Disconnect
+              </button>
+            )}
+            
+            <button
+              onClick={() => setShowPrinterModal(false)}
+              className="flex-1 py-2 px-4 bg-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-400"
+            >
+              Skip
+            </button>
+          </div>
+
+          <div className="mt-4 text-xs text-gray-500">
+            <p><strong>Supported browsers:</strong> Chrome 56+, Edge 79+, Opera 43+</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white p-10 rounded-lg relative flex flex-col overflow-y-auto max-h-[90vh] w-full sm:w-[900px] mx-4 sm:mx-0">
@@ -3015,6 +3363,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           onAddAnother={handleAddAnotherOrder}
           onComplete={handleCompleteBatch}
         />
+        {renderPrinterModal()}
       </div>
     </div>
   );

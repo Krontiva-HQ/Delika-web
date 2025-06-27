@@ -127,6 +127,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
 }) => {
   const { categories, isLoading } = useMenuCategories();
   const { userProfile } = useUserProfile();
+  const [isAddingItem, setIsAddingItem] = useState(false);
 
   const [textfieldOpen, setTextfieldOpen] = useState(false);
   const [textfieldAnchorEl, setTextfieldAnchorEl] = useState<null | HTMLElement>(null);
@@ -148,7 +149,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   const [shortDetails, setShortDetails] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [newCategoryFile, setNewCategoryFile] = useState<File | null>(null);
-  const { addItem, isLoading: isAddingItem } = useAddItemToCategory();
+  const { addItem, isLoading: isAddingToCategory } = useAddItemToCategory();
   const { addCategory, isLoading: isAddingCategory } = useAddCategory();
   const { t } = useTranslation();
   useLanguageChange();
@@ -341,7 +342,8 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
     try {
       const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
       
-
+      // Add loading state
+      setIsAddingItem(true);
 
       // --- TRANSFORM EXTRAS TO ALWAYS INCLUDE 'new' PROPERTY ---
       const transformedExtras = extraGroups.map(extra => ({
@@ -355,7 +357,6 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
       }
 
       if (showCategoryForm) {
-
         await addCategory({
           foodType: newCategory,
           restaurantName: userProfile.restaurantId,
@@ -374,7 +375,8 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
           categoryId: selectedMainCategoryId,
           onSuccess: () => {
             onInventoryUpdated?.();
-            onClose();
+            // Force refresh the page to update inventory
+            window.location.href = '/dashboard?view=inventory';
           }
         });
       } else {
@@ -386,26 +388,6 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
           return;
         }
 
-        console.log('Adding item to category with extras:', {
-          categoryId: selectedCategoryData.id,
-          mainCategoryId: selectedMainCategoryId,
-          name: itemName,
-          restaurantId: userProfile.restaurantId,
-          branchId: userProfile.branchId,
-          extras: transformedExtras
-        });
-        // --- LOG FINAL PAYLOAD ---
-        console.log('🚀 Final payload to API (addItem):', {
-          categoryId: selectedCategoryData.id,
-          name: itemName,
-          price,
-          description: shortDetails,
-          available,
-          foodPhoto: photoFile,
-          mainCategoryId: selectedMainCategoryId,
-          mainCategory: selectedMainCategory,
-          extras: transformedExtras
-        });
         await addItem({
           categoryId: selectedCategoryData.id,
           name: itemName,
@@ -418,7 +400,8 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
           extras: transformedExtras,
           onSuccess: () => {
             onInventoryUpdated?.();
-            onClose();
+            // Force refresh the page to update inventory
+            window.location.href = '/dashboard?view=inventory';
           }
         });
       }
@@ -436,11 +419,13 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
       setNewCategory('');
       setNewCategoryImage(null);
       setNewCategoryFile(null);
-      setExtraGroups([]); // Reset extras
+      setExtraGroups([]);
       
     } catch (error) {
       console.error('Failed to save item:', error);
       alert('Failed to save. Please try again.');
+    } finally {
+      setIsAddingItem(false);
     }
   };
 
@@ -837,27 +822,37 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
               </>
             )}
             <div className="self-stretch flex flex-col items-start justify-start gap-[1px]">
-              <b className="self-stretch relative leading-[20px] font-sans">{t('inventory.name')}</b>
+              <b className="self-stretch relative leading-[20px] font-sans">
+                {t('inventory.name')} <span className="text-red-500">*</span>
+              </b>
               <input
                 className="border-[#efefef] border-[1px] border-solid [outline:none] bg-[#fff] self-stretch rounded-[8px] flex flex-row items-center justify-start py-[14px] px-[20px] text-black font-sans"
-                placeholder={t('inventory.name')}
+                placeholder={t('inventory.placeholders.name')}
                 type="text"
                 value={itemName}
                 onChange={(e) => setItemName(e.target.value)}
+                required
               />
+              {itemName.trim() === '' && (
+                <span className="text-xs text-red-500 mt-1">{t('')}</span>
+              )}
             </div>
             <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[23px]">
               <div className="flex-1 flex flex-col items-start justify-start gap-[6px]">
                 <div className="self-stretch relative leading-[22px] font-sans font-bold">
-                  {t('inventory.description')}
+                  {t('inventory.description')} <span className="text-red-500">*</span>
                 </div>
                 <input
                   className="border-[#f6f6f6] border-[1px] border-solid [outline:none] font-sans text-[13px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[12px] px-[20px] text-black"
-                  placeholder={t('inventory.description')}
+                  placeholder={t('inventory.placeholders.description')}
                   type="text"
                   value={shortDetails}
                   onChange={(e) => setShortDetails(e.target.value)}
+                  required
                 />
+                {shortDetails.trim() === '' && (
+                  <span className="text-xs text-red-500 mt-1">{t('')}</span>
+                )}
               </div>
               <div className="flex-1 flex flex-col items-start justify-start gap-[6px]">
                 <div className="self-stretch relative leading-[22px] font-sans font-bold">
@@ -907,19 +902,25 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
               </div>
             </div>
             <div className="self-stretch flex flex-col items-start justify-start gap-[8px]">
-              <div className="self-stretch relative leading-[22px] font-sans font-bold">{t('inventory.price')}</div>
+              <div className="self-stretch relative leading-[22px] font-sans font-bold">
+                {t('inventory.price')} <span className="text-red-500">*</span>
+              </div>
               <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
                 <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
                   <div className="relative leading-[20px] font-sans text-black">GHS</div>
                 </div>
                 <input
                   className="border-[#fff] border-[1px] border-solid [outline:none] font-sans text-[13px] bg-[#fff] flex-1 rounded-[6px] flex flex-row items-center justify-start py-[15px] px-[20px] text-black [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                  placeholder="25.00"
+                  placeholder={t('inventory.placeholders.price')}
                   type="number"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
+                  required
                 />
               </div>
+              {price.trim() === '' && (
+                <span className="text-xs text-red-500 mt-1">{t('')}</span>
+              )}
             </div>
             <div className="self-stretch flex flex-col items-start justify-start gap-[8px]">
               <div className="flex flex-row items-center justify-between w-full mb-2">
@@ -959,13 +960,23 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
               className={`cursor-pointer border-[#f5fcf8] border-[1px] border-solid py-[9px] px-[90px] 
                          bg-[#fd683e] self-stretch rounded-[4px] overflow-hidden 
                          flex flex-row items-center justify-center mt-4
-                         ${!isFormValid() ? 'opacity-50 cursor-not-allowed bg-gray-400' : 'hover:bg-[#e54d0e]'}
+                         ${!isFormValid() || isAddingItem ? 'opacity-50 cursor-not-allowed bg-gray-400' : 'hover:bg-[#e54d0e]'}
                          transition-all duration-200`}
               onClick={onButtonAddItemClick}
-              disabled={!isFormValid()}
+              disabled={!isFormValid() || isAddingItem}
             >
-              <div className="relative text-[10px] leading-[16px] text-[#fff] text-left font-sans">
-                {isLoading ? t('settings.restaurant.saving') : t('common.save')}
+              <div className="relative text-[10px] leading-[16px] text-[#fff] text-left font-sans flex items-center gap-2">
+                {isAddingItem ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    {t('settings.restaurant.saving')}
+                  </>
+                ) : (
+                  t('common.save')
+                )}
               </div>
             </button>
           </div>
