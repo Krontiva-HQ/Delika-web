@@ -66,8 +66,8 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
   // Add state to track modified fields
   const [modifiedFields, setModifiedFields] = useState<Set<string>>(new Set());
 
-  // Add state to track whether delivery price has been calculated
-  const [hasCalculatedDelivery, setHasCalculatedDelivery] = useState(false);
+  // Initialize hasCalculatedDelivery based on whether we're editing a walk-in order
+  const [hasCalculatedDelivery, setHasCalculatedDelivery] = useState(order.Walkin);
 
   // Modify the customer phone input handler
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -123,7 +123,7 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
   }, [order]);
 
   useEffect(() => {
-    if (pickupLocation && dropoffLocation && !hasCalculatedDelivery) {
+    if (pickupLocation && dropoffLocation && !hasCalculatedDelivery && !order.Walkin) {
       setHasCalculatedDelivery(true);
       calculateDeliveryPriceAPI({
         pickup: {
@@ -138,22 +138,29 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
         pedestrian: false
       })
         .then(result => {
-          setDeliveryPrice(result.riderFee);
-          setDistance(result.distance);
-          setTotalPrice(orderPrice + result.riderFee);
+          if (result.riderFee !== parseFloat(order.deliveryPrice)) {
+            setDeliveryPrice(result.riderFee);
+            setDistance(result.distance);
+            setTotalPrice(orderPrice + result.riderFee);
+            // Add to modified fields since we recalculated
+            setModifiedFields(prev => new Set([...Array.from(prev), 'deliveryPrice', 'totalPrice', 'deliveryDistance']));
+          }
         })
         .catch(() => {
-          setDeliveryPrice(0);
-          setDistance(null);
-          setTotalPrice(orderPrice);
+          // On error, keep the original values from the order
+          setDeliveryPrice(parseFloat(order.deliveryPrice));
+          setDistance(parseFloat(order.deliveryDistance));
+          setTotalPrice(parseFloat(order.totalPrice));
         });
     }
-  }, [pickupLocation, dropoffLocation, orderPrice]);
+  }, [pickupLocation, dropoffLocation, order.Walkin, order.deliveryPrice, order.totalPrice, order.deliveryDistance, orderPrice, hasCalculatedDelivery]);
 
-  // Reset hasCalculatedDelivery when pickup changes
+  // Reset hasCalculatedDelivery when pickup or dropoff location changes
   useEffect(() => {
-    setHasCalculatedDelivery(false);
-  }, [pickupLocation]);
+    if (!order.Walkin) {
+      setHasCalculatedDelivery(false);
+    }
+  }, [pickupLocation, dropoffLocation, order.Walkin]);
 
   useEffect(() => {
     if (order) {
