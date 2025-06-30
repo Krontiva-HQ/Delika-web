@@ -150,13 +150,13 @@ const Settings: FunctionComponent = () => {
         const response = await getAuthenticatedUser();
         const userData = response.data;
 
-        // Convert dateOfBirth to a Date object if it's a number
         if (typeof userData.dateOfBirth === 'number') {
           userData.dateOfBirth = new Date(userData.dateOfBirth) as any;
         }
 
         setUserData(userData);
       } catch (error) {
+        // Silently handle error
       }
     };
 
@@ -356,7 +356,6 @@ const Settings: FunctionComponent = () => {
   const handleSave = async () => {
     if (!userData) return;
 
-    // Create FormData to handle file upload
     const formData = new FormData();
     formData.append('userId', userData.id);
     formData.append('email', userData.email);
@@ -370,7 +369,6 @@ const Settings: FunctionComponent = () => {
       formData.append('dateOfBirth', userData.dateOfBirth.toString());
     }
     
-    // Only append photo if a new one was selected, otherwise keep existing image
     if (photoFile) {
       formData.append('photo', photoFile);
     } else if (userData.image?.url) {
@@ -390,7 +388,7 @@ const Settings: FunctionComponent = () => {
         });
       }
     } catch (error) {
-      // Handle error
+      // Silently handle error
     }
   };
 
@@ -604,13 +602,12 @@ const Settings: FunctionComponent = () => {
       await deleteUser(userToDelete);
       await fetchTeamMembers();
       
-      // Find the user's name from teamMembers
       const deletedMember = teamMembers.find(member => member.id === userToDelete);
       
-     
       setDeleteModalOpen(false);
       setUserToDelete(null);
     } catch (error) {
+      // Silently handle error
     }
   };
 
@@ -644,6 +641,7 @@ const Settings: FunctionComponent = () => {
       // Add your API call here to update restaurant data
       // await updateRestaurant(formData);
     } catch (error) {
+      // Silently handle error
     }
   };
 
@@ -660,6 +658,7 @@ const Settings: FunctionComponent = () => {
       setIsEditMemberOpen(false);
       setMemberToEdit(null);
     } catch (error) {
+      // Silently handle error
     }
   };
 
@@ -910,12 +909,11 @@ const Settings: FunctionComponent = () => {
         message: `Branch details updated successfully`
       });
       
-      // Reset the saved state after 2 seconds
       setTimeout(() => {
         setIsBranchSaved(false);
       }, 2000);
     } catch (error) {
-      // Error is handled by the hook
+      // Silently handle error
     }
   };
 
@@ -939,56 +937,73 @@ const Settings: FunctionComponent = () => {
             {/* Tab Navigation */}
             <section className="self-stretch flex flex-col items-start justify-start p-[8px] border-b border-gray-200 dark:border-[#333] overflow-x-auto">
               <div className="self-stretch flex flex-row items-center justify-start gap-[20px] md:gap-[40px] min-w-max">
-                <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
-                  activeTab === 'edit' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
-                }`}
-                onClick={() => setActiveTab('edit')}
+                {/* Edit Profile Tab */}
+                <div 
+                  className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
+                    activeTab === 'edit' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
+                  }`}
+                  onClick={() => setActiveTab('edit')}
                 >
                   {t('settings.tabs.editProfile')}
                 </div>
+
+                {/* Team Members Tab */}
                 {!isStoreClerk && (
-                  <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
-                    activeTab === 'team' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
-                  }`}
-                  onClick={() => setActiveTab('team')}
+                  <div 
+                    className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
+                      activeTab === 'team' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
+                    }`}
+                    onClick={() => setActiveTab('team')}
                   >
                     {t('settings.tabs.teamMembers')}
                   </div>
                 )}
-                {userProfile.email && (
-                  <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
-                    activeTab === 'password' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
+
+                {/* Branch Settings Tab */}
+                <div 
+                  className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
+                    activeTab === 'branch' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
                   }`}
-                  onClick={() => setActiveTab('password')}
-                  >
-                    {t('settings.tabs.changePassword')}
-                  </div>
-                )}
+                  onClick={() => setActiveTab('branch')}
+                >
+                  Branch Settings
+                </div>
+
+                {/* Restaurant Settings Tab */}
                 {!isStoreClerk && (
-                  <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
-                    activeTab === 'restaurant-settings' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
-                  }`}
-                  onClick={() => setActiveTab('restaurant-settings')}
+                  <div 
+                    className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
+                      activeTab === 'restaurant-settings' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
+                    }`}
+                    onClick={() => setActiveTab('restaurant-settings')}
                   >
                     {t('settings.tabs.restaurantSettings')}
                   </div>
                 )}
+
+                {/* About Restaurant Tab */}
                 {!isStoreClerk && (
-                  <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
-                    activeTab === 'restaurant' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
-                  }`}
-                  onClick={() => setActiveTab('restaurant')}
+                  <div 
+                    className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
+                      activeTab === 'restaurant' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
+                    }`}
+                    onClick={() => setActiveTab('restaurant')}
                   >
                     {t('settings.tabs.aboutRestaurant')}
                   </div>
                 )}
-                <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
-                  activeTab === 'branch' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
-                }`}
-                onClick={() => setActiveTab('branch')}
-                >
-                  {t('settings.tabs.editBranch')}
-                </div>
+
+                {/* Change Password Tab */}
+                {userProfile.email && (
+                  <div 
+                    className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
+                      activeTab === 'password' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
+                    }`}
+                    onClick={() => setActiveTab('password')}
+                  >
+                    {t('settings.tabs.changePassword')}
+                  </div>
+                )}
               </div>
             </section>
 
