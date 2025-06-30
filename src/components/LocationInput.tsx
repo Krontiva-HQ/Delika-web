@@ -31,9 +31,8 @@ const LocationInput: React.FC<LocationInputProps> = ({ label, onLocationSelect, 
   useEffect(() => {
     if (prefillData) {
       setAddress(prefillData.address);
-      onLocationSelect(prefillData);
     }
-  }, [prefillData, onLocationSelect]);
+  }, [prefillData]);
  
   useEffect(() => {
     if (googleScriptLoaded) return;

@@ -118,7 +118,8 @@ export const API_ENDPOINTS = {
     GET_ALL: '/delikaquickshipper_audit_table'
   },
   BRANCHES: {
-    GET_BY_RESTAURANT: (restaurantId: string) => `/delikaquickshipper_branches_table/${restaurantId}`
+    GET_BY_RESTAURANT: (restaurantId: string) => `/delikaquickshipper_branches_table/${restaurantId}`,
+    UPDATE_BRANCH: (branchId: string) => `/delikaquickshipper_branches_table/${branchId}`
   },
   USER: {
     DELETE: (userId: string) => `/delikaquickshipper_user_table/${userId}`,
@@ -443,6 +444,16 @@ export const getBranchesByRestaurant = (restaurantId: string) => {
     'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
   return api.get<Branch[]>(API_ENDPOINTS.BRANCHES.GET_BY_RESTAURANT(restaurantId), { headers });
+};
+
+export const updateBranch = async (branchId: string, branchData: any) => {
+  const token = localStorage.getItem('authToken');
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  
+  return api.patch(API_ENDPOINTS.BRANCHES.UPDATE_BRANCH(branchId), branchData, { headers });
 };
 
 export interface EditOrderParams {

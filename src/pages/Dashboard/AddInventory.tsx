@@ -190,7 +190,6 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
     const fetchInventoryItems = async () => {
       try {
         if (!userProfile.restaurantId) {
-          console.error('Missing restaurant ID in userProfile:', userProfile);
           return;
         }
 
@@ -381,7 +380,6 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
         });
       } else {
         const selectedCategoryData = categories.find(cat => cat.name === selectedCategory);
-        console.log('Selected Category Data:', selectedCategoryData);
 
         if (!selectedCategoryData) {
           alert('Selected category not found. Please try again.');

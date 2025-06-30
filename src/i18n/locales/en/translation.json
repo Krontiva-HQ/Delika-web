@@ -223,8 +223,9 @@
       "editProfile": "Edit Profile",
       "teamMembers": "Team Members",
       "changePassword": "Change Password",
+      "restaurantSettings": "Restaurant Settings",
       "aboutRestaurant": "About Restaurant",
-      "restaurantSettings": "Restaurant Settings"
+      "editBranch": "Edit Branch"
     },
     "profile": {
       "fullName": "Full Name",
@@ -240,57 +241,56 @@
       "save": "Save"
     },
     "restaurant": {
-      "language": "Select Language",
-      "riderAssignment": "Rider Assignment Method",
-      "autoAssign": "Auto Assign Riders",
-      "manualAssign": "Assign Riders Manually",
-      "priceCalculation": "Price Calculation Method",
-      "autoCalculate": "Auto-calculate Price",
-      "manualCalculate": "Set Price Manually",
-      "saveSettings": "Save Settings",
+      "language": "Language",
+      "riderAssignment": "Rider Assignment",
+      "autoAssign": "Auto Assign",
+      "manualAssign": "Manual Assign",
+      "priceCalculation": "Price Calculation",
+      "autoCalculate": "Auto Calculate",
+      "manualCalculate": "Manual Calculate",
       "saving": "Saving...",
       "saved": "Saved!",
-      "refreshing": "Refreshing application to apply changes..."
+      "saveSettings": "Save Settings"
     },
     "serviceTypes": {
       "title": "Service Type Configuration",
-      "selectTypes": "Select Service Types:",
-      "additionalOptions": "Additional Options:",
-      "activeFeatures": "Active Features:",
+      "selectTypes": "Select Service Types",
+      "additionalOptions": "Additional Options",
+      "activeFeatures": "Active Features",
       "onDemand": {
-        "name": "On Demand",
-        "description": "Delivery only. No inventory is involved."
+        "name": "On-Demand Delivery",
+        "description": "Instant delivery service for immediate orders"
       },
       "fullService": {
         "name": "Full Service",
-        "description": "Both inventory management and delivery."
+        "description": "Complete restaurant management and delivery service"
       },
       "walkIn": {
         "name": "Walk-In",
-        "description": "Customer physically walks into restaurant to make a purchase."
+        "description": "In-store ordering and service"
       },
       "batchDelivery": {
         "name": "Batch Delivery",
-        "description": "Deliver multiple orders at once. Delivery only."
+        "description": "Group multiple orders for efficient delivery"
       },
       "scheduledDelivery": {
         "name": "Scheduled Delivery",
-        "description": "Schedule deliveries ahead of time. Delivery only."
+        "description": "Pre-planned delivery at specified times"
       },
       "features": {
         "inventory": "Inventory Management",
         "transactions": "Transactions",
         "reports": "Reports",
         "overview": "Overview",
-        "deliveryReport": "Delivery Reports",
-        "batch": "Batch Delivery",
-        "schedule": "Scheduled Delivery"
+        "deliveryReport": "Delivery Report",
+        "batch": "Batch Processing",
+        "schedule": "Scheduling"
       },
       "selectionRules": {
-        "title": "Selection Rules:",
-        "onDemand": "When On Demand is selected: Delivery only, no food is added",
-        "fullService": "When Full Service is selected:  Food is added to the delivery.",
-        "walkIn": "When Walk-In is selected: The user walks into the restaurant to place the order."
+        "title": "Selection Rules",
+        "onDemand": "On-Demand enables Batch and Schedule options",
+        "fullService": "Full Service includes Inventory Management",
+        "walkIn": "Walk-In includes Inventory Management"
       }
     }
   }

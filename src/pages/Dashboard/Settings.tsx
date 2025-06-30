@@ -21,6 +21,10 @@ import { useNotifications } from '../../context/NotificationContext';
 import { RiDeleteBin5Line } from "react-icons/ri";
 import RidersTable from '../../components/RidersTable';
 import { Rider } from '../../components/RidersTable';
+import { Branch, ActiveHours } from '../../types/branch';
+import { useBranchEdit } from '../../hooks/useBranchEdit';
+import LocationInput from '../../components/LocationInput';
+import { LocationData } from '../../types/location';
 
 // Import i18n related imports
 import { useTranslation } from 'react-i18next';
@@ -96,7 +100,8 @@ const Settings: FunctionComponent = () => {
   const [memberToEdit, setMemberToEdit] = useState<TeamMember | null>(null);
   const { addNotification } = useNotifications();
   const isStoreClerk = userProfile.role === 'Store Clerk';
- 
+  const { branchData: userBranchData } = useUserProfile();
+
   const textfield4Open = Boolean(textfield4AnchorEl);
   const textfield9Open = Boolean(textfield9AnchorEl);
 
@@ -784,6 +789,145 @@ const Settings: FunctionComponent = () => {
     return currentLanguage || 'en';
   });
 
+  const [branchData, setBranchData] = useState<Branch>({
+    active: true,
+    branchUrl: '',
+    branchCity: '',
+    branchName: '',
+    activeHours: [
+      { day: 'Monday', closingTime: '6:00 PM', openingTime: '4:00 AM' },
+      { day: 'Tuesday', closingTime: '6:00 PM', openingTime: '4:00 AM' },
+      { day: 'Wednesday', closingTime: '6:00 PM', openingTime: '4:00 AM' },
+      { day: 'Thursday', closingTime: '6:00 PM', openingTime: '4:00 AM' },
+      { day: 'Friday', closingTime: '6:00 PM', openingTime: '4:00 AM' },
+      { day: 'Saturday', closingTime: '6:00 PM', openingTime: '4:00 AM' },
+      { day: 'Sunday', closingTime: '6:00 PM', openingTime: '4:00 AM' }
+    ],
+    restaurantID: '',
+    branchLatitude: '',
+    branchLocation: '',
+    branchLongitude: '',
+    branchPhoneNumber: ''
+  });
+
+  const { updateBranch, isLoading: isBranchUpdating, error: branchUpdateError } = useBranchEdit();
+
+  // Initialize branch data from userProfile
+  useEffect(() => {
+    if (userBranchData && userBranchData.id && !branchData.branchName) {
+      setBranchData(prevData => {
+        // Skip update if data is already set
+        if (prevData.branchName) return prevData;
+
+        // Ensure active hours are in correct format
+        const formattedActiveHours = userBranchData.activeHours?.map((hour: ActiveHours) => ({
+          ...hour,
+          openingTime: hour.openingTime ? convertTo12Hour(convertTo24Hour(hour.openingTime)) : '8:00 AM',
+          closingTime: hour.closingTime ? convertTo12Hour(convertTo24Hour(hour.closingTime)) : '8:00 PM'
+        })) || [
+          { day: 'Monday', closingTime: '8:00 PM', openingTime: '8:00 AM' },
+          { day: 'Tuesday', closingTime: '8:00 PM', openingTime: '8:00 AM' },
+          { day: 'Wednesday', closingTime: '8:00 PM', openingTime: '8:00 AM' },
+          { day: 'Thursday', closingTime: '8:00 PM', openingTime: '8:00 AM' },
+          { day: 'Friday', closingTime: '8:00 PM', openingTime: '8:00 AM' },
+          { day: 'Saturday', closingTime: '8:00 PM', openingTime: '8:00 AM' },
+          { day: 'Sunday', closingTime: '8:00 PM', openingTime: '8:00 AM' }
+        ];
+
+        return {
+          ...prevData,
+          branchName: userBranchData.branchName || '',
+          branchPhoneNumber: userBranchData.branchPhoneNumber || '',
+          branchLocation: userBranchData.branchLocation || '',
+          branchCity: '', // This might need to be extracted from branchLocation or set separately
+          branchLatitude: userBranchData.branchLatitude || '',
+          branchLongitude: userBranchData.branchLongitude || '',
+          restaurantID: userBranchData.restaurantID || userProfile.restaurantId || '',
+          activeHours: formattedActiveHours
+        };
+      });
+    }
+  }, [userBranchData?.id, userProfile.restaurantId]);
+
+  const handleBranchInputChange = (field: keyof Branch, value: string) => {
+    setBranchData(prev => ({ ...prev, [field]: value }));
+  };
+
+  // Helper function to convert 24-hour time to 12-hour format
+  const convertTo12Hour = (time24: string): string => {
+    if (!time24) return '';
+    
+    const [hours, minutes] = time24.split(':');
+    const hour = parseInt(hours, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    
+    return `${hour12}:${minutes} ${ampm}`;
+  };
+
+  // Helper function to convert 12-hour time to 24-hour format
+  const convertTo24Hour = (time12: string): string => {
+    if (!time12) return '';
+    
+    const timeRegex = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i;
+    const match = time12.match(timeRegex);
+    
+    if (!match) return time12; // Return original value if it's already in 24h format
+    
+    let [, hours, minutes, ampm] = match;
+    let hour = parseInt(hours, 10);
+    
+    if (ampm.toUpperCase() === 'PM' && hour !== 12) {
+      hour += 12;
+    } else if (ampm.toUpperCase() === 'AM' && hour === 12) {
+      hour = 0;
+    }
+    
+    return `${hour.toString().padStart(2, '0')}:${minutes}`;
+  };
+
+  const handleActiveHoursChange = (index: number, field: keyof ActiveHours, value: string) => {
+    setBranchData(prev => {
+      const newActiveHours = [...prev.activeHours];
+      newActiveHours[index] = { 
+        ...newActiveHours[index], 
+        [field]: convertTo12Hour(value)  // Convert the 24h value from select to 12h format
+      };
+      return { ...prev, activeHours: newActiveHours };
+    });
+  };
+
+  const [isBranchSaved, setIsBranchSaved] = useState(false);
+
+  const handleSaveBranch = async () => {
+    if (!userBranchData?.id) return;
+
+    try {
+      await updateBranch(userBranchData.id, branchData);
+      setIsBranchSaved(true);
+      addNotification({
+        type: 'profile_update',
+        message: `Branch details updated successfully`
+      });
+      
+      // Reset the saved state after 2 seconds
+      setTimeout(() => {
+        setIsBranchSaved(false);
+      }, 2000);
+    } catch (error) {
+      // Error is handled by the hook
+    }
+  };
+
+  const handleLocationSelect = (locationData: LocationData) => {
+    setBranchData(prev => ({
+      ...prev,
+      branchLocation: locationData.address,
+      branchLatitude: locationData.latitude.toString(),
+      branchLongitude: locationData.longitude.toString()
+    }));
+  };
+
   return (
     <div className="h-full w-full bg-white dark:bg-black m-0 p-0 font-sans">
       <div className="p-3 ml-4 mr-4">
@@ -820,19 +964,30 @@ const Settings: FunctionComponent = () => {
                     {t('settings.tabs.changePassword')}
                   </div>
                 )}
+                {!isStoreClerk && (
+                  <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
+                    activeTab === 'restaurant-settings' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
+                  }`}
+                  onClick={() => setActiveTab('restaurant-settings')}
+                  >
+                    {t('settings.tabs.restaurantSettings')}
+                  </div>
+                )}
+                {!isStoreClerk && (
+                  <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
+                    activeTab === 'restaurant' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
+                  }`}
+                  onClick={() => setActiveTab('restaurant')}
+                  >
+                    {t('settings.tabs.aboutRestaurant')}
+                  </div>
+                )}
                 <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
-                  activeTab === 'restaurant-settings' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
+                  activeTab === 'branch' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
                 }`}
-                onClick={() => setActiveTab('restaurant-settings')}
+                onClick={() => setActiveTab('branch')}
                 >
-                  {t('settings.tabs.restaurantSettings')}
-                </div>
-                <div className={`relative text-[11px] sm:text-[12px] leading-[20px] font-sans cursor-pointer ${
-                  activeTab === 'restaurant' ? 'text-[#fe5b18] font-bold dark:text-[#fe5b18]' : 'text-black dark:text-white'
-                }`}
-                onClick={() => setActiveTab('restaurant')}
-                >
-                  {t('settings.tabs.aboutRestaurant')}
+                  {t('settings.tabs.editBranch')}
                 </div>
               </div>
             </section>
@@ -958,19 +1113,7 @@ const Settings: FunctionComponent = () => {
                         />
                       </div>
                       
-                      <div className="w-[350px] bg-transparent flex flex-col items-start justify-start gap-[1px]">
-                        <b className="self-stretch relative text-[12px] leading-[20px] font-sans text-black dark:text-white">
-                          Permanent Address
-                        </b>
-                        <input
-                          className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[6px] box-border h-[40px] pt-[10px] px-[15px] pb-[10px]"
-                          type="text"
-                          placeholder="permanent address"
-                          value={userData?.address || ''}
-                          onChange={(e) => handleInputChange('address', e.target.value)}
-                          disabled={!userData}
-                        />
-                      </div>
+                    
                       <div className="w-[350px] bg-transparent flex flex-col items-start justify-start gap-[1px]">
                         <b className="self-stretch relative text-[12px] leading-[20px] font-sans text-black dark:text-white">
                           City
@@ -1358,6 +1501,200 @@ const Settings: FunctionComponent = () => {
                       </div>
                     </div>
                   </div>
+                </div>
+              ) : activeTab === 'branch' ? (
+                <div className="self-stretch flex flex-col items-start justify-start gap-[20px] p-4">
+                  <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="w-full bg-transparent flex flex-col items-start justify-start gap-[1px]">
+                      <b className="self-stretch relative text-[12px] sm:text-[14px] leading-[22px] font-sans text-black dark:text-white">
+                        Branch Name
+                      </b>
+                      <input
+                        className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] sm:text-[14px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[8px] box-border h-[40px] sm:h-[49px] pt-[13.5px] px-[20px] pb-[12.5px]"
+                        type="text"
+                        value={branchData.branchName}
+                        onChange={(e) => handleBranchInputChange('branchName', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="w-full bg-transparent flex flex-col items-start justify-start gap-[1px]">
+                      <b className="self-stretch relative text-[12px] sm:text-[14px] leading-[22px] font-sans text-black dark:text-white">
+                        Branch Phone Number
+                      </b>
+                      <input
+                        className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] font-sans text-[12px] sm:text-[14px] bg-white dark:bg-black text-black dark:text-white self-stretch relative rounded-[8px] box-border h-[40px] sm:h-[49px] pt-[13.5px] px-[20px] pb-[12.5px]"
+                        type="tel"
+                        value={branchData.branchPhoneNumber}
+                        onChange={(e) => handleBranchInputChange('branchPhoneNumber', e.target.value)}
+                      />
+                    </div>
+
+                    <div className="w-full bg-transparent flex flex-col items-start justify-start gap-[1px]">
+                      <LocationInput
+                        label="Branch Location"
+                        onLocationSelect={handleLocationSelect}
+                        prefillData={branchData ? {
+                          address: branchData.branchLocation,
+                          latitude: parseFloat(branchData.branchLatitude) || 0,
+                          longitude: parseFloat(branchData.branchLongitude) || 0,
+                          name: branchData.branchName
+                        } : undefined}
+                        disabled={isBranchUpdating}
+                      />
+                    </div>
+
+                    
+                  </div>
+
+                  {/* Active Hours Section */}
+                  <div className="w-full mt-6">
+                    <h3 className="text-[18px] font-bold mb-6 text-black dark:text-white">
+                      Active Hours
+                    </h3>
+                    <div className="grid grid-cols-1 gap-6">
+                      {branchData.activeHours.map((hours, index) => (
+                        <div key={hours.day} className="flex items-center gap-4">
+                          <div className="w-[120px] text-[14px] font-medium text-black dark:text-white">
+                            {hours.day}
+                          </div>
+                          <div className="flex items-center gap-4">
+                            <select
+                              className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] 
+                                       bg-white dark:bg-black text-black dark:text-white rounded-[8px] 
+                                       h-[50px] px-4 appearance-none cursor-pointer w-[150px]
+                                       bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTQgNkw4IDEwTDEyIDYiIHN0cm9rZT0iIzY2NjY2NiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+Cg==')] 
+                                       bg-no-repeat bg-[center_right_1rem]"
+                              value={convertTo24Hour(hours.openingTime)}
+                              onChange={(e) => handleActiveHoursChange(index, 'openingTime', e.target.value)}
+                            >
+                              <option value="00:00">12:00 AM</option>
+                              <option value="00:30">12:30 AM</option>
+                              <option value="01:00">1:00 AM</option>
+                              <option value="01:30">1:30 AM</option>
+                              <option value="02:00">2:00 AM</option>
+                              <option value="02:30">2:30 AM</option>
+                              <option value="03:00">3:00 AM</option>
+                              <option value="03:30">3:30 AM</option>
+                              <option value="04:00">4:00 AM</option>
+                              <option value="04:30">4:30 AM</option>
+                              <option value="05:00">5:00 AM</option>
+                              <option value="05:30">5:30 AM</option>
+                              <option value="06:00">6:00 AM</option>
+                              <option value="06:30">6:30 AM</option>
+                              <option value="07:00">7:00 AM</option>
+                              <option value="07:30">7:30 AM</option>
+                              <option value="08:00">8:00 AM</option>
+                              <option value="08:30">8:30 AM</option>
+                              <option value="09:00">9:00 AM</option>
+                              <option value="09:30">9:30 AM</option>
+                              <option value="10:00">10:00 AM</option>
+                              <option value="10:30">10:30 AM</option>
+                              <option value="11:00">11:00 AM</option>
+                              <option value="11:30">11:30 AM</option>
+                              <option value="12:00">12:00 PM</option>
+                              <option value="12:30">12:30 PM</option>
+                              <option value="13:00">1:00 PM</option>
+                              <option value="13:30">1:30 PM</option>
+                              <option value="14:00">2:00 PM</option>
+                              <option value="14:30">2:30 PM</option>
+                              <option value="15:00">3:00 PM</option>
+                              <option value="15:30">3:30 PM</option>
+                              <option value="16:00">4:00 PM</option>
+                              <option value="16:30">4:30 PM</option>
+                              <option value="17:00">5:00 PM</option>
+                              <option value="17:30">5:30 PM</option>
+                              <option value="18:00">6:00 PM</option>
+                              <option value="18:30">6:30 PM</option>
+                              <option value="19:00">7:00 PM</option>
+                              <option value="19:30">7:30 PM</option>
+                              <option value="20:00">8:00 PM</option>
+                              <option value="20:30">8:30 PM</option>
+                              <option value="21:00">9:00 PM</option>
+                              <option value="21:30">9:30 PM</option>
+                              <option value="22:00">10:00 PM</option>
+                              <option value="22:30">10:30 PM</option>
+                              <option value="23:00">11:00 PM</option>
+                              <option value="23:30">11:30 PM</option>
+                            </select>
+                            <span className="text-[14px] text-black dark:text-white">to</span>
+                            <select
+                              className="border-gray-200 dark:border-[#333] border-[1px] border-solid [outline:none] 
+                                       bg-white dark:bg-black text-black dark:text-white rounded-[8px] 
+                                       h-[50px] px-4 appearance-none cursor-pointer w-[150px]
+                                       bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTYiIGhlaWdodD0iMTYiIHZpZXdCb3g9IjAgMCAxNiAxNiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTQgNkw4IDEwTDEyIDYiIHN0cm9rZT0iIzY2NjY2NiIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+Cg==')] 
+                                       bg-no-repeat bg-[center_right_1rem]"
+                              value={convertTo24Hour(hours.closingTime)}
+                              onChange={(e) => handleActiveHoursChange(index, 'closingTime', e.target.value)}
+                            >
+                              <option value="00:00">12:00 AM</option>
+                              <option value="00:30">12:30 AM</option>
+                              <option value="01:00">1:00 AM</option>
+                              <option value="01:30">1:30 AM</option>
+                              <option value="02:00">2:00 AM</option>
+                              <option value="02:30">2:30 AM</option>
+                              <option value="03:00">3:00 AM</option>
+                              <option value="03:30">3:30 AM</option>
+                              <option value="04:00">4:00 AM</option>
+                              <option value="04:30">4:30 AM</option>
+                              <option value="05:00">5:00 AM</option>
+                              <option value="05:30">5:30 AM</option>
+                              <option value="06:00">6:00 AM</option>
+                              <option value="06:30">6:30 AM</option>
+                              <option value="07:00">7:00 AM</option>
+                              <option value="07:30">7:30 AM</option>
+                              <option value="08:00">8:00 AM</option>
+                              <option value="08:30">8:30 AM</option>
+                              <option value="09:00">9:00 AM</option>
+                              <option value="09:30">9:30 AM</option>
+                              <option value="10:00">10:00 AM</option>
+                              <option value="10:30">10:30 AM</option>
+                              <option value="11:00">11:00 AM</option>
+                              <option value="11:30">11:30 AM</option>
+                              <option value="12:00">12:00 PM</option>
+                              <option value="12:30">12:30 PM</option>
+                              <option value="13:00">1:00 PM</option>
+                              <option value="13:30">1:30 PM</option>
+                              <option value="14:00">2:00 PM</option>
+                              <option value="14:30">2:30 PM</option>
+                              <option value="15:00">3:00 PM</option>
+                              <option value="15:30">3:30 PM</option>
+                              <option value="16:00">4:00 PM</option>
+                              <option value="16:30">4:30 PM</option>
+                              <option value="17:00">5:00 PM</option>
+                              <option value="17:30">5:30 PM</option>
+                              <option value="18:00">6:00 PM</option>
+                              <option value="18:30">6:30 PM</option>
+                              <option value="19:00">7:00 PM</option>
+                              <option value="19:30">7:30 PM</option>
+                              <option value="20:00">8:00 PM</option>
+                              <option value="20:30">8:30 PM</option>
+                              <option value="21:00">9:00 PM</option>
+                              <option value="21:30">9:30 PM</option>
+                              <option value="22:00">10:00 PM</option>
+                              <option value="22:30">10:30 PM</option>
+                              <option value="23:00">11:00 PM</option>
+                              <option value="23:30">11:30 PM</option>
+                            </select>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Save Button */}
+                  <button
+                    className="mt-6 cursor-pointer bg-black dark:bg-[#fe5b18] text-white px-6 sm:px-8 py-2 sm:py-3 rounded-[8px] font-sans text-[12px] sm:text-[14px] hover:bg-[#1a1a1a] dark:hover:bg-[#e54d0e] disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={handleSaveBranch}
+                    disabled={isBranchUpdating || isBranchSaved}
+                  >
+                    {isBranchUpdating ? 'Saving...' : isBranchSaved ? 'Saved!' : 'Save Branch Settings'}
+                  </button>
+
+                  {branchUpdateError && (
+                    <div className="text-red-500 text-[11px] sm:text-sm font-sans mt-2">
+                      {branchUpdateError}
+                    </div>
+                  )}
                 </div>
               ) : null}
             </div>

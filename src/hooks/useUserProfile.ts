@@ -35,12 +35,31 @@ interface RestaurantData {
   FullService: boolean;
 }
 
+// Define the interface for branch data
+interface BranchData {
+  id: string;
+  slug: string;
+  branchName: string;
+  activeHours: Array<{
+    day: string;
+    closingTime: string;
+    openingTime: string;
+  }>;
+  restaurantID: string;
+  branchLatitude: string;
+  branchLocation: string;
+  branchLongitude: string;
+  branchPhoneNumber: string;
+}
+
 export const useUserProfile = () => {
   const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
   
   // Extract restaurant data from _restaurantTable array
   const restaurantData = userProfile._restaurantTable?.[0] || {} as RestaurantData;
   
+  // Extract branch data from branchesTable
+  const branchData = userProfile.branchesTable || {} as BranchData;
   
   // Check if user is admin
   const isAdmin = userProfile.role === 'Admin';
@@ -55,6 +74,7 @@ export const useUserProfile = () => {
   return { 
     userProfile: userData,
     restaurantData,
+    branchData,
     isAdmin 
   };
 }; 
