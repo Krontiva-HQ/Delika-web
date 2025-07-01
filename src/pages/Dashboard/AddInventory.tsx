@@ -240,10 +240,12 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   };
 
   const handleCategoryClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (preSelectedCategory) return; // Don't open menu if preselected
     setCategoryAnchorEl(event.currentTarget);
   };
 
   const handleCategoryClose = (category?: string) => {
+    if (preSelectedCategory) return; // Don't update if preselected
     if (category) {
       setSelectedCategory(category);
     }
@@ -290,29 +292,26 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
 
   const isFormValid = () => {
     if (showCategoryForm) {
-      // New category: require newCategory, newCategoryImage, itemName, shortDetails, selectedImage, price
+      // New category: require newCategory, newCategoryImage, itemName, selectedImage, price
       return (
         newCategory.trim() !== '' &&
         newCategoryImage !== null &&
         itemName.trim() !== '' &&
-        shortDetails.trim() !== '' &&
         selectedImage !== null &&
         price.trim() !== ''
       );
     } else if (preSelectedCategory) {
-      // Pre-selected category: only require itemName, shortDetails, selectedImage, price
+      // Pre-selected category: only require itemName, selectedImage, price
       return (
         itemName.trim() !== '' &&
-        shortDetails.trim() !== '' &&
         selectedImage !== null &&
         price.trim() !== ''
       );
     } else {
-      // Existing category: require selectedCategory, itemName, shortDetails, selectedImage, price, selectedMainCategory
+      // Existing category: require selectedCategory, itemName, selectedImage, price, selectedMainCategory
       return (
         selectedCategory.trim() !== '' &&
         itemName.trim() !== '' &&
-        shortDetails.trim() !== '' &&
         selectedImage !== null &&
         price.trim() !== '' &&
         selectedMainCategory.trim() !== ''
@@ -338,6 +337,11 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   };
 
   const onButtonAddItemClick = async () => {
+    // Prevent multiple submissions
+    if (isAddingItem || isAddingToCategory || isAddingCategory) {
+      return;
+    }
+
     try {
       const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
       
@@ -374,8 +378,8 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
           categoryId: selectedMainCategoryId,
           onSuccess: () => {
             onInventoryUpdated?.();
-            // Force refresh the page to update inventory
-            window.location.href = '/dashboard?view=inventory';
+            // Use React Router or similar for navigation instead of direct window.location
+            onClose?.();
           }
         });
       } else {
@@ -398,8 +402,8 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
           extras: transformedExtras,
           onSuccess: () => {
             onInventoryUpdated?.();
-            // Force refresh the page to update inventory
-            window.location.href = '/dashboard?view=inventory';
+            // Use React Router or similar for navigation instead of direct window.location
+            onClose?.();
           }
         });
       }
@@ -420,7 +424,6 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
       setExtraGroups([]);
       
     } catch (error) {
-      console.error('Failed to save item:', error);
       alert('Failed to save. Please try again.');
     } finally {
       setIsAddingItem(false);
@@ -439,6 +442,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const handleMainCategoryClick = async (event: React.MouseEvent<HTMLDivElement>) => {
+    if (preSelectedCategory) return; // Don't open menu if preselected
     setMainCategoryAnchorEl(event.currentTarget);
     
     // Only fetch if we haven't loaded categories yet
@@ -448,6 +452,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   };
 
   const handleMainCategoryClose = (category?: { id: string; categoryName: string }) => {
+    if (preSelectedCategory) return; // Don't update if preselected
     if (category) {
       setSelectedMainCategory(category.categoryName);
       setSelectedMainCategoryId(category.id);
@@ -557,15 +562,15 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                   <b className="self-stretch relative leading-[20px] font-sans text-black">{t('inventory.category')}</b>
                   <div
                     ref={dropdownRef}
-                    onClick={selectedMainCategory ? undefined : handleMainCategoryClick}
+                    onClick={handleMainCategoryClick}
                     id="main-category-button"
                     className={`border-[#efefef] border-[1px] border-solid [outline:none] 
                              font-sans text-[13px] bg-[#fff] self-stretch rounded-[8px] 
                              flex flex-row items-center justify-between py-[14px] px-[20px] 
-                             ${selectedMainCategory ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-[#e0e0e0]'}`}
+                             ${preSelectedCategory ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-[#e0e0e0]'}`}
                   >
                     <span>{selectedMainCategory || t('inventory.selectCategory')}</span>
-                    <FaChevronDown className={`text-black text-[12px] ${selectedMainCategory ? 'opacity-50' : ''}`} />
+                    <FaChevronDown className={`text-black text-[12px] ${preSelectedCategory ? 'opacity-50' : ''}`} />
                   </div>
 
                   <Menu
@@ -635,17 +640,20 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                 <div className="self-stretch flex flex-col items-start justify-start gap-[1px]">
                   <b className="self-stretch relative leading-[20px] font-sans text-black">{t('inventory.subCategory')}</b>
                   {!showCategoryForm ? (
-                    <div
-                      ref={dropdownRef}
-                      onClick={selectedCategory ? undefined : handleCategoryClick}
-                      id="category-button"
-                      className={`border-[#efefef] border-[1px] border-solid [outline:none] 
-                               font-sans text-[13px] bg-[#fff] self-stretch rounded-[8px] 
-                               flex flex-row items-center justify-between py-[14px] px-[20px] 
-                               ${selectedCategory ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-[#e0e0e0]'}`}
-                    >
-                      <span>{selectedCategory || t('inventory.selectSubCategory')}</span>
-                      <FaChevronDown className={`text-black text-[12px] ${selectedCategory ? 'opacity-50' : ''}`} />
+                    <div className="flex flex-col w-full">
+                      <div
+                        ref={dropdownRef}
+                        onClick={handleCategoryClick}
+                        id="category-button"
+                        className={`border-[#efefef] border-[1px] border-solid [outline:none] 
+                                 font-sans text-[13px] bg-[#fff] self-stretch rounded-[8px] 
+                                 flex flex-row items-center justify-between py-[14px] px-[20px] 
+                                 ${preSelectedCategory ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-[#e0e0e0]'}`}
+                      >
+                        <span>{selectedCategory || t('inventory.selectSubCategory')}</span>
+                        <FaChevronDown className={`text-black text-[12px] ${preSelectedCategory ? 'opacity-50' : ''}`} />
+                      </div>
+                      <span className="text-xs text-gray-500 mt-1 font-sans">Examples: Mains, Sides, Rice, Drinks, Desserts</span>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2 w-full">
@@ -831,14 +839,12 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                 onChange={(e) => setItemName(e.target.value)}
                 required
               />
-              {itemName.trim() === '' && (
-                <span className="text-xs text-red-500 mt-1">{t('')}</span>
-              )}
+              <span className="text-xs text-gray-500 mt-1 font-sans">Examples: Jollof Rice, White Rice, Fried Rice, Banku, Waakye</span>
             </div>
             <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[23px]">
               <div className="flex-1 flex flex-col items-start justify-start gap-[6px]">
                 <div className="self-stretch relative leading-[22px] font-sans font-bold">
-                  {t('inventory.description')} <span className="text-red-500">*</span>
+                  {t('inventory.description')}
                 </div>
                 <input
                   className="border-[#f6f6f6] border-[1px] border-solid [outline:none] font-sans text-[13px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[12px] px-[20px] text-black"
@@ -846,11 +852,8 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                   type="text"
                   value={shortDetails}
                   onChange={(e) => setShortDetails(e.target.value)}
-                  required
                 />
-                {shortDetails.trim() === '' && (
-                  <span className="text-xs text-red-500 mt-1">{t('')}</span>
-                )}
+                <span className="text-xs text-gray-500 mt-1 font-sans">Optional - Add any special notes or details about the item</span>
               </div>
               <div className="flex-1 flex flex-col items-start justify-start gap-[6px]">
                 <div className="self-stretch relative leading-[22px] font-sans font-bold">

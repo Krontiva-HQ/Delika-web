@@ -256,18 +256,27 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
 
   const onAddItemButtonClick = useCallback((category?: Category) => {
     if (category) {
-      // If adding from within a category, only set the subcategory info
-      setAddInventoryCategory({
-        mainCategory: "",
-        mainCategoryId: "",
-        subCategory: category.name
-      });
+      // If adding from within a category, set both main category and subcategory info
+      const mainCategory = remoteCategories.find(cat => cat.foods.some(subCat => subCat.name === category.name));
+      if (mainCategory) {
+        setAddInventoryCategory({
+          mainCategory: mainCategory.name,
+          mainCategoryId: mainCategory.id,
+          subCategory: category.name
+        });
+      } else {
+        setAddInventoryCategory({
+          mainCategory: "",
+          mainCategoryId: "",
+          subCategory: category.name
+        });
+      }
       setShowAddInventory(true);
     } else {
       // If adding from the top button, show the action selection dialog
       setShowActionDialog(true);
     }
-  }, []);
+  }, [remoteCategories]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -459,6 +468,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       image: item.image
     });
     const [showAddExtrasModal, setShowAddExtrasModal] = useState(false);
+    const [addExtrasModalMode, setAddExtrasModalMode] = useState<'create' | 'select'>('select');
     
     // Group the initial extras by extrasTitle
     const [itemExtras, setItemExtras] = useState<ExtraGroup[]>(() => {
@@ -803,10 +813,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
           <AddExtrasModal
             open={showAddExtrasModal}
             onClose={() => setShowAddExtrasModal(false)}
-            onAdd={(groups) => {
-              setItemExtras(groups);
-              setShowAddExtrasModal(false);
-            }}
+            onAdd={handleAddExtras}
             initialExtras={itemExtras}
             mode={addExtrasModalMode}
           />

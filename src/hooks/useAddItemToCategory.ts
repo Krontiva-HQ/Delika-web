@@ -38,19 +38,10 @@ export const useAddItemToCategory = () => {
     extras,
     onSuccess
   }: AddItemParams): Promise<AddItemResponse> => {
-    console.log('🔥 useAddItemToCategory hook called - DIRECT API APPROACH 🔥', {
-      categoryId,
-      name,
-      price,
-      description,
-      mainCategoryId,
-      extras,
-      foodPhoto: foodPhoto ? {
-        name: foodPhoto.name,
-        type: foodPhoto.type,
-        size: foodPhoto.size
-      } : null
-    });
+    // Prevent multiple submissions
+    if (isLoading) {
+      return Promise.reject(new Error('A submission is already in progress'));
+    }
     
     setIsLoading(true);
     setError(null);
@@ -90,36 +81,14 @@ export const useAddItemToCategory = () => {
       formData.append('branchName', userProfile.branchId || '');
       
       if (foodPhoto) {
-        console.log('📸 Adding foodPhoto to FormData:', {
-          name: foodPhoto.name,
-          type: foodPhoto.type,
-          size: foodPhoto.size
-        });
         formData.append('foodPhoto', foodPhoto);
-      } else {
-        console.warn('⚠️ No foodPhoto provided');
       }
 
-      // Log the full FormData payload before posting
-      console.log('🚀 Posting item with FormData:');
-      Array.from(formData.entries()).forEach(pair => {
-        if (pair[1] instanceof Blob && pair[0] === 'foods') {
-          (pair[1] as Blob).text().then(text => {
-            console.log(pair[0] + ':', text);
-          });
-        } else {
-          console.log(pair[0] + ':', pair[1]);
-        }
-      });
-
-      console.log('🔥 Calling API directly - AddItemToCategory 🔥');
       const response = await addItemToCategory(formData);
-      console.log('✅ API Response:', { status: response.status, data: response.data });
       onSuccess?.();
       return response;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'An error occurred';
-      console.error('❌ API Error:', err);
       setError(message);
       throw err;
     } finally {
