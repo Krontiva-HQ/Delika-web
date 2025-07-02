@@ -135,20 +135,25 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   const [selectedCategory, setSelectedCategory] = useState(preSelectedCategory?.subCategory || "");
   const [selectedMainCategory, setSelectedMainCategory] = useState(preSelectedCategory?.mainCategory || "");
   const [selectedMainCategoryId, setSelectedMainCategoryId] = useState(preSelectedCategory?.mainCategoryId || "");
-  const [mainCategories, setMainCategories] = useState<Array<{ id: string; categoryName: string }>>([]);
+  const [mainCategories, setMainCategories] = useState<Array<{ 
+    id: string; 
+    categoryName: string;
+    categoryImage?: {
+      url: string;
+      [key: string]: any;
+    };
+  }>>([]);
   const [mainCategoryAnchorEl, setMainCategoryAnchorEl] = useState<null | HTMLElement>(null);
   const [isLoadingMainCategories, setIsLoadingMainCategories] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showCategoryForm, setShowCategoryForm] = useState(false);
   const [newCategory, setNewCategory] = useState("");
-  const [newCategoryImage, setNewCategoryImage] = useState<string | null>(null);
   const [itemName, setItemName] = useState('');
   const [price, setPrice] = useState('');
   const [available, setAvailable] = useState(true);
   const [shortDetails, setShortDetails] = useState('');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [newCategoryFile, setNewCategoryFile] = useState<File | null>(null);
   const { addItem, isLoading: isAddingToCategory } = useAddItemToCategory();
   const { addCategory, isLoading: isAddingCategory } = useAddCategory();
   const { t } = useTranslation();
@@ -292,10 +297,10 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
 
   const isFormValid = () => {
     if (showCategoryForm) {
-      // New category: require newCategory, newCategoryImage, itemName, selectedImage, price
+      // New category: require newCategory, itemName, selectedImage, price, selectedMainCategory
       return (
         newCategory.trim() !== '' &&
-        newCategoryImage !== null &&
+        selectedMainCategory.trim() !== '' &&
         itemName.trim() !== '' &&
         selectedImage !== null &&
         price.trim() !== ''
@@ -360,11 +365,15 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
       }
 
       if (showCategoryForm) {
+        // Get the selected main category's image URL
+        const selectedMainCategoryData = mainCategories.find(cat => cat.id === selectedMainCategoryId);
+        const mainCategoryImageUrl = selectedMainCategoryData?.categoryImage?.url || null;
+
         await addCategory({
           foodType: newCategory,
           restaurantName: userProfile.restaurantId,
           branchName: userProfile.branchId,
-          foodTypePhoto: newCategoryFile,
+          foodTypePhoto: mainCategoryImageUrl,
           foodsPhoto: photoFile,
           foods: [{
             name: itemName,
@@ -419,8 +428,6 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
       setSelectedMainCategoryId('');
       setShowCategoryForm(false);
       setNewCategory('');
-      setNewCategoryImage(null);
-      setNewCategoryFile(null);
       setExtraGroups([]);
       
     } catch (error) {
@@ -434,8 +441,6 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
     onInventoryUpdated?.();
     setShowCategoryForm(false);
     setNewCategory("");
-    setNewCategoryImage(null);
-    setNewCategoryFile(null);
     onClose?.();
   };
 
@@ -451,7 +456,14 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
     }
   };
 
-  const handleMainCategoryClose = (category?: { id: string; categoryName: string }) => {
+  const handleMainCategoryClose = (category?: { 
+    id: string; 
+    categoryName: string;
+    categoryImage?: {
+      url: string;
+      [key: string]: any;
+    };
+  }) => {
     if (preSelectedCategory) return; // Don't update if preselected
     if (category) {
       setSelectedMainCategory(category.categoryName);
@@ -472,14 +484,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
     setNewCategory(e.target.value);
   };
 
-  const handleCategoryImageUpload = (file: File) => {
-    setNewCategoryFile(file);
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setNewCategoryImage(e.target?.result as string);
-    };
-    reader.readAsDataURL(file);
-  };
+
 
   const handleCategoryCancel = () => {
     setShowCategoryForm(false);
@@ -680,73 +685,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                     </div>
                   )}
                   
-                  {/* Add Category Image Section */}
-                  {showCategoryForm && (
-                    <div className="mt-4 w-full">
-                      <div
-                        className={`
-                          relative w-full h-[120px] border-2 border-dashed rounded-lg
-                          ${isDragging ? 'border-[#fd683e] bg-[#fff3f0]' : 'border-[#e0e0e0] bg-[#fafafa]'}
-                          transition-colors duration-200 cursor-pointer
-                        `}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          setIsDragging(false);
-                          const file = e.dataTransfer.files[0];
-                          if (file && file.type.startsWith('image/')) {
-                            handleCategoryImageUpload(file);
-                          }
-                        }}
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          setIsDragging(true);
-                        }}
-                        onDragLeave={(e) => {
-                          e.preventDefault();
-                          setIsDragging(false);
-                        }}
-                      >
-                        {newCategoryImage ? (
-                          <div className="relative w-full h-full group">
-                            <img
-                              src={newCategoryImage}
-                              alt="Category Preview"
-                              className="w-full h-full object-contain rounded-lg"
-                            />
-                            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all duration-200 rounded-lg flex items-center justify-center">
-                              <button
-                                onClick={() => {
-                                  setNewCategoryImage(null);
-                                  setNewCategoryFile(null);
-                                }}
-                                className="opacity-0 group-hover:opacity-100 bg-white text-gray-700 px-3 py-1 rounded-md text-sm"
-                              >
-                                {t('common.delete')}
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <input
-                              type="file"
-                              accept="image/*"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  handleCategoryImageUpload(file);
-                                }
-                              }}
-                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                            />
-                            <div className="text-gray-400 text-center text-sm font-sans">
-                              <p>{t('inventory.dragAndDrop')}</p>
-                              <p>{t('inventory.or')} {t('inventory.browseFiles')}</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
+
 
                   <Menu
                     anchorEl={categoryAnchorEl}

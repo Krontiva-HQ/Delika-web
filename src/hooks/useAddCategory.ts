@@ -5,7 +5,7 @@ interface AddCategoryParams {
   foodType: string;
   restaurantName: string;
   branchName: string;
-  foodTypePhoto?: File | null;
+  foodTypePhoto?: File | string | null; // Can be File or URL string
   foodsPhoto?: File | null;
   mainCategory: string;
   categoryId: string;
@@ -45,11 +45,15 @@ export const useAddCategory = () => {
       hasFoodsPhoto: !!foodsPhoto,
       foodsCount: foods.length,
       categoryId,
-      foodTypePhoto: foodTypePhoto ? {
-        name: foodTypePhoto.name,
-        type: foodTypePhoto.type,
-        size: foodTypePhoto.size
-      } : 'NO FOOD TYPE PHOTO PROVIDED',
+      foodTypePhoto: foodTypePhoto ? (
+        typeof foodTypePhoto === 'string' 
+          ? `URL: ${foodTypePhoto}` 
+          : {
+              name: foodTypePhoto.name,
+              type: foodTypePhoto.type,
+              size: foodTypePhoto.size
+            }
+      ) : 'NO FOOD TYPE PHOTO PROVIDED',
       foodsPhoto: foodsPhoto ? {
         name: foodsPhoto.name,
         type: foodsPhoto.type,
@@ -95,13 +99,31 @@ export const useAddCategory = () => {
       }
 
       if (foodTypePhoto) {
-        console.log('📸 Adding foodTypePhoto:', {
-          name: foodTypePhoto.name,
-          type: foodTypePhoto.type,
-          size: foodTypePhoto.size
-        });
-        formData.append('foodTypePhoto', foodTypePhoto);
-        console.log('✅ foodTypePhoto successfully added to FormData');
+        if (typeof foodTypePhoto === 'string') {
+          // Handle URL case - convert URL to file or handle differently
+          console.log('📸 Adding foodTypePhoto URL:', foodTypePhoto);
+          // For URL case, we'll need to fetch the image and convert to blob
+          try {
+            const response = await fetch(foodTypePhoto);
+            const blob = await response.blob();
+            const fileName = foodTypePhoto.split('/').pop() || 'category-image';
+            const file = new File([blob], fileName, { type: blob.type });
+            formData.append('foodTypePhoto', file);
+            console.log('✅ foodTypePhoto URL successfully converted and added to FormData');
+          } catch (error) {
+            console.error('❌ Failed to fetch foodTypePhoto URL:', error);
+            // Continue without the image
+          }
+        } else {
+          // Handle File case
+          console.log('📸 Adding foodTypePhoto file:', {
+            name: foodTypePhoto.name,
+            type: foodTypePhoto.type,
+            size: foodTypePhoto.size
+          });
+          formData.append('foodTypePhoto', foodTypePhoto);
+          console.log('✅ foodTypePhoto file successfully added to FormData');
+        }
       } else {
         console.warn('⚠️ No foodTypePhoto provided or foodTypePhoto is null/undefined');
       }
