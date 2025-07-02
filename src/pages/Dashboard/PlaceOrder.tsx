@@ -38,31 +38,77 @@ const GOOGLE_MAPS_API_KEY = 'AIzaSyAdv28EbwKXqvlKo2henxsKMD-4EKB20l8';
 
 // PrinterService Web Implementation - based on web-example.html
 class WebPrinterService {
+  // Add helper method for text wrapping
+  static wrapText(text: string, maxChars: number = 10): string[] {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+
+    words.forEach(word => {
+      if ((currentLine + word).length <= maxChars) {
+        currentLine += (currentLine ? ' ' : '') + word;
+      } else {
+        if (currentLine) lines.push(currentLine);
+        // If single word is longer than maxChars, split it
+        if (word.length > maxChars) {
+          const chunks = word.match(new RegExp(`.{1,${maxChars}}`, 'g')) || [];
+          lines.push(...chunks);
+          currentLine = '';
+        } else {
+          currentLine = word;
+        }
+      }
+    });
+    
+    if (currentLine) lines.push(currentLine);
+    return lines;
+  }
+
+  // Add methods for printer persistence
+  static savePrinterConnection(device: any) {
+    if (device && device.name) {
+      localStorage.setItem('lastConnectedPrinter', device.name);
+    }
+  }
+
+  static getLastConnectedPrinter() {
+    return localStorage.getItem('lastConnectedPrinter');
+  }
+
   static generateTSPL(receiptData: any) {
     const { orderNumber, customerName, paymentMethod, items, totalPrice } = receiptData;
     
     let tsplCommands = 'SIZE 50 mm, 60 mm\n';
     tsplCommands += 'CLS\n';
     
-    // Order number at top - X margin: 100 (updated from 2)
+    // Order number at top
     tsplCommands += `TEXT 100,10,"4",0,2,2,"${orderNumber}"\n`;
     
-    // Customer name - X margin: 100 (updated from 2)
-    tsplCommands += `TEXT 100,60,"3",0,1,1,"${customerName}"\n`;
-    // Payment method - X margin: 200 (updated from 160)
-    tsplCommands += `TEXT 200,60,"3",0,1,1,"${paymentMethod}"\n`;
-    
-    // Items list with bullet points - X margin: 100 (updated from 2)
-    let yPosition = 100;
-    items.forEach((item: any, index: number) => {
-      tsplCommands += `TEXT 100,${yPosition},"3",0,1,1,"• ${item.name} x${item.quantity}"\n`;
-      yPosition += 25;
+    // Customer name with wrapping
+    const customerNameLines = this.wrapText(customerName);
+    let yPos = 60;
+    customerNameLines.forEach(line => {
+      tsplCommands += `TEXT 100,${yPos},"3",0,1,1,"${line}"\n`;
+      yPos += 25;
     });
     
+    // Payment method
+    tsplCommands += `TEXT 200,60,"3",0,1,1,"${paymentMethod}"\n`;
     
-    // Add timestamp - X margin: 100 (updated from 2)
+    // Items list with bullet points and wrapping
+    yPos = Math.max(yPos, 100); // Ensure we start items below customer name
+    items.forEach((item: any) => {
+      const itemText = `• ${item.name} x${item.quantity}`;
+      const itemLines = this.wrapText(itemText);
+      itemLines.forEach(line => {
+        tsplCommands += `TEXT 100,${yPos},"3",0,1,1,"${line}"\n`;
+        yPos += 25;
+      });
+    });
+    
+    // Add timestamp
     const timestamp = new Date().toLocaleString();
-    tsplCommands += `TEXT 100,${yPosition + 100},"2",0,1,1,"${timestamp}"\n`;
+    tsplCommands += `TEXT 100,${yPos + 50},"2",0,1,1,"${timestamp}"\n`;
     
     tsplCommands += 'PRINT 1\n';
     
@@ -89,11 +135,8 @@ class WebPrinterService {
   static async printReceipt(characteristic: any, receiptData: any) {
     try {
       const tsplCommands = this.generateTSPL(receiptData);
-      
       await this.sendRawBytesInChunks(characteristic, tsplCommands, 20);
-      
       return true;
-      
     } catch (error) {
       throw error;
     }
@@ -417,6 +460,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     return typeof navigator !== 'undefined' && typeof (navigator as any).bluetooth !== 'undefined';
   };
 
+  // Modify the connectToPrinter function to use persistence
   const connectToPrinter = async () => {
     if (!checkWebBluetoothSupport()) {
       addNotification({
@@ -429,8 +473,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     try {
       setPrinterConnectionStatus('connecting');
       
+      // Get last connected printer name
+      const lastPrinterName = WebPrinterService.getLastConnectedPrinter();
+      
       const device = await navigator.bluetooth.requestDevice({
         filters: [
+          ...(lastPrinterName ? [{ name: lastPrinterName }] : []),
           { namePrefix: 'DL' },
           { namePrefix: 'Deli' },
           { namePrefix: 'Thermal' },
@@ -460,6 +508,9 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       setPrintCharacteristic(characteristic);
       setPrinterConnectionStatus('connected');
       setShowPrinterModal(false);
+      
+      // Save printer connection
+      WebPrinterService.savePrinterConnection(device);
       
       addNotification({
         type: 'order_created',
