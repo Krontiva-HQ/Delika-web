@@ -3053,8 +3053,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     onClose();
     
     addNotification({
-      type: 'batch_completed',
-      message: `Batch #${currentBatchId} has been completed with ${batchedOrders.length} orders`
+      type: 'system',
+      message: t('orders.success.batchCompleted')
     });
   };
 

@@ -5,11 +5,14 @@ import dayjs from 'dayjs';
 
 interface Notification {
   id: string;
-  type: 'order_created' | 'order_updated' | 'order_status' | 'inventory_alert' | 'system';
+  type: 'order_created' | 'order_updated' | 'order_status' | 'inventory_alert' | 'system' | 
+        'order_edited' | 'batch_completed' | 'employee_update' | 'profile_update' | 
+        'password_change' | 'user_deleted';
   message: string;
   timestamp: Date;
   read: boolean;
   orderId?: string;
+  time?: string;
 }
 
 interface Order {
@@ -59,6 +62,8 @@ interface NotificationContextType {
   addNotification: (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => void;
   markAsRead: (id: string) => void;
   clearAll: () => void;
+  removeNotification: (id: string) => void;
+  clearAllNotifications: () => void;
   unreadCount: number;
   // Global order monitoring
   pendingOrders: Order[];
@@ -102,6 +107,14 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   }, []);
 
   const clearAll = useCallback(() => {
+    setNotifications([]);
+  }, []);
+
+  const removeNotification = useCallback((id: string) => {
+    setNotifications(prev => prev.filter(notif => notif.id !== id));
+  }, []);
+
+  const clearAllNotifications = useCallback(() => {
     setNotifications([]);
   }, []);
 
@@ -306,6 +319,8 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     addNotification,
     markAsRead,
     clearAll,
+    removeNotification,
+    clearAllNotifications,
     unreadCount,
     pendingOrders,
     showGlobalOrderModal,

@@ -132,8 +132,8 @@ const Settings: FunctionComponent = () => {
     fetchTeamMembers();
     
     addNotification({
-      type: 'employee_update',
-      message: `New team member **${newMember.fullName}** has been added`
+      type: 'system',
+      message: t('settings.success.employeeUpdated')
     });
   };
 
@@ -383,8 +383,8 @@ const Settings: FunctionComponent = () => {
       const result = await updateUser(formData);
       if (result) {
         addNotification({
-          type: 'profile_update',
-          message: `Profile updated for user **${userData.fullName}**`
+          type: 'system',
+          message: t('settings.success.profileUpdated')
         });
       }
     } catch (error) {
@@ -411,8 +411,8 @@ const Settings: FunctionComponent = () => {
     
     if (response.success) {
       addNotification({
-        type: 'password_change',
-        message: `Password has been successfully changed for **${userData?.fullName}**`
+        type: 'system',
+        message: t('settings.success.passwordChanged')
       });
       
       setOldPassword('');
@@ -651,8 +651,8 @@ const Settings: FunctionComponent = () => {
       await fetchTeamMembers();
       
       addNotification({
-        type: 'employee_update',
-        message: `Team member **${memberToEdit?.fullName}** details have been updated`
+        type: 'system',
+        message: t('settings.success.employeeUpdated')
       });
       
       setIsEditMemberOpen(false);
@@ -699,8 +699,8 @@ const Settings: FunctionComponent = () => {
 
       setIsSaved(true);
       addNotification({
-        type: 'profile_update',
-        message: `Restaurant settings updated successfully`
+        type: 'system',
+        message: t('settings.success.profileUpdated')
       });
 
       // Show saving message
@@ -746,15 +746,15 @@ const Settings: FunctionComponent = () => {
       });
 
       addNotification({
-        type: 'user_deleted',
-        message: 'Rider has been removed'
+        type: 'system',
+        message: t('settings.success.userDeleted')
       });
 
       setRefreshRiders(prev => !prev);
     } catch (error) {
       addNotification({
-        type: 'user_deleted',
-        message: 'Failed to remove rider'
+        type: 'system',
+        message: t('settings.error.userDeleted')
       });
     } finally {
       setDeleteRiderModalOpen(false);
@@ -905,8 +905,8 @@ const Settings: FunctionComponent = () => {
       await updateBranch(userBranchData.id, branchData);
       setIsBranchSaved(true);
       addNotification({
-        type: 'profile_update',
-        message: `Branch details updated successfully`
+        type: 'system',
+        message: t('settings.success.profileUpdated')
       });
       
       setTimeout(() => {
