@@ -27,7 +27,7 @@ import { Switch } from '../../components/ui/switch';
 import { Button as UIButton } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import AddExtrasModal from '../../components/AddExtrasModal';
-import axios from 'axios';
+import { updateInventoryItem } from '../../services/api';
 
 interface MenuItem {
   id: string;
@@ -326,6 +326,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
   const [categoryItems, setCategoryItems] = useState<MenuItem[]>([]);
   const [isLoadingItems, setIsLoadingItems] = useState(false);
   const { updateInventory, isLoading: isUpdating, error: updateError } = useUpdateInventory();
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Update items when category changes
   useEffect(() => {
@@ -380,7 +381,12 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
   }, [categoryItems, searchQuery]);
 
   const handleItemClick = (item: MenuItem) => {
+    // Don't reset selection if already in edit mode
+    if (selectedItem?.id === item.id && isEditMode) {
+      return;
+    }
     setSelectedItem(item);
+    setIsEditMode(false);
   };
 
   // Update the category click handler to clear items first
@@ -393,21 +399,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
     if (!selectedItem) return;
 
     try {
-      let imageData = null;
-      if (selectedItem.image.startsWith('http')) {
-        const response = await fetch(selectedItem.image);
-        const blob = await response.blob();
-        const imageFile = new File([blob], 'image.jpg', { type: 'image/jpeg' });
-        imageData = {
-          name: imageFile.name,
-          size: imageFile.size,
-          type: imageFile.type,
-          error: 0,
-          tmp_name: '/tmp/php' + Math.random().toString(36).substring(7),
-          full_path: imageFile.name
-        };
-      }
-
       const formattedExtras = itemExtras.flatMap(group =>
         group.extrasDetails.map(detail => ({
           extrasTitle: group.extrasTitle,
@@ -415,7 +406,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         })).filter(extra => extra.delika_inventory_table_id !== '')
       );
 
-      const updateData = {
+      await updateInventoryItem({
         old_name: selectedItem.name,
         old_item_description: selectedItem.description || '',
         old_item_price: selectedItem.price,
@@ -427,20 +418,10 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         restaurantId: userProfile.restaurantId,
         branchId: userProfile.role === 'Admin' ? selectedBranchId : userProfile.branchId,
         value: selectedItem.id
-      };
-
-      await axios.patch(
-        'https://api-server.krontiva.africa/api:uEBBwbSs/update/inventory/item',
-        updateData,
-        {
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        }
-      );
+      });
 
       addNotification({
-        type: 'inventory_update',
+        type: 'inventory_alert',
         message: `${selectedItem.name} has been updated successfully`
       });
 
@@ -450,7 +431,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
 
     } catch (error) {
       addNotification({
-        type: 'inventory_update',
+        type: 'inventory_alert',
         message: 'Failed to update item. Please try again.'
       });
     }
@@ -461,7 +442,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
     
     const [price, setPrice] = useState(item.price);
     const [available, setAvailable] = useState(item.available);
-    const [isEditing, setIsEditing] = useState(false);
     const [editForm, setEditForm] = useState({
       name: item.name,
       description: item.description || '',
@@ -469,7 +449,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
     });
     const [showAddExtrasModal, setShowAddExtrasModal] = useState(false);
     const [addExtrasModalMode, setAddExtrasModalMode] = useState<'create' | 'select'>('select');
-    
+
     // Group the initial extras by extrasTitle
     const [itemExtras, setItemExtras] = useState<ExtraGroup[]>(() => {
       if (!item.extras) return [];
@@ -494,14 +474,12 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
     });
 
     const handleEditToggle = () => {
-      setIsEditing(!isEditing);
-      if (!isEditing) {
-        setEditForm({
-          name: item.name,
-          description: item.description || '',
-          image: item.image
-        });
-      }
+      setIsEditMode(!isEditMode);
+    };
+
+    const handleModalClose = () => {
+      setIsEditMode(false);
+      onClose();
     };
 
     const handleAddExtras = (newExtras: ExtraGroup[]) => {
@@ -517,7 +495,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       <>
         <Modal
           open={true}
-          onClose={onClose}
+          onClose={handleModalClose}
           className="flex items-center justify-center p-4"
         >
           <div className="bg-white dark:bg-[#2c2522] rounded-lg p-3 sm:p-4 w-full max-w-[95%] sm:max-w-[85%] md:max-w-[800px] mx-auto max-h-[85vh] overflow-y-auto relative shadow-xl border border-gray-100">
@@ -530,8 +508,8 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                 position: 'absolute',
                 top: '12px',
                 right: '24px',
-                backgroundColor: isEditing ? '#fd683e' : '#201a18',
-                borderColor: isEditing ? '#fd683e' : '#201a18',
+                backgroundColor: isEditMode ? '#fd683e' : '#201a18',
+                borderColor: isEditMode ? '#fd683e' : '#201a18',
                 color: 'white',
                 padding: '4px 12px',
                 fontSize: '10px',
@@ -539,13 +517,13 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                 minWidth: '60px'
               }}
             >
-              {isEditing ? 'Cancel' : 'Edit'}
+              {isEditMode ? 'Cancel' : 'Edit'}
             </Button>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 mt-6">
               {/* Left Column - Main Item Details */}
               <div className="flex flex-col gap-3 bg-gray-50 dark:bg-[#201a18] rounded-lg p-4">
-                {isEditing ? (
+                {isEditMode ? (
                   <div className="space-y-6">
                     {/* Image Upload Section */}
                     <Card className="bg-white dark:bg-[#2c2522] border-gray-200">
@@ -664,7 +642,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                         </svg>
                         Extras Available
                       </CardTitle>
-                      {isEditing && (
+                      {isEditMode && (
                         <UIButton
                           onClick={() => { setAddExtrasModalMode('select'); setShowAddExtrasModal(true); }}
                           size="sm"
@@ -727,7 +705,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {!isEditing ? (
+                    {!isEditMode ? (
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label className="text-sm font-medium text-gray-600">Price (GHS)</Label>
@@ -781,7 +759,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
 
                         {/* Action Buttons */}
                         <div className="flex gap-3 pt-4 mt-6">
-                          {!isEditing && (
+                          {!isEditMode && (
                             <UIButton
                               onClick={onClose}
                               variant="outline"

@@ -111,7 +111,8 @@ export const API_ENDPOINTS = {
     UPDATE_INVENTORY_ITEM: '/update/inventory/item'
   },
   INVENTORY: {
-    GET_ALL: '/delika_inventory_table'
+    GET_ALL: '/delika_inventory_table',
+    UPDATE_ITEM: '/update/inventory/item'
   },
   CREATE_EXTRAS_ITEM: '/create/extras/item',
   AUDIT: {
@@ -714,7 +715,7 @@ export const getAllInventory = async () => {
   return api.get(API_ENDPOINTS.INVENTORY.GET_ALL, { headers });
 };
 
-export const updateInventoryItem = async (data: {
+export interface UpdateInventoryItemRequest {
   old_name: string;
   old_item_description: string;
   old_item_price: number;
@@ -729,12 +730,14 @@ export const updateInventoryItem = async (data: {
   restaurantId: string;
   branchId: string;
   value: string;
-}) => {
+}
+
+export const updateInventoryItem = async (data: UpdateInventoryItemRequest) => {
   const headers = {
     'Content-Type': 'application/json',
     'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
-  return api.patch(API_ENDPOINTS.MENU.UPDATE_INVENTORY_ITEM, data, { headers });
+  return api.patch(API_ENDPOINTS.INVENTORY.UPDATE_ITEM, data, { headers });
 };
 
 // Add phone login response interface

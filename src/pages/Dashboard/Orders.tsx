@@ -266,7 +266,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
   const [currentPage, setCurrentPage] = useState(1);
   const ordersPerPage = 10;
 
-  const { addNotification } = useNotifications();
+  const { addNotification, showGlobalOrderModal } = useNotifications();
 
   // Add these new states after the existing states
   const [newOrders, setNewOrders] = useState<Order[]>([]);
@@ -283,6 +283,36 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
   // Add new state for loading specific orders
   const [loadingOrderIds, setLoadingOrderIds] = useState<Set<string>>(new Set());
+
+  // Utility function to manually clear stuck loading states
+  const clearAllLoadingStates = useCallback(() => {
+    console.log('🧹 Manually clearing all loading states. Previously loading:', Array.from(loadingOrderIds));
+    setLoadingOrderIds(new Set());
+    addNotification({
+      type: 'order_status',
+      message: 'Cleared all loading states'
+    });
+  }, [loadingOrderIds, addNotification]);
+
+  // Add function to window for debugging
+  useEffect(() => {
+    (window as any).clearOrderLoadingStates = clearAllLoadingStates;
+    console.log('🔧 Debug function available: window.clearOrderLoadingStates()');
+    
+    const handleKeyPress = (event: KeyboardEvent) => {
+      // Ctrl+Shift+C to clear loading states
+      if (event.ctrlKey && event.shiftKey && event.key === 'C') {
+        clearAllLoadingStates();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyPress);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+      delete (window as any).clearOrderLoadingStates;
+    };
+  }, [clearAllLoadingStates]);
 
   // Add new state for orders that need accept/decline decision
   const [pendingDecisionOrders, setPendingDecisionOrders] = useState<Set<string>>(new Set());
@@ -604,6 +634,8 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         return order.orderChannel === 'customerApp' && order.paymentStatus === 'Paid';
       });
 
+     
+
       // Update newOrders state with proper kitchen status sync
       setNewOrders(prev => {
         // Get existing orders that should remain in the floating panel
@@ -667,26 +699,46 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         return newSet;
       });
 
-      // Show modal for pending orders that need decisions
-      const shouldShowModal = latestOrders.some((order: Order) => 
+      // Check for pending orders that need decisions
+      const pendingOrdersNeedingDecision = latestOrders.filter((order: Order) => 
         order.orderChannel === 'customerApp' && 
         order.paymentStatus === 'Paid' &&
         order.orderAccepted === 'pending'
       );
 
-      if (shouldShowModal) {
+      console.log('🔔 Audio check:', {
+        pendingOrdersCount: pendingOrdersNeedingDecision.length,
+        newIncomingOrdersCount: newIncomingOrders.length,
+        shouldPlayAudio: newIncomingOrders.length > 0 || pendingOrdersNeedingDecision.length > 0
+      });
+
+      // Only show local modal if global modal is not active
+      if (pendingOrdersNeedingDecision.length > 0 && !showGlobalOrderModal) {
         setShowNewOrderModal(true);
-        // Only play sound for truly new orders
-        if (newIncomingOrders.length > 0) {
+        
+        // Play sound for new orders OR the first time we detect pending orders
+        // (Global system handles audio, so this is backup)
+        const shouldPlayAudio = newIncomingOrders.length > 0 || 
+          (pendingOrdersNeedingDecision.length > 0 && !showNewOrderModal);
+        
+        if (shouldPlayAudio) {
+          console.log('🔊 Playing audio from local Orders page (backup)');
           const audio = new Audio('/orderRinging.mp3');
-          audio.play().catch((e) => { console.error('Audio play failed', e); });
+          audio.volume = 0.5; // Lower volume since global handles primary audio
+          audio.play().catch((e) => { 
+            console.error('Audio play failed in checkForNewOrders:', e);
+          });
         }
+      } else if (showGlobalOrderModal && showNewOrderModal) {
+        // Close local modal if global modal is active
+        setShowNewOrderModal(false);
       }
 
       // Update lastOrderIds with all current order IDs
       setLastOrderIds(new Set(latestOrders.map((order: Order) => order.id)));
 
     } catch (error) {
+      console.error('Error checking for new orders:', error);
     }
   }, [selectedDate, selectedBranchId, userProfile, lastOrderIds]);
 
@@ -697,8 +749,9 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     }
   }, [orders, checkForNewOrders]);
 
-  // Optimize the polling interval
+  // Optimize the polling interval (reduced frequency since global system handles primary detection)
   useEffect(() => {
+    console.log('📍 Orders page: Local polling started (backup to global system)');
     let lastPollTime = Date.now();
     let isPolling = false;
     
@@ -717,7 +770,8 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       }
     };
 
-    const pollInterval = setInterval(poll, 10000);
+    // Longer interval since global system handles primary detection
+    const pollInterval = setInterval(poll, 15000);
 
     return () => {
       clearInterval(pollInterval);
@@ -854,6 +908,12 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       return;
     }
 
+    // Prevent multiple simultaneous updates for the same order
+    if (loadingOrderIds.has(orderId)) {
+      console.log('⚠️ Order already being updated, skipping:', orderId);
+      return;
+    }
+
     // Determine the next status based on current status
     let nextStatus = '';
     if (order.kitchenStatus === '' || !order.kitchenStatus) {
@@ -866,8 +926,33 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       return; // No further status changes allowed
     }
 
+    // Prevent multiple simultaneous updates for the same order
+    if (loadingOrderIds.has(order.id)) {
+      console.log('⚠️ Order already being updated, skipping:', order.id);
+      return;
+    }
+
+    console.log('🍴 Kitchen status update:', {
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+      currentStatus: order.kitchenStatus,
+      nextStatus: nextStatus,
+      orderChannel: order.orderChannel,
+      currentlyLoading: Array.from(loadingOrderIds)
+    });
+
     // Add this order to loading state before any updates
     setLoadingOrderIds(prev => new Set(prev).add(order.id));
+
+    // Safety timeout to clear loading state after 10 seconds
+    const timeoutId = setTimeout(() => {
+      console.log('⏰ Timeout: Clearing stuck loading state for order:', order.id);
+      setLoadingOrderIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(order.id);
+        return newSet;
+      });
+    }, 10000);
 
     try {
       // Make the API call first
@@ -876,7 +961,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         kitchenStatus: nextStatus
       });
 
-      // After successful API call, update the UI
+      // After successful API call, update the UI optimistically
       const updatedOrder = { ...order, kitchenStatus: nextStatus };
       
       // Update both the table and floating panel with the new status
@@ -896,47 +981,19 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         )
       );
 
-      // Fetch just this order's latest data to ensure consistency
-      const response = await api.get(`/orders/${order.orderNumber}`);
-      if (response.data) {
-        const latestOrder = response.data;
-        
-        // Update with the latest data from the server
-        setOrders(prevOrders => 
-          prevOrders.map(prevOrder => 
-            prevOrder.id === order.id 
-              ? latestOrder
-              : prevOrder
-          )
-        );
-
-        setNewOrders(prevOrders => 
-          prevOrders.map(prevOrder => 
-            prevOrder.id === order.id 
-              ? latestOrder
-              : prevOrder
-          )
-        );
+      // Only remove from pending orders if status is "prepared"
+      if (nextStatus === 'prepared') {
+        setNewOrders(prev => prev.filter(o => o.id !== order.id));
       }
-
-      // Perform a full table refresh
-      if (selectedDate && selectedBranchId) {
-        await fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
-      }
-
-      // Also check for new orders to update pending orders
-      await checkForNewOrders();
 
       addNotification({
         type: 'order_status',
         message: `Kitchen status updated to ${nextStatus}`
       });
 
-      // Only remove from pending orders if status is "prepared"
-      if (nextStatus === 'prepared') {
-        setNewOrders(prev => prev.filter(o => o.id !== order.id));
-      }
     } catch (error) {
+      console.error('Failed to update kitchen status:', error);
+      
       // Revert the optimistic updates in both places
       setOrders(prevOrders => 
         prevOrders.map(prevOrder => 
@@ -959,6 +1016,9 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         message: 'Failed to update kitchen status'
       });
     } finally {
+      // Clear the timeout since we're done
+      clearTimeout(timeoutId);
+      
       // Remove this order from loading state after all operations are complete
       setLoadingOrderIds(prev => {
         const next = new Set(prev);
@@ -1112,14 +1172,64 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
   // Play sound when a new pending order appears in the New Order modal
   useEffect(() => {
-    if (
-      showNewOrderModal &&
-      newOrders.some(order => order.orderAccepted === "pending" && order.paymentStatus === "Paid")
-    ) {
+    const pendingOrders = newOrders.filter(order => 
+      order.orderAccepted === "pending" && 
+      order.paymentStatus === "Paid"
+    );
+
+    console.log('🔊 Audio useEffect triggered:', {
+      showNewOrderModal,
+      pendingOrdersCount: pendingOrders.length,
+      totalNewOrders: newOrders.length,
+      shouldPlayAudio: showNewOrderModal && pendingOrders.length > 0
+    });
+
+    if (showNewOrderModal && pendingOrders.length > 0) {
+      console.log('🎵 Attempting to play audio for pending orders');
+      
+      // Create and play audio with better error handling
       const audio = new Audio('/orderRinging.mp3');
-      audio.play().catch((e) => { console.error('Audio play failed', e); });
+      
+      // Add more detailed error handling
+      audio.addEventListener('loadstart', () => {
+        console.log('Audio loading started');
+      });
+      
+      audio.addEventListener('canplay', () => {
+        console.log('Audio can play');
+      });
+      
+      audio.addEventListener('error', (e) => {
+        console.error('Audio error event:', e);
+      });
+
+      // Set volume and play
+      audio.volume = 0.7;
+      audio.play()
+        .then(() => {
+          console.log('✅ Audio played successfully');
+        })
+        .catch((error) => {
+          console.error('❌ Audio play failed:', error);
+          console.error('Error details:', {
+            name: error.name,
+            message: error.message,
+            code: error.code
+          });
+          
+          // Try playing with user interaction if autoplay failed
+          if (error.name === 'NotAllowedError') {
+            console.log('🔇 Audio blocked by browser autoplay policy');
+            
+            // Show a visual notification instead
+            addNotification({
+              type: 'order_created',
+              message: `New order received! (Audio blocked by browser)`
+            });
+          }
+        });
     }
-  }, [newOrders, showNewOrderModal]);
+  }, [newOrders, showNewOrderModal, addNotification]);
 
   return (
     <div className="h-full w-full bg-white m-0 p-0">
@@ -1486,14 +1596,17 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
             />
           )}
 
-          <NewOrderModal
-            isOpen={showNewOrderModal}
-            onClose={() => setShowNewOrderModal(false)}
-            onAccept={handleAcceptNewOrders}
-            onDecline={handleDeclineNewOrders}
-            newOrders={newOrders}
-            modalLoadingOrderIds={modalLoadingOrderIds}
-          />
+          {/* Only show local modal if global modal is not active */}
+          {!showGlobalOrderModal && (
+            <NewOrderModal
+              isOpen={showNewOrderModal}
+              onClose={() => setShowNewOrderModal(false)}
+              onAccept={handleAcceptNewOrders}
+              onDecline={handleDeclineNewOrders}
+              newOrders={newOrders}
+              modalLoadingOrderIds={modalLoadingOrderIds}
+            />
+          )}
         </div>
       )}
     </div>

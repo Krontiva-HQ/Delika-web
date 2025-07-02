@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import NotificationsModal from '../../components/NotificationsModal';
+import GlobalOrderModal from '../../components/GlobalOrderModal';
 import { IoIosArrowDropdown, IoIosCloseCircleOutline, IoIosArrowBack } from "react-icons/io";
 import { useNotifications } from '../../context/NotificationContext';
 import { useUserProfile } from '../../hooks/useUserProfile';
@@ -438,6 +439,9 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
         isOpen={isNotificationsOpen} 
         onClose={() => setIsNotificationsOpen(false)} 
       />
+      
+      {/* Global Order Modal - appears on all pages */}
+      <GlobalOrderModal />
     </div>
   );
 };
