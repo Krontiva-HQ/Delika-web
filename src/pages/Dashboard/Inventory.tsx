@@ -826,11 +826,11 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
 
       if (addInventoryCategory?.mainCategoryId) {
         const mainCategory = response.data.find(
-          (cat: { id: string; categoryName: string }) => cat.id === addInventoryCategory.mainCategoryId
+          (cat: { id: string; foodType: string }) => cat.id === addInventoryCategory.mainCategoryId
         );
         if (mainCategory) {
           setAddInventoryCategory({
-            mainCategory: mainCategory.categoryName,
+            mainCategory: mainCategory.foodType,
             mainCategoryId: mainCategory.id,
             subCategory: addInventoryCategory.subCategory
           });

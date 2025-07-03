@@ -3116,7 +3116,9 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             <div className="overflow-x-auto pb-2">
               <div className="grid grid-rows-2 auto-cols-max grid-flow-col gap-2" style={{ minWidth: 'min-content' }}>
                 {(() => {
-                  const cards = categoryItems.map((item) => {
+                  // Sort items by name in ascending order
+                  const sortedItems = [...categoryItems].sort((a, b) => a.name.localeCompare(b.name));
+                  const cards = sortedItems.map((item) => {
                     const isSelected = selectedItems.some(selected => selected.name === item.name);
                     return (
                       <Card
