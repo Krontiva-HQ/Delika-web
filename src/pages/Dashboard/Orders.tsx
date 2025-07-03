@@ -901,10 +901,8 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
   const handleKitchenStatusUpdate = async (orderId: string, currentStatus: string, order: Order) => {
     // Return early if order is from restaurant portal
     if (order.orderChannel === 'restaurantPortal') {
-      addNotification({
-        type: 'order_status',
-        message: 'Kitchen status cannot be updated for restaurant portal orders'
-      });
+      // Kitchen status cannot be updated for restaurant portal orders
+      console.log('Kitchen status cannot be updated for restaurant portal orders');
       return;
     }
 
@@ -956,10 +954,12 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
     try {
       // Make the API call first
-      await api.patch('/edit/kitchen/status', {
+      const response = await api.patch('/edit/kitchen/status', {
         orderNumber: order.orderNumber,
         kitchenStatus: nextStatus
       });
+
+    
 
       // After successful API call, update the UI optimistically
       const updatedOrder = { ...order, kitchenStatus: nextStatus };
@@ -986,35 +986,64 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         setNewOrders(prev => prev.filter(o => o.id !== order.id));
       }
 
-      addNotification({
-        type: 'order_status',
-        message: `Kitchen status updated to ${nextStatus}`
-      });
+      // Kitchen status updated successfully
+      console.log(`Kitchen status updated to ${nextStatus}`);
 
-    } catch (error) {
-      console.error('Failed to update kitchen status:', error);
+    } catch (error: any) {
+      console.error('❌ Kitchen status update error details:', {
+        error,
+        errorMessage: error?.message,
+        errorStatus: error?.status,
+        errorCode: error?.code,
+        orderNumber: order.orderNumber,
+        nextStatus,
+        originalError: error
+      });
       
-      // Revert the optimistic updates in both places
-      setOrders(prevOrders => 
-        prevOrders.map(prevOrder => 
-          prevOrder.id === order.id 
-            ? { ...prevOrder, kitchenStatus: order.kitchenStatus }
-            : prevOrder
-        )
-      );
+      // Check if the error is just a response format issue but the update might have succeeded
+      // Wait a moment and then refresh the order data to check if it actually updated
+      setTimeout(async () => {
+        try {
+          // Refresh the orders to see if the status actually changed
+          if (selectedDate && selectedBranchId) {
+            console.log('🔄 Refreshing orders to verify kitchen status update...');
+            await fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
+          }
+        } catch (refreshError) {
+          console.error('Failed to refresh orders after kitchen status error:', refreshError);
+        }
+      }, 1000);
+      
+      // For now, don't revert the UI changes immediately - let the refresh handle it
+      // If it's just a response parsing error, the changes might have succeeded
+      
+      // Only show error if it's clearly a server error (5xx) or network error
+      if (error?.status >= 500 || error?.code === 'NETWORK_ERROR' || error?.message?.includes('Network')) {
+        // Failed to update kitchen status - Network or server error
+        console.error('Failed to update kitchen status - Network or server error');
+        
+        // Revert the optimistic updates for network/server errors
+        setOrders(prevOrders => 
+          prevOrders.map(prevOrder => 
+            prevOrder.id === order.id 
+              ? { ...prevOrder, kitchenStatus: order.kitchenStatus }
+              : prevOrder
+          )
+        );
 
-      setNewOrders(prevOrders => 
-        prevOrders.map(prevOrder => 
-          prevOrder.id === order.id 
-            ? { ...prevOrder, kitchenStatus: order.kitchenStatus }
-            : prevOrder
-        )
-      );
+        setNewOrders(prevOrders => 
+          prevOrders.map(prevOrder => 
+            prevOrder.id === order.id 
+              ? { ...prevOrder, kitchenStatus: order.kitchenStatus }
+              : prevOrder
+          )
+        );
 
-      addNotification({
-        type: 'order_status',
-        message: 'Failed to update kitchen status'
-      });
+        // Notification removed for kitchen status errors
+      } else {
+        // For other errors (likely response format issues), show a different message
+        console.log('Kitchen status update: verifying changes...');
+      }
     } finally {
       // Clear the timeout since we're done
       clearTimeout(timeoutId);
@@ -1113,7 +1142,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
           type: 'order_created',
           message: `Declined order #${declinedOrder.orderNumber}`
         });
-        
+
         // Remove from pendingDecisionOrders
         setPendingDecisionOrders(prev => {
           const newSet = new Set(prev);

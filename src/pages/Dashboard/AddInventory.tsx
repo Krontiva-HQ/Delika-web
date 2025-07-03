@@ -7,7 +7,7 @@ import { useAddCategory } from '../../hooks/useAddCategory';
 import { IoIosCloseCircleOutline } from "react-icons/io";
 import { useTranslation } from 'react-i18next';
 import { useLanguageChange } from '../../hooks/useLanguageChange';
-import { api, API_ENDPOINTS } from '../../services/api';
+import { api, API_ENDPOINTS, addItemToCategory } from '../../services/api';
 import Switch from '@mui/material/Switch';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import AddExtrasModal, { ExtraGroup } from '../../components/AddExtrasModal';
@@ -119,6 +119,23 @@ interface AddCategoryParams {
   onSuccess?: () => void;
 }
 
+// Add interface for subcategory from API response
+interface SubCategory {
+  Name: string;
+  taxonomyID: string;
+}
+
+// Update the main category interface to include subCat
+interface MainCategory {
+  id: string;
+  categoryName: string;
+  subCat: SubCategory[];
+  categoryImage?: {
+    url: string;
+    [key: string]: any;
+  };
+}
+
 const AddInventory: FunctionComponent<AddInventoryProps> = ({ 
   onClose,
   onInventoryUpdated,
@@ -129,26 +146,17 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   const { userProfile } = useUserProfile();
   const [isAddingItem, setIsAddingItem] = useState(false);
 
-  const [textfieldOpen, setTextfieldOpen] = useState(false);
-  const [textfieldAnchorEl, setTextfieldAnchorEl] = useState<null | HTMLElement>(null);
   const [categoryAnchorEl, setCategoryAnchorEl] = useState<null | HTMLElement>(null);
   const [selectedCategory, setSelectedCategory] = useState(preSelectedCategory?.subCategory || "");
   const [selectedMainCategory, setSelectedMainCategory] = useState(preSelectedCategory?.mainCategory || "");
   const [selectedMainCategoryId, setSelectedMainCategoryId] = useState(preSelectedCategory?.mainCategoryId || "");
-  const [mainCategories, setMainCategories] = useState<Array<{ 
-    id: string; 
-    categoryName: string;
-    categoryImage?: {
-      url: string;
-      [key: string]: any;
-    };
-  }>>([]);
+  const [mainCategories, setMainCategories] = useState<MainCategory[]>([]);
+  // Add state for subcategories from selected main category
+  const [subCategories, setSubCategories] = useState<SubCategory[]>([]);
   const [mainCategoryAnchorEl, setMainCategoryAnchorEl] = useState<null | HTMLElement>(null);
   const [isLoadingMainCategories, setIsLoadingMainCategories] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [showCategoryForm, setShowCategoryForm] = useState(false);
-  const [newCategory, setNewCategory] = useState("");
   const [itemName, setItemName] = useState('');
   const [price, setPrice] = useState('');
   const [available, setAvailable] = useState(true);
@@ -219,12 +227,6 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
           setInventoryItems([]);
         }
       } catch (error: any) {
-        console.error('Failed to fetch inventory items:', {
-          error: error,
-          message: error.message,
-          response: error.response?.data,
-          status: error.response?.status
-        });
         setInventoryItems([]);
       }
     };
@@ -234,25 +236,37 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
     }
   }, [showExtrasForm, userProfile.restaurantId]);
 
-  const handleTextfieldClick = (event: React.MouseEvent<HTMLElement>) => {
-    setTextfieldAnchorEl(event.currentTarget);
-    setTextfieldOpen(true);
-  };
+  // Handle preselected category - load main categories and set subcategories
+  useEffect(() => {
+    const handlePreSelectedCategory = async () => {
+      if (preSelectedCategory) {
+        // If main categories are not loaded yet, fetch them
+        if (mainCategories.length === 0) {
+          await fetchMainCategories();
+        }
+        
+        // Once we have main categories, find the preselected one and set its subcategories
+        const mainCat = mainCategories.find(cat => cat.id === preSelectedCategory.mainCategoryId);
+        if (mainCat && mainCat.subCat) {
+          setSubCategories(mainCat.subCat);
+        }
+      }
+    };
 
-  const handleTextfieldClose = () => {
-    setTextfieldAnchorEl(null);
-    setTextfieldOpen(false);
-  };
+    handlePreSelectedCategory();
+  }, [preSelectedCategory, mainCategories]);
+
+  // Removed unused textfield handlers
 
   const handleCategoryClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (preSelectedCategory) return; // Don't open menu if preselected
     setCategoryAnchorEl(event.currentTarget);
   };
 
-  const handleCategoryClose = (category?: string) => {
+  const handleCategoryClose = (categoryName?: string) => {
     if (preSelectedCategory) return; // Don't update if preselected
-    if (category) {
-      setSelectedCategory(category);
+    if (categoryName) {
+      setSelectedCategory(categoryName);
     }
     setCategoryAnchorEl(null);
   };
@@ -296,16 +310,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
   };
 
   const isFormValid = () => {
-    if (showCategoryForm) {
-      // New category: require newCategory, itemName, selectedImage, price, selectedMainCategory
-      return (
-        newCategory.trim() !== '' &&
-        selectedMainCategory.trim() !== '' &&
-        itemName.trim() !== '' &&
-        selectedImage !== null &&
-        price.trim() !== ''
-      );
-    } else if (preSelectedCategory) {
+    if (preSelectedCategory) {
       // Pre-selected category: only require itemName, selectedImage, price
       return (
         itemName.trim() !== '' &&
@@ -313,7 +318,7 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
         price.trim() !== ''
       );
     } else {
-      // Existing category: require selectedCategory, itemName, selectedImage, price, selectedMainCategory
+      // Regular case: require selectedCategory, itemName, selectedImage, price, selectedMainCategory
       return (
         selectedCategory.trim() !== '' &&
         itemName.trim() !== '' &&
@@ -364,57 +369,105 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
         return;
       }
 
-      if (showCategoryForm) {
-        // Get the selected main category's image URL
+      // If we're adding from the Inventory page (preSelectedCategory exists)
+      if (preSelectedCategory) {
+
+
+        // Create FormData with the new structure
+        const formData = new FormData();
+        
+        // Group food data into foods object
+        const foodsData = {
+          name: itemName,
+          price: price,
+          extras: transformedExtras,
+          quantity: "1",
+          available: available,
+          description: shortDetails
+        };
+        formData.append('foods', JSON.stringify(foodsData));
+        
+        // Add the photo file
+        if (photoFile) {
+          formData.append('foodPhoto', photoFile);
+        }
+        
+        // Add other required fields
+        formData.append('branchName', userProfile.branchId);
+        formData.append('categoryId', preSelectedCategory.mainCategoryId);
+        formData.append('mainCategoryId', ''); // Empty as shown in your example
+        formData.append('restaurantName', userProfile.restaurantId);
+
+
+
+        // Use ADD_ITEM endpoint with the existing service function
+        const response = await addItemToCategory(formData);
+
+
+        
+        onInventoryUpdated?.();
+        onClose?.();
+      } 
+      // If we're adding a new item to a category
+      else {
+
+
+        // Find the selected main category to get its image
         const selectedMainCategoryData = mainCategories.find(cat => cat.id === selectedMainCategoryId);
-        const mainCategoryImageUrl = selectedMainCategoryData?.categoryImage?.url || null;
-
-        await addCategory({
-          foodType: newCategory,
-          restaurantName: userProfile.restaurantId,
-          branchName: userProfile.branchId,
-          foodTypePhoto: mainCategoryImageUrl,
-          foodsPhoto: photoFile,
-          foods: [{
-            name: itemName,
-            price: price,
-            description: shortDetails,
-            quantity: "0",
-            available: available,
-            extras: transformedExtras
-          }],
-          mainCategory: selectedMainCategory,
-          categoryId: selectedMainCategoryId,
-          onSuccess: () => {
-            onInventoryUpdated?.();
-            // Use React Router or similar for navigation instead of direct window.location
-            onClose?.();
-          }
-        });
-      } else {
-        const selectedCategoryData = categories.find(cat => cat.name === selectedCategory);
-
-        if (!selectedCategoryData) {
-          alert('Selected category not found. Please try again.');
+        if (!selectedMainCategoryData) {
+          alert('Main category not found. Please try again.');
           return;
         }
 
-        await addItem({
-          categoryId: selectedCategoryData.id,
+
+
+        // Fetch the category image as a file
+        let categoryImageFile = null;
+        if (selectedMainCategoryData.categoryImage?.url) {
+          try {
+            const imageResponse = await fetch(selectedMainCategoryData.categoryImage.url);
+            const imageBlob = await imageResponse.blob();
+            categoryImageFile = new File([imageBlob], 'category-image.jpg', { type: imageBlob.type });
+          } catch (error) {
+            // Silent error handling for image fetch
+          }
+        }
+
+        // Create FormData for file uploads
+        const formData = new FormData();
+        formData.append('foodType', selectedCategory);
+        formData.append('restaurantName', userProfile.restaurantId);
+        formData.append('branchName', userProfile.branchId);
+        formData.append('mainCategory', selectedMainCategory);
+        formData.append('categoryId', selectedMainCategoryId);
+        
+        if (categoryImageFile) {
+          formData.append('foodTypePhoto', categoryImageFile);
+        }
+        if (photoFile) {
+          formData.append('foodsPhoto', photoFile);
+        }
+        
+        // Add foods data as JSON string
+        formData.append('foods', JSON.stringify([{
           name: itemName,
           price,
           description: shortDetails,
+          quantity: "0",
           available,
-          foodPhoto: photoFile,
-          mainCategoryId: selectedMainCategoryId,
-          mainCategory: selectedMainCategory,
-          extras: transformedExtras,
-          onSuccess: () => {
-            onInventoryUpdated?.();
-            // Use React Router or similar for navigation instead of direct window.location
-            onClose?.();
-          }
+          extras: transformedExtras
+        }]));
+
+        const response = await api.post('/create/new/category', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
         });
+
+
+
+        onInventoryUpdated?.();
+        onClose?.();
       }
 
       // Reset all states
@@ -426,8 +479,6 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
       setSelectedCategory('');
       setSelectedMainCategory('');
       setSelectedMainCategoryId('');
-      setShowCategoryForm(false);
-      setNewCategory('');
       setExtraGroups([]);
       
     } catch (error) {
@@ -439,8 +490,6 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
 
   const handleMainClose = () => {
     onInventoryUpdated?.();
-    setShowCategoryForm(false);
-    setNewCategory("");
     onClose?.();
   };
 
@@ -456,39 +505,20 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
     }
   };
 
-  const handleMainCategoryClose = (category?: { 
-    id: string; 
-    categoryName: string;
-    categoryImage?: {
-      url: string;
-      [key: string]: any;
-    };
-  }) => {
+  const handleMainCategoryClose = (category?: MainCategory) => {
     if (preSelectedCategory) return; // Don't update if preselected
     if (category) {
       setSelectedMainCategory(category.categoryName);
       setSelectedMainCategoryId(category.id);
+      // Set subcategories from the selected main category
+      setSubCategories(category.subCat || []);
+      // Clear selected subcategory when main category changes
+      setSelectedCategory('');
     }
     setMainCategoryAnchorEl(null);
   };
 
-  const handleAddCategory = () => {
-    if (newCategory.trim()) {
-      setSelectedCategory(newCategory.trim());
-      setShowCategoryForm(false);
-      setNewCategory('');
-    }
-  };
-
-  const handleNewCategoryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewCategory(e.target.value);
-  };
-
-
-
-  const handleCategoryCancel = () => {
-    setShowCategoryForm(false);
-  };
+  // Removed category form handlers as they're no longer needed
 
   const renderAddedExtras = () => {
     if (!extrasAvailable || addedExtrasGroups.length === 0) return null;
@@ -641,55 +671,35 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                   </Menu>
                 </div>
 
-                {/* Existing Subcategory Section */}
+                {/* Updated Subcategory Section */}
                 <div className="self-stretch flex flex-col items-start justify-start gap-[1px]">
                   <b className="self-stretch relative leading-[20px] font-sans text-black">{t('inventory.subCategory')}</b>
-                  {!showCategoryForm ? (
-                    <div className="flex flex-col w-full">
-                      <div
-                        ref={dropdownRef}
-                        onClick={handleCategoryClick}
-                        id="category-button"
-                        className={`border-[#efefef] border-[1px] border-solid [outline:none] 
-                                 font-sans text-[13px] bg-[#fff] self-stretch rounded-[8px] 
-                                 flex flex-row items-center justify-between py-[14px] px-[20px] 
-                                 ${preSelectedCategory ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-[#e0e0e0]'}`}
-                      >
-                        <span>{selectedCategory || t('inventory.selectSubCategory')}</span>
-                        <FaChevronDown className={`text-black text-[12px] ${preSelectedCategory ? 'opacity-50' : ''}`} />
-                      </div>
-                      <span className="text-xs text-gray-500 mt-1 font-sans">Examples: Mains, Sides, Rice, Drinks, Desserts</span>
+                  <div className="flex flex-col w-full">
+                    <div
+                      ref={dropdownRef}
+                      onClick={handleCategoryClick}
+                      id="category-button"
+                      className={`border-[#efefef] border-[1px] border-solid [outline:none] 
+                               font-sans text-[13px] bg-[#fff] self-stretch rounded-[8px] 
+                               flex flex-row items-center justify-between py-[14px] px-[20px] 
+                               ${preSelectedCategory || !selectedMainCategory ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:border-[#e0e0e0]'}`}
+                    >
+                      <span>
+                        {selectedCategory || 
+                         (!selectedMainCategory ? 'Please select a main category first' : t('inventory.selectSubCategory'))}
+                      </span>
+                      <FaChevronDown className={`text-black text-[12px] ${preSelectedCategory || !selectedMainCategory ? 'opacity-50' : ''}`} />
                     </div>
-                  ) : (
-                    <div className="flex items-center gap-2 w-full">
-                      <input
-                        type="text"
-                        value={newCategory}
-                        onChange={handleNewCategoryChange}
-                        placeholder={t('inventory.newCategoryName')}
-                        className="flex-1 border-[#efefef] border-[1px] border-solid [outline:none] 
-                                 font-sans text-[13px] bg-[#fff] rounded-[8px] 
-                                 py-[14px] px-[20px]"
-                        autoFocus
-                      />
-                      <div className="flex gap-2">
-                        <button
-                          onClick={handleCategoryCancel}
-                          className="px-4 py-[14px] bg-gray-100 text-gray-600 rounded-[8px] 
-                                   text-[13px] font-sans hover:bg-gray-200 
-                                   transition-colors whitespace-nowrap"
-                        >
-                          {t('common.cancel')}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  
-
+                    <span className="text-xs text-gray-500 mt-1 font-sans">
+                      {selectedMainCategory 
+                        ? `Available subcategories for ${selectedMainCategory}` 
+                        : 'Select a main category to see available subcategories'}
+                    </span>
+                  </div>
 
                   <Menu
                     anchorEl={categoryAnchorEl}
-                    open={Boolean(categoryAnchorEl)}
+                    open={Boolean(categoryAnchorEl) && !preSelectedCategory && selectedMainCategory.length > 0}
                     onClose={() => handleCategoryClose()}
                     PaperProps={{
                       sx: {
@@ -729,38 +739,22 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
                       role: 'listbox',
                     }}
                   >
-                    {isLoading ? (
-                      <MenuItem disabled>{t('common.loading')}</MenuItem>
+                    {subCategories.length === 0 ? (
+                      <MenuItem disabled>No subcategories available</MenuItem>
                     ) : (
-                      [
-                        ...categories.map((category) => (
-                          <MenuItem 
-                            key={category.id} 
-                            onClick={() => handleCategoryClose(category.name)}
-                            sx={{
-                              backgroundColor: selectedCategory === category.name ? '#f5f5f5' : 'transparent',
-                            }}
-                            role="option"
-                            aria-selected={selectedCategory === category.name}
-                          >
-                            {category.name}
-                          </MenuItem>
-                        )),
-                        <MenuItem
-                          key="add-new"
+                      subCategories.map((subCategory) => (
+                        <MenuItem 
+                          key={subCategory.taxonomyID || subCategory.Name} 
+                          onClick={() => handleCategoryClose(subCategory.Name)}
                           sx={{
-                            borderTop: '1px solid #efefef',
-                            color: '#fd683e !important',
-                          }}
-                          onClick={() => {
-                            setShowCategoryForm(true);
-                            setCategoryAnchorEl(null);
+                            backgroundColor: selectedCategory === subCategory.Name ? '#f5f5f5' : 'transparent',
                           }}
                           role="option"
+                          aria-selected={selectedCategory === subCategory.Name}
                         >
-                          + {t('inventory.addCategory')}
+                          {subCategory.Name}
                         </MenuItem>
-                      ]
+                      ))
                     )}
                   </Menu>
                 </div>

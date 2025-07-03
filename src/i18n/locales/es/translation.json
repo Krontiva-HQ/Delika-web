@@ -149,8 +149,10 @@
     },
     "kitchenStatuses": {
       "notStarted": "No iniciado",
+      "orderReceived": "Pedido recibido",
       "preparing": "En preparación",
-      "prepared": "Preparado"
+      "prepared": "Preparado",
+      "cancelled": "Cancelado"
     },
     "delivery": {
       "onDemand": "Entrega bajo demanda",

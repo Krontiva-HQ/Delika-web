@@ -117,15 +117,34 @@ export const translateOrderStatus = (status: string): string => {
  * @returns Translated kitchen status
  */
 export const translateKitchenStatus = (status: string): string => {
-  if (!status) return i18n.t('orders.kitchenStatuses.notStarted');
+  if (!status) return i18n.t('orders.kitchenStatuses.notStarted', 'Not Started');
   
-  const key = `orders.kitchenStatuses.${status.toLowerCase()}`;
+  // Direct mapping for exact status matches
+  const statusMap: Record<string, string> = {
+    'orderReceived': 'orders.kitchenStatuses.orderReceived',
+    'preparing': 'orders.kitchenStatuses.preparing',
+    'prepared': 'orders.kitchenStatuses.prepared',
+    'cancelled': 'orders.kitchenStatuses.cancelled',
+    'notStarted': 'orders.kitchenStatuses.notStarted',
+    '': 'orders.kitchenStatuses.notStarted'
+  };
   
-  if (i18n.exists(key)) {
-    return i18n.t(key);
+  // Check if we have a direct mapping
+  if (statusMap[status]) {
+    return i18n.t(statusMap[status]);
   }
   
-  return status.charAt(0).toUpperCase() + status.slice(1);
+  // Fallback translations for common kitchen statuses
+  const fallbacks: Record<string, string> = {
+    'orderReceived': 'Order Received',
+    'preparing': 'Preparing',
+    'prepared': 'Prepared',
+    'cancelled': 'Cancelled',
+    '': 'Not Started'
+  };
+  
+  return fallbacks[status] || status.replace(/([A-Z])/g, ' $1')
+    .replace(/^./, match => match.toUpperCase());
 };
 
 export default i18n; 

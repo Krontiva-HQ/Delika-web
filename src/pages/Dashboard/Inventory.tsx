@@ -256,21 +256,13 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
 
   const onAddItemButtonClick = useCallback((category?: Category) => {
     if (category) {
-      // If adding from within a category, set both main category and subcategory info
-      const mainCategory = remoteCategories.find(cat => cat.foods.some(subCat => subCat.name === category.name));
-      if (mainCategory) {
-        setAddInventoryCategory({
-          mainCategory: mainCategory.name,
-          mainCategoryId: mainCategory.id,
-          subCategory: category.name
-        });
-      } else {
-        setAddInventoryCategory({
-          mainCategory: "",
-          mainCategoryId: "",
-          subCategory: category.name
-        });
-      }
+      // If adding from within a category, use the category's ID directly
+      console.log('Adding item to category:', category);
+      setAddInventoryCategory({
+        mainCategory: category.name,
+        mainCategoryId: category.id, // Use the category's ID directly
+        subCategory: category.name
+      });
       setShowAddInventory(true);
     } else {
       // If adding from the top button, show the action selection dialog

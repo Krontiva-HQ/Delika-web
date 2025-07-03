@@ -58,16 +58,39 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Simplified error handling without logging
+// Improved error handling with better error information
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    const sanitizedError = {
-      status: error.response?.status || 500,
-      message: 'An error occurred',
-      code: 'ERROR'
+    // Check if it's a network error or no response received
+    if (!error.response) {
+      return Promise.reject({
+        status: 0,
+        message: error.message || 'Network error - please check your connection',
+        code: 'NETWORK_ERROR',
+        originalError: error
+      });
+    }
+
+    // For HTTP errors, preserve more information
+    const enhancedError = {
+      status: error.response.status,
+      message: error.response.data?.message || error.message || `HTTP ${error.response.status} error`,
+      code: error.response.data?.code || `HTTP_${error.response.status}`,
+      data: error.response.data,
+      statusText: error.response.statusText,
+      originalError: error
     };
-    return Promise.reject(sanitizedError);
+
+    // Only treat 4xx and 5xx as actual errors
+    // Some APIs return 200/201/204 with error-like data structure
+    if (error.response.status >= 400) {
+      return Promise.reject(enhancedError);
+    }
+
+    // For 2xx and 3xx responses that somehow ended up here, pass them through as successful
+    console.warn('Unusual response received but treating as success:', enhancedError);
+    return error.response;
   }
 );
 

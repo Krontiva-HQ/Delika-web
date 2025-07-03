@@ -52,7 +52,7 @@ interface Order {
   payLater: boolean;
   payNow: boolean;
   payVisaCard: boolean;
-  kitchenStatus: string;
+
   orderAccepted: "pending" | "accepted" | "declined";
   orderChannel: string;
 }
@@ -158,12 +158,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         !lastCheckedOrderIdsRef.current.has(order.id)
       );
 
-      console.log('🌍 Global order check:', {
-        totalOrders: latestOrders.length,
-        pendingOrders: newPendingOrders.length,
-        newIncomingOrders: newIncomingOrders.length,
-        lastCheckedSize: lastCheckedOrderIdsRef.current.size
-      });
+
 
       // Update pending orders only if there's a change
       if (JSON.stringify(pendingOrders) !== JSON.stringify(newPendingOrders)) {
@@ -172,8 +167,6 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
 
       // If there are new orders, show modal and play sound
       if (newIncomingOrders.length > 0) {
-        console.log('🔔 New orders detected globally! Playing sound...');
-        
         setShowGlobalOrderModal(true);
         
         // Play audio with better error handling
@@ -181,12 +174,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         audio.volume = 0.8;
         
         audio.play()
-          .then(() => {
-            console.log('✅ Global audio played successfully');
-          })
           .catch((error) => {
-            console.error('❌ Global audio play failed:', error);
-            
             // Show visual notification if audio fails
             addNotification({
               type: 'order_created',
@@ -208,15 +196,13 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       lastCheckedOrderIdsRef.current = new Set(latestOrders.map((order: Order) => order.id));
 
     } catch (error) {
-      console.error('Error in global order check:', error);
+      // Silent error handling
     }
   }, [userProfile?.restaurantId, userProfile?.role, userProfile?.branchId, addNotification]);
 
   // Global order polling - runs every 5 seconds regardless of current page
   useEffect(() => {
     if (!userProfile?.restaurantId) return;
-
-    console.log('🌍 Starting global order monitoring... (Every 5 seconds from any page)');
     
     // Initial check
     checkForGlobalNewOrders();
@@ -225,7 +211,6 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     const pollInterval = setInterval(checkForGlobalNewOrders, 5000);
 
     return () => {
-      console.log('🌍 Stopping global order monitoring');
       clearInterval(pollInterval);
     };
   }, [userProfile?.restaurantId, checkForGlobalNewOrders]);
@@ -258,7 +243,6 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       }
 
     } catch (error) {
-      console.error('Failed to accept order globally:', error);
       addNotification({
         type: 'order_status',
         message: 'Failed to accept order. Please try again.'
@@ -300,7 +284,6 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       }
 
     } catch (error) {
-      console.error('Failed to decline order globally:', error);
       addNotification({
         type: 'order_status',
         message: 'Failed to decline order. Please try again.'
