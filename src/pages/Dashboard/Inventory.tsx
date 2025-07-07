@@ -27,7 +27,7 @@ import { Switch } from '../../components/ui/switch';
 import { Button as UIButton } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import AddExtrasModal from '../../components/AddExtrasModal';
-import { updateInventoryItem } from '../../services/api';
+import { updateInventoryItem, deleteMenuItem } from '../../services/api';
 
 interface MenuItem {
   id: string;
@@ -44,6 +44,7 @@ interface EditInventoryModalProps {
   item: MenuItem | null;
   onClose: () => void;
   onSave: (id: string, newPrice: number, available: boolean, itemExtras: ExtraGroup[], name: string, description: string) => void;
+  onDelete: (item: MenuItem) => void;
   isUpdating: boolean;
   updateError: string | null;
   branchId: string;
@@ -432,7 +433,45 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
     }
   };
 
-  const EditInventoryModal: FunctionComponent<EditInventoryModalProps> = ({ item, onClose, onSave, isUpdating, updateError, branchId }) => {
+  const handleDeleteItem = async (item: MenuItem) => {
+    if (!item) return;
+
+    // Show confirmation dialog
+    const confirmed = window.confirm(`Are you sure you want to delete "${item.name}"? This action cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      // Create FormData similar to how items are added
+      const formData = new FormData();
+      formData.append('restaurantId', userProfile.restaurantId || '');
+      formData.append('branchId', userProfile.role === 'Admin' ? selectedBranchId : userProfile.branchId || '');
+      formData.append('categoryId', activeId || ''); // Add the category ID from the currently active category
+      formData.append('itemName', item.name);
+      formData.append('itemPrice', item.price.toString());
+      formData.append('itemDescription', item.description || '');
+
+      const response = await deleteMenuItem(formData);
+
+      addNotification({
+        type: 'inventory_alert',
+        message: `${item.name} has been deleted successfully`
+      });
+
+      setSelectedItem(null);
+      
+      // Refresh the whole page after successful deletion
+      window.location.reload();
+
+    } catch (error) {
+      console.error('Failed to delete item:', error);
+      addNotification({
+        type: 'inventory_alert',
+        message: 'Failed to delete item. Please try again.'
+      });
+    }
+  };
+
+  const EditInventoryModal: FunctionComponent<EditInventoryModalProps> = ({ item, onClose, onSave, onDelete, isUpdating, updateError, branchId }) => {
     if (!item) return null;
     
     const [price, setPrice] = useState(item.price);
@@ -763,6 +802,16 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                               Cancel
                             </UIButton>
                           )}
+                          <UIButton
+                            onClick={() => onDelete(item)}
+                            variant="outline"
+                            className="flex-1 border-red-500 text-red-500 hover:bg-red-50 hover:border-red-600"
+                          >
+                            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                            Delete Item
+                          </UIButton>
                           <UIButton
                             onClick={handleSave}
                             className="flex-1 bg-[#fd683e] hover:bg-[#e54d0e]"
@@ -1110,6 +1159,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
           item={selectedItem}
           onClose={() => setSelectedItem(null)}
           onSave={(id, newPrice, available, itemExtras, name, description) => handleUpdateItem(id, newPrice, available, itemExtras, name, description)}
+          onDelete={handleDeleteItem}
           isUpdating={isUpdating}
           updateError={updateError}
           branchId={selectedBranchId || userProfile.branchId}

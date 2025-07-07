@@ -131,7 +131,8 @@ export const API_ENDPOINTS = {
     GET_ALL_CATEGORIES: '/get/menu/categories',
     UPDATE_INVENTORY: '/update/inventory/price/quantity',
     GET_ALL_INVENTORY: '/get/inventory/by/restaurant',
-    UPDATE_INVENTORY_ITEM: '/update/inventory/item'
+    UPDATE_INVENTORY_ITEM: '/update/inventory/item',
+    DELETE_ITEM: '/delete/menu/item'
   },
   INVENTORY: {
     GET_ALL: '/delika_inventory_table',
@@ -832,4 +833,16 @@ export const createExtrasItem = async (payload: any) => {
     'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
   return api.post(API_ENDPOINTS.CREATE_EXTRAS_ITEM, payload, { headers });
+};
+
+// Add this after the updateInventoryItem function
+export const deleteMenuItem = async (formData: FormData) => {
+  const headers = {
+    'Content-Type': 'multipart/form-data',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.delete(API_ENDPOINTS.MENU.DELETE_ITEM, {
+    data: formData,
+    headers
+  });
 };
