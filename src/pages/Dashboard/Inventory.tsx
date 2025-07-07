@@ -234,8 +234,10 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
     }
   }, [userProfile?.role, branches, selectedBranchId]);
 
-  // Pass selectedBranchId to useMenuCategories
+  // Use menuCategories hook for initial data
   const { categories: remoteCategories, isLoading: categoriesLoading, error: categoriesError } = useMenuCategories();
+
+
 
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -418,8 +420,9 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       });
 
       setSelectedItem(null);
-      localStorage.setItem('dashboardActiveView', 'inventory');
-      window.location.href = '/dashboard?view=inventory';
+      
+      // Refresh the whole page after successful update
+      window.location.reload();
 
     } catch (error) {
       addNotification({
@@ -804,6 +807,29 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
     navigate('/dashboard', { state: { activeView: 'inventory' } });
   };
 
+  // Update the inventory refresh handler
+  const handleInventoryUpdated = useCallback(async () => {
+    try {
+      setShowAddInventory(false);
+      
+      // Show success notification
+      addNotification({
+        type: 'inventory_alert',
+        message: 'Inventory updated successfully'
+      });
+      
+      // Refresh the whole page after successful upload
+      window.location.reload();
+      
+    } catch (error) {
+      console.error('Failed to refresh inventory:', error);
+      addNotification({
+        type: 'inventory_alert',
+        message: 'Item added but failed to refresh inventory. Please refresh the page.'
+      });
+    }
+  }, [addNotification]);
+
   // Set first category as active on mount
   useEffect(() => {
     if (remoteCategories.length > 0) {
@@ -1072,9 +1098,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       {showAddInventory && (
         <AddInventory 
           onClose={handleAddInventoryClose}
-          onInventoryUpdated={() => {
-            setShowAddInventory(false);
-          }}
+          onInventoryUpdated={handleInventoryUpdated}
           branchId={selectedBranchId || userProfile.branchId}
           preSelectedCategory={addInventoryCategory || undefined}
         />
