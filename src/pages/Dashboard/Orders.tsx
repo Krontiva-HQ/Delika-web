@@ -1474,7 +1474,8 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                     <div 
                       key={order.id} 
                       style={{ borderBottom: '1px solid #eaeaea', gridTemplateColumns: '80px 1fr 1.2fr 0.8fr 80px 1fr 1fr' }}
-                      className="grid grid-cols-7 p-3 gap-2 hover:bg-[#f9f9f9] transition-all duration-200"
+                      className="grid grid-cols-7 p-3 gap-2 hover:bg-[#f9f9f9] transition-all duration-200 cursor-pointer"
+                      onClick={() => handleOrderClick(order.orderNumber)}
                     >
                       <div className="text-[12px] leading-[20px] font-sans text-[#444] truncate">{order.orderNumber}</div>
                       <div className="flex items-center gap-2 min-w-0">
@@ -1546,10 +1547,13 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                               : translateKitchenStatus(order.kitchenStatus)
                           )}
                         </span>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                           <button 
                             className="p-1 border-[1px] border-solid border-[#eaeaea] rounded-[4px] bg-white hover:bg-gray-50"
-                            onClick={() => handleOrderClick(order.orderNumber)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOrderClick(order.orderNumber);
+                            }}
                           >
                             <IoInformationCircleOutline className="w-[14px] h-[14px] text-[#666]" />
                           </button>
@@ -1557,7 +1561,10 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                           {order.orderChannel !== 'customerApp' && (
                             <button 
                               className="p-1 border-[1px] border-solid border-[#eaeaea] rounded-[4px] bg-white hover:bg-gray-50"
-                              onClick={(e) => handleEditClick(e, order)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditClick(e, order);
+                              }}
                             >
                               <CiEdit className="w-[14px] h-[14px] text-[#666]" />
                             </button>
