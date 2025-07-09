@@ -932,9 +932,13 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         <img
           className="w-[40px] h-[40px] rounded-full object-cover"
           alt={`${category.name} category`}
-          src={optimizeImageUrl(category.image)}
+          src={category.image ? optimizeImageUrl(category.image) : '/category.jpg'}
           loading="eager"
           draggable="false"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src = '/category.jpg';
+          }}
         />
         <div className="flex flex-col items-start justify-start">
           <div className="text-[16px] leading-[20px] font-medium text-[#333] font-sans">
