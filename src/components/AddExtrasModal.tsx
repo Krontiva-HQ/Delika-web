@@ -15,6 +15,11 @@ import {
   Typography,
   CircularProgress,
   Chip,
+  Checkbox,
+  FormControlLabel,
+  List,
+  ListItem,
+  Paper,
 } from '@mui/material';
 import { X, Plus, Trash2, Edit3, ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import { api, getAllInventory, createExtrasItem } from '../services/api';
@@ -221,6 +226,8 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
     price: '',
     description: ''
   });
+
+  const [selectedVariants, setSelectedVariants] = useState<string[]>([]);
 
   const { restaurantData, userProfile } = useUserProfile();
 
@@ -515,6 +522,40 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
       price: '',
       description: ''
     });
+  };
+
+  const handleVariantSelect = (value: string) => {
+    setSelectedVariants(prev => {
+      if (prev.includes(value)) {
+        return prev.filter(v => v !== value);
+      }
+      return [...prev, value];
+    });
+  };
+
+  const handleAddSelectedVariants = () => {
+    if (currentGroup && selectedVariants.length > 0) {
+      const newVariants = selectedVariants.map(variantValue => {
+        const selectedOption = foodTypes.find(opt => opt.value === variantValue);
+        if (selectedOption) {
+          return {
+            foodName: selectedOption.label,
+            foodPrice: Number(selectedOption.foodPrice),
+            foodDescription: selectedOption.foodDescription || '',
+            foodImage: selectedOption.foodImage,
+            value: selectedOption.value,
+            isNew: false
+          };
+        }
+        return null;
+      }).filter(Boolean) as ExtraDetail[];
+
+      setCurrentGroup({
+        ...currentGroup,
+        extrasDetails: [...currentGroup.extrasDetails, ...newVariants]
+      });
+      setSelectedVariants([]);
+    }
   };
 
   const StepIndicator = () => (
@@ -822,74 +863,83 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
 
             <div className="bg-gray-50 rounded-lg p-4 space-y-3">
               <div className="flex flex-col gap-2">
-                {/* Only show select variant if mode is not 'select' */}
                 {mode === 'select' && (
                   <>
-                    <FormControl fullWidth size="small">
-                      <InputLabel 
+                    {loading ? (
+                      <div className="flex justify-center items-center h-10 bg-white rounded-lg border border-gray-200">
+                        <CircularProgress sx={{ color: '#fd683e' }} size={20} />
+                      </div>
+                    ) : (
+                      <Paper 
+                        variant="outlined" 
                         sx={{ 
-                          fontFamily: 'var(--font-sans)',
-                          color: '#6b7280',
-                          '&.Mui-focused': {
-                            color: '#fd683e',
-                          },
+                          maxHeight: '300px', 
+                          overflow: 'auto',
+                          backgroundColor: 'white',
+                          borderColor: '#e5e7eb'
                         }}
                       >
-                        Select Variant
-                      </InputLabel>
-                      {loading ? (
-                        <div className="flex justify-center items-center h-10 bg-white rounded-lg border border-gray-200">
-                          <CircularProgress sx={{ color: '#fd683e' }} size={20} />
-                        </div>
-                      ) : (
-                        <Select
-                          value={variant}
-                          onChange={(e: SelectChangeEvent) => setVariant(e.target.value as string)}
-                          label="Select Variant"
-                          sx={{ 
-                            fontFamily: 'var(--font-sans)',
-                            backgroundColor: 'white',
-                            borderRadius: '8px',
-                            '& .MuiOutlinedInput-notchedOutline': {
-                              borderColor: '#e5e7eb',
-                            },
-                            '&:hover .MuiOutlinedInput-notchedOutline': {
-                              borderColor: '#fd683e',
-                            },
-                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                              borderColor: '#fd683e',
-                              borderWidth: '2px',
-                            },
-                          }}
-                        >
-                          <MenuItem 
-                            value="" 
-                            disabled 
-                            sx={{ 
-                              fontFamily: 'var(--font-sans)',
-                              color: '#6b7280' 
-                            }}
-                          >
-                            Select a variant
-                          </MenuItem>
+                        <List sx={{ padding: 0 }}>
                           {foodTypes.map(opt => (
-                            <MenuItem 
-                              key={opt.value} 
-                              value={opt.value}
-                              sx={{ 
-                                fontFamily: 'var(--font-sans)',
+                            <ListItem 
+                              key={opt.value}
+                              sx={{
+                                borderBottom: '1px solid #f3f4f6',
+                                '&:last-child': {
+                                  borderBottom: 'none'
+                                }
                               }}
                             >
-                              {opt.label}
-                            </MenuItem>
+                              <FormControlLabel
+                                control={
+                                  <Checkbox
+                                    checked={selectedVariants.includes(opt.value)}
+                                    onChange={() => handleVariantSelect(opt.value)}
+                                    sx={{
+                                      color: '#fd683e',
+                                      '&.Mui-checked': {
+                                        color: '#fd683e',
+                                      },
+                                    }}
+                                  />
+                                }
+                                label={
+                                  <Box>
+                                    <Typography 
+                                      variant="body2" 
+                                      sx={{ 
+                                        fontWeight: 500,
+                                        fontFamily: 'var(--font-sans)'
+                                      }}
+                                    >
+                                      {opt.label}
+                                    </Typography>
+                                    <Typography 
+                                      variant="caption" 
+                                      sx={{ 
+                                        color: 'text.secondary',
+                                        fontFamily: 'var(--font-sans)'
+                                      }}
+                                    >
+                                      Price: ${opt.foodPrice}
+                                    </Typography>
+                                  </Box>
+                                }
+                                sx={{
+                                  margin: 0,
+                                  width: '100%',
+                                  fontFamily: 'var(--font-sans)'
+                                }}
+                              />
+                            </ListItem>
                           ))}
-                        </Select>
-                      )}
-                    </FormControl>
+                        </List>
+                      </Paper>
+                    )}
                     <Button
                       variant="contained"
-                      onClick={handleAddVariant}
-                      disabled={!variant}
+                      onClick={handleAddSelectedVariants}
+                      disabled={selectedVariants.length === 0}
                       size="small"
                       sx={{
                         backgroundColor: '#fd683e',
@@ -905,7 +955,7 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
                       }}
                     >
                       <Plus className="w-4 h-4 mr-2" />
-                      Add Selected Variant
+                      Add Selected Variants ({selectedVariants.length})
                     </Button>
                   </>
                 )}
