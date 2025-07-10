@@ -167,6 +167,9 @@
   "inventory": {
     "title": "Artículos",
     "addNewItem": "Agregar artículo",
+    "extras": "Extras",
+    "groupExtras": "Grupo de Extras",
+    "addItemTo": "Agregar artículo a",
     "categories": "Categorías",
     "allItems": "Total de artículos",
     "noItems": "No se encontraron artículos",

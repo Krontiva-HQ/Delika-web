@@ -139,6 +139,7 @@ export const API_ENDPOINTS = {
     UPDATE_ITEM: '/update/inventory/item'
   },
   CREATE_EXTRAS_ITEM: '/create/extras/item',
+  CREATE_EXTRAS_GROUP: '/create/extras/group',
   AUDIT: {
     GET_ALL: '/delikaquickshipper_audit_table'
   },
@@ -845,4 +846,41 @@ export const deleteMenuItem = async (formData: FormData) => {
     data: formData,
     headers
   });
+};
+
+export interface RestaurantExtra {
+  id: string;
+  created_at: number;
+  restaurantId: string;
+  extras: Array<{
+    delika_inventory_table_id: string;
+    extrasTitle: string;
+    required: boolean;
+  }>;
+  _delika_inventory_table: Array<any>;
+}
+
+export const getRestaurantExtras = async (restaurantId: string | null) => {
+  return api.get<RestaurantExtra[]>('delika/restaurant/extras', {
+    params: { restaurantId }
+  });
+};
+
+// Add interface for extras group payload
+export interface ExtrasGroupPayload {
+  restaurantId: string;
+  extras: Array<{
+    extrasTitle: string;
+    delika_inventory_table_id: string;
+    required: boolean;
+  }>;
+}
+
+// Add create extras group function
+export const createExtrasGroup = async (payload: ExtrasGroupPayload) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.patch(API_ENDPOINTS.CREATE_EXTRAS_GROUP, payload, { headers });
 };

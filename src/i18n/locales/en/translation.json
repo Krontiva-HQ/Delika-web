@@ -172,6 +172,8 @@
   "inventory": {
     "title": "Items",
     "addNewItem": "Add item",
+    "extras": "Extras",
+    "groupExtras": "Group Extras",
     "addItemTo": "Add item to",
     "categories": "Categories",
     "allItems": "Total item",

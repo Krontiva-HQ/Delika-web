@@ -166,7 +166,10 @@
   },
   "inventory": {
     "title": "Articles",
-    "addNewItem": "Ajouter article",
+    "addNewItem": "Ajouter un article",
+    "extras": "Suppléments",
+    "groupExtras": "Groupe de Suppléments",
+    "addItemTo": "Ajouter un article à",
     "categories": "Catégories",
     "allItems": "Total des articles",
     "noItems": "Aucun article trouvé",

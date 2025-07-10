@@ -27,6 +27,7 @@ import { Switch } from '../../components/ui/switch';
 import { Button as UIButton } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import AddExtrasModal from '../../components/AddExtrasModal';
+import GroupExtrasModal from '../../components/GroupExtrasModal';
 import { updateInventoryItem, deleteMenuItem } from '../../services/api';
 
 interface MenuItem {
@@ -211,6 +212,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
     mainCategoryId: string;
     subCategory: string;
   } | null>(null);
+  const [showGroupExtrasModal, setShowGroupExtrasModal] = useState(false);
 
   // Get user data from useAuth
   const { user } = useAuth();
@@ -917,6 +919,13 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
 
   const [categories, setCategories] = useState<Category[]>([]);
 
+  // Handle adding extras groups
+  const handleGroupExtrasAdd = async (groups: any) => {
+    setShowGroupExtrasModal(false);
+    // Refresh inventory after adding groups
+    await refreshInventory();
+  };
+
   // Update the category click in the JSX
   const renderCategories = () => (
     remoteCategories.map((category) => (
@@ -1036,6 +1045,8 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
     </div>
   );
 
+ 
+
   return (
     <div className="h-full w-full bg-white dark:bg-[#201a18] m-0 p-0">
       <div className="p-3 ml-4 mr-4">
@@ -1054,6 +1065,14 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                 className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)]"
               />
             )}
+           
+            <div
+              className="flex items-center gap-2 px-3 py-1 rounded-[4px] bg-[#fd683e] border-[#fd683e] border-[1px] border-solid cursor-pointer text-[12px] font-sans hover:bg-[#e54d0e]"
+              onClick={() => setShowGroupExtrasModal(true)}
+            >
+              <IoMdAdd className="w-[18px] h-[18px] text-white" />
+              <div className="leading-[18px] font-sans text-white">{t('inventory.groupExtras')}</div>
+            </div>
             <div
               className="flex items-center gap-2 px-3 py-1 rounded-[4px] bg-[#313131] border-[#737373] border-[1px] border-solid cursor-pointer text-[12px] font-sans"
               onClick={() => onAddItemButtonClick()}
@@ -1182,6 +1201,13 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
           mode={addExtrasModalMode}
         />
       )}
+
+      {/* Add GroupExtrasModal */}
+      <GroupExtrasModal
+        open={showGroupExtrasModal}
+        onClose={() => setShowGroupExtrasModal(false)}
+        onAdd={handleGroupExtrasAdd}
+      />
     </div>
   );
 };
