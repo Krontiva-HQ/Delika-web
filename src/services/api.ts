@@ -765,6 +765,38 @@ export const updateInventoryItem = async (data: UpdateInventoryItemRequest) => {
   return api.patch(API_ENDPOINTS.INVENTORY.UPDATE_ITEM, data, { headers });
 };
 
+// Add new function for updating inventory items with image uploads using UPDATE_ITEM endpoint
+export const updateInventoryItemWithImage = async (formData: FormData) => {
+  console.log('🌐 API: updateInventoryItemWithImage called');
+  console.log('📡 Endpoint:', API_ENDPOINTS.INVENTORY.UPDATE_ITEM);
+  
+  // Log FormData contents in API function
+  console.log('📋 API: FormData contents being sent:');
+  const entries = Array.from(formData.entries());
+  entries.forEach(([key, value]) => {
+    if (value instanceof File) {
+      console.log(`  API: ${key}: File - ${value.name} (${value.size} bytes, ${value.type})`);
+    } else {
+      console.log(`  API: ${key}: ${value}`);
+    }
+  });
+  
+  // Use the EXACT same approach as addItemToCategory which works for file uploads
+  const headers = {
+    'Content-Type': 'multipart/form-data',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  
+  console.log('🔧 API: Headers being sent:', headers);
+  console.log('🚀 API: Making PATCH request with multipart/form-data header...');
+  
+  return directApi.patch<{data: any; status: number}>(
+    API_ENDPOINTS.INVENTORY.UPDATE_ITEM, 
+    formData, 
+    { headers }
+  );
+};
+
 // Add phone login response interface
 export interface PhoneLoginResponse extends UserResponse {
   onTrip: boolean;

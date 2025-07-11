@@ -26,7 +26,7 @@ import {
 } from './ui/card';
 import { Label } from './ui/label';
 import { Separator } from './ui/separator';
-import { api, API_ENDPOINTS, getRestaurantExtras } from '../services/api';
+import { api, API_ENDPOINTS, getRestaurantExtras, createExtrasGroup } from '../services/api';
 import { useUserProfile } from '../hooks/useUserProfile';
 import { Checkbox } from './ui/checkbox';
 import { ScrollArea } from './ui/scroll-area';
@@ -329,7 +329,7 @@ const GroupExtrasModal: React.FC<NewExtrasModalProps> = ({
         )
       };
 
-      await api.patch(API_ENDPOINTS.CREATE_EXTRAS_GROUP, payload);
+      await createExtrasGroup(payload);
       onAdd(extraGroups);
       onClose();
     } catch (error) {
