@@ -22,7 +22,7 @@ import {
   Paper,
 } from '@mui/material';
 import { X, Plus, Trash2, Edit3, ChevronLeft, ChevronRight, Check } from 'lucide-react';
-import { api, getAllInventory, createExtrasItem, getRestaurantExtras } from '../services/api';
+import { api, getAllInventory, createExtrasItem, getRestaurantExtrasGroups } from '../services/api';
 import { useUserProfile } from '../hooks/useUserProfile';
 
 // Option type for dropdowns
@@ -336,41 +336,41 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
       if (!open || !restaurantData.id) return;
 
       try {
-        const response = await getRestaurantExtras(restaurantData.id);
+        const response = await getRestaurantExtrasGroups(restaurantData.id);
         const existingGroups = response.data;
 
-        // Process the groups to get unique titles with their details
-        const groupedByTitle = new Map<string, ExistingExtrasGroup>();
-
-        existingGroups.forEach(group => {
-          group.extras.forEach(extra => {
-            if (!groupedByTitle.has(extra.extrasTitle)) {
-              groupedByTitle.set(extra.extrasTitle, {
-                id: extra.delika_inventory_table_id,
-                extrasTitle: extra.extrasTitle,
-                delika_inventory_table_id: extra.delika_inventory_table_id,
-                extrasDetails: []
-              });
-            }
-            
-            // Add all extrasDetails to the group
-            const currentGroup = groupedByTitle.get(extra.extrasTitle)!;
-            if ((extra as any).extrasDetails && (extra as any).extrasDetails.length > 0) {
-              (extra as any).extrasDetails.forEach((detail: ExtraDetail) => {
-                // Avoid duplicates
-                if (!currentGroup.extrasDetails.some(existing => existing.foodName === detail.foodName)) {
-                  currentGroup.extrasDetails.push(detail);
-                }
-              });
-            }
-          });
-        });
-
-        const processedGroups = Array.from(groupedByTitle.values());
+        // Process the groups to match the expected format
+        const processedGroups = existingGroups.map(group => ({
+          id: group.id,
+          extrasTitle: group.extrasTitle,
+          delika_inventory_table_id: group.id, // Use group.id as the inventory table id
+          extrasDetails: group.extrasDetails.flatMap(detail => 
+            detail.extrasDetails.map(item => ({
+              foodName: item.foodName,
+              foodPrice: Number(item.foodPrice),
+              foodDescription: item.foodDescription || '',
+              foodImage: {
+                access: "public",
+                path: "",
+                name: "",
+                type: "image",
+                size: 0,
+                mime: "image/jpeg",
+                meta: {
+                  width: 0,
+                  height: 0
+                },
+                url: ""
+              },
+              value: detail.delika_inventory_table_id,
+              isNew: false
+            }))
+          )
+        }));
 
         setExistingExtrasGroups(processedGroups);
       } catch (error) {
-        console.error('Error fetching existing extras groups:', error);
+        setExistingExtrasGroups([]);
       }
     };
 
@@ -685,7 +685,7 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
                 <div className="space-y-3">
                   <TextField
                     fullWidth
-                    label="Variant Name"
+                    label=" "
                     size="small"
                     placeholder="Enter variant name"
                     value={newVariant.name}
@@ -950,7 +950,11 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
             <div className="bg-gray-50 rounded-lg p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-medium text-gray-900">Current Variants ({currentGroup.extrasDetails.length})</h4>
-                  <p className="text-xs text-gray-500">Click × to remove variants</p>
+                  {mode === 'select' ? (
+                    <p className="text-xs text-gray-500">Items cannot be removed in selection mode</p>
+                  ) : (
+                    <p className="text-xs text-gray-500">Click × to remove variants</p>
+                  )}
                       </div>
                 <div className="flex flex-col gap-2">
                       <Paper 
@@ -994,12 +998,14 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
                                 Price: GH₵{extra.foodPrice}
                                     </Typography>
                             </div>
-                            <button
-                              onClick={() => handleRemoveVariant(extra.foodName)}
-                              className="ml-2 p-1 text-red-500 hover:bg-red-50 rounded-full transition-colors"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
+                            {mode !== 'select' && (
+                              <button
+                                onClick={() => handleRemoveVariant(extra.foodName)}
+                                className="ml-2 p-1 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
                             </ListItem>
                           ))}
@@ -1027,23 +1033,25 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
                   <Plus className="w-6 h-6 text-gray-400" />
                 </div>
                 <p className="text-sm text-gray-500 mb-3">No extras groups added yet</p>
-                <Button
-                  onClick={handleAddAnotherGroup}
-                  variant="outlined"
-                  size="small"
-                  sx={{
-                    borderColor: '#fd683e',
-                    color: '#fd683e',
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    '&:hover': {
-                      borderColor: '#e54d0e',
-                      backgroundColor: '#fff3ea',
-                    },
-                  }}
-                >
-                  Add Your First Group
-                </Button>
+                {mode !== 'select' && (
+                  <Button
+                    onClick={handleAddAnotherGroup}
+                    variant="outlined"
+                    size="small"
+                    sx={{
+                      borderColor: '#fd683e',
+                      color: '#fd683e',
+                      textTransform: 'none',
+                      fontWeight: 600,
+                      '&:hover': {
+                        borderColor: '#e54d0e',
+                        backgroundColor: '#fff3ea',
+                      },
+                    }}
+                  >
+                    Add Your First Group
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="space-y-3">
@@ -1051,30 +1059,32 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
                   <div key={group.id} className="bg-white border border-gray-200 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow">
                     <div className="bg-[#201a18] text-white px-3 py-2 flex items-center justify-between">
                       <h4 className="font-semibold text-sm text-white">{group.extrasTitle}</h4>
-                      <div className="flex gap-1">
-                        <IconButton
-                          onClick={() => handleEditGroup(group)}
-                          size="small"
-                          sx={{ 
-                            color: 'white', 
-                            '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' },
-                            padding: '4px'
-                          }}
-                        >
-                          <Edit3 className="w-3 h-3" />
-                        </IconButton>
-                        <IconButton
-                          onClick={() => handleRemoveGroup(group.id)}
-                          size="small"
-                          sx={{ 
-                            color: 'white', 
-                            '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' },
-                            padding: '4px'
-                          }}
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </IconButton>
-                      </div>
+                      {mode !== 'select' && (
+                        <div className="flex gap-1">
+                          <IconButton
+                            onClick={() => handleEditGroup(group)}
+                            size="small"
+                            sx={{ 
+                              color: 'white', 
+                              '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' },
+                              padding: '4px'
+                            }}
+                          >
+                            <Edit3 className="w-3 h-3" />
+                          </IconButton>
+                          <IconButton
+                            onClick={() => handleRemoveGroup(group.id)}
+                            size="small"
+                            sx={{ 
+                              color: 'white', 
+                              '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' },
+                              padding: '4px'
+                            }}
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </IconButton>
+                        </div>
+                      )}
                     </div>
                     <div className="p-3">
                       <p className="text-xs text-gray-600 mb-2">
@@ -1107,28 +1117,30 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
                   </div>
                 ))}
                 
-                <Button
-                  onClick={handleAddAnotherGroup}
-                  variant="outlined"
-                  fullWidth
-                  size="small"
-                  className="py-2"
-                  sx={{
-                    borderColor: '#fd683e',
-                    color: '#fd683e',
-                    textTransform: 'none',
-                    fontWeight: 600,
-                    borderStyle: 'dashed',
-                    '&:hover': {
-                      borderColor: '#e54d0e',
-                      backgroundColor: '#fff3ea',
+                {mode !== 'select' && (
+                  <Button
+                    onClick={handleAddAnotherGroup}
+                    variant="outlined"
+                    fullWidth
+                    size="small"
+                    className="py-2"
+                    sx={{
+                      borderColor: '#fd683e',
+                      color: '#fd683e',
+                      textTransform: 'none',
+                      fontWeight: 600,
                       borderStyle: 'dashed',
-                    },
-                  }}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Another Group
-                </Button>
+                      '&:hover': {
+                        borderColor: '#e54d0e',
+                        backgroundColor: '#fff3ea',
+                        borderStyle: 'dashed',
+                      },
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Another Group
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -1151,6 +1163,13 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
           maxHeight: '85vh',
           margin: '16px',
           maxWidth: '500px',
+          // border removed
+          '& .MuiDialog-paper': {
+            borderRadius: '12px',
+            maxHeight: '85vh',
+            margin: '16px',
+            maxWidth: '500px',
+          },
         }
       }}
     >

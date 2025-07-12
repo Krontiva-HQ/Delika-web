@@ -59,7 +59,7 @@ const SelectExtrasGroupsModal: React.FC<SelectExtrasGroupsModalProps> = ({
         const response = await getRestaurantExtrasGroups(restaurantData.id);
         setExistingGroups(response.data || []);
       } catch (error) {
-        console.error('Error fetching existing groups:', error);
+        // console.error('Error fetching existing groups:', error);
       } finally {
         setLoading(false);
       }

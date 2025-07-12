@@ -82,9 +82,7 @@ interface InventoryItem {
 }
 
 interface ExtraItem {
-  extrasTitle: string;
-  inventoryId: string;
-  new?: boolean;
+  delika_extras_table_id: string;
 }
 
 interface AddItemParams {
@@ -333,14 +331,10 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
     // Store the full groups data for display
     setAddedExtrasGroups(groups);
     
-    // Transform the groups into the format needed for the API
-    const transformedExtras: ExtraItem[] = groups.flatMap(group =>
-      group.extrasDetails.map(detail => ({
-        extrasTitle: group.extrasTitle,
-        inventoryId: detail.value || "",
-        new: detail.isNew || false
-      }))
-    );
+    // Transform the groups to only include delika_extras_table_id - same as EditInventoryModal.tsx
+    const transformedExtras: ExtraItem[] = groups.map(group => ({
+      delika_extras_table_id: group.id
+    }));
 
     setExtraGroups(transformedExtras);
     setExtrasModalOpen(false);
@@ -358,12 +352,6 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
       // Add loading state
       setIsAddingItem(true);
 
-      // --- TRANSFORM EXTRAS TO ALWAYS INCLUDE 'new' PROPERTY ---
-      const transformedExtras = extraGroups.map(extra => ({
-        ...extra,
-        new: typeof extra.new === 'boolean' ? extra.new : false
-      }));
-
       if (!userProfile.restaurantId || !userProfile.branchId) {
         alert('Please log in again. Restaurant or branch information is missing.');
         return;
@@ -371,21 +359,24 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
 
       // If we're adding from the Inventory page (preSelectedCategory exists)
       if (preSelectedCategory) {
-
-
         // Create FormData with the new structure
         const formData = new FormData();
         
-        // Group food data into foods object
+        // Group food data into foods object - always keep extras as empty array
         const foodsData = {
           name: itemName,
           price: price,
-          extras: transformedExtras,
+          extras: [], // Always empty array
           quantity: "1",
           available: available,
           description: shortDetails
         };
         formData.append('foods', JSON.stringify(foodsData));
+        
+        // Add extrasNew field only if extras are selected
+        if (extraGroups.length > 0) {
+          formData.append('extrasNew', JSON.stringify(extraGroups));
+        }
         
         // Add the photo file
         if (photoFile) {
@@ -398,28 +389,20 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
         formData.append('mainCategoryId', ''); // Empty as shown in your example
         formData.append('restaurantName', userProfile.restaurantId);
 
-
-
         // Use ADD_ITEM endpoint with the existing service function
         const response = await addItemToCategory(formData);
-
-
         
         onInventoryUpdated?.();
         onClose?.();
       } 
       // If we're adding a new item to a category
       else {
-
-
         // Find the selected main category to get its image
         const selectedMainCategoryData = mainCategories.find(cat => cat.id === selectedMainCategoryId);
         if (!selectedMainCategoryData) {
           alert('Main category not found. Please try again.');
           return;
         }
-
-
 
         // Fetch the category image as a file
         let categoryImageFile = null;
@@ -448,23 +431,26 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
           formData.append('foodsPhoto', photoFile);
         }
         
-        // Add foods data as JSON string
+        // Add foods data as JSON string - always keep extras as empty array
         formData.append('foods', JSON.stringify([{
           name: itemName,
           price,
           description: shortDetails,
           quantity: "0",
           available,
-          extras: transformedExtras
+          extras: [] // Always empty array
         }]));
+
+        // Add extrasNew field only if extras are selected
+        if (extraGroups.length > 0) {
+          formData.append('extrasNew', JSON.stringify(extraGroups));
+        }
 
         const response = await api.post('/create/new/category', formData, {
           headers: {
             'Content-Type': 'multipart/form-data',
           },
         });
-
-
 
         onInventoryUpdated?.();
         onClose?.();

@@ -214,33 +214,11 @@ const EditInventoryModal: FunctionComponent<EditInventoryModalProps & { restaura
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="relative group cursor-pointer" onClick={handleImageClick}>
-                      <input
-                        type="file"
-                        ref={fileInputRef}
-                        className="hidden"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                      />
-                      <img
-                        src={previewUrl}
-                        alt={editForm.name}
-                        className="w-full h-[200px] object-cover rounded-lg border-2 border-dashed border-gray-300 group-hover:border-[#fd683e] transition-colors"
-                      />
-                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center">
-                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center gap-2">
-                          <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"></path>
-                          </svg>
-                          <p className="text-white text-sm font-medium">Click to upload image</p>
-                        </div>
-                      </div>
-                      {imageFile && (
-                        <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
-                          New image selected
-                        </div>
-                      )}
-                    </div>
+                    <img
+                      src={previewUrl}
+                      alt={editForm.name}
+                      className="w-full h-[200px] object-cover rounded-lg border-2 border-dashed border-gray-300"
+                    />
                   </CardContent>
                 </Card>
                 {/* Item Details Section */}

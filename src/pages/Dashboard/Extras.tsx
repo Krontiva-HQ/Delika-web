@@ -15,7 +15,7 @@ import { RadioGroup, RadioGroupItem } from '../../components/ui/radio-group';
 import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { api, createExtrasGroup, getRestaurantExtrasGroups, editExtrasGroup, deleteExtrasGroup } from '../../services/api';
+import { api, createExtrasGroup, getRestaurantExtrasGroups, editExtrasGroup, deleteExtrasGroup, getAllExtrasPerRestaurant, updateExtrasPrice } from '../../services/api';
 import { 
   Paper, 
   List, 
@@ -24,7 +24,8 @@ import {
   Box, 
   Typography, 
   CircularProgress,
-  Checkbox as MuiCheckbox
+  Checkbox as MuiCheckbox,
+  Modal
 } from '@mui/material';
 import axios from 'axios';
 import ExtrasGroupMeta from '../../components/ExtrasGroupMeta';
@@ -44,6 +45,20 @@ interface FoodItem {
   foodImage: {
     url: string;
   };
+}
+
+// Interface for extras items
+interface ExtrasItem {
+  id: string;
+  created_at: number;
+  branchId: string;
+  restaurantName: string;
+  categoryId: string | null;
+  foodType: string;
+  foodName: string;
+  foodPrice: number;
+  updatedAt: string;
+  foodDescription: string;
 }
 
 // Option type for dropdowns
@@ -91,12 +106,24 @@ const Extras: FunctionComponent<ExtrasProps> = ({ searchQuery = '' }): ReactElem
   const [maxSelection, setMaxSelection] = useState<string>('');
 
   // View mode state
-  const [viewMode, setViewMode] = useState<'list' | 'create'>('list');
+  const [viewMode, setViewMode] = useState<'list' | 'create' | 'all-extras'>('list');
   const [existingGroups, setExistingGroups] = useState<any[]>([]);
   const [groupsLoading, setGroupsLoading] = useState(false);
   const [editingGroup, setEditingGroup] = useState<any>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [groupToDelete, setGroupToDelete] = useState<any>(null);
+
+  // All extras state
+  const [allExtras, setAllExtras] = useState<ExtrasItem[]>([]);
+  const [allExtrasLoading, setAllExtrasLoading] = useState(false);
+  const [editingExtrasId, setEditingExtrasId] = useState<string | null>(null);
+  const [editingPrice, setEditingPrice] = useState<string>('');
+  const [updatingPrice, setUpdatingPrice] = useState(false);
+  // Add state for search
+  const [extrasSearch, setExtrasSearch] = useState('');
+  // Add state for editing name
+  const [editingName, setEditingName] = useState('');
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   const { restaurantData } = useUserProfile();
 
@@ -122,7 +149,7 @@ const Extras: FunctionComponent<ExtrasProps> = ({ searchQuery = '' }): ReactElem
         
         setFoodTypes(uniqueFoodTypes);
       } catch (error) {
-        console.error('Error fetching food types:', error);
+        // console.error('Error fetching food types:', error);
       } finally {
         setLoading(false);
       }
@@ -139,7 +166,7 @@ const Extras: FunctionComponent<ExtrasProps> = ({ searchQuery = '' }): ReactElem
       const response = await getRestaurantExtrasGroups(restaurantData.id);
       setExistingGroups(response.data || []);
     } catch (error) {
-      console.error('Error fetching existing groups:', error);
+      // console.error('Error fetching existing groups:', error);
       addNotification({
         type: 'inventory_alert',
         message: 'Failed to load existing extras groups'
@@ -149,9 +176,29 @@ const Extras: FunctionComponent<ExtrasProps> = ({ searchQuery = '' }): ReactElem
     }
   };
 
+  // Fetch all extras
+  const fetchAllExtras = async () => {
+    if (!restaurantData.id) return;
+    try {
+      setAllExtrasLoading(true);
+      const response = await getAllExtrasPerRestaurant(restaurantData.id);
+      setAllExtras(response.data || []);
+    } catch (error) {
+      // console.error('Error fetching all extras:', error);
+      addNotification({
+        type: 'inventory_alert',
+        message: 'Failed to load all extras'
+      });
+    } finally {
+      setAllExtrasLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (viewMode === 'list') {
       fetchExistingGroups();
+    } else if (viewMode === 'all-extras') {
+      fetchAllExtras();
     }
   }, [restaurantData.id, viewMode]);
 
@@ -265,7 +312,7 @@ const Extras: FunctionComponent<ExtrasProps> = ({ searchQuery = '' }): ReactElem
       setViewMode('list');
       setEditingGroup(null);
     } catch (error) {
-      console.error('Error creating extras group:', error);
+      // console.error('Error creating extras group:', error);
       addNotification({
         type: 'inventory_alert',
         message: 'Failed to create extras group. Please try again.'
@@ -321,6 +368,55 @@ const Extras: FunctionComponent<ExtrasProps> = ({ searchQuery = '' }): ReactElem
     setGroupToDelete(null);
   };
 
+  // Handle price editing for extras
+  const handleEditPrice = (extras: ExtrasItem) => {
+    setEditingExtrasId(extras.id);
+    setEditingPrice(extras.foodPrice.toString());
+    setEditingName(extras.foodName);
+    setEditModalOpen(true);
+  };
+
+  const handleSavePrice = async () => {
+    if (!editingExtrasId || !editingPrice || !editingName) return;
+    
+    try {
+      setUpdatingPrice(true);
+      await updateExtrasPrice(editingExtrasId, parseFloat(editingPrice), editingName);
+      
+      // Update the local state
+      setAllExtras(prev => prev.map(item => 
+        item.id === editingExtrasId 
+          ? { ...item, foodPrice: parseFloat(editingPrice), foodName: editingName }
+          : item
+      ));
+      
+      addNotification({
+        type: 'inventory_alert',
+        message: 'Updated successfully'
+      });
+      
+      setEditingExtrasId(null);
+      setEditingPrice('');
+      setEditingName('');
+      setEditModalOpen(false);
+    } catch (error) {
+      // console.error('Error updating price:', error);
+      addNotification({
+        type: 'inventory_alert',
+        message: 'Failed to update'
+      });
+    } finally {
+      setUpdatingPrice(false);
+    }
+  };
+
+  const handleCancelEditPrice = () => {
+    setEditingExtrasId(null);
+    setEditingPrice('');
+    setEditingName('');
+    setEditModalOpen(false);
+  };
+
 
   return (
     <div className="h-full w-full bg-white dark:bg-[#201a18] m-0 p-0">
@@ -329,7 +425,9 @@ const Extras: FunctionComponent<ExtrasProps> = ({ searchQuery = '' }): ReactElem
         <div className="flex justify-between items-center mb-6">
           <div>
             <h1 className="text-[18px] font-sans font-semibold">
-              {viewMode === 'list' ? 'Extras Groups' : editingGroup ? 'Edit Extras Group' : 'New Extras group'}
+              {viewMode === 'list' ? 'Extras Groups' : 
+               viewMode === 'all-extras' ? 'All Extras' :
+               editingGroup ? 'Edit Extras Group' : 'New Extras group'}
             </h1>
           </div>
           <div className="flex items-center gap-2">
@@ -343,13 +441,22 @@ const Extras: FunctionComponent<ExtrasProps> = ({ searchQuery = '' }): ReactElem
               />
             )}
             {viewMode === 'list' && (
-              <Button 
-                onClick={handleAddGroup}
-                className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Group
-              </Button>
+              <>
+                <Button 
+                  onClick={() => setViewMode('all-extras')}
+                  variant="outline"
+                  className="border-orange-500 text-orange-500 hover:bg-orange-50"
+                >
+                  All Extras
+                </Button>
+                <Button 
+                  onClick={handleAddGroup}
+                  className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Group
+                </Button>
+              </>
             )}
             {viewMode === 'create' && (
               <Button 
@@ -358,6 +465,15 @@ const Extras: FunctionComponent<ExtrasProps> = ({ searchQuery = '' }): ReactElem
                 className="border-orange-500 text-orange-500 hover:bg-orange-50"
               >
                 Back to List
+              </Button>
+            )}
+            {viewMode === 'all-extras' && (
+              <Button 
+                variant="outline"
+                onClick={() => setViewMode('list')}
+                className="border-orange-500 text-orange-500 hover:bg-orange-50"
+              >
+                Back to Groups
               </Button>
             )}
           </div>
@@ -418,6 +534,47 @@ const Extras: FunctionComponent<ExtrasProps> = ({ searchQuery = '' }): ReactElem
                     </div>
                   </Card>
                 ))}
+              </div>
+            )}
+          </div>
+        ) : viewMode === 'all-extras' ? (
+          // All Extras View
+          <div className="space-y-4">
+            <div className="mb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+              <h2 className="text-xl font-bold text-orange-700 bg-orange-50 px-4 py-2 rounded-md w-fit mb-2 md:mb-0">All Extras</h2>
+              <Input
+                type="text"
+                placeholder="Search extras by name..."
+                value={extrasSearch}
+                onChange={e => setExtrasSearch(e.target.value)}
+                className="w-full md:w-72 border-orange-200 focus:border-orange-400 focus:ring-orange-400"
+              />
+            </div>
+            {allExtrasLoading ? (
+              <div className="flex justify-center items-center h-32">
+                <CircularProgress sx={{ color: '#fd683e' }} size={40} />
+              </div>
+            ) : allExtras.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500 mb-4">No extras found</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {allExtras
+                  .filter(extras => extras.foodName.toLowerCase().includes(extrasSearch.toLowerCase()))
+                  .map((extras) => (
+                    <Card key={extras.id} className="p-3 rounded-md shadow-sm border mb-2" style={{ borderColor: '#d1d5db' }}>
+                      <div className="flex justify-between items-center">
+                        <div className="flex-1">
+                          <div className="font-semibold text-lg mb-1 text-black">{extras.foodName}</div>
+                          <div className="text-sm text-black mb-1"><span className="font-medium">Price:</span> GH₵{extras.foodPrice}</div>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => handleEditPrice(extras)}>
+                          Edit
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
               </div>
             )}
           </div>
@@ -734,6 +891,32 @@ const Extras: FunctionComponent<ExtrasProps> = ({ searchQuery = '' }): ReactElem
         confirmText="Delete"
         cancelText="Cancel"
       />
+      {/* Edit Modal */}
+      <Modal open={editModalOpen} onClose={handleCancelEditPrice}>
+        <Box className="bg-white rounded-lg shadow-lg p-6 w-[full] max-w-xs mx-auto mt-32 flex flex-col gap-4">
+          <div className="font-semibold text-lg mb-2">Edit Extra</div>
+          <Input
+            type="text"
+            value={editingName}
+            onChange={e => setEditingName(e.target.value)}
+            className="w-[300px] text-base"
+            placeholder="Name"
+          />
+          <Input
+            type="number"
+            value={editingPrice}
+            onChange={e => setEditingPrice(e.target.value)}
+            className="w-[300px] text-base"
+            placeholder="Price"
+          />
+          <div className="flex gap-2 justify-end mt-2">
+            <Button onClick={handleCancelEditPrice} variant="outline">Cancel</Button>
+            <Button onClick={handleSavePrice} disabled={updatingPrice} className="bg-orange-600 hover:bg-orange-700 text-white">
+              {updatingPrice ? 'Saving...' : 'Save'}
+            </Button>
+          </div>
+        </Box>
+      </Modal>
     </div>
   );
 };

@@ -950,6 +950,31 @@ export const getRestaurantExtrasGroups = async (restaurantId: string | null) => 
   return api.get<ExtrasGroupResponse[]>('/get/restaurant/extras/group', { params: { restaurantId } },);
 };
 
+// Add function to get all extras per restaurant
+export const getAllExtrasPerRestaurant = async (restaurantId: string | null) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.get('/get/extras/per/restaurant', { 
+    params: { restaurantId },
+    headers 
+  });
+};
+
+// Add function to update extras price
+export const updateExtrasPrice = async (extrasId: string, newPrice: number, newName: string) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.patch('/edit/extras/item/price/name', {
+    delika_inventory_table_id: extrasId,
+    price: newPrice,
+    name: newName
+  }, { headers });
+};
+
 export const editExtrasGroup = async (id: string, payload: ExtrasGroupPayload) => {
   const headers = {
     'Content-Type': 'application/json',

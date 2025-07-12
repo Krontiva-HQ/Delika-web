@@ -267,7 +267,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
   const onAddItemButtonClick = useCallback((category?: Category) => {
     if (category) {
       // If adding from within a category, use the category's ID directly
-      console.log('Adding item to category:', category);
       setAddInventoryCategory({
         mainCategory: category.name,
         mainCategoryId: category.id, // Use the category's ID directly
@@ -436,14 +435,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
         })).filter(extra => extra.delika_extras_table_id !== '');
 
       if (imageFile) {
-        console.log('📤 Preparing FormData with image file:', imageFile.name);
-        console.log('🔍 Image file validation:', {
-          isFile: imageFile instanceof File,
-          name: imageFile.name,
-          size: imageFile.size,
-          type: imageFile.type,
-          valid: !!(imageFile.name && imageFile.size > 0)
-        });
         
         // Use FormData for file upload with UPDATE_ITEM endpoint
         const formData = new FormData();
@@ -459,73 +450,9 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
         formData.append('value', selectedItem.name);
         formData.append('extras', JSON.stringify(formattedExtras));
         formData.append('foodImage', imageFile);
-        console.log('📎 Added file to FormData as photo:', {
-          fileName: imageFile.name,
-          fileSize: imageFile.size,
-          fileType: imageFile.type,
-          fileValid: imageFile instanceof File
-        });
-
-        // Debug: Log all FormData entries
-        console.log('📋 FormData contents:');
-        const entries = Array.from(formData.entries());
-        entries.forEach(([key, value]) => {
-          if (value instanceof File) {
-            console.log(`  ${key}: File - ${value.name} (${value.size} bytes, ${value.type})`);
-            console.log(`    File details:`, {
-              name: value.name,
-              size: value.size,
-              type: value.type,
-              lastModified: value.lastModified
-            });
-          } else {
-            console.log(`  ${key}: ${value}`);
-          }
-        });
-
-        // Additional check: verify the file is actually in FormData
-        const fileFromFormData = formData.get('photo');
-        console.log('🔍 Retrieved photo from FormData:', fileFromFormData);
-        if (fileFromFormData instanceof File) {
-          console.log('✅ File confirmed in FormData:', fileFromFormData.name);
-        } else {
-          console.log('❌ File NOT found in FormData or wrong type:', typeof fileFromFormData);
-        }
-
-        console.log('🚀 Sending FormData to updateInventoryItemWithImage...');
-        
-        // Check FormData size and content one more time before sending
-        console.log('📏 FormData size check:');
-        let totalSize = 0;
-        const finalEntries = Array.from(formData.entries());
-        finalEntries.forEach(([key, value]) => {
-          if (value instanceof File) {
-            totalSize += value.size;
-            console.log(`  📁 ${key}: ${value.name} - ${value.size} bytes`);
-          } else {
-            totalSize += new Blob([value.toString()]).size;
-            console.log(`  📝 ${key}: "${value}" - ${new Blob([value.toString()]).size} bytes`);
-          }
-        });
-        console.log(`📊 Total FormData size: ${totalSize} bytes`);
         
         await updateInventoryItemWithImage(formData);
-        console.log('✅ FormData sent successfully');
       } else {
-        console.log('📝 No image file, using regular JSON update');
-        console.log('📋 Update data:', {
-          old_name: selectedItem.name,
-          old_item_description: selectedItem.description || '',
-          old_item_price: selectedItem.price,
-          new_name: name,
-          new_item_description: description || '',
-          new_item_price: Number(newPrice),
-          available: available,
-          extras: formattedExtras,
-          restaurantId: userProfile.restaurantId,
-          branchId: userProfile.role === 'Admin' ? selectedBranchId : userProfile.branchId,
-          value: selectedItem.name
-        });
         // Use regular JSON for updates without image
         await updateInventoryItem({
           old_name: selectedItem.name,
@@ -590,7 +517,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
       window.location.reload();
 
     } catch (error) {
-      console.error('Failed to delete item:', error);
       addNotification({
         type: 'inventory_alert',
         message: 'Failed to delete item. Please try again.'
@@ -625,7 +551,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
       window.location.reload();
       
     } catch (error) {
-      console.error('Failed to refresh inventory:', error);
       addNotification({
         type: 'inventory_alert',
         message: 'Item added but failed to refresh inventory. Please refresh the page.'
@@ -697,7 +622,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
           }}
         />
         <div className="flex flex-col items-start justify-start">
-          <div className="text-[16px] leading-[20px] font-medium text-[#333] font-sans">
+          <div className="text-[16px] leading-[20px] font-medium text-[#333] font-sans truncate" style={{ maxWidth: '110px' }}>
             {category.name}
           </div>
           <div className="text-[13px] leading-[16px] text-[#999] text-left font-sans">
@@ -924,7 +849,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
         open={showAddExtrasModal}
         onClose={() => setShowAddExtrasModal(false)}
         onAdd={(groups) => {
-          console.log('Extras added:', groups);
           setShowAddExtrasModal(false);
           // Optionally refresh the page or show success notification
           addNotification({
