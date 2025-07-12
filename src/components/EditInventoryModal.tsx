@@ -333,17 +333,17 @@ const EditInventoryModal: FunctionComponent<EditInventoryModalProps & { restaura
                 </div>
               </CardHeader>
               <CardContent>
-                {itemExtras && itemExtras.length > 0 ? (
+                {itemExtras && Array.isArray(itemExtras) && itemExtras.length > 0 ? (
                   <div className="space-y-3 max-h-[200px] overflow-y-auto">
                     {itemExtras.map((group, index) => (
-                      <div key={group.delika_extras_table_id || index} className="border border-gray-200 rounded-lg p-3 bg-gray-50 dark:bg-[#201a18]">
+                      <div key={group.delika_extras_table_id || `group-${index}`} className="border border-gray-200 rounded-lg p-3 bg-gray-50 dark:bg-[#201a18]">
                         <h4 className="text-sm font-medium text-gray-800 dark:text-white mb-2 flex items-center gap-2">
                           <div className="w-2 h-2 bg-[#fd683e] rounded-full"></div>
-                          {group.extrasDetails.extrasTitle}
+                          {group.extrasDetails?.extrasTitle || 'Unknown Group'}
                         </h4>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {group.extrasDetails.extrasDetails.map((detail, detailIndex) => 
-                            detail.inventoryDetails.map((inventoryDetail, inventoryIndex) => (
+                          {group.extrasDetails?.extrasDetails?.map((detail, detailIndex) => 
+                            detail.inventoryDetails?.map((inventoryDetail, inventoryIndex) => (
                               <div key={`${detail.delika_inventory_table_id}-${inventoryIndex}`} className="bg-white dark:bg-[#2c2522] rounded-lg border border-gray-200 p-2 text-center hover:shadow-sm transition-shadow">
                                 <div className="text-xs font-medium text-gray-800 dark:text-white leading-tight mb-1">
                                   {inventoryDetail.foodName}
@@ -352,8 +352,8 @@ const EditInventoryModal: FunctionComponent<EditInventoryModalProps & { restaura
                                   GH₵{inventoryDetail.foodPrice}
                                 </div>
                               </div>
-                            ))
-                          )}
+                            )) || []
+                          ) || []}
                         </div>
                       </div>
                     ))}

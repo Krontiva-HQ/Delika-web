@@ -27,6 +27,7 @@ import { Switch } from '../../components/ui/switch';
 import { Button as UIButton } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import EditInventoryModal from '../../components/EditInventoryModal';
+import AddExtrasModal from '../../components/AddExtrasModal';
 import { updateInventoryItem, updateInventoryItemWithImage, deleteMenuItem } from '../../services/api';
 
 interface MenuItem {
@@ -126,7 +127,7 @@ interface InventoryProps {
 interface ActionSelectionDialogProps {
   open: boolean;
   onClose: () => void;
-  onSelectAction: (action: 'menu-item') => void;
+  onSelectAction: (action: 'menu-item' | 'extras') => void;
 }
 
 const ActionSelectionDialog: FunctionComponent<ActionSelectionDialogProps> = ({
@@ -136,14 +137,14 @@ const ActionSelectionDialog: FunctionComponent<ActionSelectionDialogProps> = ({
 }) => {
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Add Menu Item</DialogTitle>
+          <DialogTitle>Add New Item</DialogTitle>
           <DialogDescription>
-            Create a new menu item for your inventory.
+            Choose what you want to add to your inventory.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex justify-center py-4">
+        <div className="grid grid-cols-2 gap-4 py-4">
           <button
             className="flex flex-col items-center justify-center p-6 bg-white dark:bg-[#2c2522] border border-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-[#201a18] transition-colors"
             onClick={() => onSelectAction('menu-item')}
@@ -152,6 +153,17 @@ const ActionSelectionDialog: FunctionComponent<ActionSelectionDialogProps> = ({
               <IoMdAdd className="w-6 h-6 text-[#fd683e]" />
             </div>
             <span className="text-sm font-medium text-gray-900 dark:text-white">Add Menu Item</span>
+            <span className="text-xs text-gray-500 mt-1">Create a new food item</span>
+          </button>
+          <button
+            className="flex flex-col items-center justify-center p-6 bg-white dark:bg-[#2c2522] border border-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-[#201a18] transition-colors"
+            onClick={() => onSelectAction('extras')}
+          >
+            <div className="w-12 h-12 bg-[#fd683e]/10 rounded-full flex items-center justify-center mb-3">
+              <FiShoppingCart className="w-6 h-6 text-[#fd683e]" />
+            </div>
+            <span className="text-sm font-medium text-gray-900 dark:text-white">Add Extras</span>
+            <span className="text-xs text-gray-500 mt-1">Create extras/add-ons</span>
           </button>
         </div>
       </DialogContent>
@@ -239,11 +251,17 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const [showActionDialog, setShowActionDialog] = useState(false);
+  const [showAddExtrasModal, setShowAddExtrasModal] = useState(false);
 
-  const handleActionSelect = (action: 'menu-item') => {
+  const handleActionSelect = (action: 'menu-item' | 'extras') => {
     setShowActionDialog(false);
+    if (action === 'menu-item') {
       setAddInventoryCategory(null);
       setShowAddInventory(true);
+    } else if (action === 'extras') {
+      // Open AddExtrasModal in create mode
+      setShowAddExtrasModal(true);
+    }
   };
 
   const onAddItemButtonClick = useCallback((category?: Category) => {
@@ -257,9 +275,8 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
       });
       setShowAddInventory(true);
     } else {
-      // If adding from the top button, directly show add inventory
-      setAddInventoryCategory(null);
-      setShowAddInventory(true);
+      // If adding from the top button, show action selection dialog
+      setShowActionDialog(true);
     }
   }, [remoteCategories]);
 
@@ -894,6 +911,29 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
           preSelectedCategory={addInventoryCategory || undefined}
         />
       )}
+
+      {/* Action Selection Dialog */}
+      <ActionSelectionDialog
+        open={showActionDialog}
+        onClose={() => setShowActionDialog(false)}
+        onSelectAction={handleActionSelect}
+      />
+
+      {/* Add Extras Modal */}
+      <AddExtrasModal
+        open={showAddExtrasModal}
+        onClose={() => setShowAddExtrasModal(false)}
+        onAdd={(groups) => {
+          console.log('Extras added:', groups);
+          setShowAddExtrasModal(false);
+          // Optionally refresh the page or show success notification
+          addNotification({
+            type: 'inventory_alert',
+            message: 'Extras created successfully'
+          });
+        }}
+        mode="create"
+      />
 
       {/* Edit Inventory Modal */}
       {selectedItem && (
