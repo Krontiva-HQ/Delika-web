@@ -901,10 +901,15 @@ export const getRestaurantExtras = async (restaurantId: string | null) => {
 // Add interface for extras group payload
 export interface ExtrasGroupPayload {
   restaurantId: string;
-  extras: Array<{
-    extrasTitle: string;
+  extras: string;
+  branchId: string;
+  required: boolean;
+  extrasType: string;
+  extrasTitle: string;
+  minSelection?: string | null;
+  maxSelection?: string | null;
+  existingExtras: Array<{
     delika_inventory_table_id: string;
-    required: boolean;
   }>;
 }
 
@@ -914,5 +919,53 @@ export const createExtrasGroup = async (payload: ExtrasGroupPayload) => {
     'Content-Type': 'application/json',
     'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
-  return api.patch(API_ENDPOINTS.CREATE_EXTRAS_GROUP, payload, { headers });
+  return api.post(API_ENDPOINTS.CREATE_EXTRAS_GROUP, payload, { headers });
+};
+
+// Add interface for extras group response
+export interface ExtrasGroupResponse {
+  id: string;
+  created_at: number;
+  restaurantId: string;
+  extrasTitle: string;
+  extrasType: string;
+  required: boolean;
+  extrasDetails: Array<{
+    delika_inventory_table_id: string;
+    minSelection: string;
+    maxSelection: string;
+    extrasDetails: Array<{
+      foodName: string;
+      foodPrice: string;
+      foodDescription: string;
+    }>;
+  }>;
+}
+
+// Add function to get restaurant extras groups
+export const getRestaurantExtrasGroups = async (restaurantId: string | null) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.get<ExtrasGroupResponse[]>('/get/restaurant/extras/group', { params: { restaurantId } },);
+};
+
+export const editExtrasGroup = async (id: string, payload: ExtrasGroupPayload) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.patch('/edit/extra/group', { delika_extras_table_id: id, ...payload }, { headers });
+};
+
+export const deleteExtrasGroup = async (id: string) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.delete(`/delika_extras_table/${id}`, {
+    data: { delikaquickshipper_extras_table_id: id },
+    headers
+  });
 };

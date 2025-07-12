@@ -139,8 +139,15 @@ const GroupExtrasModal: React.FC<NewExtrasModalProps> = ({
         const response = await getRestaurantExtras(restaurantData.id || null);
         const existingExtrasGroups = response.data;
 
-        // First, collect all extras from all groups
-        const allExtras = existingExtrasGroups.flatMap(group => group.extras);
+        // First, collect all extras from all groups and flatten extrasDetails
+        const allExtras = existingExtrasGroups.flatMap(group => 
+          group.extras.flatMap(extra => 
+            extra.extrasDetails.map((detail: any) => ({
+              ...extra,
+              extrasDetail: detail
+            }))
+          )
+        );
 
         // Then group by extrasTitle
         const groupedExtras = allExtras.reduce<Record<string, Extra[]>>((acc, extra) => {
@@ -150,7 +157,7 @@ const GroupExtrasModal: React.FC<NewExtrasModalProps> = ({
 
           acc[extra.extrasTitle].push({
             id: extra.delika_inventory_table_id,
-            variant: extra.extrasTitle,
+            variant: extra.extrasDetail.foodName, // Use foodName instead of extrasTitle
             title: extra.extrasTitle,
             inventoryId: extra.delika_inventory_table_id
           });

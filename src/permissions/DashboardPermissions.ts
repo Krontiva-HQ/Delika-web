@@ -1,11 +1,12 @@
 import { FiGrid, FiBox } from "react-icons/fi";
-import { IoFastFoodOutline, IoSettingsOutline } from "react-icons/io5";
+import { IoFastFoodOutline, IoSettingsOutline, IoAddCircleOutline } from "react-icons/io5";
 import { LuCircleDollarSign, LuFileSpreadsheet } from "react-icons/lu";
 import { IconType } from 'react-icons';
 
 // Interface for restaurant permissions
 export interface DashboardPermissions {
   Inventory?: boolean;      // Access to inventory management
+  Extras?: boolean;         // Access to extras/modifiers management
   Transactions?: boolean;   // Access to transaction details
   Reports?: boolean;        // Access to reports functionality
   Overview?: boolean;       // Access to overview dashboard
@@ -23,6 +24,10 @@ export interface DashboardPermissions {
 // Helper functions to check permissions
 export const hasInventoryAccess = (permissions: DashboardPermissions): boolean => {
   return !!permissions.Inventory;
+};
+
+export const hasExtrasAccess = (permissions: DashboardPermissions): boolean => {
+  return !!permissions.Extras;
 };
 
 export const hasTransactionsAccess = (permissions: DashboardPermissions): boolean => {
@@ -100,6 +105,7 @@ export const getDeliveryPriceInfo = (permissions: DashboardPermissions, distance
 export const hasAllSpecialPermissions = (permissions: DashboardPermissions): boolean => {
   return !!permissions.Reports && 
          !!permissions.Inventory && 
+         !!permissions.Extras &&
          !!permissions.Transactions;
 };
 
@@ -136,6 +142,14 @@ export const getAvailableMenuItems = (permissions: DashboardPermissions): MenuIt
       requiredPermission: "Inventory"
     });
   }
+
+  // Add Extras - always available
+  menuItems.push({ 
+    name: "Extras", 
+    icon: IoAddCircleOutline,
+    id: "extras", 
+    requiredPermission: null
+  });
 
   // Only add Transactions if Transactions permission is granted
   if (permissions.Transactions) {

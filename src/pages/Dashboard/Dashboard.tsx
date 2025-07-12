@@ -10,6 +10,7 @@ import Reports from "./Reports";
 import Orders from "./Orders";
 import Overview from "./Overview";
 import Inventory from "./Inventory";
+import Extras from "./Extras";
 import { Button, Menu, MenuItem } from "@mui/material";
 import { IoIosHelpCircleOutline, IoMdMoon, IoMdNotificationsOutline, IoMdSunny } from "react-icons/io";
 import { FaRegMoon, FaChevronDown } from "react-icons/fa";
@@ -156,6 +157,8 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
         />;
       case 'inventory':
         return <Inventory />;
+      case 'extras':
+        return <Extras searchQuery={searchQuery} />;
       case 'transactions':
         return <Transactions />;
       case 'reports':

@@ -22,7 +22,7 @@ import {
   Paper,
 } from '@mui/material';
 import { X, Plus, Trash2, Edit3, ChevronLeft, ChevronRight, Check } from 'lucide-react';
-import { api, getAllInventory, createExtrasItem } from '../services/api';
+import { api, getAllInventory, createExtrasItem, getRestaurantExtras } from '../services/api';
 import { useUserProfile } from '../hooks/useUserProfile';
 
 // Option type for dropdowns
@@ -186,16 +186,23 @@ interface ApiPayload {
   old_item_description: string;
 }
 
+interface ExistingExtrasGroup {
+  id: string;
+  extrasTitle: string;
+  delika_inventory_table_id: string;
+  extrasDetails: ExtraDetail[];
+}
+
 const steps = [
   {
     id: 1,
-    title: 'Enter extras title',
-    description: 'Create a title for your extras group'
+    title: 'Select extras group',
+    description: 'Choose an existing extras group'
   },
   {
     id: 2,
-    title: 'Add extras',
-    description: 'Select and add variants to your group'
+    title: 'Manage extras',
+    description: 'Add or remove variants from your group'
   },
   {
     id: 3,
@@ -228,6 +235,8 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
   });
 
   const [selectedVariants, setSelectedVariants] = useState<string[]>([]);
+  const [existingExtrasGroups, setExistingExtrasGroups] = useState<ExistingExtrasGroup[]>([]);
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('');
 
   const { restaurantData, userProfile } = useUserProfile();
 
@@ -321,6 +330,53 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
     fetchFoodTypes();
   }, [open, restaurantData.id]);
 
+  // Fetch existing extras groups
+  useEffect(() => {
+    const fetchExistingExtrasGroups = async () => {
+      if (!open || !restaurantData.id) return;
+
+      try {
+        const response = await getRestaurantExtras(restaurantData.id);
+        const existingGroups = response.data;
+
+        // Process the groups to get unique titles with their details
+        const groupedByTitle = new Map<string, ExistingExtrasGroup>();
+
+        existingGroups.forEach(group => {
+          group.extras.forEach(extra => {
+            if (!groupedByTitle.has(extra.extrasTitle)) {
+              groupedByTitle.set(extra.extrasTitle, {
+                id: extra.delika_inventory_table_id,
+                extrasTitle: extra.extrasTitle,
+                delika_inventory_table_id: extra.delika_inventory_table_id,
+                extrasDetails: []
+              });
+            }
+            
+            // Add all extrasDetails to the group
+            const currentGroup = groupedByTitle.get(extra.extrasTitle)!;
+            if ((extra as any).extrasDetails && (extra as any).extrasDetails.length > 0) {
+              (extra as any).extrasDetails.forEach((detail: ExtraDetail) => {
+                // Avoid duplicates
+                if (!currentGroup.extrasDetails.some(existing => existing.foodName === detail.foodName)) {
+                  currentGroup.extrasDetails.push(detail);
+                }
+              });
+            }
+          });
+        });
+
+        const processedGroups = Array.from(groupedByTitle.values());
+
+        setExistingExtrasGroups(processedGroups);
+      } catch (error) {
+        console.error('Error fetching existing extras groups:', error);
+      }
+    };
+
+    fetchExistingExtrasGroups();
+  }, [open, restaurantData.id]);
+
   useEffect(() => {
     if (open && mode === 'create') {
       setActiveStep(1);
@@ -334,31 +390,32 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
     }
   }, [open, mode]);
 
+  const handleGroupSelect = (group: ExistingExtrasGroup) => {
+    setSelectedGroupId(group.id);
+    setGroupTitle(group.extrasTitle);
+    setCurrentGroup({
+      id: group.id,
+      extrasTitle: group.extrasTitle,
+      delika_inventory_table_id: group.delika_inventory_table_id,
+      extrasDetails: [...group.extrasDetails] // Copy existing variants
+    });
+  };
+
   const handleNext = () => {
     if (activeStep === 0) {
-      // Check if a group with this title already exists
-      const existingGroup = extraGroups.find(g => 
-        g.extrasTitle.toLowerCase() === groupTitle.toLowerCase()
-      );
-      
-      if (existingGroup) {
-        // If it exists, set it as current group and move to step 1
+      // Use the selected group from existing groups
+      if (selectedGroupId) {
+        const selectedGroup = existingExtrasGroups.find(g => g.id === selectedGroupId);
+        if (selectedGroup) {
         setCurrentGroup({
-          ...existingGroup,
-          extrasDetails: [...existingGroup.extrasDetails] // Create a copy of the details
-        });
-        // Remove the existing group as we'll add an updated version later
-        setExtraGroups(prevGroups => prevGroups.filter(g => g.id !== existingGroup.id));
-      } else {
-        // If it's a new title, create a new group
-        setCurrentGroup({
-          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-          extrasTitle: groupTitle,
-          delika_inventory_table_id: '',
-          extrasDetails: []
-        });
-      }
+            id: selectedGroup.id,
+            extrasTitle: selectedGroup.extrasTitle,
+            delika_inventory_table_id: selectedGroup.delika_inventory_table_id,
+            extrasDetails: [...selectedGroup.extrasDetails] // Copy existing variants
+          });
       setActiveStep(1);
+        }
+      }
     } else if (activeStep === 1) {
       if (currentGroup) {
         // When adding/updating a group, check if one with the same title exists
@@ -490,6 +547,16 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
   const handleCreateVariant = () => {
     if (!currentGroup || !newVariant.name || !newVariant.price) return;
 
+    // Check if variant with this name already exists
+    const existingVariant = currentGroup.extrasDetails.find(
+      detail => detail.foodName.toLowerCase() === newVariant.name.toLowerCase()
+    );
+
+    if (existingVariant) {
+      // Could show a toast or alert here
+      return;
+    }
+
     const newVariantDetails: ExtraDetail = {
       foodName: newVariant.name,
       foodPrice: Number(newVariant.price),
@@ -550,10 +617,17 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
         return null;
       }).filter(Boolean) as ExtraDetail[];
 
+      // Filter out variants that already exist in the group
+      const uniqueNewVariants = newVariants.filter(newVariant => 
+        !currentGroup.extrasDetails.some(existing => existing.foodName === newVariant.foodName)
+      );
+
+      if (uniqueNewVariants.length > 0) {
       setCurrentGroup({
         ...currentGroup,
-        extrasDetails: [...currentGroup.extrasDetails, ...newVariants]
+          extrasDetails: [...currentGroup.extrasDetails, ...uniqueNewVariants]
       });
+      }
       setSelectedVariants([]);
     }
   };
@@ -790,66 +864,76 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
         return (
           <div className="space-y-4">
             <div className="text-center space-y-1">
-              <h3 className="text-lg font-semibold text-gray-900">Create Extras Group</h3>
-              <p className="text-sm text-gray-600">Give your extras group a descriptive title</p>
+              <h3 className="text-lg font-semibold text-gray-900">Select Extras Group</h3>
+              <p className="text-sm text-gray-600">Choose an existing extras group to add variants to</p>
             </div>
             
-            {extraGroups.length > 0 && (
-              <div className="bg-gray-50 rounded-lg p-4 mb-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-2">Existing Groups ({extraGroups.length})</h4>
-                <div className="flex flex-wrap gap-2">
-                  {extraGroups.map((group) => (
-                    <Chip
+            {loading ? (
+              <div className="flex justify-center items-center h-32">
+                <CircularProgress sx={{ color: '#fd683e' }} size={30} />
+                <Typography sx={{ ml: 2, color: '#6b7280' }}>Loading extras groups...</Typography>
+              </div>
+            ) : existingExtrasGroups.length === 0 ? (
+              <div className="text-center py-8 bg-gray-50 rounded-lg">
+                <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Plus className="w-6 h-6 text-gray-400" />
+                </div>
+                <p className="text-sm text-gray-500 mb-3">No extras groups found</p>
+                <p className="text-xs text-gray-400">Create extras groups first using the Group Extras feature</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-gray-700">Available Extras Groups ({existingExtrasGroups.length})</h4>
+                <div className="grid grid-cols-1 gap-3 max-h-64 overflow-y-auto">
+                  {existingExtrasGroups.map((group) => (
+                    <div
                       key={group.id}
-                      label={group.extrasTitle}
-                      size="small"
-                      sx={{
-                        backgroundColor: '#fff3ea',
-                        color: '#fd683e',
-                        fontWeight: 500,
-                        fontSize: '11px',
-                        height: '24px',
-                      }}
-                    />
+                      onClick={() => handleGroupSelect(group)}
+                      className={`p-4 border-2 rounded-lg cursor-pointer transition-all hover:shadow-md ${
+                        selectedGroupId === group.id
+                          ? 'border-[#fd683e] bg-[#fff3ea]'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h5 className="font-semibold text-gray-900 mb-2">{group.extrasTitle}</h5>
+                          {group.extrasDetails && group.extrasDetails.length > 0 ? (
+                            <div className="space-y-1">
+                              <p className="text-xs text-gray-500 font-medium">
+                                Available items ({group.extrasDetails.length}):
+                              </p>
+                              <div className="flex flex-wrap gap-1">
+                                {group.extrasDetails.slice(0, 4).map((detail, index) => (
+                                  <span
+                                    key={index}
+                                    className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-700 rounded-full"
+                                  >
+                                    {detail.foodName}
+                                  </span>
+                                ))}
+                                {group.extrasDetails.length > 4 && (
+                                  <span className="inline-block px-2 py-1 text-xs bg-gray-200 text-gray-600 rounded-full">
+                                    +{group.extrasDetails.length - 4} more
+                                  </span>
+                                )}
+                </div>
+              </div>
+                          ) : (
+                            <p className="text-xs text-gray-400">No items available</p>
+                          )}
+            </div>
+                        {selectedGroupId === group.id && (
+                          <div className="w-6 h-6 bg-[#fd683e] rounded-full flex items-center justify-center flex-shrink-0 ml-3">
+                            <Check className="w-4 h-4 text-white" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
             )}
-            
-            <div className="bg-gray-50 rounded-lg p-4">
-              <TextField
-                fullWidth
-                label="Extras Title"
-                value={groupTitle}
-                onChange={(e) => setGroupTitle(e.target.value)}
-                placeholder="e.g., Toppings, Sauces, Sides"
-                variant="outlined"
-                size="small"
-                sx={{
-                  '& .MuiOutlinedInput-root': {
-                    backgroundColor: 'white',
-                    borderRadius: '8px',
-                    '& fieldset': {
-                      borderColor: '#e5e7eb',
-                      borderWidth: '1px',
-                    },
-                    '&:hover fieldset': {
-                      borderColor: '#fd683e',
-                    },
-                    '&.Mui-focused fieldset': {
-                      borderColor: '#fd683e',
-                      borderWidth: '2px',
-                    },
-                  },
-                  '& .MuiInputLabel-root': {
-                    color: '#6b7280',
-                    '&.Mui-focused': {
-                      color: '#fd683e',
-                    },
-                  },
-                }}
-              />
-            </div>
           </div>
         );
 
@@ -857,19 +941,18 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
         return (
           <div className="space-y-4">
             <div className="text-center space-y-1">
-              <h3 className="text-lg font-semibold text-gray-900">Add Variants</h3>
-              <p className="text-sm text-gray-600">Adding variants for: <span className="font-medium text-[#fd683e]">{currentGroup?.extrasTitle || 'New Group'}</span></p>
+              <h3 className="text-lg font-semibold text-gray-900">Manage Variants</h3>
+              <p className="text-sm text-gray-600">Managing variants for: <span className="font-medium text-[#fd683e]">{currentGroup?.extrasTitle || 'New Group'}</span></p>
             </div>
 
+            {/* Existing Variants Section */}
+            {currentGroup && currentGroup.extrasDetails.length > 0 && (
             <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-              <div className="flex flex-col gap-2">
-                {mode === 'select' && (
-                  <>
-                    {loading ? (
-                      <div className="flex justify-center items-center h-10 bg-white rounded-lg border border-gray-200">
-                        <CircularProgress sx={{ color: '#fd683e' }} size={20} />
+                <div className="flex items-center justify-between">
+                  <h4 className="text-sm font-medium text-gray-900">Current Variants ({currentGroup.extrasDetails.length})</h4>
+                  <p className="text-xs text-gray-500">Click × to remove variants</p>
                       </div>
-                    ) : (
+                <div className="flex flex-col gap-2">
                       <Paper 
                         variant="outlined" 
                         sx={{ 
@@ -880,9 +963,9 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
                         }}
                       >
                         <List sx={{ padding: 0 }}>
-                          {foodTypes.map(opt => (
+                      {currentGroup.extrasDetails.map((extra) => (
                             <ListItem 
-                              key={opt.value}
+                          key={extra.foodName}
                               sx={{
                                 borderBottom: '1px solid #f3f4f6',
                                 '&:last-child': {
@@ -890,21 +973,8 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
                                 }
                               }}
                             >
-                              <FormControlLabel
-                                control={
-                                  <Checkbox
-                                    checked={selectedVariants.includes(opt.value)}
-                                    onChange={() => handleVariantSelect(opt.value)}
-                                    sx={{
-                                      color: '#fd683e',
-                                      '&.Mui-checked': {
-                                        color: '#fd683e',
-                                      },
-                                    }}
-                                  />
-                                }
-                                label={
-                                  <Box>
+                          <div className="flex items-center justify-between w-full">
+                            <div className="flex-1">
                                     <Typography 
                                       variant="body2" 
                                       sx={{ 
@@ -912,7 +982,7 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
                                         fontFamily: 'var(--font-sans)'
                                       }}
                                     >
-                                      {opt.label}
+                                {extra.foodName}
                                     </Typography>
                                     <Typography 
                                       variant="caption" 
@@ -921,237 +991,25 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
                                         fontFamily: 'var(--font-sans)'
                                       }}
                                     >
-                                      Price: ${opt.foodPrice}
+                                Price: GH₵{extra.foodPrice}
                                     </Typography>
-                                  </Box>
-                                }
-                                sx={{
-                                  margin: 0,
-                                  width: '100%',
-                                  fontFamily: 'var(--font-sans)'
-                                }}
-                              />
+                            </div>
+                            <button
+                              onClick={() => handleRemoveVariant(extra.foodName)}
+                              className="ml-2 p-1 text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
                             </ListItem>
                           ))}
                         </List>
                       </Paper>
-                    )}
-                    <Button
-                      variant="contained"
-                      onClick={handleAddSelectedVariants}
-                      disabled={selectedVariants.length === 0}
-                      size="small"
-                      sx={{
-                        backgroundColor: '#fd683e',
-                        textTransform: 'none',
-                        fontFamily: 'var(--font-sans)',
-                        fontWeight: 600,
-                        '&:hover': {
-                          backgroundColor: '#e54d0e',
-                        },
-                        '&:disabled': {
-                          backgroundColor: '#ffd2b3',
-                        },
-                      }}
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Selected Variants ({selectedVariants.length})
-                    </Button>
-                  </>
-                )}
-
-                {/* Only show create new variant if mode is not 'select' */}
-                {mode !== 'select' && (
-                  <>
-                    {mode !== 'create' && (
-                      <div className="relative">
-                        <div className="absolute inset-0 flex items-center">
-                          <div className="w-full border-t border-gray-200" />
-                        </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                          <span className="bg-gray-50 px-2 text-gray-500 font-medium">or</span>
                         </div>
                       </div>
                     )}
-                    <div className="bg-white rounded-lg p-4 border border-gray-200 space-y-3">
-                      <h4 className="text-sm font-medium text-gray-900">Create New Variant</h4>
-                      <div className="space-y-3">
-                        <TextField
-                          fullWidth
-                          label="Variant Name"
-                          size="small"
-                          placeholder="Enter variant name"
-                          value={newVariant.name}
-                          onChange={(e) => setNewVariant(prev => ({ ...prev, name: e.target.value }))}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && newVariant.name && newVariant.price) {
-                              handleCreateVariant();
-                            }
-                          }}
-                          sx={{
-                            '& .MuiInputBase-root': {
-                              fontFamily: 'var(--font-sans)',
-                            },
-                            '& .MuiInputLabel-root': {
-                              fontFamily: 'var(--font-sans)',
-                            },
-                            '& label.Mui-focused': {
-                              color: '#fd683e',
-                            },
-                            '& .MuiOutlinedInput-root': {
-                              '& fieldset': {
-                                borderColor: '#fd683e',
-                              },
-                              '&:hover fieldset': {
-                                borderColor: '#fd683e',
-                              },
-                              '&.Mui-focused fieldset': {
-                                borderColor: '#fd683e',
-                                borderWidth: 2,
-                              },
-                            },
-                          }}
-                        />
-                        <TextField
-                          fullWidth
-                          label="Price"
-                          type="number"
-                          size="small"
-                          placeholder="Enter price"
-                          value={newVariant.price}
-                          onChange={(e) => setNewVariant(prev => ({ ...prev, price: e.target.value }))}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && newVariant.name && newVariant.price) {
-                              handleCreateVariant();
-                            }
-                          }}
-                          sx={{
-                            '& .MuiInputBase-root': {
-                              fontFamily: 'var(--font-sans)',
-                            },
-                            '& .MuiInputLabel-root': {
-                              fontFamily: 'var(--font-sans)',
-                            },
-                            '& label.Mui-focused': {
-                              color: '#fd683e',
-                            },
-                            '& .MuiOutlinedInput-root': {
-                              '& fieldset': {
-                                borderColor: '#fd683e',
-                              },
-                              '&:hover fieldset': {
-                                borderColor: '#fd683e',
-                              },
-                              '&.Mui-focused fieldset': {
-                                borderColor: '#fd683e',
-                                borderWidth: 2,
-                              },
-                            },
-                          }}
-                        />
-                        <TextField
-                          fullWidth
-                          label="Description"
-                          multiline
-                          rows={2}
-                          size="small"
-                          placeholder="Enter description"
-                          value={newVariant.description}
-                          onChange={(e) => setNewVariant(prev => ({ ...prev, description: e.target.value }))}
-                          onBlur={() => {
-                            if (newVariant.name && newVariant.price) {
-                              handleCreateVariant();
-                            }
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && newVariant.name && newVariant.price) {
-                              handleCreateVariant();
-                            }
-                          }}
-                          sx={{
-                            '& .MuiInputBase-root': {
-                              fontFamily: 'var(--font-sans)',
-                            },
-                            '& .MuiInputLabel-root': {
-                              fontFamily: 'var(--font-sans)',
-                            },
-                            '& label.Mui-focused': {
-                              color: '#fd683e',
-                            },
-                            '& .MuiOutlinedInput-root': {
-                              '& fieldset': {
-                                borderColor: '#fd683e',
-                              },
-                              '&:hover fieldset': {
-                                borderColor: '#fd683e',
-                              },
-                              '&.Mui-focused fieldset': {
-                                borderColor: '#fd683e',
-                                borderWidth: 2,
-                              },
-                            },
-                          }}
-                        />
-                        <Button
-                          variant="contained"
-                          fullWidth
-                          size="small"
-                          onClick={handleCreateVariant}
-                          disabled={!newVariant.name || !newVariant.price}
-                          sx={{
-                            backgroundColor: '#fd683e',
-                            textTransform: 'none',
-                            fontFamily: 'var(--font-sans)',
-                            fontWeight: 600,
-                            mt: 1,
-                            '&:hover': {
-                              backgroundColor: '#e54d0e',
-                            },
-                            '&:disabled': {
-                              backgroundColor: '#ffd2b3',
-                            },
-                          }}
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Variant
-                        </Button>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
 
-              {currentGroup && currentGroup.extrasDetails.length > 0 && (
-                <div className="bg-white rounded-lg p-3 border border-gray-200">
-                  <h4 className="text-xs font-medium text-gray-700 mb-2">Added Variants ({currentGroup.extrasDetails.length})</h4>
-                  <div className="flex flex-wrap gap-1">
-                    {currentGroup.extrasDetails.map((extra) => (
-                      <Chip
-                        key={extra.foodName}
-                        label={extra.foodName}
-                        onDelete={() => handleRemoveVariant(extra.foodName)}
-                        deleteIcon={<X className="w-3 h-3" />}
-                        size="small"
-                        sx={{
-                          fontFamily: 'var(--font-sans)',
-                          backgroundColor: '#fff3ea',
-                          color: '#fd683e',
-                          fontWeight: 500,
-                          fontSize: '11px',
-                          height: '24px',
-                          '& .MuiChip-deleteIcon': {
-                            color: '#fd683e',
-                            '&:hover': {
-                              color: '#e54d0e',
-                            },
-                          },
-                        }}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
+            
           </div>
         );
 
@@ -1420,8 +1278,8 @@ const AddExtrasModal: React.FC<AddExtrasModalProps> = ({
               <Button
                 onClick={handleNext}
                 disabled={
-                  (activeStep === 0 && !groupTitle) ||
-                  (activeStep === 1 && (!currentGroup || currentGroup.extrasDetails.length === 0))
+                  (activeStep === 0 && !selectedGroupId) ||
+                  (activeStep === 1 && !currentGroup)
                 }
                 variant="contained"
                 size="small"
