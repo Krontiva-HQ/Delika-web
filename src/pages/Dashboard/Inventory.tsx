@@ -30,23 +30,11 @@ import EditInventoryModal from '../../components/EditInventoryModal';
 import { updateInventoryItem, updateInventoryItemWithImage, deleteMenuItem } from '../../services/api';
 
 interface MenuItem {
-  id: string;
-  image: string;
   name: string;
   price: number;
-  description?: string;
+  description: string;
+  quantity: number;
   available: boolean;
-  extras?: ExtraGroup[];
-  value?: string;
-}
-
-
-
-// Add interfaces for extras
-interface ExtraDetail {
-  foodName: string;
-  foodPrice: number;
-  foodDescription: string;
   foodImage: {
     access: string;
     path: string;
@@ -60,14 +48,35 @@ interface ExtraDetail {
     };
     url: string;
   };
-  value?: string;  // Add value property for variant ID
+  extras?: ExtraGroup[];
+}
+
+
+
+// Add interfaces for extras
+interface InventoryDetail {
+  id: string;
+  foodName: string;
+  foodPrice: number;
+  foodDescription: string;
+}
+
+interface ExtraDetail {
+  delika_inventory_table_id: string;
+  minSelection: number;
+  maxSelection: number;
+  inventoryDetails: InventoryDetail[];
 }
 
 interface ExtraGroup {
-  id: string;
-  extrasTitle: string;
-  delika_inventory_table_id?: string;
-  extrasDetails: ExtraDetail[];
+  delika_extras_table_id: string;
+  extrasDetails: {
+    id: string;
+    extrasTitle: string;
+    extrasType: string;
+    required: boolean;
+    extrasDetails: ExtraDetail[];
+  };
 }
 
 // Add interface for category food items
@@ -309,24 +318,14 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
   const handleSelectExtrasGroups = (selectedGroups: any[]) => {
     // Convert the selected groups to the format expected by the item
     const formattedExtras = selectedGroups.map(group => ({
-      id: group.id,
-      extrasTitle: group.extrasTitle,
-      delika_inventory_table_id: group.id,
-      extrasDetails: group.extrasDetails.map((detail: any) => ({
-        foodName: detail.extrasDetails[0]?.foodName || 'Unknown Item',
-        foodPrice: detail.extrasDetails[0]?.foodPrice || 0,
-        foodDescription: detail.extrasDetails[0]?.foodDescription || '',
-        foodImage: {
-          access: '',
-          path: '',
-          name: '',
-          type: '',
-          size: 0,
-          mime: '',
-          meta: { width: 0, height: 0 },
-          url: ''
-        }
-      }))
+      delika_extras_table_id: group.id,
+      extrasDetails: {
+        id: group.id,
+        extrasTitle: group.extrasTitle,
+        extrasType: group.extrasType || 'multiple',
+        required: group.required || false,
+        extrasDetails: group.extrasDetails || []
+      }
     }));
     
     setSelectedItemExtras(formattedExtras);
@@ -354,12 +353,21 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
 
         // Map only the foods from the active category
         const items = activeCategory.foods.map((food: CategoryFood) => ({
-          id: food.name,
-          image: food.foodImage.url,
           name: food.name,
           price: Number(food.price),
           description: food.description || '',
+          quantity: food.quantity || 0,
           available: food.available ?? false,
+          foodImage: {
+            access: 'public',
+            path: food.foodImage.url,
+            name: food.name,
+            type: 'image',
+            size: 0,
+            mime: 'image/jpeg',
+            meta: { width: 0, height: 0 },
+            url: food.foodImage.url
+          },
           extras: food.extras || []
         }));
 
@@ -387,7 +395,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
 
   const handleItemClick = (item: MenuItem) => {
     // Don't reset selection if already in edit mode
-    if (selectedItem?.id === item.id && isEditMode) {
+    if (selectedItem?.name === item.name && isEditMode) {
       return;
     }
     setSelectedItem(item);
@@ -405,10 +413,10 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
     if (!selectedItem) return;
 
     try {
-      // Format extras to use the correct key for the API
-      const formattedExtras = itemExtras.map(group => ({
-        delika_extras_table_id: group.id || group.delika_inventory_table_id || ''
-      })).filter(extra => extra.delika_extras_table_id !== '');
+              // Format extras to use the correct key for the API
+        const formattedExtras = itemExtras.map(group => ({
+          delika_extras_table_id: group.delika_extras_table_id || ''
+        })).filter(extra => extra.delika_extras_table_id !== '');
 
       if (imageFile) {
         console.log('📤 Preparing FormData with image file:', imageFile.name);
@@ -431,7 +439,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
         formData.append('available', available.toString());
         formData.append('restaurantId', userProfile.restaurantId || '');
         formData.append('branchId', userProfile.role === 'Admin' ? selectedBranchId : userProfile.branchId || '');
-        formData.append('value', selectedItem.id);
+        formData.append('value', selectedItem.name);
         formData.append('extras', JSON.stringify(formattedExtras));
         formData.append('foodImage', imageFile);
         console.log('📎 Added file to FormData as photo:', {
@@ -499,7 +507,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
           extras: formattedExtras,
           restaurantId: userProfile.restaurantId,
           branchId: userProfile.role === 'Admin' ? selectedBranchId : userProfile.branchId,
-          value: selectedItem.id
+          value: selectedItem.name
         });
         // Use regular JSON for updates without image
         await updateInventoryItem({
@@ -513,7 +521,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
           extras: formattedExtras,
           restaurantId: userProfile.restaurantId,
           branchId: userProfile.role === 'Admin' ? selectedBranchId : userProfile.branchId,
-          value: selectedItem.id
+          value: selectedItem.name
         });
       }
 
@@ -708,14 +716,14 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
         <>
           {filteredItems.map((item) => (
             <div 
-              key={item.id}
+              key={item.name}
               className="w-full bg-white dark:bg-[#2c2522] rounded-[12px] border-[#eaeaeb] border-[1px] border-solid 
                         overflow-hidden flex flex-col hover:shadow-md transition-shadow cursor-pointer"
               onClick={() => handleItemClick(item)}
             >
               <div className="relative w-full">
                 <OptimizedImage
-                  src={item.image}
+                  src={item.foodImage.url}
                   alt={item.name}
                   className="w-full h-[180px] object-cover"
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"

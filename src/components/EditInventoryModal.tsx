@@ -10,11 +10,38 @@ import { Switch } from './ui/switch';
 import { Button as UIButton } from './ui/button';
 import { getRestaurantExtrasGroups } from '../services/api';
 
-// Add interfaces for extras
-interface ExtraDetail {
+// Updated interfaces for the new menu structure
+interface InventoryDetail {
+  id: string;
   foodName: string;
   foodPrice: number;
   foodDescription: string;
+}
+
+interface ExtraDetail {
+  delika_inventory_table_id: string;
+  minSelection: number;
+  maxSelection: number;
+  inventoryDetails: InventoryDetail[];
+}
+
+interface ExtraGroup {
+  delika_extras_table_id: string;
+  extrasDetails: {
+    id: string;
+    extrasTitle: string;
+    extrasType: string;
+    required: boolean;
+    extrasDetails: ExtraDetail[];
+  };
+}
+
+interface MenuItem {
+  name: string;
+  price: number;
+  description: string;
+  quantity: number;
+  available: boolean;
   foodImage: {
     access: string;
     path: string;
@@ -28,25 +55,7 @@ interface ExtraDetail {
     };
     url: string;
   };
-  value?: string;  // Add value property for variant ID
-}
-
-interface ExtraGroup {
-  id: string;
-  extrasTitle: string;
-  delika_inventory_table_id?: string;
-  extrasDetails: ExtraDetail[];
-}
-
-interface MenuItem {
-  id: string;
-  image: string;
-  name: string;
-  price: number;
-  description?: string;
-  available: boolean;
   extras?: ExtraGroup[];
-  value?: string;
 }
 
 interface EditInventoryModalProps {
@@ -68,11 +77,11 @@ const EditInventoryModal: FunctionComponent<EditInventoryModalProps & { restaura
   const [editForm, setEditForm] = useState({
     name: item.name,
     description: item.description || '',
-    image: item.image
+    image: item.foodImage.url
   });
   const [isEditMode, setIsEditMode] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>(item.image);
+  const [previewUrl, setPreviewUrl] = useState<string>(item.foodImage.url);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // For extras group selection
@@ -85,27 +94,7 @@ const EditInventoryModal: FunctionComponent<EditInventoryModalProps & { restaura
       return selectedItemExtras;
     }
     if (!item.extras) return [];
-    return Object.values(item.extras.reduce((acc, extra) => {
-      if (!acc[extra.extrasTitle]) {
-        acc[extra.extrasTitle] = {
-          id: `${Date.now()}-${Math.random().toString(36).substring(2)}`,
-          extrasTitle: extra.extrasTitle,
-          delika_inventory_table_id: extra.delika_inventory_table_id || '',
-          extrasDetails: []
-        };
-      }
-      // Add details if they don't already exist and if extrasDetails is an array
-      if (Array.isArray(extra.extrasDetails) && extra.extrasDetails.length > 0) {
-        const existingDetails = acc[extra.extrasTitle].extrasDetails;
-        const newDetails = extra.extrasDetails.filter(detail => 
-          !existingDetails.some(existing => existing.foodName === detail.foodName)
-        );
-        if (newDetails.length > 0) {
-          acc[extra.extrasTitle].extrasDetails.push(...newDetails);
-        }
-      }
-      return acc;
-    }, {} as Record<string, ExtraGroup>));
+    return item.extras;
   });
 
   // Fetch all extras groups when entering edit mode
@@ -156,33 +145,29 @@ const EditInventoryModal: FunctionComponent<EditInventoryModalProps & { restaura
 
   // Handle checking/unchecking an extras group
   const handleExtrasGroupToggle = (group: any) => {
-    const exists = itemExtras.some(g => g.id === group.id);
+    const exists = itemExtras.some(g => g.delika_extras_table_id === group.id);
     if (exists) {
-      setItemExtras(itemExtras.filter(g => g.id !== group.id));
+      setItemExtras(itemExtras.filter(g => g.delika_extras_table_id !== group.id));
     } else {
       // Convert group to ExtraGroup format
       setItemExtras([
         ...itemExtras,
         {
-          id: group.id,
-          extrasTitle: group.extrasTitle,
-          delika_inventory_table_id: group.id,
-          extrasDetails: group.extrasDetails.flatMap((d: any) => d.extrasDetails.map((detail: any) => ({
-            foodName: detail.foodName,
-            foodPrice: Number(detail.foodPrice),
-            foodDescription: detail.foodDescription,
-            foodImage: {
-              access: '', path: '', name: '', type: '', size: 0, mime: '', meta: { width: 0, height: 0 }, url: ''
-            },
-            value: d.delika_inventory_table_id
-          })))
+          delika_extras_table_id: group.id,
+          extrasDetails: {
+            id: group.id,
+            extrasTitle: group.extrasTitle,
+            extrasType: group.extrasType || 'multiple',
+            required: group.required || false,
+            extrasDetails: group.extrasDetails || []
+          }
         }
       ]);
     }
   };
 
   const handleSave = () => {
-    onSave(item.id, price, available, itemExtras, editForm.name, editForm.description, imageFile || undefined);
+    onSave(item.name, price, available, itemExtras, editForm.name, editForm.description, imageFile || undefined);
   };
 
   return (
@@ -351,22 +336,24 @@ const EditInventoryModal: FunctionComponent<EditInventoryModalProps & { restaura
                 {itemExtras && itemExtras.length > 0 ? (
                   <div className="space-y-3 max-h-[200px] overflow-y-auto">
                     {itemExtras.map((group, index) => (
-                      <div key={group.id || index} className="border border-gray-200 rounded-lg p-3 bg-gray-50 dark:bg-[#201a18]">
+                      <div key={group.delika_extras_table_id || index} className="border border-gray-200 rounded-lg p-3 bg-gray-50 dark:bg-[#201a18]">
                         <h4 className="text-sm font-medium text-gray-800 dark:text-white mb-2 flex items-center gap-2">
                           <div className="w-2 h-2 bg-[#fd683e] rounded-full"></div>
-                          {group.extrasTitle}
+                          {group.extrasDetails.extrasTitle}
                         </h4>
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {group.extrasDetails.map((detail, detailIndex) => (
-                            <div key={`${detail.foodName}-${detailIndex}`} className="bg-white dark:bg-[#2c2522] rounded-lg border border-gray-200 p-2 text-center hover:shadow-sm transition-shadow">
-                              <div className="text-xs font-medium text-gray-800 dark:text-white leading-tight mb-1">
-                                {detail.foodName}
+                          {group.extrasDetails.extrasDetails.map((detail, detailIndex) => 
+                            detail.inventoryDetails.map((inventoryDetail, inventoryIndex) => (
+                              <div key={`${detail.delika_inventory_table_id}-${inventoryIndex}`} className="bg-white dark:bg-[#2c2522] rounded-lg border border-gray-200 p-2 text-center hover:shadow-sm transition-shadow">
+                                <div className="text-xs font-medium text-gray-800 dark:text-white leading-tight mb-1">
+                                  {inventoryDetail.foodName}
+                                </div>
+                                <div className="text-xs font-semibold text-[#fd683e]">
+                                  GH₵{inventoryDetail.foodPrice}
+                                </div>
                               </div>
-                              <div className="text-xs font-semibold text-[#fd683e]">
-                                GH₵{detail.foodPrice}
-                              </div>
-                            </div>
-                          ))}
+                            ))
+                          )}
                         </div>
                       </div>
                     ))}
@@ -404,7 +391,7 @@ const EditInventoryModal: FunctionComponent<EditInventoryModalProps & { restaura
                   ) : (
                     <div className="space-y-2">
                       {allExtrasGroups.map((group) => {
-                        const checked = itemExtras.some(g => g.id === group.id);
+                        const checked = itemExtras.some(g => g.delika_extras_table_id === group.id);
                         return (
                           <label key={group.id} className="flex items-center gap-2 cursor-pointer">
                             <input
@@ -413,7 +400,7 @@ const EditInventoryModal: FunctionComponent<EditInventoryModalProps & { restaura
                               onChange={() => handleExtrasGroupToggle(group)}
                             />
                             <span className="font-medium">{group.extrasTitle}</span>
-                            <span className="text-xs text-gray-500">({group.extrasDetails.length} items)</span>
+                            <span className="text-xs text-gray-500">({group.extrasDetails?.length || 0} items)</span>
                           </label>
                         );
                       })}
