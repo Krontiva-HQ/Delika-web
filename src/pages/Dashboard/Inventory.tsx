@@ -26,8 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Switch } from '../../components/ui/switch';
 import { Button as UIButton } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
-import AddExtrasModal from '../../components/AddExtrasModal';
-import GroupExtrasModal from '../../components/GroupExtrasModal';
+import EditInventoryModal from '../../components/EditInventoryModal';
 import { updateInventoryItem, updateInventoryItemWithImage, deleteMenuItem } from '../../services/api';
 
 interface MenuItem {
@@ -41,15 +40,7 @@ interface MenuItem {
   value?: string;
 }
 
-interface EditInventoryModalProps {
-  item: MenuItem | null;
-  onClose: () => void;
-  onSave: (id: string, newPrice: number, available: boolean, itemExtras: ExtraGroup[], name: string, description: string, imageFile?: File) => void;
-  onDelete: (item: MenuItem) => void;
-  isUpdating: boolean;
-  updateError: string | null;
-  branchId: string;
-}
+
 
 // Add interfaces for extras
 interface ExtraDetail {
@@ -126,7 +117,7 @@ interface InventoryProps {
 interface ActionSelectionDialogProps {
   open: boolean;
   onClose: () => void;
-  onSelectAction: (action: 'menu-item' | 'extras') => void;
+  onSelectAction: (action: 'menu-item') => void;
 }
 
 const ActionSelectionDialog: FunctionComponent<ActionSelectionDialogProps> = ({
@@ -138,12 +129,12 @@ const ActionSelectionDialog: FunctionComponent<ActionSelectionDialogProps> = ({
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Choose Action</DialogTitle>
+          <DialogTitle>Add Menu Item</DialogTitle>
           <DialogDescription>
-            Select whether you want to add a menu item or add extras.
+            Create a new menu item for your inventory.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-4 py-4">
+        <div className="flex justify-center py-4">
           <button
             className="flex flex-col items-center justify-center p-6 bg-white dark:bg-[#2c2522] border border-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-[#201a18] transition-colors"
             onClick={() => onSelectAction('menu-item')}
@@ -153,15 +144,6 @@ const ActionSelectionDialog: FunctionComponent<ActionSelectionDialogProps> = ({
             </div>
             <span className="text-sm font-medium text-gray-900 dark:text-white">Add Menu Item</span>
           </button>
-          <button
-            className="flex flex-col items-center justify-center p-6 bg-white dark:bg-[#2c2522] border border-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-[#201a18] transition-colors"
-            onClick={() => onSelectAction('extras')}
-          >
-            <div className="w-12 h-12 bg-[#fd683e]/10 rounded-full flex items-center justify-center mb-3">
-              <IoMdAdd className="w-6 h-6 text-[#fd683e]" />
-            </div>
-            <span className="text-sm font-medium text-gray-900 dark:text-white">Add Extras</span>
-          </button>
         </div>
       </DialogContent>
     </Dialog>
@@ -170,436 +152,7 @@ const ActionSelectionDialog: FunctionComponent<ActionSelectionDialogProps> = ({
 
 
 
-  const EditInventoryModal: FunctionComponent<EditInventoryModalProps> = ({ item, onClose, onSave, onDelete, isUpdating, updateError, branchId }) => {
-    if (!item) return null;
-    
-    const { t } = useTranslation();
-    
-    const [price, setPrice] = useState(item.price);
-    const [available, setAvailable] = useState(item.available);
-    const [editForm, setEditForm] = useState({
-      name: item.name,
-      description: item.description || '',
-      image: item.image
-    });
-    const [showAddExtrasModal, setShowAddExtrasModal] = useState(false);
-    const [addExtrasModalMode, setAddExtrasModalMode] = useState<'create' | 'select'>('select');
-    const [isEditMode, setIsEditMode] = useState(false);
-    const [imageFile, setImageFile] = useState<File | null>(null);
-    const [previewUrl, setPreviewUrl] = useState<string>(item.image);
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Group the initial extras by extrasTitle
-    const [itemExtras, setItemExtras] = useState<ExtraGroup[]>(() => {
-      if (!item.extras) return [];
-      
-      return Object.values(item.extras.reduce((acc, extra) => {
-        if (!acc[extra.extrasTitle]) {
-          acc[extra.extrasTitle] = {
-            id: `${Date.now()}-${Math.random().toString(36).substring(2)}`,
-            extrasTitle: extra.extrasTitle,
-            delika_inventory_table_id: extra.delika_inventory_table_id || '',
-            extrasDetails: []
-          };
-        }
-        // Add details if they don't already exist
-        if (!acc[extra.extrasTitle].extrasDetails.some(
-          detail => detail.foodName === extra.extrasDetails[0]?.foodName
-        )) {
-          acc[extra.extrasTitle].extrasDetails.push(...extra.extrasDetails);
-        }
-        return acc;
-      }, {} as Record<string, ExtraGroup>));
-    });
-
-    const handleEditToggle = () => {
-      setIsEditMode(!isEditMode);
-    };
-
-    const handleModalClose = () => {
-      setIsEditMode(false);
-      onClose();
-    };
-
-    const handleImageClick = () => {
-      if (isEditMode && fileInputRef.current) {
-        fileInputRef.current.click();
-      }
-    };
-
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-        console.log('🖼️ Image file selected:', {
-          name: file.name,
-          size: file.size,
-          type: file.type,
-          lastModified: file.lastModified
-        });
-        setImageFile(file);
-        // Create a preview URL for the selected image
-        const url = URL.createObjectURL(file);
-        setPreviewUrl(url);
-        setEditForm(prev => ({
-          ...prev,
-          image: url
-        }));
-        console.log('✅ Image state updated, preview URL created:', url);
-      } else {
-        console.log('❌ No file selected');
-      }
-    };
-
-    const handleAddExtras = (newExtras: ExtraGroup[]) => {
-      setItemExtras(newExtras);
-      setShowAddExtrasModal(false);
-    };
-
-    const handleSave = () => {
-      console.log('💾 Save button clicked');
-      console.log('🖼️ Image file in save:', imageFile ? `${imageFile.name} (${imageFile.size} bytes)` : 'No image file');
-      console.log('📊 Save data:', {
-        itemId: item.id,
-        price,
-        available,
-        itemExtras,
-        name: editForm.name,
-        description: editForm.description,
-        hasImageFile: !!imageFile
-      });
-      onSave(item.id, price, available, itemExtras, editForm.name, editForm.description, imageFile || undefined);
-    };
-
-  return (
-    <>
-      <Modal
-        open={true}
-        onClose={handleModalClose}
-        className="flex items-center justify-center p-4"
-      >
-        <div className="bg-white dark:bg-[#2c2522] rounded-lg p-3 sm:p-4 w-full max-w-[95%] sm:max-w-[85%] md:max-w-[800px] mx-auto max-h-[85vh] overflow-y-auto relative shadow-xl border border-gray-100">
-          {/* Edit Button at Top Right */}
-          <Button
-            onClick={handleEditToggle}
-            variant="outlined"
-            className="z-10"
-            style={{
-              position: 'absolute',
-              top: '12px',
-              right: '24px',
-              backgroundColor: isEditMode ? '#fd683e' : '#201a18',
-              borderColor: isEditMode ? '#fd683e' : '#201a18',
-              color: 'white',
-              padding: '4px 12px',
-              fontSize: '10px',
-              borderRadius: '4px',
-              minWidth: '60px'
-            }}
-          >
-            {isEditMode ? 'Cancel' : 'Edit'}
-          </Button>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 mt-6">
-            {/* Left Column - Main Item Details */}
-            <div className="flex flex-col gap-3 bg-gray-50 dark:bg-[#201a18] rounded-lg p-4">
-              {isEditMode ? (
-                <div className="space-y-6">
-                  {/* Image Upload Section */}
-                  <Card className="bg-white dark:bg-[#2c2522] border-gray-200">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                        <svg className="w-5 h-5 text-[#fd683e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                        </svg>
-                        Item Image
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="relative group cursor-pointer" onClick={handleImageClick}>
-                          <input
-                            type="file"
-                            ref={fileInputRef}
-                            className="hidden"
-                            accept="image/*"
-                            onChange={handleImageChange}
-                          />
-                          <img
-                            src={previewUrl}
-                            alt={editForm.name}
-                            className="w-full h-[200px] object-cover rounded-lg border-2 border-dashed border-gray-300 group-hover:border-[#fd683e] transition-colors"
-                          />
-                          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 rounded-lg transition-all flex items-center justify-center">
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center gap-2">
-                              <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"></path>
-                              </svg>
-                              <p className="text-white text-sm font-medium">Click to upload image</p>
-                            </div>
-                          </div>
-                          {imageFile && (
-                            <div className="absolute top-2 right-2 bg-green-500 text-white px-2 py-1 rounded-full text-xs font-medium">
-                              New image selected
-                            </div>
-                          )}
-                        </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Item Details Section */}
-                  <Card className="bg-white dark:bg-[#2c2522] border-gray-200">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                        <svg className="w-5 h-5 text-[#fd683e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                        </svg>
-                        Item Details
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4 w-[270px] ">
-                      <div className="space-y-2">
-                        <Label htmlFor="item-name" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Item Name
-                        </Label>
-                        <Input
-                          id="item-name"
-                          value={editForm.name}
-                          onChange={(e) => setEditForm(prev => ({
-                            ...prev,
-                            name: e.target.value
-                          }))}
-                          placeholder="Enter item name"
-                          className="border-gray-300 focus:border-[#fd683e] focus:ring-[#fd683e]"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="item-description" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                          Description
-                        </Label>
-                        <Textarea
-                          id="item-description"
-                          value={editForm.description}
-                          onChange={(e) => setEditForm(prev => ({
-                            ...prev,
-                            description: e.target.value
-                          }))}
-                          placeholder="Enter item description"
-                          rows={3}
-                          className="border-gray-300 focus:border-[#fd683e] focus:ring-[#fd683e] resize-none"
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              ) : (
-                <>
-                  <div className="flex flex-col gap-2">
-                    <div className="flex justify-between items-start">
-                      <div className="flex flex-col gap-0.5">
-                        <label className="text-xs text-gray-600 font-sans">Item Name</label>
-                        <h2 className="text-md sm:text-lg font-semibold">{item.name}</h2>
-                      </div>
-                      <Badge 
-                        className={item.available 
-                          ? "w-fit bg-green-100 text-green-800 border-green-200 hover:bg-green-200" 
-                          : "w-fit bg-red-100 text-red-800 border-red-200 hover:bg-red-200"}
-                      >
-                        {item.available ? t('inventory.available') : t('inventory.unavailable')}
-                      </Badge>
-                    </div>
-                    <div className="flex flex-col gap-0.5">
-                      <label className="text-xs text-gray-600 font-sans">Item Description</label>
-                      <p className="text-sm text-black">{item.description || 'No description available'}</p>
-                    </div>
-                  </div>
-                  <img
-                    src={optimizeImageUrl(item.image)}
-                    alt={item.name}
-                    className="w-full h-[200px] sm:h-[250px] object-cover rounded-lg"
-                    loading="eager"
-                  />
-                </>
-              )}
-            </div>
-
-            {/* Right Column - Extras and Controls */}
-            <div className="flex flex-col gap-3 bg-gray-50 dark:bg-[#201a18] rounded-lg p-4">
-              {/* Extras Section */}
-              <Card className="bg-white dark:bg-[#2c2522] border-gray-200">
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-center">
-                    <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                      <svg className="w-5 h-5 text-[#fd683e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                      </svg>
-                      Extras Available
-                    </CardTitle>
-                    {isEditMode && (
-                      <UIButton
-                        onClick={() => { setAddExtrasModalMode('select'); setShowAddExtrasModal(true); }}
-                        size="sm"
-                        className="h-8 px-3 text-xs bg-[#fd683e] hover:bg-[#e54d0e] text-white"
-                      >
-                        <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                        </svg>
-                        Add Extras
-                      </UIButton>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {itemExtras && itemExtras.length > 0 ? (
-                    <div className="space-y-3 max-h-[200px] overflow-y-auto">
-                      {itemExtras.map((group, index) => (
-                        <div key={group.id || index} className="border border-gray-200 rounded-lg p-3 bg-gray-50 dark:bg-[#201a18]">
-                          <h4 className="text-sm font-medium text-gray-800 dark:text-white mb-2 flex items-center gap-2">
-                            <div className="w-2 h-2 bg-[#fd683e] rounded-full"></div>
-                            {group.extrasTitle}
-                          </h4>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            {group.extrasDetails.map((detail, detailIndex) => (
-                              <div key={`${detail.foodName}-${detailIndex}`} className="bg-white dark:bg-[#2c2522] rounded-lg border border-gray-200 p-2 text-center hover:shadow-sm transition-shadow">
-                                <div className="text-xs font-medium text-gray-800 dark:text-white leading-tight mb-1">
-                                  {detail.foodName}
-                                </div>
-                                <div className="text-xs font-semibold text-[#fd683e]">
-                                  GH₵{detail.foodPrice}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-8 text-center">
-                      <div className="w-16 h-16 bg-gray-100 dark:bg-[#201a18] rounded-full flex items-center justify-center mb-3">
-                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M9 1L5 5l4 4"></path>
-                        </svg>
-                      </div>
-                      <p className="text-sm font-medium text-gray-500 mb-1">No extras available</p>
-                      <p className="text-xs text-gray-400">This menu item currently has no additional extras or add-ons</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Pricing & Availability Section */}
-              <Card className="bg-white dark:bg-[#2c2522] border-gray-200">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                    <svg className="w-5 h-5 text-[#fd683e]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
-                    </svg>
-                    Pricing & Availability
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {!isEditMode ? (
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-gray-600">Price (GHS)</Label>
-                        <div className="text-2xl font-bold text-[#fd683e]">GH₵{item.price}</div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-gray-600">Availability</Label>
-                        <Badge 
-                          className={item.available 
-                            ? "w-fit bg-green-100 text-green-800 border-green-200 hover:bg-green-200" 
-                            : "w-fit bg-red-100 text-red-800 border-red-200 hover:bg-red-200"}
-                        >
-                          {item.available ? t('inventory.available') : t('inventory.unavailable')}
-                        </Badge>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-6">
-                      <div>
-                        <Label htmlFor="price-input" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Price (GHS)
-                        </Label>
-                        <div className="relative w-[240px] mb-6">
-                          <div className="relative w-full max-w-xs">
-                            <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">GH₵</span>
-                            <Input
-                              id="price-input"
-                              type="number"
-                              value={price}
-                              onChange={(e) => setPrice(Number(e.target.value))}
-                              className="pl-14 border-gray-300 focus:border-[#fd683e] focus:ring-[#fd683e]"
-                              placeholder="0.00"
-                            />
-                          </div>
-                        </div>
-                        
-                        <Label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          Availability
-                        </Label>
-                        <div className="flex items-center space-x-3">
-                          <Switch
-                            checked={available}
-                            onCheckedChange={(checked: boolean) => setAvailable(checked)}
-                            className="data-[state=checked]:bg-[#fd683e]"
-                          />
-                          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                            {available ? 'In Stock' : 'Out of Stock'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="flex gap-3 pt-4 mt-6">
-                        {!isEditMode && (
-                          <UIButton
-                            onClick={onClose}
-                            variant="outline"
-                            className="flex-1"
-                          >
-                            Cancel
-                          </UIButton>
-                        )}
-                        <UIButton
-                          onClick={() => onDelete(item)}
-                          variant="outline"
-                          className="flex-1 border-red-500 text-red-500 hover:bg-red-50 hover:border-red-600"
-                        >
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                          </svg>
-                          Delete Item
-                        </UIButton>
-                        <UIButton
-                          onClick={handleSave}
-                          className="flex-1 bg-[#fd683e] hover:bg-[#e54d0e]"
-                        >
-                          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
-                          </svg>
-                          Save Changes
-                        </UIButton>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </Modal>
-      {/* Add Extras Modal for editing inventory */}
-      {showAddExtrasModal && (
-        <AddExtrasModal
-          open={showAddExtrasModal}
-          onClose={() => setShowAddExtrasModal(false)}
-          onAdd={handleAddExtras}
-          initialExtras={itemExtras}
-          mode={addExtrasModalMode}
-        />
-      )}
-    </>
-  );
-};
 
 const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): ReactElement => {
   const navigate = useNavigate();
@@ -645,7 +198,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
     mainCategoryId: string;
     subCategory: string;
   } | null>(null);
-  const [showGroupExtrasModal, setShowGroupExtrasModal] = useState(false);
 
   // Get user data from useAuth
   const { user } = useAuth();
@@ -678,18 +230,11 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
   const [activeId, setActiveId] = useState<string | null>(null);
 
   const [showActionDialog, setShowActionDialog] = useState(false);
-  const [showAddExtrasModal, setShowAddExtrasModal] = useState(false);
-  const [addExtrasModalMode, setAddExtrasModalMode] = useState<'create' | 'select'>('create');
 
-  const handleActionSelect = (action: 'menu-item' | 'extras') => {
+  const handleActionSelect = (action: 'menu-item') => {
     setShowActionDialog(false);
-    if (action === 'menu-item') {
       setAddInventoryCategory(null);
       setShowAddInventory(true);
-    } else {
-      setAddExtrasModalMode('create');
-      setShowAddExtrasModal(true);
-    }
   };
 
   const onAddItemButtonClick = useCallback((category?: Category) => {
@@ -703,8 +248,9 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
       });
       setShowAddInventory(true);
     } else {
-      // If adding from the top button, show the action selection dialog
-      setShowActionDialog(true);
+      // If adding from the top button, directly show add inventory
+      setAddInventoryCategory(null);
+      setShowAddInventory(true);
     }
   }, [remoteCategories]);
 
@@ -757,6 +303,35 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
   const [isLoadingItems, setIsLoadingItems] = useState(false);
   const { updateInventory, isLoading: isUpdating, error: updateError } = useUpdateInventory();
   const [isEditMode, setIsEditMode] = useState(false);
+  const [showSelectExtrasModal, setShowSelectExtrasModal] = useState(false);
+  const [selectedItemExtras, setSelectedItemExtras] = useState<ExtraGroup[]>([]);
+
+  const handleSelectExtrasGroups = (selectedGroups: any[]) => {
+    // Convert the selected groups to the format expected by the item
+    const formattedExtras = selectedGroups.map(group => ({
+      id: group.id,
+      extrasTitle: group.extrasTitle,
+      delika_inventory_table_id: group.id,
+      extrasDetails: group.extrasDetails.map((detail: any) => ({
+        foodName: detail.extrasDetails[0]?.foodName || 'Unknown Item',
+        foodPrice: detail.extrasDetails[0]?.foodPrice || 0,
+        foodDescription: detail.extrasDetails[0]?.foodDescription || '',
+        foodImage: {
+          access: '',
+          path: '',
+          name: '',
+          type: '',
+          size: 0,
+          mime: '',
+          meta: { width: 0, height: 0 },
+          url: ''
+        }
+      }))
+    }));
+    
+    setSelectedItemExtras(formattedExtras);
+    setShowSelectExtrasModal(false);
+  };
 
   // Update items when category changes
   useEffect(() => {
@@ -830,12 +405,10 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
     if (!selectedItem) return;
 
     try {
-      const formattedExtras = itemExtras.flatMap(group =>
-        group.extrasDetails.map(detail => ({
-          extrasTitle: group.extrasTitle,
-          delika_inventory_table_id: detail.value || group.delika_inventory_table_id || ''
-        })).filter(extra => extra.delika_inventory_table_id !== '')
-      );
+      // Format extras to use the correct key for the API
+      const formattedExtras = itemExtras.map(group => ({
+        delika_extras_table_id: group.id || group.delika_inventory_table_id || ''
+      })).filter(extra => extra.delika_extras_table_id !== '');
 
       if (imageFile) {
         console.log('📤 Preparing FormData with image file:', imageFile.name);
@@ -1073,12 +646,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
 
   const [categories, setCategories] = useState<Category[]>([]);
 
-  // Handle adding extras groups
-  const handleGroupExtrasAdd = async (groups: any) => {
-    setShowGroupExtrasModal(false);
-    // Refresh inventory after adding groups
-    await refreshInventory();
-  };
+
 
   // Update the category click in the JSX
   const renderCategories = () => (
@@ -1220,13 +788,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
               />
             )}
            
-            <div
-              className="flex items-center gap-2 px-3 py-1 rounded-[4px] bg-[#fd683e] border-[#fd683e] border-[1px] border-solid cursor-pointer text-[12px] font-sans hover:bg-[#e54d0e]"
-              onClick={() => setShowGroupExtrasModal(true)}
-            >
-              <IoMdAdd className="w-[18px] h-[18px] text-white" />
-              <div className="leading-[18px] font-sans text-white">{t('inventory.groupExtras')}</div>
-            </div>
+
             <div
               className="flex items-center gap-2 px-3 py-1 rounded-[4px] bg-[#313131] border-[#737373] border-[1px] border-solid cursor-pointer text-[12px] font-sans"
               onClick={() => onAddItemButtonClick()}
@@ -1313,12 +875,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
         {renderMenuItemsGrid()}
       </div>
 
-      {/* Add the action selection dialog */}
-      <ActionSelectionDialog
-        open={showActionDialog}
-        onClose={() => setShowActionDialog(false)}
-        onSelectAction={handleActionSelect}
-      />
+
 
       {/* Add Inventory Modal */}
       {showAddInventory && (
@@ -1341,28 +898,11 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
           isUpdating={isUpdating}
           updateError={updateError}
           branchId={selectedBranchId || userProfile.branchId}
+          selectedItemExtras={selectedItemExtras}
+          restaurantId={userProfile.restaurantId || userProfile._restaurantTable?.[0]?.id || userProfile.restaurantData?.id || ''}
         />
       )}
 
-      {/* Only render AddExtrasModal here if not in edit modal context */}
-      {!selectedItem && showAddExtrasModal && (
-        <AddExtrasModal
-          open={showAddExtrasModal}
-          onClose={() => setShowAddExtrasModal(false)}
-          onAdd={(groups) => {
-            setShowAddExtrasModal(false);
-          }}
-          initialExtras={[]}
-          mode={addExtrasModalMode}
-        />
-      )}
-
-      {/* Add GroupExtrasModal */}
-      <GroupExtrasModal
-        open={showGroupExtrasModal}
-        onClose={() => setShowGroupExtrasModal(false)}
-        onAdd={handleGroupExtrasAdd}
-      />
     </div>
   );
 };

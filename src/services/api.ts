@@ -749,8 +749,7 @@ export interface UpdateInventoryItemRequest {
   new_item_price: number;
   available: boolean;
   extras: Array<{
-    extrasTitle: string;
-    delika_inventory_table_id: string;
+    delika_extras_table_id: string;
   }>;
   restaurantId: string;
   branchId: string;
