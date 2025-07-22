@@ -3089,7 +3089,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         {/* Category Selection */}
         <div className="mb-6">
           <div className="text-lg font-semibold mb-4 font-sans">Select Category</div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {categories.map((category) => (
               <button
                 key={category.value}
@@ -3114,7 +3114,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             </div>
             {/* Two-row horizontal scrolling grid with placeholder for odd items */}
             <div className="overflow-x-auto pb-2">
-              <div className="grid grid-rows-2 auto-cols-max grid-flow-col gap-2" style={{ minWidth: 'min-content' }}>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2" style={{ minWidth: 'min-content' }}>
                 {(() => {
                   // Sort items by name in ascending order
                   const sortedItems = [...categoryItems].sort((a, b) => a.name.localeCompare(b.name));
@@ -3179,12 +3179,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                       </Card>
                     );
                   });
-                  // If odd, add a transparent placeholder
-                  if (cards.length % 2 !== 0) {
-                    cards.push(
-                      <div key="placeholder" className="w-[220px] h-0 invisible" />
-                    );
-                  }
                   return cards;
                 })()}
               </div>
