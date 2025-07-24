@@ -3,6 +3,32 @@ import { api } from '../services/api';
 import { useAuth } from './useAuth';
 import axios from 'axios';
 
+// Add interfaces for extras
+interface InventoryDetail {
+  id: string;
+  foodName: string;
+  foodPrice: number;
+  foodDescription: string;
+}
+
+interface ExtraDetail {
+  delika_inventory_table_id: string;
+  minSelection?: number;
+  maxSelection?: number;
+  inventoryDetails: InventoryDetail[];
+}
+
+interface ExtraGroup {
+  delika_extras_table_id: string;
+  extrasDetails: {
+    id: string;
+    extrasTitle: string;
+    extrasType: string;
+    required: boolean;
+    extrasDetails: ExtraDetail[];
+  };
+}
+
 export interface CategoryCard {
   id: string;
   image: string;
@@ -18,7 +44,7 @@ export interface CategoryCard {
     };
     description?: string;
     available: boolean;
-    extras?: any[];
+    extras?: ExtraGroup[];
   }[];
 }
 
@@ -42,7 +68,7 @@ interface FoodItem {
   description: string;
   quantity: number;
   available: boolean;
-  extras: any[];
+  extras: ExtraGroup[];
   foodImage: FoodImage;
 }
 

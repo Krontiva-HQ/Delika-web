@@ -229,7 +229,7 @@ const Extras: FunctionComponent<ExtrasProps> = ({ searchQuery = '' }): ReactElem
     }
     
     // Set selected variants
-    const variantIds = group.extrasDetails.map((detail: any) => detail.delika_inventory_table_id);
+    const variantIds = group.extrasDetails.map((detail: { delika_inventory_table_id: string }) => detail.delika_inventory_table_id);
     setSelectedVariants(variantIds);
   };
 
@@ -512,13 +512,13 @@ const Extras: FunctionComponent<ExtrasProps> = ({ searchQuery = '' }): ReactElem
                           count={group.extrasDetails.length}
                         />
                         <div className="flex flex-wrap gap-2">
-                          {group.extrasDetails.map((detail: any, index: number) => (
+                          {group.extrasDetails.map((detail: { delika_inventory_table_id: string; extrasDetails?: Array<{ foodName: string }> }, index: number) => (
                             <Badge
                               key={index}
                               variant="secondary"
                               className="bg-orange-100 text-orange-800"
                             >
-                              {detail.extrasDetails[0]?.foodName || 'Unknown Item'}
+                              {detail.extrasDetails?.[0]?.foodName || 'Unknown Item'}
                             </Badge>
                           ))}
                         </div>

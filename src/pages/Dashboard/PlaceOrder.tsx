@@ -31,6 +31,8 @@ import FullServiceContent from '../../components/FullServiceContent';
 import ScheduleContent from '../../components/ScheduleContent';
 import BatchContent from '../../components/BatchContent';
 import WalkInContent from '../../components/WalkInContent';
+import SelectExtrasModal from '../../components/SelectExtrasModal';
+import { SelectedItem, SelectedItemExtra, MenuItemData } from '../../types/order';
 
 // Add the API key directly if needed
 const GOOGLE_MAPS_API_KEY = 'AIzaSyAdv28EbwKXqvlKo2henxsKMD-4EKB20l8';
@@ -154,13 +156,7 @@ interface PlaceOrderProps {
   branchId: string;
 }
 
-interface SelectedItem {
-  name: string;
-  quantity: number; 
-  price: number;
-  image: string;
-}
-
+// Update the OrderPayload interface to match the API's expected structure
 interface OrderPayload {
   restaurantId: string | null;
   branchId: string | null;
@@ -193,6 +189,26 @@ interface OrderPayload {
       type: string;
       size: number;
     };
+    extras?: Array<{
+      delika_extras_table_id: string;
+      extrasDetails: {
+        id: string;
+        extrasTitle: string;
+        extrasType: string;
+        required: boolean;
+        extrasDetails: Array<{
+          delika_inventory_table_id: string;
+          minSelection?: number;
+          maxSelection?: number;
+          inventoryDetails: Array<{
+            id: string;
+            foodName: string;
+            foodPrice: number;
+            foodDescription: string;
+          }>;
+        }>;
+      };
+    }>;
   }>;
   orderDate: string | null;
   deliveryPrice: string;
@@ -210,19 +226,6 @@ interface OrderPayload {
   };
   Walkin: boolean; // Add this line
   payVisaCard: boolean;  // Add this new field
-}
-
-interface MenuItemData {
-  name: string;
-  price: string | number;
-  available: boolean;
-  image?: string;
-  foodImage?: {
-    url: string;
-    filename: string;
-    type: string;
-    size: number;
-  };
 }
 
 // Style the Select component to match LocationInput
@@ -686,28 +689,136 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     }
   }, [deliveryMethod]);
 
-  // Modify your handlePlaceOrder function
-  const handlePlaceOrder = async (paymentType: 'cash' | 'momo' | 'visa') => {
-    if (!isDeliveryPriceValid()) {
-      addNotification({
-        type: 'order_status',
-        message: 'Please enter a valid delivery price to proceed'
-      });
-      return;
-    }
-    
-    try {
-      setIsSubmitting(true);
+  // Update the OrderPayload interface to include extras
+  interface OrderPayload {
+    restaurantId: string | null;
+    branchId: string | null;
+    dropOff: Array<{
+      toLatitude: string;
+      toLongitude: string;
+      toAddress: string;
+    }>;
+    pickup: Array<{
+      fromLatitude: string;
+      fromLongitude: string;
+      fromAddress: string;
+    }>;
+    customerName: string;
+    customerPhoneNumber: string;
+    orderNumber: number;
+    deliveryDistance: string;
+    orderPrice: string;
+    trackingUrl: string;
+    courierName: string;
+    courierPhoneNumber: string;
+    orderStatus: string;
+    products: Array<{
+      name: string;
+      price: string;
+      quantity: string;
+      foodImage: {
+        url: string;
+        filename: string;
+        type: string;
+        size: number;
+      };
+      extras?: Array<{
+        delika_extras_table_id: string;
+        extrasDetails: {
+          id: string;
+          extrasTitle: string;
+          extrasType: string;
+          required: boolean;
+          extrasDetails: Array<{
+            delika_inventory_table_id: string;
+            minSelection?: number;
+            maxSelection?: number;
+            inventoryDetails: Array<{
+              id: string;
+              foodName: string;
+              foodPrice: number;
+              foodDescription: string;
+            }>;
+          }>;
+        };
+      }>;
+    }>;
+    orderDate: string | null;
+    deliveryPrice: string;
+    pickupName: string;
+    dropoffName: string;
+    totalPrice: string;
+    foodAndDeliveryFee: boolean;
+    onlyDeliveryFee: boolean;
+    payNow: boolean;
+    payLater: boolean;
+    scheduleDelivery?: {
+      scheduleDate: string;
+      scheduleTime: string;
+      scheduleDateTime: string;
+    };
+    Walkin: boolean; // Add this line
+    payVisaCard: boolean;  // Add this new field
+  }
 
+  // Update the handlePlaceOrder function to format extras correctly
+  const handlePlaceOrder = async (paymentType: 'cash' | 'momo' | 'visa') => {
+    setIsSubmitting(true);
+
+    try {
+      if (!isDeliveryPriceValid()) {
+        addNotification({
+          type: 'order_status',
+          message: 'Please enter a valid delivery price to proceed'
+        });
+        return;
+      }
+      
       const formData = new FormData();
       
       // Add products to formData
-      selectedItems.forEach((item, index) => {
+      selectedItems.forEach((item: SelectedItem, index: number) => {
         formData.append(`products[${index}][name]`, item.name);
         formData.append(`products[${index}][price]`, item.price.toString());
         formData.append(`products[${index}][quantity]`, item.quantity.toString());
+        
         if (item.image) {
           formData.append(`products[${index}][foodImage][url]`, item.image);
+          formData.append(`products[${index}][foodImage][filename]`, item.name);
+          formData.append(`products[${index}][foodImage][type]`, 'image');
+          formData.append(`products[${index}][foodImage][size]`, '0');
+        }
+
+        // Format extras according to the API's expected structure
+        if (item.extras && item.extras.length > 0) {
+          item.extras.forEach((extraGroup: SelectedItemExtra, groupIndex: number) => {
+            formData.append(
+              `products[${index}][extras][${groupIndex}][delika_extras_table_id]`, 
+              extraGroup.delika_extras_table_id
+            );
+            
+            // Add the selected items as the inventory details
+            const extrasDetails = {
+              id: extraGroup.extrasDetails.id,
+              extrasTitle: `Extra Group ${groupIndex + 1}`,
+              extrasType: 'multiple',
+              required: true,
+              extrasDetails: extraGroup.extrasDetails.extrasDetails.map(detail => ({
+                delika_inventory_table_id: detail.delika_inventory_table_id,
+                inventoryDetails: detail.inventoryDetails.map(selection => ({
+                  id: selection.id,
+                  foodName: selection.foodName,
+                  foodPrice: selection.foodPrice,
+                  foodDescription: selection.foodDescription || ''
+                }))
+              }))
+            };
+
+            formData.append(
+              `products[${index}][extras][${groupIndex}][extrasDetails]`,
+              JSON.stringify(extrasDetails)
+            );
+          });
         }
       });
 
@@ -1360,13 +1471,72 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   };
 
   const handleAddItem = (item: MenuItemData) => {
+    if (item.extras && item.extras.length > 0) {
+      setSelectedItemForExtras(item);
+      setShowSelectExtrasModal(true);
+    } else {
+      const newItem: SelectedItem = {
+        name: item.name,
+        quantity: 1,
+        price: Number(item.price),
+        image: item.foodImage?.url || '',
+        extras: []
+      };
+      setSelectedItems(prev => [...prev, newItem]);
+    }
+  };
+
+  // Add new state for extras selection
+  const [showSelectExtrasModal, setShowSelectExtrasModal] = useState(false);
+  const [selectedItemForExtras, setSelectedItemForExtras] = useState<MenuItemData | null>(null);
+  const [selectedItemForExtrasDisplay, setSelectedItemForExtrasDisplay] = useState<MenuItemData | null>(null);
+
+  // Add new function to handle extras confirmation
+  const handleExtrasConfirm = (selectedExtras: { [key: string]: any[] }) => {
+    if (!selectedItemForExtras) return;
+
+    // Transform the selected extras to match the SelectedItemExtra type
+    const formattedExtras: SelectedItemExtra[] = Object.entries(selectedExtras).map(([groupId, selections]) => {
+      const extraGroup = selectedItemForExtras.extras?.find(e => e.delika_extras_table_id === groupId);
+      if (!extraGroup) return null;
+
+      return {
+        delika_extras_table_id: extraGroup.delika_extras_table_id,
+        extrasDetails: {
+          ...extraGroup.extrasDetails,
+          extrasDetails: extraGroup.extrasDetails.extrasDetails.map(detail => ({
+            ...detail,
+            inventoryDetails: selections.map(selection => ({
+              id: selection.id,
+              foodName: selection.foodName,
+              foodPrice: selection.foodPrice,
+              foodDescription: selection.foodDescription || ''
+            }))
+          }))
+        }
+      };
+    }).filter(Boolean) as SelectedItemExtra[];
+
+    const extrasCost = formattedExtras.reduce((total, group) => {
+      return total + group.extrasDetails.extrasDetails.reduce((groupTotal, detail) => {
+        return groupTotal + detail.inventoryDetails.reduce((selectionTotal, selection) => {
+          return selectionTotal + selection.foodPrice;
+        }, 0);
+      }, 0);
+    }, 0);
+
     const newItem: SelectedItem = {
-      name: item.name,
+      name: selectedItemForExtras.name,
       quantity: 1,
-      price: parseFloat(item.price as string),
-      image: item.foodImage?.url || ''
+      price: Number(selectedItemForExtras.price) + extrasCost,
+      image: selectedItemForExtras.foodImage?.url || '',
+      extras: formattedExtras
     };
+
     setSelectedItems(prev => [...prev, newItem]);
+    setSelectedItemForExtras(null);
+    setSelectedItemForExtrasDisplay(null);
+    setShowSelectExtrasModal(false);
   };
 
   // Add these functions inside the PlaceOrder component
@@ -1477,12 +1647,26 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                         key={item.name}
                         className={`cursor-pointer w-[220px] relative ${!item.available ? 'grayscale opacity-60' : ''} ${isSelected ? 'border-2 border-[#fd683e]' : ''}`}
                         onClick={() => {
+                          console.log('🖱️ Menu item clicked:', item.name, 'Available:', item.available, 'Selected:', isSelected);
                           if (item.available) {
                             if (isSelected) {
+                              console.log('🗑️ Removing item from selection:', item.name);
                               setSelectedItems(prev => prev.filter(i => i.name !== item.name));
+                              setSelectedItemForExtrasDisplay(null);
                             } else {
-                              addItem(item);
+                              console.log('✅ Adding item to selection:', item.name);
+                              // Check if item has extras
+                              if (item.extras && item.extras.length > 0) {
+                                console.log('🔧 Item has extras, showing for display:', item.extras);
+                                setSelectedItemForExtrasDisplay(item);
+                              } else {
+                                console.log('➕ Item has no extras, adding directly');
+                                addItem(item);
+                                setSelectedItemForExtrasDisplay(null);
+                              }
                             }
+                          } else {
+                            console.log('⚠️ Item not available:', item.name);
                           }
                         }}
                       >
@@ -1540,6 +1724,62 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 No items available in this category
               </div>
             )}
+          </div>
+        )}
+
+        {/* Extras Selection - Only show when an item with extras is selected for display */}
+        {selectedItemForExtrasDisplay && selectedItemForExtrasDisplay.extras && selectedItemForExtrasDisplay.extras.length > 0 && (
+          <div className="mb-6 p-4 border-2 border-[#fd683e] bg-[#fff5f3] rounded-lg">
+            <div className="text-lg font-semibold mb-4 font-sans text-[#fd683e]">
+              Select Extras for {selectedItemForExtrasDisplay.name}
+            </div>
+            <div className="space-y-4">
+              {selectedItemForExtrasDisplay.extras.map((extraGroup, groupIndex) => (
+                <div key={`${extraGroup.delika_extras_table_id}-${groupIndex}`} className="bg-white p-3 rounded-lg border">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium text-gray-900">
+                      {extraGroup.extrasDetails.extrasTitle}
+                      {extraGroup.extrasDetails.required && <span className="text-red-500 ml-1">*</span>}
+                    </h4>
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                      {extraGroup.extrasDetails.extrasType === 'multiple' ? 'Multiple Selection' : 'Single Selection'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {extraGroup.extrasDetails.extrasDetails.map((detail, detailIndex) => 
+                      detail.inventoryDetails.map((item, itemIndex) => (
+                        <div key={`${item.id}-${detailIndex}-${itemIndex}`} className="flex items-center justify-between p-2 border rounded bg-gray-50">
+                          <span className="text-sm font-medium">{item.foodName}</span>
+                          <span className="text-sm text-[#fd683e] font-semibold">+GH₵{item.foodPrice}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => {
+                  console.log('🔧 Opening extras modal for:', selectedItemForExtrasDisplay.name);
+                  setSelectedItemForExtras(selectedItemForExtrasDisplay);
+                  setShowSelectExtrasModal(true);
+                }}
+                className="flex-1 bg-[#fd683e] text-white py-2 px-4 rounded-lg font-medium hover:bg-[#e55a35] transition-colors"
+              >
+                Configure Extras & Add to Order
+              </button>
+              <button
+                onClick={() => {
+                  console.log('⏭️ Skipping extras for:', selectedItemForExtrasDisplay.name);
+                  addItem(selectedItemForExtrasDisplay);
+                  setSelectedItemForExtrasDisplay(null);
+                }}
+                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Skip Extras
+              </button>
+            </div>
           </div>
         )}
       </>
@@ -1763,6 +2003,18 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           onComplete={handleCompleteBatch}
         />
         {renderPrinterModal()}
+        {showSelectExtrasModal && selectedItemForExtras && (
+          <SelectExtrasModal
+            open={showSelectExtrasModal}
+            onClose={() => {
+              setShowSelectExtrasModal(false);
+              setSelectedItemForExtras(null);
+            }}
+            extras={selectedItemForExtras.extras || []}
+            onConfirm={handleExtrasConfirm}
+            itemName={selectedItemForExtras.name}
+          />
+        )}
       </div>
     </div>
   );

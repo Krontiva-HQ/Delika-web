@@ -1,38 +1,42 @@
-export interface Order {
-  id: string;
-  customerName: string;
-  customerPhoneNumber: string;
-  orderNumber: number;
-  deliveryDistance: string;
-  orderPrice: string;
-  trackingUrl: string;
-  courierName: string;
-  courierPhoneNumber: string;
-  orderStatus: string;
-  totalPrice: string;
-  orderDate: string;
-  orderReceivedTime: string;
-  deliveryPrice: string;
-  pickupName: string;
-  dropoffName: string;
-  status: string;
-  transactionStatus: string;
-  paymentStatus: string;
-  dropOff: {
-    toLatitude: string;
-    toLongitude: string;
-    toAddress: string;
-  }[];
-  pickup: {
-    fromLatitude: string;
-    fromLongitude: string;
-    fromAddress: string;
-  }[];
-  products: any[];
-  customerImage?: string;
-  orderComment?: string;
-  Walkin?: boolean;
-  payLater: boolean;
-  payNow: boolean;
-  payVisaCard: boolean;
+export interface SelectedItemExtra {
+  delika_extras_table_id: string;
+  extrasDetails: {
+    id: string;
+    extrasTitle: string;
+    extrasType: string;
+    required: boolean;
+    extrasDetails: Array<{
+      delika_inventory_table_id: string;
+      minSelection?: number;
+      maxSelection?: number;
+      inventoryDetails: Array<{
+        id: string;
+        foodName: string;
+        foodPrice: number;
+        foodDescription: string;
+      }>;
+    }>;
+  };
+}
+
+export interface SelectedItem {
+  name: string;
+  quantity: number;
+  price: number;
+  image: string;
+  extras?: SelectedItemExtra[];
+}
+
+export interface MenuItemData {
+  name: string;
+  price: string | number;
+  available: boolean;
+  image?: string;
+  foodImage?: {
+    url: string;
+    filename: string;
+    type: string;
+    size: number;
+  };
+  extras?: SelectedItemExtra[];
 } 

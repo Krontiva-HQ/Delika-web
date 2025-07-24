@@ -13,6 +13,26 @@ interface MenuItem {
     type: string;
     size: number;
   };
+  extras?: Array<{
+    delika_extras_table_id: string;
+    extrasDetails: {
+      id: string;
+      extrasTitle: string;
+      extrasType: string;
+      required: boolean;
+      extrasDetails: Array<{
+        delika_inventory_table_id: string;
+        minSelection?: number;
+        maxSelection?: number;
+        inventoryDetails: Array<{
+          id: string;
+          foodName: string;
+          foodPrice: number;
+          foodDescription: string;
+        }>;
+      }>;
+    };
+  }>;
 }
 
 interface SelectedItem {
@@ -112,18 +132,21 @@ export const usePlaceOrderItems = (selectedBranchId?: string): PlaceOrderItemsHo
   };
 
   const addItem = async (item: MenuItem) => {
+    console.log('🍔 Adding item to order:', item);
     try {
       const imageFile = await convertUrlToFile(item.foodImage?.url || '');
       
       setSelectedItems(prev => {
         const existingItem = prev.find(i => i.name === item.name);
         if (existingItem) {
+          console.log('📈 Updating quantity for existing item:', item.name, 'new quantity:', existingItem.quantity + 1);
           return prev.map(i => 
             i.name === item.name 
               ? { ...i, quantity: i.quantity + 1 }
               : i
           );
         }
+        console.log('➕ Adding new item to cart:', item.name);
         return [...prev, { 
           name: item.name, 
           quantity: 1, 
@@ -133,6 +156,7 @@ export const usePlaceOrderItems = (selectedBranchId?: string): PlaceOrderItemsHo
         }];
       });
     } catch (error) {
+      console.error('❌ Error adding item:', error);
     }
   };
 
