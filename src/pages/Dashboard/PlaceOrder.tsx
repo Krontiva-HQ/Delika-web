@@ -31,7 +31,7 @@ import FullServiceContent from '../../components/FullServiceContent';
 import ScheduleContent from '../../components/ScheduleContent';
 import BatchContent from '../../components/BatchContent';
 import WalkInContent from '../../components/WalkInContent';
-import SelectExtrasModal from '../../components/SelectExtrasModal';
+import ExtrasSelectionInline from '../../components/ExtrasSelectionInline';
 import { SelectedItem, SelectedItemExtra, MenuItemData } from '../../types/order';
 
 // Add the API key directly if needed
@@ -1472,8 +1472,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
   const handleAddItem = (item: MenuItemData) => {
     if (item.extras && item.extras.length > 0) {
-      setSelectedItemForExtras(item);
-      setShowSelectExtrasModal(true);
+      setSelectedItemForExtrasDisplay(item);
     } else {
       const newItem: SelectedItem = {
         name: item.name,
@@ -1493,11 +1492,11 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
   // Add new function to handle extras confirmation
   const handleExtrasConfirm = (selectedExtras: { [key: string]: any[] }) => {
-    if (!selectedItemForExtras) return;
+    if (!selectedItemForExtrasDisplay) return;
 
     // Transform the selected extras to match the SelectedItemExtra type
     const formattedExtras: SelectedItemExtra[] = Object.entries(selectedExtras).map(([groupId, selections]) => {
-      const extraGroup = selectedItemForExtras.extras?.find(e => e.delika_extras_table_id === groupId);
+      const extraGroup = selectedItemForExtrasDisplay.extras?.find(e => e.delika_extras_table_id === groupId);
       if (!extraGroup) return null;
 
       return {
@@ -1526,17 +1525,15 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     }, 0);
 
     const newItem: SelectedItem = {
-      name: selectedItemForExtras.name,
+      name: selectedItemForExtrasDisplay.name,
       quantity: 1,
-      price: Number(selectedItemForExtras.price) + extrasCost,
-      image: selectedItemForExtras.foodImage?.url || '',
+      price: Number(selectedItemForExtrasDisplay.price) + extrasCost,
+      image: selectedItemForExtrasDisplay.foodImage?.url || '',
       extras: formattedExtras
     };
 
     setSelectedItems(prev => [...prev, newItem]);
-    setSelectedItemForExtras(null);
     setSelectedItemForExtrasDisplay(null);
-    setShowSelectExtrasModal(false);
   };
 
   // Add these functions inside the PlaceOrder component
@@ -1733,53 +1730,29 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             <div className="text-lg font-semibold mb-4 font-sans text-[#fd683e]">
               Select Extras for {selectedItemForExtrasDisplay.name}
             </div>
-            <div className="space-y-4">
-              {selectedItemForExtrasDisplay.extras.map((extraGroup, groupIndex) => (
-                <div key={`${extraGroup.delika_extras_table_id}-${groupIndex}`} className="bg-white p-3 rounded-lg border">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="font-medium text-gray-900">
-                      {extraGroup.extrasDetails.extrasTitle}
-                      {extraGroup.extrasDetails.required && <span className="text-red-500 ml-1">*</span>}
-                    </h4>
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                      {extraGroup.extrasDetails.extrasType === 'multiple' ? 'Multiple Selection' : 'Single Selection'}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {extraGroup.extrasDetails.extrasDetails.map((detail, detailIndex) => 
-                      detail.inventoryDetails.map((item, itemIndex) => (
-                        <div key={`${item.id}-${detailIndex}-${itemIndex}`} className="flex items-center justify-between p-2 border rounded bg-gray-50">
-                          <span className="text-sm font-medium">{item.foodName}</span>
-                          <span className="text-sm text-[#fd683e] font-semibold">+GH₵{item.foodPrice}</span>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-3 mt-4">
-              <button
-                onClick={() => {
-                  console.log('🔧 Opening extras modal for:', selectedItemForExtrasDisplay.name);
-                  setSelectedItemForExtras(selectedItemForExtrasDisplay);
-                  setShowSelectExtrasModal(true);
-                }}
-                className="flex-1 bg-[#fd683e] text-white py-2 px-4 rounded-lg font-medium hover:bg-[#e55a35] transition-colors"
-              >
-                Configure Extras & Add to Order
-              </button>
-              <button
-                onClick={() => {
-                  console.log('⏭️ Skipping extras for:', selectedItemForExtrasDisplay.name);
-                  addItem(selectedItemForExtrasDisplay);
-                  setSelectedItemForExtrasDisplay(null);
-                }}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Skip Extras
-              </button>
-            </div>
+            <ExtrasSelectionInline
+              extras={selectedItemForExtrasDisplay.extras}
+              onConfirm={(selectedExtras) => {
+                console.log('✅ Extras confirmed:', selectedExtras);
+                const newItem = {
+                  name: selectedItemForExtrasDisplay.name,
+                  quantity: 1,
+                  price: Number(selectedItemForExtrasDisplay.price),
+                  image: selectedItemForExtrasDisplay.foodImage?.url || '',
+                  extras: Object.entries(selectedExtras).map(([groupId, selections]) => ({
+                    groupId,
+                    selections: selections.map(selection => ({
+                      id: selection.id,
+                      foodName: selection.foodName,
+                      foodPrice: selection.foodPrice
+                    }))
+                  }))
+                };
+                setSelectedItems(prev => [...prev, newItem]);
+                setSelectedItemForExtrasDisplay(null);
+              }}
+              itemName={selectedItemForExtrasDisplay.name}
+            />
           </div>
         )}
       </>
@@ -2003,18 +1976,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           onComplete={handleCompleteBatch}
         />
         {renderPrinterModal()}
-        {showSelectExtrasModal && selectedItemForExtras && (
-          <SelectExtrasModal
-            open={showSelectExtrasModal}
-            onClose={() => {
-              setShowSelectExtrasModal(false);
-              setSelectedItemForExtras(null);
-            }}
-            extras={selectedItemForExtras.extras || []}
-            onConfirm={handleExtrasConfirm}
-            itemName={selectedItemForExtras.name}
-          />
-        )}
       </div>
     </div>
   );
