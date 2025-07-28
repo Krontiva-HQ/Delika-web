@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
-import { Checkbox } from './ui/checkbox';
+import { Button } from './ui/button';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
-import { Button } from './ui/button';
+import { Checkbox } from './ui/checkbox';
 import { SelectedItemExtra } from '../types/order';
 
 interface Selection {
@@ -38,92 +38,70 @@ const SelectExtrasModal: React.FC<SelectExtrasModalProps> = ({
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const handleSingleSelection = (groupId: string, item: Selection) => {
-    setSelectedExtras(prev => ({
-      ...prev,
+    const newSelectedExtras = {
+      ...selectedExtras,
       [groupId]: [item]
-    }));
+    };
+    setSelectedExtras(newSelectedExtras);
+    
     // Clear error when selection is made
     setErrors(prev => ({
       ...prev,
       [groupId]: ''
     }));
+
+    // Immediately add the selected item to the selected items
+    const enrichedSelections = Object.entries(newSelectedExtras).reduce((acc, [groupId, selections]) => {
+      const group = extras.find(e => e.extrasDetails.id === groupId);
+      if (!group) return acc;
+
+      acc[groupId] = selections.map(selection => ({
+        ...selection,
+        groupTitle: group.extrasDetails.extrasTitle,
+        groupType: group.extrasDetails.extrasType,
+        required: group.extrasDetails.required,
+        minSelection: group.extrasDetails.extrasDetails[0]?.minSelection,
+        maxSelection: group.extrasDetails.extrasDetails[0]?.maxSelection
+      }));
+      return acc;
+    }, {} as { [key: string]: Selection[] });
+
+    onConfirm(enrichedSelections);
   };
 
   const handleMultipleSelection = (groupId: string, item: Selection, checked: boolean) => {
-    setSelectedExtras(prev => {
-      const currentSelections = prev[groupId] || [];
-      if (checked) {
-        return {
-          ...prev,
-          [groupId]: [...currentSelections, item]
-        };
-      } else {
-        return {
-          ...prev,
-          [groupId]: currentSelections.filter(i => i.id !== item.id)
-        };
-      }
-    });
+    const newSelectedExtras = {
+      ...selectedExtras,
+      [groupId]: checked 
+        ? [...(selectedExtras[groupId] || []), item]
+        : (selectedExtras[groupId] || []).filter(i => i.id !== item.id)
+    };
+    
+    setSelectedExtras(newSelectedExtras);
+    
     // Clear error when selection is made
     setErrors(prev => ({
       ...prev,
       [groupId]: ''
     }));
-  };
 
-  const validateSelections = (): boolean => {
-    const newErrors: { [key: string]: string } = {};
-    let isValid = true;
+    // Immediately add the selected items to the selected items
+    const enrichedSelections = Object.entries(newSelectedExtras).reduce((acc, [groupId, selections]) => {
+      const group = extras.find(e => e.extrasDetails.id === groupId);
+      if (!group) return acc;
 
-    extras.forEach(extra => {
-      const groupId = extra.extrasDetails.id;
-      const selections = selectedExtras[groupId] || [];
-      
-      if (extra.extrasDetails.required && selections.length === 0) {
-        newErrors[groupId] = `Please select at least one ${extra.extrasDetails.extrasTitle.toLowerCase()}`;
-        isValid = false;
-      }
+      acc[groupId] = selections.map(selection => ({
+        ...selection,
+        groupTitle: group.extrasDetails.extrasTitle,
+        groupType: group.extrasDetails.extrasType,
+        required: group.extrasDetails.required,
+        minSelection: group.extrasDetails.extrasDetails[0]?.minSelection,
+        maxSelection: group.extrasDetails.extrasDetails[0]?.maxSelection
+      }));
+      return acc;
+    }, {} as { [key: string]: Selection[] });
 
-      // Check min/max selections if specified
-      const minSelection = extra.extrasDetails.extrasDetails[0]?.minSelection;
-      const maxSelection = extra.extrasDetails.extrasDetails[0]?.maxSelection;
-
-      if (minSelection && selections.length < Number(minSelection)) {
-        newErrors[groupId] = `Please select at least ${minSelection} options`;
-        isValid = false;
-      }
-
-      if (maxSelection && selections.length > Number(maxSelection)) {
-        newErrors[groupId] = `Please select no more than ${maxSelection} options`;
-        isValid = false;
-      }
-    });
-
-    setErrors(newErrors);
-    return isValid;
-  };
-
-  const handleConfirm = () => {
-    if (validateSelections()) {
-      // Add group metadata to selections
-      const enrichedSelections = Object.entries(selectedExtras).reduce((acc, [groupId, selections]) => {
-        const group = extras.find(e => e.extrasDetails.id === groupId);
-        if (!group) return acc;
-
-        acc[groupId] = selections.map(selection => ({
-          ...selection,
-          groupTitle: group.extrasDetails.extrasTitle,
-          groupType: group.extrasDetails.extrasType,
-          required: group.extrasDetails.required,
-          minSelection: group.extrasDetails.extrasDetails[0]?.minSelection,
-          maxSelection: group.extrasDetails.extrasDetails[0]?.maxSelection
-        }));
-        return acc;
-      }, {} as { [key: string]: Selection[] });
-
-      onConfirm(enrichedSelections);
-      onClose();
-    }
+    onConfirm(enrichedSelections);
   };
 
   return (
@@ -198,15 +176,6 @@ const SelectExtrasModal: React.FC<SelectExtrasModalProps> = ({
               )}
             </div>
           ))}
-        </div>
-
-        <div className="flex justify-end gap-4 mt-4">
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button onClick={handleConfirm}>
-            Confirm Selection
-          </Button>
         </div>
       </DialogContent>
     </Dialog>

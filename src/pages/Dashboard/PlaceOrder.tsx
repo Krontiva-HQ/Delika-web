@@ -1219,6 +1219,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             connectToPrinter={connectToPrinter}
             disconnectPrinter={disconnectPrinter}
             connectedDevice={connectedDevice}
+            updateItemWithExtras={updateItemWithExtras}
           />
         );
       default:
@@ -1502,7 +1503,10 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       return {
         delika_extras_table_id: extraGroup.delika_extras_table_id,
         extrasDetails: {
-          ...extraGroup.extrasDetails,
+          id: extraGroup.extrasDetails.id,
+          extrasTitle: extraGroup.extrasDetails.extrasTitle,
+          extrasType: extraGroup.extrasDetails.extrasType,
+          required: extraGroup.extrasDetails.required,
           extrasDetails: extraGroup.extrasDetails.extrasDetails.map(detail => ({
             ...detail,
             inventoryDetails: selections.map(selection => ({
@@ -1524,16 +1528,54 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       }, 0);
     }, 0);
 
-    const newItem: SelectedItem = {
-      name: selectedItemForExtrasDisplay.name,
-      quantity: 1,
-      price: Number(selectedItemForExtrasDisplay.price) + extrasCost,
-      image: selectedItemForExtrasDisplay.foodImage?.url || '',
-      extras: formattedExtras
-    };
+    // Update the existing item in selectedItems instead of adding a new one
+    setSelectedItems(prev => {
+      const existingItemIndex = prev.findIndex(item => item.name === selectedItemForExtrasDisplay.name);
+      
+      if (existingItemIndex !== -1) {
+        // Update existing item with extras
+        const updatedItems = [...prev];
+        updatedItems[existingItemIndex] = {
+          ...updatedItems[existingItemIndex],
+          price: Number(selectedItemForExtrasDisplay.price) + extrasCost,
+          extras: formattedExtras
+        };
+        return updatedItems;
+      } else {
+        // If item doesn't exist, add it (this shouldn't happen but just in case)
+        const newItem: SelectedItem = {
+          name: selectedItemForExtrasDisplay.name,
+          quantity: 1,
+          price: Number(selectedItemForExtrasDisplay.price) + extrasCost,
+          image: selectedItemForExtrasDisplay.foodImage?.url || '',
+          extras: formattedExtras
+        };
+        return [...prev, newItem];
+      }
+    });
+    
+    // Don't close the extras selection to allow multiple selections
+    // setSelectedItemForExtrasDisplay(null);
+  };
 
-    setSelectedItems(prev => [...prev, newItem]);
-    setSelectedItemForExtrasDisplay(null);
+  // Add a function to update items with extras for WalkInContent
+  const updateItemWithExtras = (itemName: string, extras: SelectedItemExtra[], extrasCost: number) => {
+    setSelectedItems(prev => {
+      const existingItemIndex = prev.findIndex(item => item.name === itemName);
+      
+      if (existingItemIndex !== -1) {
+        // Update existing item with extras
+        const updatedItems = [...prev];
+        const originalItem = updatedItems[existingItemIndex];
+        updatedItems[existingItemIndex] = {
+          ...originalItem,
+          price: originalItem.price + extrasCost,
+          extras: extras
+        };
+        return updatedItems;
+      }
+      return prev; // If item doesn't exist, don't do anything
+    });
   };
 
   // Add these functions inside the PlaceOrder component
@@ -1734,22 +1776,67 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               extras={selectedItemForExtrasDisplay.extras}
               onConfirm={(selectedExtras) => {
                 console.log('✅ Extras confirmed:', selectedExtras);
-                const newItem = {
-                  name: selectedItemForExtrasDisplay.name,
-                  quantity: 1,
-                  price: Number(selectedItemForExtrasDisplay.price),
-                  image: selectedItemForExtrasDisplay.foodImage?.url || '',
-                  extras: Object.entries(selectedExtras).map(([groupId, selections]) => ({
-                    groupId,
-                    selections: selections.map(selection => ({
-                      id: selection.id,
-                      foodName: selection.foodName,
-                      foodPrice: selection.foodPrice
-                    }))
-                  }))
-                };
-                setSelectedItems(prev => [...prev, newItem]);
-                setSelectedItemForExtrasDisplay(null);
+                
+                // Calculate total price including extras
+                const extrasCost = Object.entries(selectedExtras).reduce((total, [groupId, selections]) => {
+                  return total + selections.reduce((selectionTotal, selection) => {
+                    return selectionTotal + selection.foodPrice;
+                  }, 0);
+                }, 0);
+                
+                // Transform the selected extras to match the SelectedItemExtra type
+                const formattedExtras: SelectedItemExtra[] = Object.entries(selectedExtras).map(([groupId, selections]) => {
+                  const extraGroup = selectedItemForExtrasDisplay.extras?.find(e => e.delika_extras_table_id === groupId);
+                  if (!extraGroup) return null;
+
+                  return {
+                    delika_extras_table_id: extraGroup.delika_extras_table_id,
+                    extrasDetails: {
+                      id: extraGroup.extrasDetails.id,
+                      extrasTitle: extraGroup.extrasDetails.extrasTitle,
+                      extrasType: extraGroup.extrasDetails.extrasType,
+                      required: extraGroup.extrasDetails.required,
+                      extrasDetails: extraGroup.extrasDetails.extrasDetails.map(detail => ({
+                        ...detail,
+                        inventoryDetails: selections.map(selection => ({
+                          id: selection.id,
+                          foodName: selection.foodName,
+                          foodPrice: selection.foodPrice,
+                          foodDescription: selection.foodDescription || ''
+                        }))
+                      }))
+                    }
+                  };
+                }).filter(Boolean) as SelectedItemExtra[];
+                
+                // Update the existing item in selectedItems instead of adding a new one
+                setSelectedItems(prev => {
+                  const existingItemIndex = prev.findIndex(item => item.name === selectedItemForExtrasDisplay.name);
+                  
+                  if (existingItemIndex !== -1) {
+                    // Update existing item with extras
+                    const updatedItems = [...prev];
+                    updatedItems[existingItemIndex] = {
+                      ...updatedItems[existingItemIndex],
+                      price: Number(selectedItemForExtrasDisplay.price) + extrasCost,
+                      extras: formattedExtras
+                    };
+                    return updatedItems;
+                  } else {
+                    // If item doesn't exist, add it (this shouldn't happen but just in case)
+                    const newItem: SelectedItem = {
+                      name: selectedItemForExtrasDisplay.name,
+                      quantity: 1,
+                      price: Number(selectedItemForExtrasDisplay.price) + extrasCost,
+                      image: selectedItemForExtrasDisplay.foodImage?.url || '',
+                      extras: formattedExtras
+                    };
+                    return [...prev, newItem];
+                  }
+                });
+                
+                // Don't close the extras selection to allow multiple selections
+                // setSelectedItemForExtrasDisplay(null);
               }}
               itemName={selectedItemForExtrasDisplay.name}
             />

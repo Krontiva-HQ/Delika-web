@@ -56,6 +56,7 @@ interface WalkInContentProps {
   connectToPrinter: () => Promise<void>;
   disconnectPrinter: () => void;
   connectedDevice: { name: string } | null;
+  updateItemWithExtras: (itemName: string, extras: SelectedItemExtra[], extrasCost: number) => void;
 }
 
 const WalkInContent: React.FC<WalkInContentProps> = ({
@@ -83,7 +84,8 @@ const WalkInContent: React.FC<WalkInContentProps> = ({
   printerConnectionStatus,
   connectToPrinter,
   disconnectPrinter,
-  connectedDevice
+  connectedDevice,
+  updateItemWithExtras
 }) => {
   const { t } = useTranslation();
 
@@ -124,16 +126,26 @@ const WalkInContent: React.FC<WalkInContentProps> = ({
   const handleExtrasConfirm = (selectedExtras: { [key: string]: Selection[] }) => {
     if (!selectedItemForExtras) return;
 
+    // Calculate total price including extras
+    const extrasCost = Object.entries(selectedExtras).reduce((total, [groupId, selections]) => {
+      return total + selections.reduce((selectionTotal, selection) => {
+        return selectionTotal + selection.foodPrice;
+      }, 0);
+    }, 0);
+
     // Transform the selected extras to match the SelectedItemExtra type
     const formattedExtras: SelectedItemExtra[] = Object.entries(selectedExtras).map(([groupId, selections]) => {
-      const extraGroup = selectedItemForExtras.extras?.find(e => e.delika_extras_table_id === groupId);
+      const extraGroup = selectedItemForExtras.extras?.find((e: any) => e.delika_extras_table_id === groupId);
       if (!extraGroup) return null;
 
       return {
         delika_extras_table_id: extraGroup.delika_extras_table_id,
         extrasDetails: {
-          ...extraGroup.extrasDetails,
-          extrasDetails: extraGroup.extrasDetails.extrasDetails.map(detail => ({
+          id: extraGroup.extrasDetails.id,
+          extrasTitle: extraGroup.extrasDetails.extrasTitle,
+          extrasType: extraGroup.extrasDetails.extrasType,
+          required: extraGroup.extrasDetails.required,
+          extrasDetails: extraGroup.extrasDetails.extrasDetails.map((detail: any) => ({
             ...detail,
             inventoryDetails: selections.map(selection => ({
               id: selection.id,
@@ -145,25 +157,11 @@ const WalkInContent: React.FC<WalkInContentProps> = ({
         }
       };
     }).filter(Boolean) as SelectedItemExtra[];
-
-    const extrasCost = formattedExtras.reduce((total, group) => {
-      return total + group.extrasDetails.extrasDetails.reduce((groupTotal, detail) => {
-        return groupTotal + detail.inventoryDetails.reduce((selectionTotal, selection) => {
-          return selectionTotal + selection.foodPrice;
-        }, 0);
-      }, 0);
-    }, 0);
-
-    const newItem: SelectedItem = {
-      name: selectedItemForExtras.name,
-      quantity: 1,
-      price: Number(selectedItemForExtras.price) + extrasCost,
-      image: selectedItemForExtras.foodImage.url,
-      extras: formattedExtras
-    };
-
-    updateQuantity(newItem.name, 1);
-    setSelectedItemForExtras(null);
+    
+    // Update the existing item in selectedItems instead of adding a new one
+    updateItemWithExtras(selectedItemForExtras.name, formattedExtras, extrasCost);
+    // Don't close the extras selection to allow multiple selections
+    // setSelectedItemForExtras(null);
   };
 
   const renderPrinterModal = () => {
@@ -314,9 +312,11 @@ const WalkInContent: React.FC<WalkInContentProps> = ({
                         <div className="mt-1 space-y-1">
                           {item.extras.map((group, groupIndex) => (
                             <div key={`${group.delika_extras_table_id}-${groupIndex}`} className="text-sm text-gray-600">
-                              <div className="font-medium text-xs text-gray-500">{group.extrasDetails.extrasTitle}</div>
-                              {group.extrasDetails.extrasDetails.map((detail) => 
-                                detail.inventoryDetails.map((selection, selIndex) => (
+                              {group.extrasDetails && group.extrasDetails.extrasTitle && (
+                                <div className="font-medium text-xs text-gray-500">{group.extrasDetails.extrasTitle}</div>
+                              )}
+                              {group.extrasDetails && group.extrasDetails.extrasDetails && group.extrasDetails.extrasDetails.map((detail) => 
+                                detail.inventoryDetails && detail.inventoryDetails.map((selection, selIndex) => (
                                   <div key={`${selection.id}-${selIndex}`} className="flex items-center gap-2">
                                     <span className="text-xs">•</span>
                                     <span>{selection.foodName}</span>
