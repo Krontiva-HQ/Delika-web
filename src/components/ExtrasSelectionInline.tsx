@@ -119,35 +119,34 @@ const ExtrasSelectionInline: React.FC<ExtrasSelectionInlineProps> = ({
       [groupId]: ''
     }));
 
-    if (updatedSelections.length > 0) {
-      const group = extras.find(e => e.extrasDetails.id === groupId);
-      if (!group) return;
-      const enrichedSelections = {
-        [groupId]: updatedSelections.map(selection => ({
-          ...selection,
-          groupTitle: group.extrasDetails.extrasTitle,
-          groupType: group.extrasDetails.extrasType,
-          required: group.extrasDetails.required,
-          minSelection: group.extrasDetails.extrasDetails[0]?.minSelection,
-          maxSelection: group.extrasDetails.extrasDetails[0]?.maxSelection
-        }))
-      };
-      
-      console.log('📤 Sending to onConfirm (Multiple):', {
-        groupId,
+    // Always call onConfirm, even when deselecting (empty selections)
+    const group = extras.find(e => e.extrasDetails.id === groupId);
+    if (!group) return;
+    
+    const enrichedSelections = {
+      [groupId]: updatedSelections.map(selection => ({
+        ...selection,
         groupTitle: group.extrasDetails.extrasTitle,
-        selectedItems: enrichedSelections[groupId].map(item => ({
-          name: item.foodName,
-          id: item.id,
-          price: item.foodPrice
-        })),
-        totalItems: enrichedSelections[groupId].length
-      });
-      
-      onConfirm(enrichedSelections);
-    } else {
-      console.log('❌ No selections to send to onConfirm');
-    }
+        groupType: group.extrasDetails.extrasType,
+        required: group.extrasDetails.required,
+        minSelection: group.extrasDetails.extrasDetails[0]?.minSelection,
+        maxSelection: group.extrasDetails.extrasDetails[0]?.maxSelection
+      }))
+    };
+    
+    console.log('📤 Sending to onConfirm (Multiple):', {
+      groupId,
+      groupTitle: group.extrasDetails.extrasTitle,
+      selectedItems: enrichedSelections[groupId].map(item => ({
+        name: item.foodName,
+        id: item.id,
+        price: item.foodPrice
+      })),
+      totalItems: enrichedSelections[groupId].length,
+      action: updatedSelections.length > 0 ? 'ADDING' : 'REMOVING ALL'
+    });
+    
+    onConfirm(enrichedSelections);
   };
 
   return (

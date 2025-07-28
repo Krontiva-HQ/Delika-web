@@ -1489,17 +1489,26 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   };
 
   const handleAddItem = (item: MenuItemData) => {
+    // Always add the item immediately, regardless of extras
+    const newItem: SelectedItem = {
+      name: item.name,
+      quantity: 1,
+      price: Number(item.price),
+      image: item.foodImage?.url || '',
+      extras: []
+    };
+    setSelectedItems(prev => [...prev, newItem]);
+    
+    console.log('🛒 Item Added to Selected Items:', {
+      name: item.name,
+      price: Number(item.price),
+      hasExtras: item.extras && item.extras.length > 0,
+      extrasCount: item.extras ? item.extras.length : 0
+    });
+    
+    // If item has extras, also set it for extras selection
     if (item.extras && item.extras.length > 0) {
       setSelectedItemForExtrasDisplay(item);
-    } else {
-      const newItem: SelectedItem = {
-        name: item.name,
-        quantity: 1,
-        price: Number(item.price),
-        image: item.foodImage?.url || '',
-        extras: []
-      };
-      setSelectedItems(prev => [...prev, newItem]);
     }
   };
 
@@ -1711,15 +1720,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                               setSelectedItemForExtrasDisplay(null);
                             } else {
                               console.log('✅ Adding item to selection:', item.name);
-                              // Check if item has extras
-                              if (item.extras && item.extras.length > 0) {
-                                console.log('🔧 Item has extras, showing for display:', item.extras);
-                                setSelectedItemForExtrasDisplay(item);
-                              } else {
-                                console.log('➕ Item has no extras, adding directly');
-                                addItem(item);
-                                setSelectedItemForExtrasDisplay(null);
-                              }
+                              // Always use handleAddItem to add the item immediately
+                              handleAddItem(item);
                             }
                           } else {
                             console.log('⚠️ Item not available:', item.name);
