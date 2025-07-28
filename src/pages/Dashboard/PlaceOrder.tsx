@@ -1784,6 +1784,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                   }, 0);
                 }, 0);
                 
+                console.log('🔄 Processing selectedExtras in parent:', selectedExtras);
+                
                 // Transform the selected extras to match the SelectedItemExtra type
                 const formattedExtras: SelectedItemExtra[] = Object.entries(selectedExtras).map(([groupId, selections]) => {
                   const extraGroup = selectedItemForExtrasDisplay.extras?.find(e => e.delika_extras_table_id === groupId);
@@ -1796,18 +1798,22 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                       extrasTitle: extraGroup.extrasDetails.extrasTitle,
                       extrasType: extraGroup.extrasDetails.extrasType,
                       required: extraGroup.extrasDetails.required,
-                      extrasDetails: extraGroup.extrasDetails.extrasDetails.map(detail => ({
-                        ...detail,
+                      extrasDetails: [{
+                        delika_inventory_table_id: extraGroup.extrasDetails.extrasDetails[0]?.delika_inventory_table_id || '',
+                        minSelection: extraGroup.extrasDetails.extrasDetails[0]?.minSelection,
+                        maxSelection: extraGroup.extrasDetails.extrasDetails[0]?.maxSelection,
                         inventoryDetails: selections.map(selection => ({
                           id: selection.id,
                           foodName: selection.foodName,
                           foodPrice: selection.foodPrice,
                           foodDescription: selection.foodDescription || ''
                         }))
-                      }))
+                      }]
                     }
                   };
                 }).filter(Boolean) as SelectedItemExtra[];
+                
+                console.log('✅ Final formattedExtras:', formattedExtras);
                 
                 // Update the existing item in selectedItems instead of adding a new one
                 setSelectedItems(prev => {

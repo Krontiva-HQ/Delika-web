@@ -31,70 +31,116 @@ const ExtrasSelectionInline: React.FC<ExtrasSelectionInlineProps> = ({
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const handleSingleSelection = (groupId: string, item: Selection) => {
+    console.log('🎯 Single Selection - Selected Item:', {
+      groupId,
+      itemName: item.foodName,
+      itemId: item.id,
+      itemPrice: item.foodPrice
+    });
+
     const newSelectedExtras = {
-      ...selectedExtras,
       [groupId]: [item]
     };
     setSelectedExtras(newSelectedExtras);
-    
-    // Clear error when selection is made
+
     setErrors(prev => ({
       ...prev,
       [groupId]: ''
     }));
 
-    // Immediately add the selected item to the selected items
-    const enrichedSelections = Object.entries(newSelectedExtras).reduce((acc, [groupId, selections]) => {
+    // Only call onConfirm if there is a selection
+    if (item) {
       const group = extras.find(e => e.extrasDetails.id === groupId);
-      if (!group) return acc;
-
-      acc[groupId] = selections.map(selection => ({
-        ...selection,
+      if (!group) return;
+      const enrichedSelections = {
+        [groupId]: [{
+          ...item,
+          groupTitle: group.extrasDetails.extrasTitle,
+          groupType: group.extrasDetails.extrasType,
+          required: group.extrasDetails.required,
+          minSelection: group.extrasDetails.extrasDetails[0]?.minSelection,
+          maxSelection: group.extrasDetails.extrasDetails[0]?.maxSelection
+        }]
+      };
+      
+      console.log('📤 Sending to onConfirm (Single):', {
+        groupId,
         groupTitle: group.extrasDetails.extrasTitle,
-        groupType: group.extrasDetails.extrasType,
-        required: group.extrasDetails.required,
-        minSelection: group.extrasDetails.extrasDetails[0]?.minSelection,
-        maxSelection: group.extrasDetails.extrasDetails[0]?.maxSelection
-      }));
-      return acc;
-    }, {} as { [key: string]: Selection[] });
-
-    onConfirm(enrichedSelections);
+        selectedItems: enrichedSelections[groupId].map(item => ({
+          name: item.foodName,
+          id: item.id,
+          price: item.foodPrice
+        })),
+        totalItems: enrichedSelections[groupId].length
+      });
+      
+      onConfirm(enrichedSelections);
+    }
   };
 
   const handleMultipleSelection = (groupId: string, item: Selection, checked: boolean) => {
+    console.log('🎯 Multiple Selection:', {
+      groupId,
+      itemName: item.foodName,
+      itemId: item.id,
+      checked,
+      action: checked ? 'ADDING' : 'REMOVING'
+    });
+
+    const currentSelections = selectedExtras[groupId] || [];
+    let updatedSelections;
+    if (checked) {
+      updatedSelections = [...currentSelections, item];
+    } else {
+      updatedSelections = currentSelections.filter(i => i.id !== item.id);
+    }
+    
+    console.log('📋 Updated Selections for Group:', {
+      groupId,
+      beforeCount: currentSelections.length,
+      afterCount: updatedSelections.length,
+      items: updatedSelections.map(s => s.foodName)
+    });
+
     const newSelectedExtras = {
-      ...selectedExtras,
-      [groupId]: checked 
-        ? [...(selectedExtras[groupId] || []), item]
-        : (selectedExtras[groupId] || []).filter(i => i.id !== item.id)
+      [groupId]: updatedSelections
     };
-    
     setSelectedExtras(newSelectedExtras);
-    
-    // Clear error when selection is made
+
     setErrors(prev => ({
       ...prev,
       [groupId]: ''
     }));
 
-    // Immediately add the selected items to the selected items
-    const enrichedSelections = Object.entries(newSelectedExtras).reduce((acc, [groupId, selections]) => {
+    if (updatedSelections.length > 0) {
       const group = extras.find(e => e.extrasDetails.id === groupId);
-      if (!group) return acc;
-
-      acc[groupId] = selections.map(selection => ({
-        ...selection,
+      if (!group) return;
+      const enrichedSelections = {
+        [groupId]: updatedSelections.map(selection => ({
+          ...selection,
+          groupTitle: group.extrasDetails.extrasTitle,
+          groupType: group.extrasDetails.extrasType,
+          required: group.extrasDetails.required,
+          minSelection: group.extrasDetails.extrasDetails[0]?.minSelection,
+          maxSelection: group.extrasDetails.extrasDetails[0]?.maxSelection
+        }))
+      };
+      
+      console.log('📤 Sending to onConfirm (Multiple):', {
+        groupId,
         groupTitle: group.extrasDetails.extrasTitle,
-        groupType: group.extrasDetails.extrasType,
-        required: group.extrasDetails.required,
-        minSelection: group.extrasDetails.extrasDetails[0]?.minSelection,
-        maxSelection: group.extrasDetails.extrasDetails[0]?.maxSelection
-      }));
-      return acc;
-    }, {} as { [key: string]: Selection[] });
-
-    onConfirm(enrichedSelections);
+        selectedItems: enrichedSelections[groupId].map(item => ({
+          name: item.foodName,
+          id: item.id,
+          price: item.foodPrice
+        })),
+        totalItems: enrichedSelections[groupId].length
+      });
+      
+      onConfirm(enrichedSelections);
+    } else {
+      console.log('❌ No selections to send to onConfirm');
+    }
   };
 
   return (
