@@ -268,7 +268,22 @@ const StyledDateInput = styled('input')({
   MozAppearance: 'textfield',
 });
 
-const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced, branchId: initialBranchId }): ReactNode => {  const { t } = useTranslation();  const { addNotification } = useNotifications();
+const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced, branchId: initialBranchId }): ReactNode => {  
+  const { t } = useTranslation();  
+  const { addNotification } = useNotifications();
+
+  // Add Selection interface for ExtrasSelectionInline
+  interface Selection {
+    id: string;
+    foodName: string;
+    foodPrice: number;
+    foodDescription?: string;
+    groupTitle?: string;
+    groupType?: string;
+    required?: boolean;
+    minSelection?: number;
+    maxSelection?: number;
+  }
   const { userProfile, restaurantData } = useUserProfile();
   const { branches, isLoading: branchesLoading } = useBranches(userProfile?.restaurantId ?? null);
   const [selectedBranchId, setSelectedBranchId] = useState(initialBranchId || '');
@@ -588,6 +603,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       return sum + (Number(item.price) * Number(item.quantity));
     }, 0);
     setTotalFoodPrice(`${Math.round(total)}.00`);
+    
+
   }, [selectedItems]);
 
   // Function to handle next step
@@ -1774,17 +1791,68 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             </div>
             <ExtrasSelectionInline
               extras={selectedItemForExtrasDisplay.extras}
+              existingSelections={(() => {
+                // Get existing selections for this item from selectedItems
+                const existingItem = selectedItems.find(item => item.name === selectedItemForExtrasDisplay.name);
+                if (!existingItem || !existingItem.extras) return {};
+                
+                // Convert existing extras back to the format expected by ExtrasSelectionInline
+                const existingSelections: { [key: string]: Selection[] } = {};
+                existingItem.extras.forEach(extraGroup => {
+                  const groupId = extraGroup.delika_extras_table_id;
+                  existingSelections[groupId] = extraGroup.extrasDetails.extrasDetails.flatMap(detail => 
+                    detail.inventoryDetails.map(item => ({
+                      id: item.id,
+                      foodName: item.foodName,
+                      foodPrice: item.foodPrice,
+                      foodDescription: item.foodDescription || '',
+                      groupTitle: extraGroup.extrasDetails.extrasTitle,
+                      groupType: extraGroup.extrasDetails.extrasType,
+                      required: extraGroup.extrasDetails.required,
+                      minSelection: detail.minSelection,
+                      maxSelection: detail.maxSelection
+                    }))
+                  );
+                });
+                return existingSelections;
+              })()}
               onConfirm={(selectedExtras) => {
                 console.log('✅ Extras confirmed:', selectedExtras);
                 
                 // Calculate total price including extras
                 const extrasCost = Object.entries(selectedExtras).reduce((total, [groupId, selections]) => {
                   return total + selections.reduce((selectionTotal, selection) => {
-                    return selectionTotal + selection.foodPrice;
+                    return selectionTotal + Number(selection.foodPrice);
                   }, 0);
                 }, 0);
                 
-                console.log('🔄 Processing selectedExtras in parent:', selectedExtras);
+                // Log selected item and its price
+                console.log('🍽️ Selected Item:', {
+                  name: selectedItemForExtrasDisplay.name,
+                  basePrice: Number(selectedItemForExtrasDisplay.price)
+                });
+                
+                // Log selected extras and their prices
+                console.log('➕ Selected Extras:', {
+                  extras: Object.entries(selectedExtras).map(([groupId, selections]) => ({
+                    groupId,
+                    selections: selections.map(s => ({
+                      name: s.foodName,
+                      price: s.foodPrice
+                    }))
+                  })),
+                  totalExtrasCost: extrasCost
+                });
+                
+                // Log total for this item
+                console.log('💰 Total for Item:', {
+                  itemName: selectedItemForExtrasDisplay.name,
+                  basePrice: Number(selectedItemForExtrasDisplay.price),
+                  extrasCost: extrasCost,
+                  totalPrice: Number(selectedItemForExtrasDisplay.price) + Number(extrasCost)
+                });
+                
+
                 
                 // Transform the selected extras to match the SelectedItemExtra type
                 const formattedExtras: SelectedItemExtra[] = Object.entries(selectedExtras).map(([groupId, selections]) => {
@@ -1813,20 +1881,76 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                   };
                 }).filter(Boolean) as SelectedItemExtra[];
                 
-                console.log('✅ Final formattedExtras:', formattedExtras);
+
                 
                 // Update the existing item in selectedItems instead of adding a new one
                 setSelectedItems(prev => {
                   const existingItemIndex = prev.findIndex(item => item.name === selectedItemForExtrasDisplay.name);
                   
                   if (existingItemIndex !== -1) {
-                    // Update existing item with extras
+                    // Update existing item with extras - MERGE with existing selections
                     const updatedItems = [...prev];
+                    const existingItem = updatedItems[existingItemIndex];
+                    const existingExtras = existingItem.extras || [];
+                    
+
+                    
+                    // Merge new selections with existing ones
+                    const mergedExtras = [...existingExtras];
+                    
+                    // For each new extra group, either add it or update existing one
+                    formattedExtras.forEach(newExtra => {
+                      const existingExtraIndex = mergedExtras.findIndex(existing => 
+                        existing.delika_extras_table_id === newExtra.delika_extras_table_id
+                      );
+                      
+                      if (existingExtraIndex !== -1) {
+                        // Update existing extra group
+                        mergedExtras[existingExtraIndex] = newExtra;
+                      } else {
+                        // Add new extra group
+                        mergedExtras.push(newExtra);
+                      }
+                    });
+                    
+                    // Recalculate total price including all extras
+                    const totalExtrasCost = mergedExtras.reduce((total, group) => {
+                      return total + group.extrasDetails.extrasDetails.reduce((groupTotal, detail) => {
+                        return groupTotal + detail.inventoryDetails.reduce((selectionTotal, selection) => {
+                          return selectionTotal + Number(selection.foodPrice);
+                        }, 0);
+                      }, 0);
+                    }, 0);
+                    
+
+                    
                     updatedItems[existingItemIndex] = {
-                      ...updatedItems[existingItemIndex],
-                      price: Number(selectedItemForExtrasDisplay.price) + extrasCost,
-                      extras: formattedExtras
+                      ...existingItem,
+                      price: Number(selectedItemForExtrasDisplay.price) + totalExtrasCost,
+                      extras: mergedExtras
                     };
+                    
+                    // Log selected items section and total calculated price
+                    console.log('📋 Selected Items Section:', {
+                      allItems: updatedItems.map(item => ({
+                        name: item.name,
+                        price: item.price,
+                        quantity: item.quantity,
+                        subtotal: Number(item.price) * Number(item.quantity),
+                        hasExtras: item.extras && item.extras.length > 0,
+                        extras: item.extras ? item.extras.map(extra => ({
+                          groupTitle: extra.extrasDetails.extrasTitle,
+                          selections: extra.extrasDetails.extrasDetails.flatMap(detail => 
+                            detail.inventoryDetails.map(inv => ({
+                              name: inv.foodName,
+                              price: inv.foodPrice
+                            }))
+                          )
+                        })) : []
+                      })),
+                      totalCalculatedPrice: updatedItems.reduce((sum, item) => sum + (Number(item.price) * Number(item.quantity)), 0)
+                    });
+                    
                     return updatedItems;
                   } else {
                     // If item doesn't exist, add it (this shouldn't happen but just in case)

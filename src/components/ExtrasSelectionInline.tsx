@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
@@ -20,15 +20,22 @@ interface ExtrasSelectionInlineProps {
   extras: SelectedItemExtra[];
   onConfirm: (selectedExtras: { [key: string]: Selection[] }) => void;
   itemName: string;
+  existingSelections?: { [key: string]: Selection[] }; // Add this prop
 }
 
 const ExtrasSelectionInline: React.FC<ExtrasSelectionInlineProps> = ({
   extras,
   onConfirm,
-  itemName
+  itemName,
+  existingSelections = {} // Default to empty object
 }) => {
-  const [selectedExtras, setSelectedExtras] = useState<{ [key: string]: Selection[] }>({});
+  const [selectedExtras, setSelectedExtras] = useState<{ [key: string]: Selection[] }>(existingSelections);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  // Update selectedExtras when existingSelections prop changes
+  useEffect(() => {
+    setSelectedExtras(existingSelections);
+  }, [existingSelections]);
 
   const handleSingleSelection = (groupId: string, item: Selection) => {
     console.log('🎯 Single Selection - Selected Item:', {
