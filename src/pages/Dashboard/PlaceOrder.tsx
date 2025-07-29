@@ -73,15 +73,39 @@ class WebPrinterService {
 
   // Add methods for printer persistence
   static savePrinterConnection(device: any) {
+    console.log('💾 Saving printer connection...');
     if (device && device.name) {
       localStorage.setItem('lastConnectedPrinter', device.name);
+      localStorage.setItem('printerType', this.detectPrinterType(device.name));
+      console.log('✅ Printer connection saved:', device.name);
     }
   }
 
   static getLastConnectedPrinter() {
-    return localStorage.getItem('lastConnectedPrinter');
+    const printer = localStorage.getItem('lastConnectedPrinter');
+    console.log('📋 Retrieved last connected printer:', printer);
+    return printer;
   }
 
+  static getPrinterType() {
+    const type = localStorage.getItem('printerType') || 'tspl';
+    console.log('🔍 Retrieved printer type:', type);
+    return type;
+  }
+
+  // Detect printer type based on device name
+  static detectPrinterType(deviceName: string): 'tspl' | 'escpos' {
+    console.log('🔍 Detecting printer type for:', deviceName);
+    const name = deviceName.toLowerCase();
+    if (name.includes('mp583') || name.includes('58mm') || name.includes('esc') || name.includes('pos')) {
+      console.log('✅ Detected ESC/POS printer');
+      return 'escpos';
+    }
+    console.log('✅ Detected TSPL printer');
+    return 'tspl';
+  }
+
+  // Generate TSPL commands for TSPL printers
   static generateTSPL(receiptData: any) {
     const { orderNumber, customerName, paymentMethod, items, totalPrice } = receiptData;
     
@@ -121,30 +145,116 @@ class WebPrinterService {
     
     return tsplCommands;
   }
+
+  // Generate ESC/POS commands for MP583 and similar printers
+  static generateESCPOS(receiptData: any) {
+    const { orderNumber, customerName, paymentMethod, items, totalPrice } = receiptData;
+    
+    let escposCommands = '';
+    
+    // Initialize printer
+    escposCommands += '\x1B\x40'; // Initialize printer
+    escposCommands += '\x1B\x61\x01'; // Center alignment
+    
+    // Header
+    escposCommands += '\x1B\x21\x30'; // Double height, double width
+    escposCommands += `Order #${orderNumber}\n`;
+    escposCommands += '\x1B\x21\x00'; // Normal size
+    
+    escposCommands += '\x1B\x61\x00'; // Left alignment
+    escposCommands += `Customer: ${customerName}\n`;
+    escposCommands += `Payment: ${paymentMethod}\n`;
+    escposCommands += `Date: ${new Date().toLocaleString()}\n`;
+    
+    // Separator line
+    escposCommands += '--------------------------------\n';
+    
+    // Items
+    items.forEach((item: any) => {
+      const itemName = item.name.length > 20 ? item.name.substring(0, 17) + '...' : item.name;
+      const quantity = item.quantity;
+      const price = (item.price * quantity).toFixed(2);
+      
+      escposCommands += `${itemName}\n`;
+      escposCommands += `  ${quantity}x @ GHC${item.price} = GHC${price}\n`;
+    });
+    
+    // Separator line
+    escposCommands += '--------------------------------\n';
+    
+    // Total
+    escposCommands += '\x1B\x21\x10'; // Bold
+    escposCommands += `TOTAL: GHC${totalPrice}\n`;
+    escposCommands += '\x1B\x21\x00'; // Normal
+    
+    // Footer
+    escposCommands += '\x1B\x61\x01'; // Center alignment
+    escposCommands += 'Thank you!\n';
+    escposCommands += '\n\n\n'; // Feed paper
+    
+    return escposCommands;
+  }
   
   static async sendRawBytesInChunks(characteristic: any, data: string, chunkSize = 20) {
+    console.log('📤 sendRawBytesInChunks called');
+    console.log('📊 Data length:', data.length, 'bytes');
+    console.log('📦 Chunk size:', chunkSize, 'bytes');
+    
     const encoder = new TextEncoder();
     const rawBytes = encoder.encode(data);
+    console.log('🔢 Encoded bytes length:', rawBytes.length);
+    
+    const totalChunks = Math.ceil(rawBytes.length / chunkSize);
+    console.log('📦 Total chunks to send:', totalChunks);
     
     for (let i = 0; i < rawBytes.length; i += chunkSize) {
       const chunk = rawBytes.slice(i, i + chunkSize);
+      const chunkNumber = Math.floor(i / chunkSize) + 1;
+      
+      console.log(`📤 Sending chunk ${chunkNumber}/${totalChunks} (${chunk.length} bytes)`);
       
       try {
         await characteristic.writeValueWithoutResponse(chunk.buffer);
+        console.log(`✅ Chunk ${chunkNumber} sent without response`);
         await new Promise(resolve => setTimeout(resolve, 100));
       } catch (error) {
+        console.log(`⚠️ Chunk ${chunkNumber} failed without response, trying with response...`);
         await characteristic.writeValueWithResponse(chunk.buffer);
+        console.log(`✅ Chunk ${chunkNumber} sent with response`);
         await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
+    
+    console.log('✅ All chunks sent successfully');
   }
   
   static async printReceipt(characteristic: any, receiptData: any) {
+    console.log('🖨️ WebPrinterService.printReceipt called');
+    console.log('📄 Receipt data received:', receiptData);
+    
     try {
-      const tsplCommands = this.generateTSPL(receiptData);
-      await this.sendRawBytesInChunks(characteristic, tsplCommands, 20);
+      const printerType = this.getPrinterType();
+      console.log('🔍 Using printer type:', printerType);
+      
+      let commands;
+      
+      if (printerType === 'escpos') {
+        console.log('📝 Generating ESC/POS commands...');
+        commands = this.generateESCPOS(receiptData);
+        console.log('✅ ESC/POS commands generated, length:', commands.length);
+      } else {
+        console.log('📝 Generating TSPL commands...');
+        commands = this.generateTSPL(receiptData);
+        console.log('✅ TSPL commands generated, length:', commands.length);
+      }
+      
+      console.log('📤 Sending commands to printer...');
+      await this.sendRawBytesInChunks(characteristic, commands, 20);
+      console.log('✅ Commands sent successfully');
+      
       return true;
     } catch (error) {
+      console.log('❌ Print receipt error in WebPrinterService:', error);
       throw error;
     }
   }
@@ -154,6 +264,7 @@ interface PlaceOrderProps {
   onClose: () => void;
   onOrderPlaced: () => void;
   branchId: string;
+  showPlaceOrder?: boolean;
 }
 
 // Update the OrderPayload interface to match the API's expected structure
@@ -268,7 +379,7 @@ const StyledDateInput = styled('input')({
   MozAppearance: 'textfield',
 });
 
-const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced, branchId: initialBranchId }): ReactNode => {  
+const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced, branchId: initialBranchId, showPlaceOrder }): ReactNode => {  
   const { t } = useTranslation();  
   const { addNotification } = useNotifications();
 
@@ -484,7 +595,10 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
   // Modify the connectToPrinter function to use persistence
   const connectToPrinter = async () => {
+    console.log('🖨️ Starting printer connection process...');
+    
     if (!checkWebBluetoothSupport()) {
+      console.log('❌ Web Bluetooth not supported');
       addNotification({
         type: 'order_status',
         message: 'Web Bluetooth is not supported in this browser'
@@ -493,53 +607,121 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     }
 
     try {
+      console.log('🔄 Setting connection status to connecting...');
       setPrinterConnectionStatus('connecting');
       
       // Get last connected printer name
       const lastPrinterName = WebPrinterService.getLastConnectedPrinter();
+      console.log('📋 Last connected printer:', lastPrinterName || 'None');
       
+      console.log('🔍 Requesting Bluetooth device...');
       const device = await navigator.bluetooth.requestDevice({
         filters: [
           ...(lastPrinterName ? [{ name: lastPrinterName }] : []),
+          { namePrefix: 'MP583' },
+          { namePrefix: 'MP-583' },
+          { namePrefix: '58MM' },
+          { namePrefix: '58mm' },
+          { namePrefix: 'Thermal' },
+          { namePrefix: 'Printer' },
           { namePrefix: 'DL' },
           { namePrefix: 'Deli' },
-          { namePrefix: 'Thermal' },
-          { namePrefix: 'Printer' }
+          { namePrefix: 'ESC' },
+          { namePrefix: 'POS' }
         ],
-        optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', '49535343-fe7d-4ae5-8fa9-9fafd205e455']
+        optionalServices: [
+          '000018f0-0000-1000-8000-00805f9b34fb', 
+          '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+          '0000180f-0000-1000-8000-00805f9b34fb', // Generic Access
+          '0000180a-0000-1000-8000-00805f9b34fb'  // Device Information
+        ]
       });
-    
+      
+      console.log('✅ Device selected:', device.name);
+      console.log('🔗 Connecting to GATT server...');
       const server = await device.gatt!.connect();
+      console.log('✅ GATT server connected');
       
       let service;
-      try {
-        service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
-      } catch {
-        service = await server.getPrimaryService('49535343-fe7d-4ae5-8fa9-9fafd205e455');
-      }
-      
       let characteristic;
-      try {
-        characteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
-      } catch {
-        characteristic = await service.getCharacteristic('49535343-8841-43f4-a8d4-ecbe34729bb3');
+      
+      // Try different service UUIDs for different printer types
+      const serviceUUIDs = [
+        '000018f0-0000-1000-8000-00805f9b34fb',
+        '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+        '0000180f-0000-1000-8000-00805f9b34fb',
+        '0000180a-0000-1000-8000-00805f9b34fb'
+      ];
+      
+      console.log('🔍 Searching for compatible service...');
+      for (const serviceUUID of serviceUUIDs) {
+        try {
+          console.log(`  Trying service UUID: ${serviceUUID}`);
+          service = await server.getPrimaryService(serviceUUID);
+          console.log(`✅ Found service: ${serviceUUID}`);
+          break;
+        } catch (error) {
+          console.log(`❌ Service not found: ${serviceUUID}`);
+          continue;
+        }
       }
       
+      if (!service) {
+        console.log('❌ No compatible printer service found');
+        throw new Error('No compatible printer service found');
+      }
+      
+      // Try different characteristic UUIDs
+      const characteristicUUIDs = [
+        '00002af1-0000-1000-8000-00805f9b34fb',
+        '49535343-8841-43f4-a8d4-ecbe34729bb3',
+        '00002a19-0000-1000-8000-00805f9b34fb'
+      ];
+      
+      console.log('🔍 Searching for compatible characteristic...');
+      for (const characteristicUUID of characteristicUUIDs) {
+        try {
+          console.log(`  Trying characteristic UUID: ${characteristicUUID}`);
+          characteristic = await service.getCharacteristic(characteristicUUID);
+          console.log(`✅ Found characteristic: ${characteristicUUID}`);
+          break;
+        } catch (error) {
+          console.log(`❌ Characteristic not found: ${characteristicUUID}`);
+          continue;
+        }
+      }
+      
+      if (!characteristic) {
+        console.log('❌ No compatible printer characteristic found');
+        throw new Error('No compatible printer characteristic found');
+      }
+      
+      console.log('💾 Storing connection details...');
       // Store connection
       setConnectedDevice({ name: device.name || 'Unknown Device', gatt: server });
       setPrintCharacteristic(characteristic);
       setPrinterConnectionStatus('connected');
       setShowPrinterModal(false);
       
-      // Save printer connection
+      // Save printer connection and detect type
+      const printerType = WebPrinterService.detectPrinterType(device.name || '');
+      console.log('🔍 Detected printer type:', printerType);
       WebPrinterService.savePrinterConnection(device);
+      
+      console.log('✅ Printer connection successful!');
+      console.log('📊 Connection Summary:');
+      console.log('  - Device Name:', device.name);
+      console.log('  - Printer Type:', printerType);
+      console.log('  - Service UUID:', service.uuid);
+      console.log('  - Characteristic UUID:', characteristic.uuid);
       
       addNotification({
         type: 'order_created',
-        message: `Connected to printer: ${device.name}`
+        message: `Connected to ${device.name} (${printerType.toUpperCase()} printer)`
       });
       
     } catch (error) {
+      console.log('❌ Printer connection failed:', error);
       setPrinterConnectionStatus('error');
       addNotification({
         type: 'order_status',
@@ -549,41 +731,90 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   };
 
   const disconnectPrinter = () => {
-    if (connectedDevice && connectedDevice.gatt) {
+    console.log('🔄 Disconnecting printer...');
+    
+    if (connectedDevice?.gatt) {
+      console.log('🔗 Disconnecting from GATT server...');
       connectedDevice.gatt.disconnect();
+      console.log('✅ GATT server disconnected');
     }
     
+    console.log('🧹 Clearing connection state...');
     setConnectedDevice(null);
     setPrintCharacteristic(null);
     setPrinterConnectionStatus('disconnected');
+    
+    console.log('✅ Printer disconnected successfully');
     addNotification({
       type: 'order_status',
-      message: 'Disconnected from printer'
+      message: 'Printer disconnected'
     });
   };
 
   const printReceipt = async (orderData: any) => {
+    console.log('🖨️ Starting print receipt process...');
+    console.log('📄 Receipt data:', orderData);
+    
     if (!printCharacteristic) {
+      console.log('❌ No printer characteristic available');
       addNotification({
         type: 'order_status',
-        message: 'Please connect to a printer first'
+        message: 'Printer not connected'
       });
       return;
     }
 
     try {
-      await WebPrinterService.printReceipt(printCharacteristic, orderData);
+      console.log('🔍 Getting printer type...');
+      const printerType = WebPrinterService.getPrinterType();
+      console.log('📋 Printer type:', printerType);
+      
+      console.log('📝 Generating receipt commands...');
+      const success = await WebPrinterService.printReceipt(printCharacteristic, orderData);
+      
+      if (success) {
+        console.log('✅ Receipt printed successfully!');
       addNotification({
         type: 'order_created',
-        message: 'Receipt printed successfully!'
+          message: 'Receipt printed successfully'
       });
-    } catch (error) {   
+      } else {
+        console.log('❌ Receipt printing failed');
       addNotification({
         type: 'order_status',
         message: 'Failed to print receipt'
+        });
+      }
+    } catch (error) {
+      console.log('❌ Print receipt error:', error);
+      addNotification({
+        type: 'order_status',
+        message: 'Error printing receipt'
       });
     }
   };
+
+  // Expose printReceipt function globally for testing
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).testPrintReceipt = printReceipt;
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined') {
+        delete (window as any).testPrintReceipt;
+      }
+    };
+  }, [printCharacteristic]);
+
+  // Add automatic printer connection when modal opens for walk-in orders only
+  useEffect(() => {
+    if (deliveryMethod === 'walk-in' && checkWebBluetoothSupport() && !connectedDevice) {
+      console.log('🔄 Auto-connecting to printer for walk-in order...');
+      // Auto-connect to printer when walk-in modal opens
+      connectToPrinter();
+    }
+  }, [deliveryMethod, connectedDevice]);
 
   // Add this handler function
   const handleQuantityChange = (itemName: string, newQuantity: string) => {
@@ -780,6 +1011,15 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
   // Update the handlePlaceOrder function to format extras correctly
   const handlePlaceOrder = async (paymentType: 'cash' | 'momo' | 'visa') => {
+    console.log('🛒 Starting order placement process...');
+    console.log('📋 Order details:', {
+      deliveryMethod,
+      paymentType,
+      customerName,
+      selectedItems: selectedItems.length,
+      totalPrice: calculateTotal()
+    });
+    
     setIsSubmitting(true);
 
     try {
@@ -910,8 +1150,11 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         throw new Error(t('orders.error.failedToPlaceOrder'));
       }
 
+      console.log('✅ Order placed successfully via API');
+
       // If this is a batch delivery, add the order to batchedOrders and show the modal
       if (deliveryMethod === 'batch-delivery') {
+        console.log('📦 Processing batch delivery order...');
         const orderData = {
           customerName,
           customerPhoneNumber: customerPhone,
@@ -936,6 +1179,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           message: t('orders.success.batchOrderAdded')
         });
       } else if (deliveryMethod === 'walk-in') {
+        console.log('🏪 Processing walk-in order...');
         // For walk-in orders, handle printing
         const orderData = {
           orderNumber: `#${Date.now().toString().slice(-6)}`,
@@ -949,13 +1193,27 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           totalPrice: calculateTotal()
         };
 
-        // Show printer connection modal on first use
-        if (!hasShownPrinterModal && checkWebBluetoothSupport()) {
+        console.log('🖨️ Walk-in order data for printing:', orderData);
+        console.log('🔗 Printer characteristic available:', !!printCharacteristic);
+        console.log('📱 Web Bluetooth supported:', checkWebBluetoothSupport());
+        console.log('👁️ Has shown printer modal:', hasShownPrinterModal);
+
+        // Use the same reliable printing logic as test print
+        if (printCharacteristic) {
+          console.log('🖨️ Printing receipt for walk-in order...');
+          try {
+            // Call the same printReceipt function that works in test
+            await printReceipt(orderData);
+            console.log('✅ Receipt printed successfully for walk-in order');
+          } catch (error) {
+            console.log('❌ Failed to print receipt for walk-in order:', error);
+          }
+        } else if (!hasShownPrinterModal && checkWebBluetoothSupport()) {
+          console.log('📱 Showing printer connection modal for first time...');
           setShowPrinterModal(true);
           setHasShownPrinterModal(true);
-        } else if (printCharacteristic) {
-          // Print receipt if already connected
-          await printReceipt(orderData);
+        } else {
+          console.log('⚠️ No printer characteristic available for walk-in order');
         }
 
         // Close modal and show success
@@ -965,6 +1223,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           message: t('orders.success.orderPlaced')
         });
       } else {
+        console.log('🚚 Processing regular delivery order...');
         // For non-batch orders, close the modal and show success
         onOrderPlaced();
         addNotification({
@@ -974,6 +1233,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       }
 
     } catch (error) {
+      console.log('❌ Order placement failed:', error);
       addNotification({
         type: 'order_status',
         message: error instanceof Error ? error.message : t('orders.error.failedToPlaceOrder')
@@ -1490,14 +1750,14 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
   const handleAddItem = (item: MenuItemData) => {
     // Always add the item immediately, regardless of extras
-    const newItem: SelectedItem = {
-      name: item.name,
-      quantity: 1,
-      price: Number(item.price),
-      image: item.foodImage?.url || '',
-      extras: []
-    };
-    setSelectedItems(prev => [...prev, newItem]);
+      const newItem: SelectedItem = {
+        name: item.name,
+        quantity: 1,
+        price: Number(item.price),
+        image: item.foodImage?.url || '',
+        extras: []
+      };
+      setSelectedItems(prev => [...prev, newItem]);
     
     // If item has extras, also set it for extras selection
     if (item.extras && item.extras.length > 0) {
@@ -1538,9 +1798,9 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       selections.forEach(selection => {
         const extraItem: SelectedItem = {
           name: `${selectedItemForExtrasDisplay.name} - ${selection.foodName}`,
-          quantity: 1,
+      quantity: 1,
           price: Number(selection.foodPrice),
-          image: selectedItemForExtrasDisplay.foodImage?.url || '',
+      image: selectedItemForExtrasDisplay.foodImage?.url || '',
           extras: []
         };
         setSelectedItems(prev => [...prev, extraItem]);
@@ -1670,30 +1930,30 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                   // Sort items by name in ascending order
                   const sortedItems = [...categoryItems].sort((a, b) => a.name.localeCompare(b.name));
                   const cards = sortedItems.map((item) => {
-                    const isSelected = selectedItems.some(selected => selected.name === item.name);
-                    return (
-                      <Card
+                     const isSelected = selectedItems.some(selected => selected.name === item.name);
+                     return (
+                       <Card
                         key={item.name}
                         className={`cursor-pointer w-[220px] relative ${!item.available ? 'grayscale opacity-60' : ''} ${isSelected ? 'border-2 border-[#fd683e]' : ''}`}
-                        onClick={() => {
-                          if (item.available) {
-                            if (isSelected) {
-                              setSelectedItems(prev => prev.filter(i => i.name !== item.name));
-                              setSelectedItemForExtrasDisplay(null);
-                            } else {
+                         onClick={() => {
+                           if (item.available) {
+                             if (isSelected) {
+                               setSelectedItems(prev => prev.filter(i => i.name !== item.name));
+                               setSelectedItemForExtrasDisplay(null);
+                             } else {
                               // Always use handleAddItem to add the item immediately
                               handleAddItem(item);
                             }
-                          }
-                        }}
-                      >
-                        {isSelected && (
-                          <div className="absolute top-1.5 right-1.5 bg-[#fd683e] rounded-full p-0.5">
-                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                          </div>
-                        )}
+                           }
+                         }}
+                                             >
+                         {isSelected && (
+                           <div className="absolute top-1.5 right-1.5 bg-[#fd683e] rounded-full p-0.5">
+                             <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                             </svg>
+                           </div>
+                         )}
                         <CardContent className="p-3">
                           <div className="flex items-center gap-2">
                             {/* Product Image */}
@@ -1911,6 +2171,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   const renderPrinterModal = () => {
     if (!showPrinterModal) return null;
 
+    const currentPrinterType = WebPrinterService.getPrinterType();
+
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
@@ -1935,7 +2197,12 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 : 'bg-gray-100 text-gray-800'
             }`}>
               {printerConnectionStatus === 'connected' && connectedDevice && (
+                <div>
                 <span>✅ Connected to {connectedDevice.name}</span>
+                  <div className="text-sm mt-1">
+                    Type: {currentPrinterType.toUpperCase()} Printer
+                  </div>
+                </div>
               )}
               {printerConnectionStatus === 'connecting' && (
                 <span>🔄 Connecting to printer...</span>
@@ -1948,9 +2215,19 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               )}
             </div>
             
-            <p className="text-sm text-gray-600 mb-4">
+            <div className="mb-4">
+              <p className="text-sm text-gray-600 mb-2">
               Connect to a thermal printer to automatically print receipts for walk-in orders.
             </p>
+              <div className="text-xs text-gray-500 bg-gray-50 p-2 rounded">
+                <strong>Supported Printers:</strong>
+                <ul className="mt-1 space-y-1">
+                  <li>• TSPL Printers (DL, Deli, etc.)</li>
+                  <li>• ESC/POS Printers (MP583, 58mm, etc.)</li>
+                  <li>• Generic Thermal Receipt Printers</li>
+                </ul>
+              </div>
+            </div>
           </div>
 
           <div className="flex gap-3">
@@ -1985,6 +2262,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
 
           <div className="mt-4 text-xs text-gray-500">
             <p><strong>Supported browsers:</strong> Chrome 56+, Edge 79+, Opera 43+</p>
+            <p className="mt-1"><strong>Note:</strong> Printer type is automatically detected based on device name.</p>
           </div>
         </div>
       </div>

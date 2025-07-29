@@ -271,37 +271,37 @@ const WalkInContent: React.FC<WalkInContentProps> = ({
                   <div key={baseName} className="mb-4 w-full">
                     {/* Main Item */}
                     {items.filter(item => !item.name.includes(' - ')).map((item, index) => (
-                      <div 
-                        key={`${item.name}-${index}`}
+              <div 
+                key={`${item.name}-${index}`}
                         className="w-full shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-col items-start justify-between p-[1px]"
+              >
+                <div className="w-full flex items-center">
+                  <div className="w-[61px] rounded-[6px] bg-[#f6f6f6] box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[20px] gap-[7px]">
+                    <div className="flex flex-row items-center gap-1">
+                      <button 
+                        onClick={() => updateQuantity(item.name, item.quantity - 1)}
+                        disabled={item.quantity <= 1}
+                        className={`w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center 
+                                 ${item.quantity <= 1 ? 'text-gray-400 cursor-not-allowed' : 'text-black cursor-pointer'} 
+                                 font-sans`}
                       >
-                        <div className="w-full flex items-center">
-                          <div className="w-[61px] rounded-[6px] bg-[#f6f6f6] box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[20px] gap-[7px]">
-                            <div className="flex flex-row items-center gap-1">
-                              <button 
-                                onClick={() => updateQuantity(item.name, item.quantity - 1)}
-                                disabled={item.quantity <= 1}
-                                className={`w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center 
-                                     ${item.quantity <= 1 ? 'text-gray-400 cursor-not-allowed' : 'text-black cursor-pointer'} 
-                                     font-sans`}
-                              >
-                                -
-                              </button>
-                              <div className="w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center text-black font-sans">
-                                {item.quantity}
-                              </div>
-                              <button 
-                                onClick={() => updateQuantity(item.name, item.quantity + 1)}
+                        -
+                      </button>
+                      <div className="w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center text-black font-sans">
+                        {item.quantity}
+                      </div>
+                      <button 
+                        onClick={() => updateQuantity(item.name, item.quantity + 1)}
                                 className="w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center text-black cursor-pointer font-sans"
-                              >
-                                +
-                              </button>
-                            </div>
-                          </div>
-                          <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-between py-[15px] px-[20px] text-[#858a89]">
-                            <div className="flex flex-col">
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-between py-[15px] px-[20px] text-[#858a89]">
+                    <div className="flex flex-col">
                               <div className="relative leading-[20px] text-black font-sans font-medium">{item.name}</div>
-                            </div>
+                                  </div>
                             <div className="flex items-center gap-3">
                               <div className="relative leading-[20px] text-black font-sans">{item.price * item.quantity} GHS</div>
                               <RiDeleteBinLine 
@@ -348,18 +348,18 @@ const WalkInContent: React.FC<WalkInContentProps> = ({
                               <div className="relative leading-[20px] text-gray-600 font-sans">
                                 <span className="text-xs text-gray-400">•</span> {item.name.split(' - ')[1]}
                               </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <div className="relative leading-[20px] text-black font-sans">{item.price * item.quantity} GHS</div>
-                              <RiDeleteBinLine 
-                                className="cursor-pointer text-red-500 hover:text-red-600" 
-                                onClick={() => removeItem(item.name)}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="relative leading-[20px] text-black font-sans">{item.price * item.quantity} GHS</div>
+                      <RiDeleteBinLine 
+                        className="cursor-pointer text-red-500 hover:text-red-600" 
+                        onClick={() => removeItem(item.name)}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
                   </div>
                 ));
               })()}
@@ -414,12 +414,39 @@ const WalkInContent: React.FC<WalkInContentProps> = ({
                  'Not connected'}
               </span>
             </div>
+            <div className="flex items-center gap-2">
+              {printerConnectionStatus === 'connected' && (
+                <button
+                  onClick={() => {
+                    const testReceiptData = {
+                      orderNumber: `#${Date.now().toString().slice(-6)}`,
+                      customerName: 'Test Customer',
+                      paymentMethod: 'CASH',
+                      items: [
+                        { name: 'Test Item 1', quantity: 2, price: 5.00 },
+                        { name: 'Test Item 2', quantity: 1, price: 3.50 },
+                        { name: 'Test Item with Long Name', quantity: 1, price: 8.75 }
+                      ],
+                      totalPrice: '22.25'
+                    };
+                    console.log('🧪 Testing printer with data:', testReceiptData);
+                    // Call the printReceipt function from PlaceOrder
+                    if (typeof window !== 'undefined' && (window as any).testPrintReceipt) {
+                      (window as any).testPrintReceipt(testReceiptData);
+                    }
+                  }}
+                  className="text-sm text-green-600 hover:text-green-800 bg-green-100 hover:bg-green-200 px-3 py-1 rounded-md font-medium"
+                >
+                  🧪 Test Print
+                </button>
+              )}
             <button
               onClick={() => setShowPrinterModal(true)}
               className="text-sm text-blue-600 hover:text-blue-800"
             >
               {printerConnectionStatus === 'connected' ? 'Change printer' : 'Connect printer'}
             </button>
+            </div>
           </div>
 
           {/* Payment Buttons */}
