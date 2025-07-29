@@ -3,21 +3,24 @@
   "builds": [
     {
       "src": "package.json",
-      "use": "@vercel/node"
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
     },
     {
       "src": "api/**/*.js",
       "use": "@vercel/node"
     }
   ],
-  "rewrites": [
+  "routes": [
     {
-      "source": "/api/:path*",
-      "destination": "/api/[...path].js"
+      "src": "/api/(.*)",
+      "dest": "/api/[...path].js"
     },
     {
-      "source": "/:path*",
-      "destination": "/"
+      "src": "/((?!api/).*)",
+      "dest": "/index.html"
     }
   ],
   "headers": [
@@ -31,4 +34,4 @@
       ]
     }
   ]
-}
+} 
