@@ -7,17 +7,22 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || import.meta.env.API_BA
 const PROXY_URL = '/api'; // Simplified proxy URL
 const IS_PRODUCTION = import.meta.env.PROD || import.meta.env.ENV === 'production';
 
-// Remove hardcoded token and use environment variable
-if (!import.meta.env.VITE_XANO_AUTH_TOKEN) {
-  throw new Error('VITE_XANO_AUTH_TOKEN is not defined in environment variables');
-}
+// Get auth token with fallback
+const getAuthToken = () => {
+  const token = import.meta.env.VITE_XANO_AUTH_TOKEN;
+  if (!token) {
+    console.warn('VITE_XANO_AUTH_TOKEN is not defined in environment variables');
+    return ''; // Return empty string instead of throwing error
+  }
+  return token;
+};
 
 // Create API instance with simplified configuration
 const api = axios.create({
   baseURL: IS_PRODUCTION ? API_BASE_URL : PROXY_URL,
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+    'Authorization': getAuthToken()
   }
 });
 
@@ -26,7 +31,7 @@ const directApi = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
-    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+    'Authorization': getAuthToken()
   }
 });
 
@@ -43,9 +48,10 @@ const safebtoa = (str: string) => {
 };
 
 // Add token helper
-const getAuthToken = () => {
-  return `${import.meta.env.VITE_XANO_AUTH_TOKEN}`;
-};
+// Remove this duplicate function - using the one defined above
+// const getAuthToken = () => {
+//   return `${import.meta.env.VITE_XANO_AUTH_TOKEN}`;
+// };
 
 // Add request interceptor for auth
 api.interceptors.request.use((config) => {
@@ -53,7 +59,7 @@ api.interceptors.request.use((config) => {
     const apiKey = import.meta.env.API_KEY || 'api:uEBBwbSs';
     config.headers['Authorization'] = `Basic ${safebtoa(apiKey)}`;
   } else {
-    config.headers['Authorization'] = `${import.meta.env.VITE_XANO_AUTH_TOKEN}`;
+    config.headers['Authorization'] = getAuthToken();
   }
   return config;
 });
