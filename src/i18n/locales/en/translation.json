@@ -99,6 +99,15 @@
     "newOrderReceived": "New Order Received!",
     "noOrderDetails": "No order details available",
     "addMenuItem": "Add Menu Item",
+    "success": {
+      "orderPlaced": "Order placed successfully!",
+      "batchOrderAdded": "Order added to batch successfully!",
+      "batchCompleted": "Batch completed successfully!"
+    },
+    "error": {
+      "failedToPlaceOrder": "Failed to place order",
+      "noRiderSelected": "Please select a rider"
+    },
     "detail": {
       "customerInfo": "Customer Info",
       "courierInfo": "Courier Info",
