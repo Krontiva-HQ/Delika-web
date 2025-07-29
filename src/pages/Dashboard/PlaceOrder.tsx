@@ -264,6 +264,7 @@ interface PlaceOrderProps {
   onClose: () => void;
   onOrderPlaced: () => void;
   branchId: string;
+  showPlaceOrder?: boolean;
 }
 
 // Update the OrderPayload interface to match the API's expected structure
@@ -378,7 +379,7 @@ const StyledDateInput = styled('input')({
   MozAppearance: 'textfield',
 });
 
-const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced, branchId: initialBranchId }): ReactNode => {  
+const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced, branchId: initialBranchId, showPlaceOrder }): ReactNode => {  
   const { t } = useTranslation();  
   const { addNotification } = useNotifications();
 
@@ -773,15 +774,15 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       
       if (success) {
         console.log('✅ Receipt printed successfully!');
-        addNotification({
-          type: 'order_created',
+      addNotification({
+        type: 'order_created',
           message: 'Receipt printed successfully'
-        });
+      });
       } else {
         console.log('❌ Receipt printing failed');
-        addNotification({
-          type: 'order_status',
-          message: 'Failed to print receipt'
+      addNotification({
+        type: 'order_status',
+        message: 'Failed to print receipt'
         });
       }
     } catch (error) {
@@ -805,6 +806,15 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       }
     };
   }, [printCharacteristic]);
+
+  // Add automatic printer connection when modal opens for walk-in orders only
+  useEffect(() => {
+    if (deliveryMethod === 'walk-in' && checkWebBluetoothSupport() && !connectedDevice) {
+      console.log('🔄 Auto-connecting to printer for walk-in order...');
+      // Auto-connect to printer when walk-in modal opens
+      connectToPrinter();
+    }
+  }, [deliveryMethod, connectedDevice]);
 
   // Add this handler function
   const handleQuantityChange = (itemName: string, newQuantity: string) => {

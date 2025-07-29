@@ -42,6 +42,7 @@ const ExtrasSelectionInline: React.FC<ExtrasSelectionInlineProps> = ({
 
   const handleSingleSelection = (groupId: string, item: Selection) => {
     const newSelectedExtras = {
+      ...selectedExtras, // Preserve existing selections from other groups
       [groupId]: [item]
     };
     
@@ -62,6 +63,7 @@ const ExtrasSelectionInline: React.FC<ExtrasSelectionInlineProps> = ({
         return;
       }
       const enrichedSelections = {
+        ...selectedExtras, // Preserve existing selections from other groups
         [groupId]: [{
           ...item,
           groupTitle: group.extrasDetails.extrasTitle,
@@ -91,6 +93,7 @@ const ExtrasSelectionInline: React.FC<ExtrasSelectionInlineProps> = ({
     }
     
     const newSelectedExtras = {
+      ...selectedExtras, // Preserve existing selections from other groups
       [groupId]: updatedSelections
     };
     
@@ -111,6 +114,7 @@ const ExtrasSelectionInline: React.FC<ExtrasSelectionInlineProps> = ({
     }
     
     const enrichedSelections = {
+      ...selectedExtras, // Preserve existing selections from other groups
       [groupId]: updatedSelections.map(selection => ({
         ...selection,
         groupTitle: group.extrasDetails.extrasTitle,
