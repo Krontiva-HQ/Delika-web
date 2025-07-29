@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '../services/api';
 import { useUserProfile } from './useUserProfile';
+import { SelectedItem } from '../types/order';
 
 interface MenuItem {
   name: string;
@@ -35,13 +36,7 @@ interface MenuItem {
   }>;
 }
 
-interface SelectedItem {
-  name: string;
-  quantity: number;
-  price: number;
-  image: string;
-  imageFile?: File;
-}
+
 
 interface Category {
   foodType: string;
@@ -152,7 +147,8 @@ export const usePlaceOrderItems = (selectedBranchId?: string): PlaceOrderItemsHo
           quantity: 1, 
           price: parseFloat(item.price as string),
           image: item.foodImage?.url || '',
-          imageFile
+          imageFile,
+          extras: []
         }];
       });
     } catch (error) {
