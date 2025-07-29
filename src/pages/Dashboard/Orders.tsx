@@ -30,7 +30,7 @@ interface Order {
   id: string;
   customerName: string;
   customerPhoneNumber: string;
-  orderNumber: number;
+  orderNumber: string;
   deliveryDistance: string;
   orderPrice: string;
   trackingUrl: string;
@@ -59,7 +59,7 @@ interface Order {
   paymentStatus: string;
   orderComment?: string;
   orderReceivedTime: string;
-  Walkin?: boolean;
+  Walkin: boolean;
   payLater: boolean;
   payNow: boolean;
   payVisaCard: boolean;
@@ -830,8 +830,9 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     setShowPlaceOrder(true);
   };
 
-  const handleOrderClick = (orderNumber: number) => {
-    setSelectedOrderId(orderNumber.toString());
+  const handleOrderClick = (orderNumber: string) => {
+    setSelectedOrderId(orderNumber);
+    onOrderDetailsView(true);
   };
 
   const handleBackToOrders = () => {

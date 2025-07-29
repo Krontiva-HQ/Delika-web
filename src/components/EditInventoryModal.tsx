@@ -20,8 +20,8 @@ interface InventoryDetail {
 
 interface ExtraDetail {
   delika_inventory_table_id: string;
-  minSelection: number;
-  maxSelection: number;
+  minSelection?: number;
+  maxSelection?: number;
   inventoryDetails: InventoryDetail[];
 }
 

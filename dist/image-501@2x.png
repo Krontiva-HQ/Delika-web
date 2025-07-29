@@ -1,0 +1,434 @@
+import { FunctionComponent, useState, useCallback } from "react";
+import { Button, Menu, MenuItem } from "@mui/material";
+
+const Inventory: FunctionComponent = () => {
+  const [userProfileAnchorEl, setUserProfileAnchorEl] =
+    useState<HTMLElement | null>(null);
+  const userProfileOpen = Boolean(userProfileAnchorEl);
+  const handleUserProfileClick = (event: React.MouseEvent<HTMLElement>) => {
+    setUserProfileAnchorEl(event.currentTarget);
+  };
+  const handleUserProfileClose = () => {
+    setUserProfileAnchorEl(null);
+  };
+
+  const onMyOrdersContainerClick = useCallback(() => {
+    // Please sync "Orders" to the project
+  }, []);
+
+  const onMenuItemsContainerClick = useCallback(() => {
+    const anchor = document.querySelector("[data-scroll-to='itemsText']");
+    if (anchor) {
+      anchor.scrollIntoView({ block: "start", behavior: "smooth" });
+    }
+  }, []);
+
+  const onTransactionsContainerClick = useCallback(() => {
+    // Please sync "Transactions - Active" to the project
+  }, []);
+
+  const onReportsContainerClick = useCallback(() => {
+    // Please sync "Report" to the project
+  }, []);
+
+  const onAddItemButtonClick = useCallback(() => {
+    // Please sync "Inventory" to the project
+  }, []);
+
+  return (
+    <div className="w-full relative shadow-[0px_3px_6px_rgba(18,_15,_40,_0.12)] bg-[#fff] overflow-hidden flex flex-row items-start justify-start text-center text-[40px] text-[#fe5b18] font-[Inter]">
+      <div className="w-[280px] bg-[#fff] border-[rgba(167,161,158,0.2)] border-r-[1px] border-solid box-border h-[1088px] flex flex-col items-start justify-start py-[6px] px-[14px] relative gap-[18px]">
+        <div className="w-[208px] h-[86px] flex flex-row items-center justify-center gap-[18px] z-[0]">
+          <img
+            className="w-[33.8px] relative rounded-[2.5px] h-[41.1px] object-contain"
+            alt=""
+            src="/vector1@2x.png"
+          />
+          <h1 className="m-[0px] relative text-inherit tracking-[-0.28px] font-bold font-[inherit]">
+            Delika
+          </h1>
+        </div>
+        <div className="flex flex-col items-start justify-start gap-[10px] z-[1] text-left text-[16px] text-[#201a18]">
+          <div className="w-[220px] rounded-tl-[0px] rounded-tr-[10px] rounded-br-[10px] rounded-bl-[0px] h-[50px] flex flex-row items-start justify-between py-[13px] px-[10px] box-border">
+            <div className="w-[3px] relative rounded-[10px] bg-[#fe5b18] h-[50px] hidden" />
+            <img
+              className="w-[24px] relative h-[24px]"
+              alt=""
+              src="/vuesaxlinearcategory2.svg"
+            />
+            <div className="w-[151px] relative inline-block shrink-0">
+              Dashboard
+            </div>
+          </div>
+          <div
+            className="w-[220px] rounded-tl-[0px] rounded-tr-[10px] rounded-br-[10px] rounded-bl-[0px] h-[50px] flex flex-row items-center justify-start gap-[16px] cursor-pointer"
+            onClick={onMyOrdersContainerClick}
+          >
+            <div className="w-[3px] relative rounded-[10px] bg-[#fe5b18] h-[50px] opacity-[0]" />
+            <img
+              className="w-[24px] relative h-[24px]"
+              alt=""
+              src="/vuesaxlinearbox.svg"
+            />
+            <div className="w-[151px] relative inline-block shrink-0">
+              My Orders
+            </div>
+          </div>
+          <div
+            className="w-[220px] rounded-tl-[0px] rounded-tr-[10px] rounded-br-[10px] rounded-bl-[0px] bg-[rgba(254,91,24,0.05)] h-[50px] flex flex-row items-center justify-start gap-[16px] cursor-pointer text-[#fd683e]"
+            onClick={onMenuItemsContainerClick}
+          >
+            <div className="w-[3px] relative rounded-[10px] bg-[#fe5b18] h-[50px] opacity-[0.7]" />
+            <img
+              className="w-[24px] relative h-[24px] overflow-hidden shrink-0 object-cover"
+              alt=""
+              src="/frame@2x.png"
+            />
+            <div className="w-[151px] relative inline-block shrink-0">
+              Menu Items
+            </div>
+          </div>
+          <div className="w-[220px] rounded-tl-[0px] rounded-tr-[10px] rounded-br-[10px] rounded-bl-[0px] h-[50px] flex flex-row items-center justify-start gap-[16px]">
+            <div className="w-[3px] relative rounded-[10px] bg-[#fe5b18] h-[50px] opacity-[0]" />
+            <img
+              className="w-[24px] relative h-[24px]"
+              alt=""
+              src="/vuesaxlinearprofile2user.svg"
+            />
+            <div className="w-[151px] relative inline-block shrink-0">
+              Staff
+            </div>
+          </div>
+          <div
+            className="w-[220px] rounded-tl-[0px] rounded-tr-[10px] rounded-br-[10px] rounded-bl-[0px] h-[50px] flex flex-row items-center justify-start gap-[16px] cursor-pointer"
+            onClick={onTransactionsContainerClick}
+          >
+            <div className="w-[3px] relative rounded-[10px] bg-[#fe5b18] h-[50px] opacity-[0]" />
+            <img
+              className="w-[24px] relative h-[24px]"
+              alt=""
+              src="/vuesaxlineardollarcircle.svg"
+            />
+            <div className="w-[151px] relative inline-block shrink-0">
+              Transactions
+            </div>
+          </div>
+          <div
+            className="w-[220px] rounded-tl-[0px] rounded-tr-[10px] rounded-br-[10px] rounded-bl-[0px] h-[50px] flex flex-row items-center justify-start gap-[16px] cursor-pointer font-[Poppins]"
+            onClick={onReportsContainerClick}
+          >
+            <div className="w-[3px] relative rounded-[10px] bg-[#fe5b18] h-[50px] opacity-[0]" />
+            <img
+              className="w-[24px] relative h-[24px]"
+              alt=""
+              src="/vuesaxlinearnote.svg"
+            />
+            <div className="w-[151px] relative inline-block shrink-0">
+              Reports
+            </div>
+          </div>
+          <div className="w-[220px] rounded-tl-[0px] rounded-tr-[10px] rounded-br-[10px] rounded-bl-[0px] h-[50px] flex flex-row items-center justify-start gap-[16px]">
+            <div className="w-[3px] relative rounded-[10px] bg-[#fe5b18] h-[50px] opacity-[0]" />
+            <img
+              className="w-[24px] relative h-[24px]"
+              alt=""
+              src="/vuesaxlinearsetting.svg"
+            />
+            <div className="w-[151px] relative inline-block shrink-0">
+              Settings
+            </div>
+          </div>
+        </div>
+        <img
+          className="w-[125px] absolute !m-[0] top-[30px] left-[30px] h-[50px] overflow-hidden shrink-0 hidden z-[2]"
+          alt=""
+        />
+      </div>
+      <div className="self-stretch flex-1 flex flex-col items-start justify-start py-[20px] px-[50px] gap-[45px] text-left text-[16px] text-[rgba(32,26,24,0.2)]">
+        <div className="self-stretch bg-[#fff] flex flex-row items-center justify-between flex-wrap content-center">
+          <div className="w-[330px] rounded-[10px] border-[rgba(167,161,158,0.1)] border-[1px] border-solid box-border flex flex-col items-start justify-center py-[13px] px-[16px]">
+            <div className="self-stretch flex flex-row items-start justify-start gap-[10px]">
+              <img
+                className="w-[24px] relative h-[24px]"
+                alt=""
+                src="/-icon.svg"
+              />
+              <div className="flex-1 relative">Search</div>
+            </div>
+          </div>
+          <div className="flex flex-row items-start justify-start gap-[20px]">
+            <div className="w-[184px] relative">
+              <Button
+                id="button-Sammy "
+                aria-controls="menu-Sammy "
+                aria-haspopup="true"
+                aria-expanded={userProfileOpen ? "true" : undefined}
+                onClick={handleUserProfileClick}
+                color="primary"
+                sx={{ width: "184", height: "100%" }}
+              >{`Sammy `}</Button>
+              <Menu
+                anchorEl={userProfileAnchorEl}
+                open={userProfileOpen}
+                onClose={handleUserProfileClose}
+              />
+            </div>
+            <div className="w-[50px] rounded-[10px] bg-[rgba(167,161,158,0.1)] h-[50px] flex flex-row items-center justify-center p-[20px] box-border">
+              <img
+                className="w-[24px] relative h-[24px]"
+                alt=""
+                src="/vuesaxlinearnotificationbing.svg"
+              />
+            </div>
+            <div className="w-[50px] rounded-[10px] bg-[#201a18] h-[50px] flex flex-row items-center justify-center p-[20px] box-border">
+              <img
+                className="w-[24px] relative h-[24px]"
+                alt=""
+                src="/vuesaxlinearmoon.svg"
+              />
+            </div>
+          </div>
+        </div>
+        <b
+          className="relative text-[25px] text-[#201a18]"
+          data-scroll-to="itemsText"
+        >
+          Items
+        </b>
+        <div className="self-stretch flex flex-row items-center justify-between text-[#535353]">
+          <div className="relative leading-[26px]">Total item-50</div>
+          <div
+            className="w-[111px] relative rounded-[4px] bg-[#313131] border-[#737373] border-[1px] border-solid box-border h-[41px] overflow-hidden shrink-0 cursor-pointer text-[14px] text-[#cbcbcb]"
+            onClick={onAddItemButtonClick}
+          >
+            <div className="absolute top-[calc(50%_-_10.5px)] left-[calc(50%_-_16px)] leading-[21px]">
+              Add item
+            </div>
+            <img
+              className="absolute top-[calc(50%_-_10.5px)] left-[calc(50%_-_43px)] w-[21px] h-[21px] overflow-hidden"
+              alt=""
+              src="/e-add.svg"
+            />
+          </div>
+        </div>
+        <section className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[22px] text-left text-[15px] text-[#606060] font-[Inter]">
+          <summary className="shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[4px] bg-[#fffcf7] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] pl-[15px] pr-[75px] gap-[14px] text-center text-[#5e5c57]">
+            <img
+              className="w-[65px] relative rounded-[33px] h-[65px] object-cover"
+              alt=""
+              src="/category-image@2x.png"
+            />
+            <div className="w-[42px] flex flex-col items-start justify-start gap-[4px]">
+              <div className="relative leading-[24px]">Burger</div>
+              <div className="relative text-[14px] leading-[22px] text-[#a1a19b] text-left">
+                12 items
+              </div>
+            </div>
+          </summary>
+          <div className="w-[219.6px] shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[3px] bg-[#f7f7f7] border-[#fff] border-[1px] border-solid box-border flex flex-row items-center justify-center pt-[15px] pb-[14px] pl-[13px] pr-[64px] gap-[15px] text-[14px]">
+            <img
+              className="flex-1 relative rounded-[32px] max-w-full overflow-hidden h-[64px] object-cover"
+              alt=""
+              src="/image-34@2x.png"
+            />
+            <div className="flex-1 flex flex-col items-start justify-start gap-[5px]">
+              <div className="relative leading-[22px]">ice cream</div>
+              <div className="self-stretch relative text-[11px] leading-[18px] text-[#a2a2a2]">
+                18 items
+              </div>
+            </div>
+          </div>
+          <div className="w-[219.6px] shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[3px] bg-[#f7f7f7] border-[#fff] border-[1px] border-solid box-border flex flex-row items-center justify-start pt-[13px] pb-[15px] pl-[13px] pr-[73px] gap-[15px] text-[16px] text-[#595959]">
+            <img
+              className="w-[64px] relative rounded-[32px] h-[64px] object-cover"
+              alt=""
+              src="/image-33@2x.png"
+            />
+            <div className="flex flex-col items-start justify-start gap-[3px]">
+              <div className="self-stretch relative leading-[26px]">Pasta</div>
+              <div className="self-stretch relative text-[14px] leading-[22px] text-[#a2a2a2]">
+                10 items
+              </div>
+            </div>
+          </div>
+          <div className="w-[219.6px] shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[3px] bg-[#f7f7f7] border-[#fff] border-[1px] border-solid box-border flex flex-row items-center justify-start py-[14px] pl-[13px] pr-[68px] gap-[15px]">
+            <img
+              className="w-[64px] relative rounded-[32px] h-[64px] object-cover"
+              alt=""
+              src="/image-46@2x.png"
+            />
+            <div className="flex-1 flex flex-col items-start justify-start gap-[6px]">
+              <div className="self-stretch relative leading-[24px]">
+                Biryani
+              </div>
+              <div className="self-stretch relative text-[11px] leading-[18px] text-[#a2a2a2] text-center">
+                8items
+              </div>
+            </div>
+          </div>
+          <div className="w-[219.6px] shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[3px] bg-[#f7f7f7] border-[#fff] border-[1px] border-solid box-border flex flex-row items-center justify-start pt-[15px] pb-[13px] pl-[14px] pr-[74px] gap-[13px] text-[16px] text-[#595959]">
+            <img
+              className="w-[65px] relative rounded-[33px] h-[65px] object-cover"
+              alt=""
+              src="/image-31@2x.png"
+            />
+            <div className="flex-1 flex flex-col items-start justify-start gap-[5px]">
+              <div className="self-stretch relative leading-[26px]">Pizza</div>
+              <div className="self-stretch relative text-[11px] leading-[18px] text-[#a2a2a2]">
+                14 items
+              </div>
+            </div>
+          </div>
+        </section>
+        <section className="self-stretch flex flex-row items-center justify-center flex-wrap content-center gap-[20px] text-left text-[16px] text-[#595959] font-[Inter]">
+          <summary className="w-[279.5px] shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[8px] bg-[#fff] border-[#eaeaeb] border-[1px] border-solid box-border h-[272px] flex flex-col items-start justify-start py-[15px] px-[20px] gap-[5px]">
+            <div className="self-stretch flex-1 flex flex-col items-start justify-start">
+              <img
+                className="self-stretch relative rounded-[6px] max-w-full overflow-hidden h-[180px] shrink-0 object-cover"
+                alt=""
+                src="/menu-item-image@2x.png"
+              />
+            </div>
+            <div className="self-stretch flex flex-row items-center justify-between">
+              <div className="relative leading-[26px]">Cheese Burger</div>
+              <div className="relative text-[14px] leading-[22px] text-[#606060]">
+                18 GHS
+              </div>
+            </div>
+            <div className="self-stretch relative leading-[26px] text-[#a2a2a2]">
+              Regular beverage included
+            </div>
+          </summary>
+          <div className="w-[279.5px] relative shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#fff] border-[#eaeaeb] border-[1px] border-solid box-border h-[278px]">
+            <img
+              className="absolute top-[21px] left-[21px] rounded-[6px] w-[238.5px] h-[180px] object-cover"
+              alt=""
+              src="/image-47@2x.png"
+            />
+            <div className="absolute top-[206px] left-[21px] w-[238.5px] h-[26px]">
+              <div className="absolute top-[0px] left-[0px] leading-[26px]">
+                Bacon Burger
+              </div>
+              <div className="absolute top-[2px] left-[189.5px] text-[14px] leading-[22px] text-[#606060]">
+                17 GHS
+              </div>
+            </div>
+            <div className="absolute top-[237px] left-[21px] leading-[26px] text-[#a2a2a2]">
+              Regular beverage included
+            </div>
+          </div>
+          <div className="w-[279.5px] relative shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#fff] border-[#eaeaeb] border-[1px] border-solid box-border h-[278px]">
+            <img
+              className="absolute top-[22px] left-[23px] rounded-[6px] w-[235.5px] h-[177px] object-cover"
+              alt=""
+              src="/image-36@2x.png"
+            />
+            <div className="absolute top-[205px] left-[23px] w-[235.5px] h-[26px]">
+              <div className="absolute top-[0px] left-[0px] leading-[26px]">
+                Double Burger
+              </div>
+              <div className="absolute top-[2px] left-[186.5px] text-[14px] leading-[22px] text-[#606060]">
+                16 GHS
+              </div>
+            </div>
+            <div className="absolute top-[237px] left-[23px] leading-[26px] text-[#a2a2a2]">
+              Regular beverage included
+            </div>
+          </div>
+          <div className="w-[279.5px] relative shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[8px] bg-[#fff] border-[#eaeaeb] border-[1px] border-solid box-border h-[278px] text-[#535353]">
+            <img
+              className="absolute top-[21px] left-[21px] rounded-[6px] w-[237.5px] h-[180px] object-cover"
+              alt=""
+              src="/image-45@2x.png"
+            />
+            <div className="absolute top-[205px] left-[21px] w-[237.5px] h-[26px]">
+              <div className="absolute top-[0px] left-[0px] leading-[26px]">
+                Hell Burger
+              </div>
+              <div className="absolute top-[2px] left-[186.5px] text-[14px] leading-[22px] text-[#606060]">
+                20 GHS
+              </div>
+            </div>
+            <div className="absolute top-[235px] left-[21px] leading-[26px] text-[#a2a2a2]">
+              Regular beverage included
+            </div>
+          </div>
+          <div className="w-[279.5px] relative shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] bg-[#fff] border-[#fff] border-[1px] border-solid box-border h-[273px] text-[#606060]">
+            <img
+              className="absolute top-[19px] left-[19px] rounded-[6px] w-[241.5px] h-[178.9px] object-cover"
+              alt=""
+              src="/image-40@2x.png"
+            />
+            <div className="absolute top-[204px] left-[19px] w-[241.5px] h-[26px]">
+              <div className="absolute top-[0px] left-[0px] leading-[26px]">
+                Beyond Burger
+              </div>
+              <div className="absolute top-[2px] left-[192.5px] text-[14px] leading-[22px] text-[#6b6b6b]">
+                15 GHS
+              </div>
+            </div>
+            <div className="absolute top-[236px] left-[19px] leading-[26px] text-[#a2a2a2]">
+              Regular beverage included
+            </div>
+          </div>
+          <div className="w-[279.5px] relative shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] bg-[#fff] border-[#fff] border-[1px] border-solid box-border h-[273px] text-[#4a4a4a]">
+            <img
+              className="absolute top-[20px] left-[21px] rounded-[6px] w-[239.5px] h-[178px] object-cover"
+              alt=""
+              src="/image-50@2x.png"
+            />
+            <div className="absolute top-[204px] left-[21px] w-[224px] h-[26px]">
+              <div className="absolute top-[0px] left-[0px] leading-[26px]">
+                Bean burger
+              </div>
+              <div className="absolute top-[2px] left-[175px] text-[14px] leading-[22px] text-[#6b6b6b]">
+                18 GHS
+              </div>
+            </div>
+            <div className="absolute top-[236px] left-[21px] leading-[26px] text-[#a2a2a2]">
+              Regular beverage included
+            </div>
+          </div>
+          <div className="w-[279.5px] relative shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] bg-[#fff] border-[#fff] border-[1px] border-solid box-border h-[273px] text-[#4a4a4a]">
+            <img
+              className="absolute top-[20px] left-[21px] rounded-[6px] w-[239.5px] h-[178px] object-cover"
+              alt=""
+              src="/image-501@2x.png"
+            />
+            <div className="absolute top-[204px] left-[21px] w-[224px] h-[26px]">
+              <div className="absolute top-[0px] left-[0px] leading-[26px]">
+                Bean burger
+              </div>
+              <div className="absolute top-[2px] left-[175px] text-[14px] leading-[22px] text-[#6b6b6b]">
+                18 GHS
+              </div>
+            </div>
+            <div className="absolute top-[236px] left-[21px] leading-[26px] text-[#a2a2a2]">
+              Regular beverage included
+            </div>
+          </div>
+          <div className="w-[279.5px] relative shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] bg-[#fff] border-[#fff] border-[1px] border-solid box-border h-[273px] text-[#4a4a4a]">
+            <img
+              className="absolute top-[20px] left-[21px] rounded-[6px] w-[239.5px] h-[178px] object-cover"
+              alt=""
+              src="/image-50@2x.png"
+            />
+            <div className="absolute top-[204px] left-[21px] w-[224px] h-[26px]">
+              <div className="absolute top-[0px] left-[0px] leading-[26px]">
+                Bean burger
+              </div>
+              <div className="absolute top-[2px] left-[175px] text-[14px] leading-[22px] text-[#6b6b6b]">
+                18 GHS
+              </div>
+            </div>
+            <div className="absolute top-[236px] left-[21px] leading-[26px] text-[#a2a2a2]">
+              Regular beverage included
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+};
+
+export default Inventory;

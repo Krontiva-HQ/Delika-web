@@ -64,8 +64,8 @@ interface InventoryDetail {
 
 interface ExtraDetail {
   delika_inventory_table_id: string;
-  minSelection: number;
-  maxSelection: number;
+  minSelection?: number;
+  maxSelection?: number;
   inventoryDetails: InventoryDetail[];
 }
 
@@ -264,7 +264,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
     }
   };
 
-  const onAddItemButtonClick = useCallback((category?: Category) => {
+  const onAddItemButtonClick = useCallback((category?: CategoryCard) => {
     if (category) {
       // If adding from within a category, use the category's ID directly
       setAddInventoryCategory({
@@ -368,7 +368,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
         await new Promise(resolve => setTimeout(resolve, 300));
 
         // Map only the foods from the active category
-        const items = activeCategory.foods.map((food: CategoryFood) => ({
+        const items = activeCategory.foods.map((food: any) => ({
           name: food.name,
           price: Number(food.price),
           description: food.description || '',
