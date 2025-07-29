@@ -9,33 +9,9 @@ import { Label } from './ui/label';
 import { Switch } from './ui/switch';
 import { Button as UIButton } from './ui/button';
 import { getRestaurantExtrasGroups } from '../services/api';
+import { ExtraGroup, ExtraDetail, InventoryDetail } from '../types/extras';
 
 // Updated interfaces for the new menu structure
-interface InventoryDetail {
-  id: string;
-  foodName: string;
-  foodPrice: number;
-  foodDescription: string;
-}
-
-interface ExtraDetail {
-  delika_inventory_table_id: string;
-  minSelection: number;
-  maxSelection: number;
-  inventoryDetails: InventoryDetail[];
-}
-
-interface ExtraGroup {
-  delika_extras_table_id: string;
-  extrasDetails: {
-    id: string;
-    extrasTitle: string;
-    extrasType: string;
-    required: boolean;
-    extrasDetails: ExtraDetail[];
-  };
-}
-
 interface MenuItem {
   name: string;
   price: number;

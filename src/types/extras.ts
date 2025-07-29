@@ -7,7 +7,7 @@ export interface InventoryDetail {
 
 export interface ExtraDetail {
   delika_inventory_table_id: string;
-  minSelection: number;
+  minSelection?: number;
   maxSelection?: number;
   inventoryDetails: InventoryDetail[];
 }
@@ -32,7 +32,7 @@ export interface SelectedItemExtra {
     required: boolean;
     extrasDetails: Array<{
       delika_inventory_table_id: string;
-      minSelection: number;
+      minSelection?: number;
       maxSelection?: number;
       inventoryDetails: Array<{
         id: string;

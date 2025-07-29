@@ -50,7 +50,7 @@ interface MenuItem {
     };
     url: string;
   };
-  extras?: import('../../types/extras').ExtraGroup[];
+  extras?: ExtraGroup[];
 }
 
 // Add interface for category food items
@@ -63,7 +63,7 @@ interface CategoryFood {
   description?: string;
   quantity?: number;
   available?: boolean;
-  extras?: import('../../types/extras').ExtraGroup[];
+  extras?: ExtraGroup[];
 }
 
 interface Category {
@@ -74,7 +74,6 @@ interface Category {
   foods: CategoryFood[];
 }
 
-// Update the existing CategoryCard interface
 interface CategoryCard {
   id: string;
   image: string;
@@ -341,7 +340,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
         await new Promise(resolve => setTimeout(resolve, 300));
 
         // Map only the foods from the active category
-        const items = activeCategory.foods.map((food: CategoryFood) => ({
+        const items = activeCategory.foods.map((food: any) => ({
           name: food.name,
           price: Number(food.price),
           description: food.description || '',
@@ -672,7 +671,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
             onClick={() => {
               const activeCategory = remoteCategories.find(cat => cat.id === activeId);
               if (activeCategory) {
-                onAddItemButtonClick(activeCategory);
+                onAddItemButtonClick(activeCategory as any);
               }
             }}
           >

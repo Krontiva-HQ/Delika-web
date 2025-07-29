@@ -43,7 +43,7 @@ export interface MenuItemData {
 
 export interface Order {
   id: string;
-  orderNumber: string;
+  orderNumber: string | number;
   customerName: string;
   customerPhone: string;
   customerPhoneNumber: string;
@@ -61,7 +61,7 @@ export interface Order {
   deliveryPrice: string;
   deliveryDistance: string;
   paymentMethod: string;
-  paymentStatus: 'pending' | 'paid' | 'failed';
+  paymentStatus: 'pending' | 'paid' | 'failed' | 'Pending' | 'Paid';
   orderComment?: string;
   notes?: string;
   createdAt: string;
@@ -75,4 +75,12 @@ export interface Order {
   payLater: boolean;
   payVisaCard: boolean;
   orderReceivedTime?: string;
+  orderChannel?: string;
+  orderAccepted?: "pending" | "accepted" | "declined";
+  kitchenStatus?: string;
+  customerImage?: string;
+  trackingUrl?: string;
+  courierName?: string;
+  courierPhoneNumber?: string;
+  transactionStatus?: string;
 } 

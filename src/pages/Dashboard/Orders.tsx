@@ -25,48 +25,7 @@ import { formatDate, translateOrderStatus, translateKitchenStatus } from '../../
 import i18n from '../../i18n/i18n';
 import 'dayjs/locale/es';
 import 'dayjs/locale/fr';
-
-interface Order {
-  id: string;
-  customerName: string;
-  customerPhoneNumber: string;
-  orderNumber: number;
-  deliveryDistance: string;
-  orderPrice: string;
-  trackingUrl: string;
-  courierName: string;
-  courierPhoneNumber: string;
-  orderStatus: string;
-  totalPrice: string;
-  orderDate: string;
-  deliveryPrice: string;
-  dropOff: {
-    toLatitude: string;
-    toLongitude: string;
-    toAddress: string;
-  }[];
-  pickup: {
-    fromLatitude: string;
-    fromLongitude: string;
-    fromAddress: string;
-  }[];
-  products: any[];
-  customerImage?: string;
-  pickupName: string;
-  dropoffName: string;
-  status: string;
-  transactionStatus: string;
-  paymentStatus: string;
-  orderComment?: string;
-  orderReceivedTime: string;
-  Walkin?: boolean;
-  payLater: boolean;
-  payNow: boolean;
-  payVisaCard: boolean;
-  kitchenStatus: string;
-  orderAccepted: "pending" | "accepted" | "declined";
-  orderChannel: string;
-}
+import { Order } from '../../types/order';
 
 // Add interface for API request params
 interface OrderFilterParams {
@@ -478,7 +437,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
             {/* Current Status */}
             <div className="mt-2 text-xs text-gray-600">
-              Current Status: <span className="font-medium">{translateKitchenStatus(order.kitchenStatus)}</span>
+              Current Status: <span className="font-medium">{translateKitchenStatus(order.kitchenStatus || '')}</span>
             </div>
           </div>
         ))
@@ -533,7 +492,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       
       // Optimize sorting by using a more efficient comparison
       const sortedOrders = response.data.sort((a: Order, b: Order) => 
-        new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime()
+        new Date(b.orderReceivedTime || '').getTime() - new Date(a.orderReceivedTime || '').getTime()
       );
 
       // Batch state updates
@@ -617,7 +576,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
       const response = await api.get(`/filter/orders/by/date?${params.toString()}`);
       const latestOrders = response.data.sort((a: Order, b: Order) => 
-        new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime()
+        new Date(b.orderReceivedTime || '').getTime() - new Date(a.orderReceivedTime || '').getTime()
       );
 
       // Update the main orders table with latest data
@@ -677,7 +636,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         const uniqueOrders = Array.from(
           new Map(combinedOrders.map((order: Order) => [order.id, order])).values()
         ).sort((a, b) => 
-          new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime()
+          new Date(b.orderReceivedTime || '').getTime() - new Date(a.orderReceivedTime || '').getTime()
         );
 
         return uniqueOrders;
@@ -772,7 +731,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
   const paginatedOrders = useMemo(() => {
     const filtered = orders
       .sort((a, b) => {
-        return new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime();
+        return new Date(b.orderReceivedTime || '').getTime() - new Date(a.orderReceivedTime || '').getTime();
       })
       .filter(order => {
         const matchesSearch = searchQuery
@@ -1436,7 +1395,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                       key={order.id} 
                       style={{ borderBottom: '1px solid #eaeaea', gridTemplateColumns: '80px 1fr 1.2fr 0.8fr 80px 1fr 1fr' }}
                       className="grid grid-cols-7 p-3 gap-2 hover:bg-[#f9f9f9] transition-all duration-200 cursor-pointer"
-                      onClick={() => handleOrderClick(order.orderNumber)}
+                      onClick={() => handleOrderClick(Number(order.orderNumber))}
                     >
                       <div className="text-[12px] leading-[20px] font-sans text-[#444] truncate">{order.orderNumber}</div>
                       <div className="flex items-center gap-2 min-w-0">
@@ -1500,12 +1459,12 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                               </svg>
-                              {translateKitchenStatus(order.kitchenStatus)}
+                                                             {translateKitchenStatus(order.kitchenStatus || '')}
                             </span>
                           ) : (
                             order.orderChannel === 'restaurantPortal' 
-                              ? `${translateKitchenStatus(order.kitchenStatus)} (Portal Order)` 
-                              : translateKitchenStatus(order.kitchenStatus)
+                                                             ? `${translateKitchenStatus(order.kitchenStatus || '')} (Portal Order)` 
+                                                             : translateKitchenStatus(order.kitchenStatus || '')
                           )}
                         </span>
                         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
@@ -1513,7 +1472,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
                             className="p-1 border-[1px] border-solid border-[#eaeaea] rounded-[4px] bg-white hover:bg-gray-50"
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleOrderClick(order.orderNumber);
+                                                             handleOrderClick(Number(order.orderNumber));
                             }}
                           >
                             <IoInformationCircleOutline className="w-[14px] h-[14px] text-[#666]" />
