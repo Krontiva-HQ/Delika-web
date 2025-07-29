@@ -48,13 +48,11 @@ const getAuthToken = () => {
 };
 
 // Add request interceptor for auth
-api.interceptors.request.use((config) => {
-  if (config.url === API_ENDPOINTS.AUTH.LOGIN) {
-    const apiKey = import.meta.env.API_KEY || 'api:uEBBwbSs';
-    config.headers['Authorization'] = `Basic ${safebtoa(apiKey)}`;
+
   } else {
     config.headers['Authorization'] = `${import.meta.env.VITE_XANO_AUTH_TOKEN}`;
   }
+  
   return config;
 });
 
@@ -160,16 +158,18 @@ export const API_ENDPOINTS = {
   }
 } as const;
 
-// Example of updated login function
+// Update the login function
 export const login = async (credentials: { email: string; password: string }) => {
   try {
     const response = await api.post(API_ENDPOINTS.AUTH.LOGIN, credentials);
+
     await Promise.all([
       localStorage.removeItem('2faVerified'),
       localStorage.removeItem('userProfile'),
       localStorage.setItem('authToken', response.data.authToken),
       localStorage.setItem('loginMethod', 'email')
     ]);
+
     return response;
   } catch (error) {
     throw error;
@@ -237,6 +237,7 @@ export interface UserResponse {
   password?: string;
 }
 
+
 export const getAuthenticatedUser = () => {
   const token = localStorage.getItem('authToken');
   const headers = {
@@ -245,6 +246,7 @@ export const getAuthenticatedUser = () => {
     'X-Xano-Authorization-Only': 'true'
   };
   return api.get<UserResponse>(API_ENDPOINTS.AUTH.ME, { headers });
+
 };
 
 export const deleteUser = async (userId: string) => {
@@ -779,7 +781,6 @@ export const updateInventoryItemWithImage = async (formData: FormData) => {
       console.log(`  API: ${key}: ${value}`);
     }
   });
-  
   // Use the EXACT same approach as addItemToCategory which works for file uploads
   const headers = {
     'Content-Type': 'multipart/form-data',
@@ -993,3 +994,4 @@ export const deleteExtrasGroup = async (id: string) => {
     headers
   });
 };
+
