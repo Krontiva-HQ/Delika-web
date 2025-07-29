@@ -414,12 +414,39 @@ const WalkInContent: React.FC<WalkInContentProps> = ({
                  'Not connected'}
               </span>
             </div>
-            <button
-              onClick={() => setShowPrinterModal(true)}
-              className="text-sm text-blue-600 hover:text-blue-800"
-            >
-              {printerConnectionStatus === 'connected' ? 'Change printer' : 'Connect printer'}
-            </button>
+            <div className="flex items-center gap-2">
+              {printerConnectionStatus === 'connected' && (
+                <button
+                  onClick={() => {
+                    const testReceiptData = {
+                      orderNumber: `#${Date.now().toString().slice(-6)}`,
+                      customerName: 'Test Customer',
+                      paymentMethod: 'CASH',
+                      items: [
+                        { name: 'Test Item 1', quantity: 2, price: 5.00 },
+                        { name: 'Test Item 2', quantity: 1, price: 3.50 },
+                        { name: 'Test Item with Long Name', quantity: 1, price: 8.75 }
+                      ],
+                      totalPrice: '22.25'
+                    };
+                    console.log('🧪 Testing printer with data:', testReceiptData);
+                    // Call the printReceipt function from PlaceOrder
+                    if (typeof window !== 'undefined' && (window as any).testPrintReceipt) {
+                      (window as any).testPrintReceipt(testReceiptData);
+                    }
+                  }}
+                  className="text-sm text-green-600 hover:text-green-800 bg-green-100 hover:bg-green-200 px-3 py-1 rounded-md font-medium"
+                >
+                  🧪 Test Print
+                </button>
+              )}
+              <button
+                onClick={() => setShowPrinterModal(true)}
+                className="text-sm text-blue-600 hover:text-blue-800"
+              >
+                {printerConnectionStatus === 'connected' ? 'Change printer' : 'Connect printer'}
+              </button>
+            </div>
           </div>
 
           {/* Payment Buttons */}

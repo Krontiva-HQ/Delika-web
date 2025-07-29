@@ -94,6 +94,15 @@
     "orderReceived": "Commande reçue",
     "newOrderReceived": "Nouvelle{{count, plural, =1 {} other {s}}} commande{{count, plural, =1 {} other {s}}} reçue{{count, plural, =1 {} other {s}}} !",
     "noOrderDetails": "Aucun détail de commande disponible",
+    "success": {
+      "orderPlaced": "Commande placée avec succès !",
+      "batchOrderAdded": "Commande ajoutée au lot avec succès !",
+      "batchCompleted": "Lot terminé avec succès !"
+    },
+    "error": {
+      "failedToPlaceOrder": "Échec du placement de la commande",
+      "noRiderSelected": "Veuillez sélectionner un livreur"
+    },
     "detail": {
       "customerInfo": "Informations client",
       "courierInfo": "Informations livreur",
