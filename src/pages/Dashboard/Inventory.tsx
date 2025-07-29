@@ -29,6 +29,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import EditInventoryModal from '../../components/EditInventoryModal';
 import AddExtrasModal from '../../components/AddExtrasModal';
 import { updateInventoryItem, updateInventoryItemWithImage, deleteMenuItem } from '../../services/api';
+import { ExtraGroup, ExtraDetail, InventoryDetail } from '../../types/extras';
 
 interface MenuItem {
   name: string;
@@ -49,35 +50,7 @@ interface MenuItem {
     };
     url: string;
   };
-  extras?: ExtraGroup[];
-}
-
-
-
-// Add interfaces for extras
-interface InventoryDetail {
-  id: string;
-  foodName: string;
-  foodPrice: number;
-  foodDescription: string;
-}
-
-interface ExtraDetail {
-  delika_inventory_table_id: string;
-  minSelection: number;
-  maxSelection: number;
-  inventoryDetails: InventoryDetail[];
-}
-
-interface ExtraGroup {
-  delika_extras_table_id: string;
-  extrasDetails: {
-    id: string;
-    extrasTitle: string;
-    extrasType: string;
-    required: boolean;
-    extrasDetails: ExtraDetail[];
-  };
+  extras?: import('../../types/extras').ExtraGroup[];
 }
 
 // Add interface for category food items
@@ -90,7 +63,7 @@ interface CategoryFood {
   description?: string;
   quantity?: number;
   available?: boolean;
-  extras?: ExtraGroup[];
+  extras?: import('../../types/extras').ExtraGroup[];
 }
 
 interface Category {

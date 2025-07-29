@@ -39,4 +39,40 @@ export interface MenuItemData {
     size: number;
   };
   extras?: SelectedItemExtra[];
+}
+
+export interface Order {
+  id: string;
+  orderNumber: string;
+  customerName: string;
+  customerPhone: string;
+  customerPhoneNumber: string;
+  customerEmail: string;
+  deliveryAddress: string;
+  orderItems: SelectedItem[];
+  products: any[];
+  totalAmount: number;
+  totalPrice: string;
+  orderPrice: string;
+  status: 'pending' | 'confirmed' | 'preparing' | 'ready' | 'delivered' | 'cancelled';
+  orderStatus: string;
+  orderDate: string;
+  deliveryTime?: string;
+  deliveryPrice: string;
+  deliveryDistance: string;
+  paymentMethod: string;
+  paymentStatus: 'pending' | 'paid' | 'failed';
+  orderComment?: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+  Walkin: boolean;
+  pickup: any[];
+  dropOff: any[];
+  pickupName: string;
+  dropoffName: string;
+  payNow: boolean;
+  payLater: boolean;
+  payVisaCard: boolean;
+  orderReceivedTime?: string;
 } 

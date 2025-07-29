@@ -113,7 +113,7 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
 
   // Initialize selected items from order
   useEffect(() => {
-    const initialItems = order.products.map(product => ({
+    const initialItems = order.products.map((product: any) => ({
       name: product.name,
       quantity: parseInt(product.quantity),
       price: parseFloat(product.price),
@@ -278,7 +278,7 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
       <div className="mb-4">
         <div className="font-sans text-sm font-medium mb-2">Ordered Items:</div>
         <div className="bg-[#f9fafb] p-3 rounded-lg">
-          {order.products.map((product, index) => (
+          {order.products.map((product: any, index: number) => (
             <div key={index} className="flex justify-between items-center mb-2 last:mb-0">
               <span className="font-sans text-sm">{product.name} x {product.quantity}</span>
               <span className="font-sans text-sm">GH₵{parseFloat(product.price).toFixed(2)}</span>
