@@ -176,7 +176,7 @@ class WebPrinterService {
       const price = (item.price * quantity).toFixed(2);
       
       escposCommands += `${itemName}\n`;
-      escposCommands += `  ${quantity}x @ GH₵${item.price} = GH₵${price}\n`;
+      escposCommands += `  ${quantity}x @ GHC${item.price} = GHC${price}\n`;
     });
     
     // Separator line
@@ -184,7 +184,7 @@ class WebPrinterService {
     
     // Total
     escposCommands += '\x1B\x21\x10'; // Bold
-    escposCommands += `TOTAL: GH₵${totalPrice}\n`;
+    escposCommands += `TOTAL: GHC${totalPrice}\n`;
     escposCommands += '\x1B\x21\x00'; // Normal
     
     // Footer
