@@ -48,7 +48,9 @@ const getAuthToken = () => {
 };
 
 // Add request interceptor for auth
-
+api.interceptors.request.use((config) => {
+  if (config.headers['X-Xano-Authorization']) {
+    // Keep existing X-Xano-Authorization header
   } else {
     config.headers['Authorization'] = `${import.meta.env.VITE_XANO_AUTH_TOKEN}`;
   }
