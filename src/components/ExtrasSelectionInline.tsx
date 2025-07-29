@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { RadioGroup, RadioGroupItem } from './ui/radio-group';
 import { Label } from './ui/label';
 import { Checkbox } from './ui/checkbox';
@@ -31,23 +31,22 @@ const ExtrasSelectionInline: React.FC<ExtrasSelectionInlineProps> = ({
 }) => {
   const [selectedExtras, setSelectedExtras] = useState<{ [key: string]: Selection[] }>(existingSelections);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const isUpdatingRef = useRef(false);
 
-  // Update selectedExtras when existingSelections prop changes
+  // Update selectedExtras when existingSelections prop changes, but only if we're not in the middle of a local update
   useEffect(() => {
-    setSelectedExtras(existingSelections);
+    if (!isUpdatingRef.current) {
+      setSelectedExtras(existingSelections);
+    }
   }, [existingSelections]);
 
   const handleSingleSelection = (groupId: string, item: Selection) => {
-    console.log('🎯 Single Selection - Selected Item:', {
-      groupId,
-      itemName: item.foodName,
-      itemId: item.id,
-      itemPrice: item.foodPrice
-    });
-
     const newSelectedExtras = {
       [groupId]: [item]
     };
+    
+    // Set flag to prevent useEffect from overriding our local state
+    isUpdatingRef.current = true;
     setSelectedExtras(newSelectedExtras);
 
     setErrors(prev => ({
@@ -58,7 +57,10 @@ const ExtrasSelectionInline: React.FC<ExtrasSelectionInlineProps> = ({
     // Only call onConfirm if there is a selection
     if (item) {
       const group = extras.find(e => e.extrasDetails.id === groupId);
-      if (!group) return;
+      if (!group) {
+        isUpdatingRef.current = false;
+        return;
+      }
       const enrichedSelections = {
         [groupId]: [{
           ...item,
@@ -70,30 +72,16 @@ const ExtrasSelectionInline: React.FC<ExtrasSelectionInlineProps> = ({
         }]
       };
       
-      console.log('📤 Sending to onConfirm (Single):', {
-        groupId,
-        groupTitle: group.extrasDetails.extrasTitle,
-        selectedItems: enrichedSelections[groupId].map(item => ({
-          name: item.foodName,
-          id: item.id,
-          price: item.foodPrice
-        })),
-        totalItems: enrichedSelections[groupId].length
-      });
-      
       onConfirm(enrichedSelections);
     }
+    
+    // Reset flag after a short delay to allow state to settle
+    setTimeout(() => {
+      isUpdatingRef.current = false;
+    }, 100);
   };
 
   const handleMultipleSelection = (groupId: string, item: Selection, checked: boolean) => {
-    console.log('🎯 Multiple Selection:', {
-      groupId,
-      itemName: item.foodName,
-      itemId: item.id,
-      checked,
-      action: checked ? 'ADDING' : 'REMOVING'
-    });
-
     const currentSelections = selectedExtras[groupId] || [];
     let updatedSelections;
     if (checked) {
@@ -102,16 +90,12 @@ const ExtrasSelectionInline: React.FC<ExtrasSelectionInlineProps> = ({
       updatedSelections = currentSelections.filter(i => i.id !== item.id);
     }
     
-    console.log('📋 Updated Selections for Group:', {
-      groupId,
-      beforeCount: currentSelections.length,
-      afterCount: updatedSelections.length,
-      items: updatedSelections.map(s => s.foodName)
-    });
-
     const newSelectedExtras = {
       [groupId]: updatedSelections
     };
+    
+    // Set flag to prevent useEffect from overriding our local state
+    isUpdatingRef.current = true;
     setSelectedExtras(newSelectedExtras);
 
     setErrors(prev => ({
@@ -121,7 +105,10 @@ const ExtrasSelectionInline: React.FC<ExtrasSelectionInlineProps> = ({
 
     // Always call onConfirm, even when deselecting (empty selections)
     const group = extras.find(e => e.extrasDetails.id === groupId);
-    if (!group) return;
+    if (!group) {
+      isUpdatingRef.current = false;
+      return;
+    }
     
     const enrichedSelections = {
       [groupId]: updatedSelections.map(selection => ({
@@ -134,19 +121,12 @@ const ExtrasSelectionInline: React.FC<ExtrasSelectionInlineProps> = ({
       }))
     };
     
-    console.log('📤 Sending to onConfirm (Multiple):', {
-      groupId,
-      groupTitle: group.extrasDetails.extrasTitle,
-      selectedItems: enrichedSelections[groupId].map(item => ({
-        name: item.foodName,
-        id: item.id,
-        price: item.foodPrice
-      })),
-      totalItems: enrichedSelections[groupId].length,
-      action: updatedSelections.length > 0 ? 'ADDING' : 'REMOVING ALL'
-    });
-    
     onConfirm(enrichedSelections);
+    
+    // Reset flag after a short delay to allow state to settle
+    setTimeout(() => {
+      isUpdatingRef.current = false;
+    }, 100);
   };
 
   return (

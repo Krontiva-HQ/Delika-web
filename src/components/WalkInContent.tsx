@@ -247,23 +247,6 @@ const WalkInContent: React.FC<WalkInContentProps> = ({
                 onChange={(e) => setCustomerName(e.target.value)}
               />
             </div>
-            <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
-              <div className="self-stretch relative leading-[20px] font-sans text-black">
-                Customer Phone
-              </div>
-              <input
-                className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                          text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[10px] px-[12px] text-black"
-                placeholder="Customer Phone"
-                type="tel"
-                value={customerPhone}
-                onChange={(e) => {
-                  const value = e.target.value.replace(/[^0-9]/g, '');
-                  setCustomerPhone(value);
-                }}
-                maxLength={10}
-              />
-            </div>
           </div>
 
           {/* Enhanced Menu Selection */}
@@ -444,11 +427,11 @@ const WalkInContent: React.FC<WalkInContentProps> = ({
             <button
               className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                         ${isSubmitting
+                         ${isSubmitting || !customerName.trim()
                            ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
                            : 'bg-[#201a18] border-[#201a18]'}`}
               onClick={() => handlePlaceOrder('cash')}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !customerName.trim()}
             >
               {isSubmitting ? (
                 <div className="flex items-center justify-center gap-2">
@@ -463,11 +446,11 @@ const WalkInContent: React.FC<WalkInContentProps> = ({
             <button
               className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                         ${isSubmitting
+                         ${isSubmitting || !customerName.trim()
                            ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
                            : 'bg-[#fd683e] border-[#fd683e]'}`}
               onClick={() => handlePlaceOrder('momo')}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !customerName.trim()}
             >
               {isSubmitting ? (
                 <div className="flex items-center justify-center gap-2">
@@ -482,11 +465,11 @@ const WalkInContent: React.FC<WalkInContentProps> = ({
             <button
               className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                         ${isSubmitting
+                         ${isSubmitting || !customerName.trim()
                            ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
                            : 'bg-[#4CAF50] border-[#4CAF50]'}`}
               onClick={() => handlePlaceOrder('visa')}
-              disabled={isSubmitting}
+              disabled={isSubmitting || !customerName.trim()}
             >
               {isSubmitting ? (
                 <div className="flex items-center justify-center gap-2">

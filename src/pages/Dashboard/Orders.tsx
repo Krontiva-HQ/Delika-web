@@ -286,7 +286,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
   // Utility function to manually clear stuck loading states
   const clearAllLoadingStates = useCallback(() => {
-    console.log('🧹 Manually clearing all loading states. Previously loading:', Array.from(loadingOrderIds));
     setLoadingOrderIds(new Set());
     addNotification({
       type: 'order_status',
@@ -297,7 +296,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
   // Add function to window for debugging
   useEffect(() => {
     (window as any).clearOrderLoadingStates = clearAllLoadingStates;
-    console.log('🔧 Debug function available: window.clearOrderLoadingStates()');
     
     const handleKeyPress = (event: KeyboardEvent) => {
       // Ctrl+Shift+C to clear loading states
@@ -706,12 +704,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         order.orderAccepted === 'pending'
       );
 
-      console.log('🔔 Audio check:', {
-        pendingOrdersCount: pendingOrdersNeedingDecision.length,
-        newIncomingOrdersCount: newIncomingOrders.length,
-        shouldPlayAudio: newIncomingOrders.length > 0 || pendingOrdersNeedingDecision.length > 0
-      });
-
       // Only show local modal if global modal is not active
       if (pendingOrdersNeedingDecision.length > 0 && !showGlobalOrderModal) {
         setShowNewOrderModal(true);
@@ -722,7 +714,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
           (pendingOrdersNeedingDecision.length > 0 && !showNewOrderModal);
         
         if (shouldPlayAudio) {
-          console.log('🔊 Playing audio from local Orders page (backup)');
           const audio = new Audio('/orderRinging.mp3');
           audio.volume = 0.5; // Lower volume since global handles primary audio
           audio.play().catch((e) => { 
@@ -751,7 +742,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
   // Optimize the polling interval (reduced frequency since global system handles primary detection)
   useEffect(() => {
-    console.log('📍 Orders page: Local polling started (backup to global system)');
     let lastPollTime = Date.now();
     let isPolling = false;
     
@@ -902,13 +892,11 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
     // Return early if order is from restaurant portal
     if (order.orderChannel === 'restaurantPortal') {
       // Kitchen status cannot be updated for restaurant portal orders
-      console.log('Kitchen status cannot be updated for restaurant portal orders');
       return;
     }
 
     // Prevent multiple simultaneous updates for the same order
     if (loadingOrderIds.has(orderId)) {
-      console.log('⚠️ Order already being updated, skipping:', orderId);
       return;
     }
 
@@ -926,25 +914,14 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
 
     // Prevent multiple simultaneous updates for the same order
     if (loadingOrderIds.has(order.id)) {
-      console.log('⚠️ Order already being updated, skipping:', order.id);
       return;
     }
-
-    console.log('🍴 Kitchen status update:', {
-      orderId: order.id,
-      orderNumber: order.orderNumber,
-      currentStatus: order.kitchenStatus,
-      nextStatus: nextStatus,
-      orderChannel: order.orderChannel,
-      currentlyLoading: Array.from(loadingOrderIds)
-    });
 
     // Add this order to loading state before any updates
     setLoadingOrderIds(prev => new Set(prev).add(order.id));
 
     // Safety timeout to clear loading state after 10 seconds
     const timeoutId = setTimeout(() => {
-      console.log('⏰ Timeout: Clearing stuck loading state for order:', order.id);
       setLoadingOrderIds(prev => {
         const newSet = new Set(prev);
         newSet.delete(order.id);
@@ -987,8 +964,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       }
 
       // Kitchen status updated successfully
-      console.log(`Kitchen status updated to ${nextStatus}`);
-
+      
     } catch (error: any) {
       console.error('❌ Kitchen status update error details:', {
         error,
@@ -1006,7 +982,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         try {
           // Refresh the orders to see if the status actually changed
           if (selectedDate && selectedBranchId) {
-            console.log('🔄 Refreshing orders to verify kitchen status update...');
             await fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
           }
         } catch (refreshError) {
@@ -1020,7 +995,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       // Only show error if it's clearly a server error (5xx) or network error
       if (error?.status >= 500 || error?.code === 'NETWORK_ERROR' || error?.message?.includes('Network')) {
         // Failed to update kitchen status - Network or server error
-        console.error('Failed to update kitchen status - Network or server error');
         
         // Revert the optimistic updates for network/server errors
         setOrders(prevOrders => 
@@ -1042,7 +1016,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         // Notification removed for kitchen status errors
       } else {
         // For other errors (likely response format issues), show a different message
-        console.log('Kitchen status update: verifying changes...');
       }
     } finally {
       // Clear the timeout since we're done
@@ -1206,26 +1179,16 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       order.paymentStatus === "Paid"
     );
 
-    console.log('🔊 Audio useEffect triggered:', {
-      showNewOrderModal,
-      pendingOrdersCount: pendingOrders.length,
-      totalNewOrders: newOrders.length,
-      shouldPlayAudio: showNewOrderModal && pendingOrders.length > 0
-    });
-
     if (showNewOrderModal && pendingOrders.length > 0) {
-      console.log('🎵 Attempting to play audio for pending orders');
       
       // Create and play audio with better error handling
       const audio = new Audio('/orderRinging.mp3');
       
       // Add more detailed error handling
       audio.addEventListener('loadstart', () => {
-        console.log('Audio loading started');
       });
       
       audio.addEventListener('canplay', () => {
-        console.log('Audio can play');
       });
       
       audio.addEventListener('error', (e) => {
@@ -1236,7 +1199,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       audio.volume = 0.7;
       audio.play()
         .then(() => {
-          console.log('✅ Audio played successfully');
         })
         .catch((error) => {
           console.error('❌ Audio play failed:', error);
@@ -1248,7 +1210,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
           
           // Try playing with user interaction if autoplay failed
           if (error.name === 'NotAllowedError') {
-            console.log('🔇 Audio blocked by browser autoplay policy');
             
             // Show a visual notification instead
             addNotification({

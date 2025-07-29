@@ -1499,13 +1499,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     };
     setSelectedItems(prev => [...prev, newItem]);
     
-    console.log('🛒 Item Added to Selected Items:', {
-      name: item.name,
-      price: Number(item.price),
-      hasExtras: item.extras && item.extras.length > 0,
-      extrasCount: item.extras ? item.extras.length : 0
-    });
-    
     // If item has extras, also set it for extras selection
     if (item.extras && item.extras.length > 0) {
       setSelectedItemForExtrasDisplay(item);
@@ -1521,7 +1514,23 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   const handleExtrasConfirm = (selectedExtras: { [key: string]: any[] }) => {
     if (!selectedItemForExtrasDisplay) return;
 
-    // Create separate line items for each selected extra
+    // First, remove any existing extras for this main item
+    setSelectedItems(prev => {
+      const filteredItems = prev.filter(item => {
+        // Keep the main item and remove any existing extras for this item
+        if (item.name === selectedItemForExtrasDisplay.name) {
+          return true; // Keep the main item
+        }
+        // Remove any extras that belong to this main item
+        if (item.name.startsWith(`${selectedItemForExtrasDisplay.name} - `)) {
+          return false; // Remove existing extras
+        }
+        return true; // Keep other items
+      });
+      return filteredItems;
+    });
+
+    // Then add the new selections as separate line items
     Object.entries(selectedExtras).forEach(([groupId, selections]) => {
       const extraGroup = selectedItemForExtrasDisplay.extras?.find(e => e.delika_extras_table_id === groupId);
       if (!extraGroup) return;
@@ -1537,8 +1546,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         setSelectedItems(prev => [...prev, extraItem]);
       });
     });
-
-    console.log('✅ Extras added as separate line items:', selectedExtras);
   };
 
   // Add a function to update items with extras for WalkInContent
@@ -1669,19 +1676,14 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                         key={item.name}
                         className={`cursor-pointer w-[220px] relative ${!item.available ? 'grayscale opacity-60' : ''} ${isSelected ? 'border-2 border-[#fd683e]' : ''}`}
                         onClick={() => {
-                          console.log('🖱️ Menu item clicked:', item.name, 'Available:', item.available, 'Selected:', isSelected);
                           if (item.available) {
                             if (isSelected) {
-                              console.log('🗑️ Removing item from selection:', item.name);
                               setSelectedItems(prev => prev.filter(i => i.name !== item.name));
                               setSelectedItemForExtrasDisplay(null);
                             } else {
-                              console.log('✅ Adding item to selection:', item.name);
                               // Always use handleAddItem to add the item immediately
                               handleAddItem(item);
                             }
-                          } else {
-                            console.log('⚠️ Item not available:', item.name);
                           }
                         }}
                       >
@@ -1752,50 +1754,52 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               extras={selectedItemForExtrasDisplay.extras}
               existingSelections={(() => {
                 // Get existing selections for this item from selectedItems
-                const existingItem = selectedItems.find(item => item.name === selectedItemForExtrasDisplay.name);
-                if (!existingItem || !existingItem.extras) return {};
+                // Look for separate line items that start with the main item name
+                const existingExtras = selectedItems.filter(item => 
+                  item.name.startsWith(`${selectedItemForExtrasDisplay.name} - `)
+                );
+                
+                if (existingExtras.length === 0) return {};
                 
                 // Convert existing extras back to the format expected by ExtrasSelectionInline
                 const existingSelections: { [key: string]: Selection[] } = {};
-                existingItem.extras.forEach(extraGroup => {
-                  const groupId = extraGroup.delika_extras_table_id;
-                  existingSelections[groupId] = extraGroup.extrasDetails.extrasDetails.flatMap(detail => 
-                    detail.inventoryDetails.map(item => ({
-                      id: item.id,
-                      foodName: item.foodName,
-                      foodPrice: item.foodPrice,
-                      foodDescription: item.foodDescription || '',
-                      groupTitle: extraGroup.extrasDetails.extrasTitle,
-                      groupType: extraGroup.extrasDetails.extrasType,
-                      required: extraGroup.extrasDetails.required,
-                      minSelection: detail.minSelection,
-                      maxSelection: detail.maxSelection
-                    }))
-                  );
+                
+                existingExtras.forEach(extraItem => {
+                  // Extract the extra name from "MainItem - ExtraName"
+                  const extraName = extraItem.name.replace(`${selectedItemForExtrasDisplay.name} - `, '');
+                  
+                  // Find the corresponding extra group and item
+                  selectedItemForExtrasDisplay.extras?.forEach(extraGroup => {
+                    extraGroup.extrasDetails.extrasDetails.forEach(detail => {
+                      const matchingItem = detail.inventoryDetails.find(item => 
+                        item.foodName === extraName
+                      );
+                      
+                      if (matchingItem) {
+                        const groupId = extraGroup.delika_extras_table_id;
+                        if (!existingSelections[groupId]) {
+                          existingSelections[groupId] = [];
+                        }
+                        existingSelections[groupId].push({
+                          id: matchingItem.id,
+                          foodName: matchingItem.foodName,
+                          foodPrice: matchingItem.foodPrice,
+                          foodDescription: matchingItem.foodDescription || '',
+                          groupTitle: extraGroup.extrasDetails.extrasTitle,
+                          groupType: extraGroup.extrasDetails.extrasType,
+                          required: extraGroup.extrasDetails.required,
+                          minSelection: detail.minSelection,
+                          maxSelection: detail.maxSelection
+                        });
+                      }
+                    });
+                  });
                 });
+                
                 return existingSelections;
               })()}
               onConfirm={(selectedExtras) => {
-                console.log('✅ Extras confirmed:', selectedExtras);
-                
-                // Create separate line items for each selected extra
-                Object.entries(selectedExtras).forEach(([groupId, selections]) => {
-                  const extraGroup = selectedItemForExtrasDisplay.extras?.find(e => e.delika_extras_table_id === groupId);
-                  if (!extraGroup) return;
-
-                  selections.forEach(selection => {
-                    const extraItem: SelectedItem = {
-                      name: `${selectedItemForExtrasDisplay.name} - ${selection.foodName}`,
-                      quantity: 1,
-                      price: Number(selection.foodPrice),
-                      image: selectedItemForExtrasDisplay.foodImage?.url || '',
-                      extras: []
-                    };
-                    setSelectedItems(prev => [...prev, extraItem]);
-                  });
-                });
-
-                console.log('✅ Extras added as separate line items:', selectedExtras);
+                handleExtrasConfirm(selectedExtras);
               }}
               itemName={selectedItemForExtrasDisplay.name}
             />

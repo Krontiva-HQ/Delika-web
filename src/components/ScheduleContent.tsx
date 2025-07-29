@@ -6,21 +6,7 @@ import { MenuItem, SelectChangeEvent } from '@mui/material';
 import { StyledSelect } from '../styles/StyledComponents';
 import { LocationData } from "../types/location";
 import { RiDeleteBinLine } from "react-icons/ri";
-
-interface SelectedItem {
-  name: string;
-  quantity: number;
-  price: number;
-  image: string;
-  extras?: {
-    groupId: string;
-    selections: {
-      id: string;
-      foodName: string;
-      foodPrice: number;
-    }[];
-  }[];
-}
+import { SelectedItem } from "../types/order";
 
 interface ScheduleContentProps {
   currentStep: number;
@@ -247,11 +233,11 @@ const ScheduleContent: React.FC<ScheduleContentProps> = ({
 
           <button
             onClick={handleNextStep}
-            disabled={!isDeliveryPriceValid()}
+            disabled={!isDeliveryPriceValid() || !customerName.trim() || !customerPhone.trim() || customerPhone.length !== 10 || !dropoffLocation}
             className={`self-stretch rounded-[4px] border-[1px] border-solid overflow-hidden 
                         flex flex-row items-center justify-center py-[9px] px-[90px] 
                         cursor-pointer text-[10px] text-[#fff] mt-4
-                        ${isDeliveryPriceValid() 
+                        ${isDeliveryPriceValid() && customerName.trim() && customerPhone.trim() && customerPhone.length === 10 && dropoffLocation
                           ? 'bg-[#fd683e] border-[#f5fcf8] hover:opacity-90' 
                           : 'bg-gray-400 border-gray-300 cursor-not-allowed'}`}
           >

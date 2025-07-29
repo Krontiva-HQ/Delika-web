@@ -6,21 +6,7 @@ import { MenuItem, SelectChangeEvent } from '@mui/material';
 import { StyledSelect } from '../styles/StyledComponents';
 import { LocationData } from "../types/location";
 import { RiDeleteBinLine } from "react-icons/ri";
-
-interface SelectedItem {
-  name: string;
-  quantity: number;
-  price: number;
-  image: string;
-  extras?: {
-    groupId: string;
-    selections: {
-      id: string;
-      foodName: string;
-      foodPrice: number;
-    }[];
-  }[];
-}
+import { SelectedItem } from "../types/order";
 
 interface FullServiceContentProps {
   currentStep: number;
@@ -205,11 +191,11 @@ const FullServiceContent: React.FC<FullServiceContentProps> = ({
           </div>
           <button
             onClick={handleNextStep}
-            disabled={!isDeliveryPriceValid()}
+            disabled={!isDeliveryPriceValid() || !customerName.trim() || !customerPhone.trim() || customerPhone.length !== 10 || !dropoffLocation}
             className={`self-stretch rounded-[4px] border-[1px] border-solid overflow-hidden 
                         flex flex-row items-center justify-center py-[9px] px-[90px] 
                         cursor-pointer text-[10px] text-[#fff] mt-4
-                        ${isDeliveryPriceValid() 
+                        ${isDeliveryPriceValid() && customerName.trim() && customerPhone.trim() && customerPhone.length === 10 && dropoffLocation
                           ? 'bg-[#fd683e] border-[#f5fcf8] hover:opacity-90' 
                           : 'bg-gray-400 border-gray-300 cursor-not-allowed'}`}
           >
@@ -382,7 +368,7 @@ const FullServiceContent: React.FC<FullServiceContentProps> = ({
             </button>
             <div className="mx-2" />
             <button
-              className={`flex-1 font-sans cursor-pointer border-[#fd683e] border-[1px] border-solid 
+              className={`flex-1 font-sans cursor-pointer border-[fd683e] border-[1px] border-solid 
                           py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
                           ${selectedItems.length === 0 ? 'bg-[#fd683e] cursor-not-allowed' : 'bg-[#fd683e] cursor-pointer'}`}
               onClick={handleNextStep}
