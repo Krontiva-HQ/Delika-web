@@ -1,4 +1,4 @@
-import { FunctionComponent, useRef, KeyboardEvent, ChangeEvent, useState } from "react";
+import { FunctionComponent, useRef, KeyboardEvent, ChangeEvent, useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import LoginButton from "./LoginButton";
 import { useEmail } from '../context/EmailContext';
@@ -14,9 +14,23 @@ const TWOFALoginDetails: FunctionComponent<TWOFALoginDetailsType> = ({
 }) => {
   const navigate = useNavigate();
   const { email } = useEmail();
-  const { verify2FA } = useAuth();
+  const { verify2FA, verifyPhone2FA } = useAuth();
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
+
+  // Get login method and user data from localStorage
+  const isPhoneLogin = !!localStorage.getItem('loginPhoneNumber');
+  const userProfile = localStorage.getItem('userProfile');
+  const authToken = localStorage.getItem('authToken');
+
+  // Verify we have necessary data
+  useEffect(() => {
+    if (!isPhoneLogin && !email) {
+      navigate('/login');
+    } else if (isPhoneLogin && (!userProfile || !authToken)) {
+      navigate('/login');
+    }
+  }, [isPhoneLogin, email, userProfile, authToken, navigate]);
 
   // Create refs for each input
   const inputRefs = [
@@ -75,11 +89,20 @@ const TWOFALoginDetails: FunctionComponent<TWOFALoginDetailsType> = ({
     }
 
     setIsVerifying(true);
-    const success = await verify2FA(otp);
-    if (!success) {
-      setValidationError('Incorrect OTP code');
+    
+    try {
+      const success = isPhoneLogin ? 
+        await verifyPhone2FA(otp) : 
+        await verify2FA(otp);
+        
+      if (!success) {
+        setValidationError('Incorrect OTP code');
+      }
+    } catch (error) {
+      setValidationError('Verification failed. Please try again.');
+    } finally {
+      setIsVerifying(false);
     }
-    setIsVerifying(false);
   };
 
   return (
@@ -138,7 +161,10 @@ const TWOFALoginDetails: FunctionComponent<TWOFALoginDetailsType> = ({
                 </div>
                 <div className="font-sans w-full text-[12px] text-[#a7a19e]">
                   <div className="text-left mb-1">
-                    A 2FA code has been sent to your registered email address to complete your login process.
+                    {isPhoneLogin ? 
+                      `A 2FA code has been sent to ${JSON.parse(userProfile || '{}').phoneNumber || 'your phone number'} to complete your login process.` :
+                      'A 2FA code has been sent to your registered email address to complete your login process.'
+                    }
                   </div>
                 </div>
               </div>

@@ -6,8 +6,14 @@ interface AddItemParams {
   name: string;
   price: string;
   description: string;
-  quantity: string;
+  available: boolean;
   foodPhoto: File | null;
+  mainCategoryId: string;
+  mainCategory: string;
+  extras?: Array<{
+    extrasTitle: string;
+    inventoryId: string;
+  }>;
   onSuccess?: () => void;
 }
 
@@ -25,10 +31,18 @@ export const useAddItemToCategory = () => {
     name,
     price,
     description,
-    quantity,
+    available,
     foodPhoto,
+    mainCategoryId,
+    mainCategory,
+    extras,
     onSuccess
   }: AddItemParams): Promise<AddItemResponse> => {
+    // Prevent multiple submissions
+    if (isLoading) {
+      return Promise.reject(new Error('A submission is already in progress'));
+    }
+    
     setIsLoading(true);
     setError(null);
 
@@ -37,14 +51,37 @@ export const useAddItemToCategory = () => {
       
       const formData = new FormData();
       formData.append('categoryId', categoryId);
-      formData.append('foods', JSON.stringify({ name, price, description, quantity }));
+      formData.append('mainCategoryId', mainCategoryId);
+      
+      // Create foods object
+      const foods = {
+        name,
+        price,
+        description,
+        quantity: "1",
+        available,
+        extras: (extras || []).map(extra => ({
+          extrasTitle: extra.extrasTitle,
+          inventoryId: extra.inventoryId
+        }))
+      };
+
+      // Append foods as a JSON object
+      formData.append('foods', new Blob([JSON.stringify(foods)], { type: 'application/json' }));
+      
+      // Append extras as indexed fields
+      if (extras && extras.length > 0) {
+        extras.forEach((extra, idx) => {
+          formData.append(`extras[${idx}][extrasTitle]`, extra.extrasTitle);
+          formData.append(`extras[${idx}][inventoryId]`, extra.inventoryId);
+        });
+      }
+
       formData.append('restaurantName', userProfile.restaurantId || '');
       formData.append('branchName', userProfile.branchId || '');
       
       if (foodPhoto) {
         formData.append('foodPhoto', foodPhoto);
-      } else {
-        throw new Error('Missing file resource.');
       }
 
       const response = await addItemToCategory(formData);

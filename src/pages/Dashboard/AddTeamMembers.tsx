@@ -1,6 +1,7 @@
 import { FunctionComponent, useState, useEffect } from "react";
 import { IoMdClose, IoIosCloseCircleOutline } from "react-icons/io";
 import { useAddMember } from '../../hooks/useAddMember';
+import { getBranchesByRestaurant } from '../../services/api';
 
 interface SelectedItem {
   name: string;
@@ -31,7 +32,6 @@ const AddTeamMember: FunctionComponent<AddTeamMemberProps> = ({ onClose, restaur
     address: '',
     city: '',
     postalCode: '',
-    dateOfBirth: '',
   });
 
   useEffect(() => {
@@ -42,16 +42,8 @@ const AddTeamMember: FunctionComponent<AddTeamMemberProps> = ({ onClose, restaur
       
       setIsLoading(true);
       try {
-        const response = await fetch(
-          `${import.meta.env.VITE_API_URL}/delikaquickshipper_branches_table/${restaurantId}`
-        );
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        setBranches(data);
+        const response = await getBranchesByRestaurant(restaurantId);
+        setBranches(response.data);
       } catch (error) {
       } finally {
         setIsLoading(false);
@@ -105,8 +97,7 @@ const AddTeamMember: FunctionComponent<AddTeamMemberProps> = ({ onClose, restaur
       formData.country.trim() !== '' &&
       formData.address.trim() !== '' &&
       formData.city.trim() !== '' &&
-      formData.postalCode.trim() !== '' &&
-      formData.dateOfBirth.trim() !== ''
+      formData.postalCode.trim() !== ''
     );
   };
 
@@ -292,26 +283,6 @@ const AddTeamMember: FunctionComponent<AddTeamMemberProps> = ({ onClose, restaur
                   border: '1px solid #edf0f2', // Initial border color
                   outline: 'none', // Prevent focus outline
                 }}
-              />
-            </div>
-
-            {/* Date of Birth */}
-            <div className="w-[500px] space-y-1">
-              <label className="block text-[14px] font-semibold text-[#201a18] font-sans">
-                Date of Birth
-              </label>
-              <input
-                type="date"
-                name="dateOfBirth"
-                value={formData.dateOfBirth}
-                onChange={handleChange}
-                style={{
-                  boxShadow: 'none', // Disable any shadows
-                  border: '1px solid #edf0f2', // Initial border color
-                  outline: 'none', // Prevent focus outline
-                }}
-                className="appearance-none w-full h-[50px] px-4 rounded-lg border border-[#edf0f2] 
-                         focus:outline-none focus:border-[#fe5b18] font-sans bg-white"
               />
             </div>
 

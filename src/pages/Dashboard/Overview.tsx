@@ -13,8 +13,9 @@ import useMonthlyOrderData from '../../hooks/useMonthlyOrderData';
 import { BroadcastBanner } from './BroadcastBanner';
 import BranchFilter from '../../components/BranchFilter';
 import { useUserProfile } from '../../hooks/useUserProfile';
-
-
+import { hasOverviewAccess, shouldShowRevenue } from '../../permissions/DashboardPermissions';
+import { useTranslation } from 'react-i18next';
+import { formatDate, formatMonth } from '../../i18n/i18n';
 
 interface Order {
   id: string;
@@ -42,6 +43,9 @@ interface Order {
   }[];
   products: any[];
   customerImage?: string;
+  orderChannel: string;
+  orderAccepted: "pending" | "accepted" | "declined";
+  paymentStatus: string;
 }
 
 const CustomTooltip = ({ active, payload, coordinate }: any) => {
@@ -74,29 +78,38 @@ const CustomTooltip = ({ active, payload, coordinate }: any) => {
 
 interface OverviewProps {
   setActiveView: (view: string) => void;
-  hideRevenue?: boolean;
+  showRevenue: boolean;
+  showInventory: boolean;
 }
 
-interface DashboardPermissions {
-  canViewRevenue: boolean;
-}
-
-const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false }) => {
+const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
+  const { t } = useTranslation();
   const [orderTimeRange, setOrderTimeRange] = useState('6');
   const [revenueTimeRange, setRevenueTimeRange] = useState('6');
   const [recentOrders, setRecentOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedBranchId, setSelectedBranchId] = useState<string>('');
-  const { userProfile, isAdmin } = useUserProfile();
+  const { userProfile, isAdmin, restaurantData } = useUserProfile();
   
   const { monthlyOrderData, isLoading: isMonthlyOrderDataLoading } = useMonthlyOrderData(
     userProfile.restaurantId,
     selectedBranchId || userProfile.branchId
   );
 
-  const [permissions, setPermissions] = useState<DashboardPermissions>({
-    canViewRevenue: false
-  });
+  // Check if user has access to overview
+  useEffect(() => {
+    if (!hasOverviewAccess(restaurantData)) {
+      setActiveView('orders');
+    }
+  }, [restaurantData, setActiveView]);
+
+  // If no overview access, don't render anything
+  if (!hasOverviewAccess(restaurantData)) {
+    return null;
+  }
+
+  // Determine if revenue should be shown
+  const showRevenue = shouldShowRevenue(restaurantData);
 
   const getBarSize = () => {
     switch (orderTimeRange) {
@@ -117,7 +130,16 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false 
       });
 
       const response = await api.get(`/filter/orders/by/date?${params.toString()}`);
-      const ordersWithDefaultImage = response.data.slice(0, 3).map((order: Order) => ({
+      
+      // Apply the same filtering logic as in Orders.tsx
+      const filteredOrders = response.data.filter((order: Order) => {
+        // Exclude customerApp orders that are still pending or not paid
+        const shouldShowInTable = !(order.orderChannel === 'customerApp' && 
+          (order.orderAccepted === 'pending' || order.paymentStatus !== 'Paid'));
+        return shouldShowInTable;
+      });
+      
+      const ordersWithDefaultImage = filteredOrders.slice(0, 3).map((order: Order) => ({
         ...order,
         customerImage: order.customerImage || '/default-profile.jpg'
       }));
@@ -215,13 +237,16 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false 
     return value.toString();
   };
 
-  return (
-    <main>
-      <div className="p-3 md:p-4">
-        <BroadcastBanner restaurantId={userProfile.restaurantId || ''} />
+  const formatMonthName = (value: string) => {
+    return formatMonth(value, 'short');
+  };
 
+  return (
+    <main className="h-full overflow-auto">
+      <div className="p-3 ml-4 mr-4">
+        <BroadcastBanner restaurantId={userProfile.restaurantId || ''} />
         <div className="flex justify-between items-center mb-4">
-          <h1 className="text-lg md:text-xl font-bold font-sans">Dashboard</h1>
+          <h1 className="text-[18px] font-bold font-sans">{t('dashboard.title')}</h1>
           {isAdmin && (
             <BranchFilter 
               restaurantId={userProfile.restaurantId || null}
@@ -231,66 +256,68 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false 
             />
           )}
         </div>
-       {/* Overview Stats */}   
-        <section className={`grid ${!hideRevenue ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2 md:grid-cols-3'} gap-3 mb-4 font-sans`}>
-          {!hideRevenue && (
-            <div className="bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_4px_rgba(0,0,0,0.05)]">
-              <div className="w-[50px] h-[50px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
+
+        {/* Overview Stats - Make it more compact */}
+        <section className={`grid ${showRevenue ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4' : 'grid-cols-1 sm:grid-cols-2'} gap-4 mb-6`}>
+          {showRevenue && (
+            <div className="bg-white rounded-xl p-4 flex items-center gap-3 shadow-sm">
+              <div className="w-[45px] h-[45px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
                 <AiOutlineDollar className="w-5 h-5 text-[#fe5b18]" />
               </div>
               <div>
-                <p className="text-gray-600 text-xs font-sans m-0">Total Revenue</p>
+                <p className="text-gray-600 text-sm font-sans m-0">{t('overview.totalRevenue')}</p>
                 <p className="text-xl font-bold font-sans m-0">
-                  {isDashboardLoading ? 'Loading...' : formatCurrency(Number(data?.totalRevenue || 0))}
+                  {isDashboardLoading ? t('common.loading') : data?.totalRevenue ? formatCurrency(Number(data.totalRevenue)) : 'GH₵0'}
                 </p>
               </div>
             </div>
           )}
 
-          <div className="bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_4px_rgba(0,0,0,0.05)]">
-            <div className="w-[50px] h-[50px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
+          <div className="bg-white rounded-xl p-4 flex items-center gap-3 shadow-sm">
+            <div className="w-[45px] h-[45px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
               <LuBox className="w-5 h-5 text-[#fe5b18]" />
             </div>
             <div>
-              <p className="text-gray-600 text-xs font-sans m-0">Total Orders</p>
+              <p className="text-gray-600 text-sm font-sans m-0">{t('overview.totalOrders')}</p>
               <p className="text-xl font-bold font-sans m-0">
-                {isDashboardLoading ? 'Loading...' : formatNumber(Number(data?.totalOrders || 0))}
+                {isDashboardLoading ? t('common.loading') : formatNumber(Number(data?.totalOrders || 0))}
               </p>
             </div>
           </div>
 
-          {!hideRevenue && (
-            <div className="bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_4px_rgba(0,0,0,0.05)]">
-              <div className="w-[50px] h-[50px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
+          {showRevenue && (
+            <div className="bg-white rounded-xl p-4 flex items-center gap-3 shadow-sm">
+              <div className="w-[45px] h-[45px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
                 <IoFastFoodOutline className="w-5 h-5 text-[#fe5b18]" />
               </div>
               <div>
-                <p className="text-gray-600 text-xs font-sans m-0">Inventory Items</p>
+                <p className="text-gray-600 text-sm font-sans m-0">{t('overview.totalProducts')}</p>
                 <p className="text-xl font-bold font-sans m-0">
-                  {isDashboardLoading ? 'Loading...' : formatNumber(Number(data?.totalMenu || 0))}
+                  {isDashboardLoading ? t('common.loading') : formatNumber(Number(data?.totalMenu || 0))}
                 </p>
               </div>
             </div>
           )}
 
-          <div className="bg-white rounded-2xl p-3 flex items-center gap-3 shadow-[0px_4px_4px_rgba(0,0,0,0.05)]">
-            <div className="w-[50px] h-[50px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
+          <div className="bg-white rounded-xl p-4 flex items-center gap-3 shadow-sm">
+            <div className="w-[45px] h-[45px] rounded-lg bg-[rgba(254,91,24,0.05)] flex items-center justify-center">
               <HiOutlineUsers className="w-5 h-5 text-[#fe5b18]" />
             </div>
             <div>
-              <p className="text-gray-600 text-xs font-sans m-0">Total Staff</p>
+              <p className="text-gray-600 text-sm font-sans m-0">{t('overview.totalCustomers')}</p>
               <p className="text-xl font-bold font-sans m-0">
-                {isDashboardLoading ? 'Loading...' : formatNumber(Number(data?.totalStaff || 0))}
+                {isDashboardLoading ? t('common.loading') : formatNumber(Number(data?.totalStaff || 0))}
               </p>
             </div>
           </div>
         </section>
 
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 font-sans">
-          <div className={`bg-white rounded-2xl p-4 ${hideRevenue ? 'md:col-span-2' : ''}`}>
+        {/* Charts Section - Adjust spacing */}
+        <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+          <div className={`bg-white rounded-xl p-4 ${!showRevenue ? 'lg:col-span-2' : ''} min-h-[300px]`}>
             <div className="flex justify-between items-center mb-3">
               <h2 className="text-lg font-semibold text-gray-800 font-sans">
-                Total Orders {isMonthlyOrderDataLoading && '(Loading...)'}
+                {t('overview.orderStatistics')} {isMonthlyOrderDataLoading && `(${t('common.loading')})`}
               </h2>
               <div className="relative">
                 <select
@@ -298,16 +325,16 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false 
                   onChange={(e) => setOrderTimeRange(e.target.value)}
                   className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)]"
                 >
-                  <option value="3">Last 3 Months</option>
-                  <option value="6">Last 6 Months</option>
-                  <option value="12">Last 12 Months</option>
+                  <option value="3">{t('overview.last3Months')}</option>
+                  <option value="6">{t('overview.last6Months')}</option>
+                  <option value="12">{t('overview.last12Months')}</option>
                 </select>
               </div>
             </div>
             {isMonthlyOrderDataLoading ? (
-              <div className="h-[200px] flex items-center justify-center">Loading...</div>
+              <div className="h-[200px] flex items-center justify-center">{t('common.loading')}</div>
             ) : monthlyOrderData?.length === 0 ? (
-              <div className="h-[200px] flex items-center justify-center">No data available</div>
+              <div className="h-[200px] flex items-center justify-center">{t('common.noResults')}</div>
             ) : (
               <ResponsiveContainer width="100%" height={200}>
                 <BarChart 
@@ -325,6 +352,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false 
                     tickLine={false}
                     tick={{ fill: '#666', fontSize: 12, fontFamily: 'sans-serif' }}
                     dy={10}
+                    tickFormatter={formatMonthName}
                   />
                   <YAxis 
                     axisLine={false}
@@ -353,11 +381,11 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false 
             )}
           </div>
 
-          {!hideRevenue && (
-            <div className="bg-white rounded-2xl p-4">
+          {showRevenue && (
+            <div className="bg-white rounded-xl p-4 min-h-[300px]">
               <div className="flex justify-between items-center mb-3">
                 <h2 className="text-lg font-semibold text-gray-800 font-sans">
-                  Total Revenue {isMonthlyOrderDataLoading && '(Loading...)'}
+                  {t('overview.revenueChart')} {isMonthlyOrderDataLoading && `(${t('common.loading')})`}
                 </h2>
                 <div className="relative">
                   <select
@@ -365,17 +393,17 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false 
                     onChange={(e) => setRevenueTimeRange(e.target.value)}
                     className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)]"
                   >
-                    <option value="3">Last 3 Months</option>
-                    <option value="6">Last 6 Months</option>
-                    <option value="12">Last 12 Months</option>
+                    <option value="3">{t('overview.last3Months')}</option>
+                    <option value="6">{t('overview.last6Months')}</option>
+                    <option value="12">{t('overview.last12Months')}</option>
                   </select>
                 </div>
               </div>
               
               {isMonthlyOrderDataLoading ? (
-                <div className="h-[200px] flex items-center justify-center">Loading...</div>
+                <div className="h-[200px] flex items-center justify-center">{t('common.loading')}</div>
               ) : monthlyOrderData?.length === 0 ? (
-                <div className="h-[200px] flex items-center justify-center">No data available</div>
+                <div className="h-[200px] flex items-center justify-center">{t('common.noResults')}</div>
               ) : (
                 <ResponsiveContainer width="100%" height={200}>
                   <AreaChart
@@ -400,6 +428,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false 
                       tickLine={false}
                       tick={{ fill: '#666', fontSize: 12, fontFamily: 'sans-serif' }}
                       dy={10}
+                      tickFormatter={formatMonthName}
                     />
                     <YAxis
                       axisLine={false}
@@ -419,7 +448,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false 
                           return (
                             <div className="bg-white shadow-lg rounded-lg p-2 text-sm font-sans">
                               <p className="font-medium text-gray-900">
-                                  GH₵{payload[0].value}
+                                {t('overview.revenue')}: {formatCurrency(payload[0].value as number)}
                               </p>
                             </div>
                           )
@@ -450,56 +479,59 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false 
           )}
         </section>
 
-        <section className="bg-white rounded-2xl p-4">
+        {/* Orders Table Section */}
+        <section className="bg-white rounded-xl p-4">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-bold font-sans">Current Orders</h2>
+            <h2 className="text-lg font-bold font-sans">{t('overview.currentOrders')}</h2>
           </div>
 
-          <div className="w-full border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden">
-            <div className="grid grid-cols-6 bg-[#f9f9f9] p-3" style={{ borderBottom: '1px solid #eaeaea' }}>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Order Number</div>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Name</div>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Address</div>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Date</div>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Price (GH₵)</div>
-              <div className="text-[12px] leading-[20px] font-sans text-[#666]">Status</div>
+          <div className="w-full border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg">
+            <div className="sticky top-0 z-10 grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-1 bg-[#f9f9f9] p-2" style={{ borderBottom: '1px solid #eaeaea' }}>
+              <div className="text-[11px] leading-[18px] font-sans text-[#666]">{t('orders.orderNumber')}</div>
+              <div className="text-[11px] leading-[18px] font-sans text-[#666]">{t('orders.customer')}</div>
+              <div className="text-[11px] leading-[18px] font-sans text-[#666] hidden lg:block">{t('orders.address')}</div>
+              <div className="text-[11px] leading-[18px] font-sans text-[#666] hidden sm:block">{t('orders.date')}</div>
+              <div className="text-[11px] leading-[18px] font-sans text-[#666] hidden lg:block">{t('orders.price')} (GH₵)</div>
+              <div className="text-[11px] leading-[18px] font-sans text-[#666]">{t('orders.status')}</div>
             </div>
 
-            {isLoading ? (
-              <div className="p-4 text-center text-gray-500">Loading orders...</div>
-            ) : recentOrders.length === 0 ? (
-              <div className="p-4 text-center text-gray-500 font-sans">No current orders found</div>
-            ) : (
-              recentOrders.map((order) => (
-                <div 
-                  key={order.id} 
-                  style={{ borderBottom: '1px solid #eaeaea' }}
-                  className="grid grid-cols-6 p-3 hover:bg-[#f9f9f9]"
-                >
-                  <div className="text-[12px] leading-[20px] font-sans text-[#444]">{order.orderNumber}</div>
-                  <div className="flex items-center gap-2">
-                    <img 
-                      src={order.customerImage || '/default-profile.jpg'} 
-                      alt={order.customerName} 
-                      className="w-6 h-6 rounded-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = '/default-profile.jpg';
-                      }}
-                    />
-                    <span className="text-[12px] leading-[20px] font-sans text-[#444]">{order.customerName}</span>
+            <div className="overflow-y-auto max-h-[400px]">
+              {isLoading ? (
+                <div className="p-4 text-center text-gray-500">Loading orders...</div>
+              ) : recentOrders.length === 0 ? (
+                <div className="p-4 text-center text-gray-500 font-sans">{t('overview.noCurrentOrders')}</div>
+              ) : (
+                recentOrders.map((order) => (
+                  <div 
+                    key={order.id} 
+                    style={{ borderBottom: '1px solid #eaeaea' }}
+                    className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-1 p-2 hover:bg-[#f9f9f9]"
+                  >
+                    <div className="text-[11px] leading-[18px] font-sans text-[#444] truncate">#{order.orderNumber}</div>
+                    <div className="flex items-center gap-1 min-w-0">
+                      <img 
+                        src={order.customerImage || '/default-profile.jpg'} 
+                        alt={order.customerName} 
+                        className="w-4 h-4 rounded-full object-cover flex-shrink-0"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = '/default-profile.jpg';
+                        }}
+                      />
+                      <span className="text-[11px] leading-[18px] font-sans text-[#444] truncate">{order.customerName}</span>
+                    </div>
+                    <div className="text-[11px] leading-[18px] font-sans text-[#666] truncate hidden lg:block">{order.dropOff[0]?.toAddress || 'N/A'}</div>
+                    <div className="text-[11px] leading-[18px] font-sans text-[#666] hidden sm:block">{formatDate(order.orderDate)}</div>
+                    <div className="text-[11px] leading-[18px] font-sans text-[#444] truncate hidden lg:block">₵{Number(order.totalPrice).toFixed(0)}</div>
+                    <div className="flex items-center justify-start">
+                      <span className={`px-1 py-0.5 rounded text-[9px] leading-[14px] font-sans truncate max-w-full ${getStatusStyle(order.orderStatus)}`}>
+                        {order.orderStatus}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.dropOff[0]?.toAddress || 'N/A'}</div>
-                  <div className="text-[12px] leading-[20px] font-sans text-[#666]">{order.orderDate}</div>
-                  <div className="text-[12px] leading-[20px] font-sans text-[#444]">{Number(order.totalPrice).toFixed(2)}</div>
-                  <div className="flex items-center justify-between">
-                    <span className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans ${getStatusStyle(order.orderStatus)}`}>
-                      {order.orderStatus}
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
 
           <div className="flex justify-end mt-4">
@@ -507,7 +539,7 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView, hideRevenue = false 
               onClick={handleSeeAllClick}
               className="text-[#fe5b18] text-sm font-semibold font-sans cursor-pointer hover:text-[#e54d0e]"
             >
-              See All
+              {t('overview.seeAll')}
             </span>
           </div>
         </section>

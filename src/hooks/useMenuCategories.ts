@@ -3,45 +3,92 @@ import { api } from '../services/api';
 import { useAuth } from './useAuth';
 import axios from 'axios';
 
+// Add interfaces for extras
+interface InventoryDetail {
+  id: string;
+  foodName: string;
+  foodPrice: number;
+  foodDescription: string;
+}
+
+interface ExtraDetail {
+  delika_inventory_table_id: string;
+  minSelection?: number;
+  maxSelection?: number;
+  inventoryDetails: InventoryDetail[];
+}
+
+interface ExtraGroup {
+  delika_extras_table_id: string;
+  extrasDetails: {
+    id: string;
+    extrasTitle: string;
+    extrasType: string;
+    required: boolean;
+    extrasDetails: ExtraDetail[];
+  };
+}
+
 export interface CategoryCard {
   id: string;
   image: string;
   name: string;
   itemCount: number;
   isActive?: boolean;
+  categoryTable: CategoryTableItem[];
   foods: {
     name: string;
     price: string;
     foodImage: {
       url: string;
     };
+    description?: string;
+    available: boolean;
+    extras?: ExtraGroup[];
   }[];
 }
 
 interface FoodImage {
+  access: string;
+  path: string;
+  name: string;
+  type: string;
+  size: number;
   url: string;
+  meta?: {
+    width: number;
+    height: number;
+  };
+  mime?: string;
 }
 
 interface FoodItem {
   name: string;
   price: string;
-  foodImage: {
-    url: string;
-  };
-  description?: string;
-  quantity?: number;
+  description: string;
+  quantity: number;
+  available: boolean;
+  extras: ExtraGroup[];
+  foodImage: FoodImage;
+}
+
+interface CategoryTableItem {
+  categoryImage: string | null;
+  categoryName: string;
+  created_at: number;
+  id: string;
 }
 
 interface APICategory {
   id: string;
+  created_at: number;
   foodType: string;
-  foodTypeImage: {
-    url: string;
-  };
-  foods: FoodItem[];
   restaurantName: string;
   branchName: string;
-  created_at: number;
+  categoryId: string | null;
+  categoryTable: CategoryTableItem[];
+  foodTypeImage: FoodImage;
+  foods: FoodItem[];
 }
 
 export interface CategoryDetails {
@@ -55,7 +102,7 @@ export interface CategoryDetails {
       url: string;
     };
     description?: string;
-    quantity?: number;
+    available: boolean;
   }[];
 }
 
@@ -66,7 +113,7 @@ interface CategoryFood {
     url: string;
   };
   description?: string;
-  quantity?: number;
+  available: boolean;
 }
 
 export const useMenuCategories = () => {
@@ -86,28 +133,35 @@ export const useMenuCategories = () => {
       
       try {
         const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+      
+        
         const response = await api.post<APICategory[]>('/get/all/menu', {
           restaurantId: userProfile.restaurantId || '',
           branchId: userProfile?.role === 'Admin' ? selectedBranchId : userProfile?.branchId || '',
         });
         
+        
         const transformedCategories = response.data
           .map(category => ({
             id: category.id,
-            image: category.foodTypeImage.url,
+            image: category.foodTypeImage?.url || '',
             name: category.foodType,
-            itemCount: category.foods.length,
-            foods: category.foods.map(food => ({
+            itemCount: category.foods?.length || 0,
+            categoryTable: category.categoryTable || [],
+            foods: (category.foods || []).map(food => ({
               name: food.name,
               price: food.price,
               foodImage: {
-                url: food.foodImage.url,
+                url: food.foodImage?.url || '',
               },
               description: food.description,
-              quantity: food.quantity
+              available: food.available ?? false,
+              quantity: food.quantity || 0,
+              extras: food.extras || []
             }))
           }))
           .sort((a, b) => a.name.localeCompare(b.name));
+        
         
         setCategories(transformedCategories);
       } catch (err) {
@@ -118,7 +172,7 @@ export const useMenuCategories = () => {
     };
 
     fetchCategories();
-  }, [selectedBranchId]); // Add selectedBranchId as a dependency
+  }, [selectedBranchId]);
 
   useEffect(() => {
     // Prefetch the data

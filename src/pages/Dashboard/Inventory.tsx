@@ -1,4 +1,4 @@
-import { FunctionComponent, useState, useCallback, useRef, TouchEvent, MouseEvent, useEffect, useMemo } from "react";
+import React, { FunctionComponent, useState, useCallback, useRef, TouchEvent, MouseEvent, useEffect, useMemo, ReactElement } from "react";
 import { Button, Menu, MenuItem, Modal, IconButton } from "@mui/material";
 import { IoMdNotificationsOutline, IoMdAdd, IoMdRemove } from "react-icons/io";
 import { FaRegMoon, FaChevronDown, FaArrowAltCircleLeft, FaArrowAltCircleRight } from "react-icons/fa";
@@ -15,24 +15,69 @@ import BranchFilter from '../../components/BranchFilter';
 import { api } from '../../services/api';
 import { optimizeImage } from '../../utils/imageOptimizer';
 import { OptimizedImage } from '../../components/OptimizedImage';
+import { useTranslation } from 'react-i18next';
+import { useLanguageChange } from '../../hooks/useLanguageChange';
+import { Badge } from '../../components/ui/badge';
+import { Input } from '../../components/ui/input';
+import { Checkbox } from '../../components/ui/checkbox';
+import { Textarea } from '../../components/ui/textarea';
+import { Label } from '../../components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Switch } from '../../components/ui/switch';
+import { Button as UIButton } from '../../components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
+import EditInventoryModal from '../../components/EditInventoryModal';
+import AddExtrasModal from '../../components/AddExtrasModal';
+import { updateInventoryItem, updateInventoryItemWithImage, deleteMenuItem } from '../../services/api';
 
 interface MenuItem {
-  id: string;
-  image: string;
   name: string;
   price: number;
-  description?: string;
+  description: string;
   quantity: number;
-  remainingItems: number;
+  available: boolean;
+  foodImage: {
+    access: string;
+    path: string;
+    name: string;
+    type: string;
+    size: number;
+    mime: string;
+    meta: {
+      width: number;
+      height: number;
+    };
+    url: string;
+  };
+  extras?: ExtraGroup[];
 }
 
-interface EditInventoryModalProps {
-  item: MenuItem | null;
-  onClose: () => void;
-  onSave: (id: string, newPrice: number, newQuantity: number) => void;
-  isUpdating: boolean;
-  updateError: string | null;
-  branchId: string;
+
+
+// Add interfaces for extras
+interface InventoryDetail {
+  id: string;
+  foodName: string;
+  foodPrice: number;
+  foodDescription: string;
+}
+
+interface ExtraDetail {
+  delika_inventory_table_id: string;
+  minSelection: number;
+  maxSelection: number;
+  inventoryDetails: InventoryDetail[];
+}
+
+interface ExtraGroup {
+  delika_extras_table_id: string;
+  extrasDetails: {
+    id: string;
+    extrasTitle: string;
+    extrasType: string;
+    required: boolean;
+    extrasDetails: ExtraDetail[];
+  };
 }
 
 // Add interface for category food items
@@ -42,8 +87,10 @@ interface CategoryFood {
   foodImage: {
     url: string;
   };
-  quantity?: number;
   description?: string;
+  quantity?: number;
+  available?: boolean;
+  extras?: ExtraGroup[];
 }
 
 interface Category {
@@ -76,9 +123,64 @@ interface InventoryProps {
   searchQuery?: string;
 }
 
-const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
+// Add new interface for the action selection dialog
+interface ActionSelectionDialogProps {
+  open: boolean;
+  onClose: () => void;
+  onSelectAction: (action: 'menu-item' | 'extras') => void;
+}
+
+const ActionSelectionDialog: FunctionComponent<ActionSelectionDialogProps> = ({
+  open,
+  onClose,
+  onSelectAction
+}) => {
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Add New Item</DialogTitle>
+          <DialogDescription>
+            Choose what you want to add to your inventory.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-4 py-4">
+          <button
+            className="flex flex-col items-center justify-center p-6 bg-white dark:bg-[#2c2522] border border-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-[#201a18] transition-colors"
+            onClick={() => onSelectAction('menu-item')}
+          >
+            <div className="w-12 h-12 bg-[#fd683e]/10 rounded-full flex items-center justify-center mb-3">
+              <IoMdAdd className="w-6 h-6 text-[#fd683e]" />
+            </div>
+            <span className="text-sm font-medium text-gray-900 dark:text-white">Add Menu Item</span>
+            <span className="text-xs text-gray-500 mt-1">Create a new food item</span>
+          </button>
+          <button
+            className="flex flex-col items-center justify-center p-6 bg-white dark:bg-[#2c2522] border border-gray-200 rounded-lg hover:bg-gray-50 dark:hover:bg-[#201a18] transition-colors"
+            onClick={() => onSelectAction('extras')}
+          >
+            <div className="w-12 h-12 bg-[#fd683e]/10 rounded-full flex items-center justify-center mb-3">
+              <FiShoppingCart className="w-6 h-6 text-[#fd683e]" />
+            </div>
+            <span className="text-sm font-medium text-gray-900 dark:text-white">Add Extras</span>
+            <span className="text-xs text-gray-500 mt-1">Create extras/add-ons</span>
+          </button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+
+
+
+
+const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): ReactElement => {
   const navigate = useNavigate();
   const { addNotification } = useNotifications();
+  const { t } = useTranslation();
+  // Use the language change hook to ensure component updates on language change
+  useLanguageChange();
 
   const [vuesaxlineararrowDownAnchorEl, setVuesaxlineararrowDownAnchorEl] =
     useState<HTMLElement | null>(null);
@@ -112,10 +214,11 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
   }, []);
 
   const [showAddInventory, setShowAddInventory] = useState(false);
-
-  const onAddItemButtonClick = useCallback(() => {
-    setShowAddInventory(true);
-  }, []);
+  const [addInventoryCategory, setAddInventoryCategory] = useState<{
+    mainCategory: string;
+    mainCategoryId: string;
+    subCategory: string;
+  } | null>(null);
 
   // Get user data from useAuth
   const { user } = useAuth();
@@ -140,8 +243,41 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
     }
   }, [userProfile?.role, branches, selectedBranchId]);
 
-  // Pass selectedBranchId to useMenuCategories
+  // Use menuCategories hook for initial data
   const { categories: remoteCategories, isLoading: categoriesLoading, error: categoriesError } = useMenuCategories();
+
+
+
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  const [showActionDialog, setShowActionDialog] = useState(false);
+  const [showAddExtrasModal, setShowAddExtrasModal] = useState(false);
+
+  const handleActionSelect = (action: 'menu-item' | 'extras') => {
+    setShowActionDialog(false);
+    if (action === 'menu-item') {
+      setAddInventoryCategory(null);
+      setShowAddInventory(true);
+    } else if (action === 'extras') {
+      // Open AddExtrasModal in create mode
+      setShowAddExtrasModal(true);
+    }
+  };
+
+  const onAddItemButtonClick = useCallback((category?: Category) => {
+    if (category) {
+      // If adding from within a category, use the category's ID directly
+      setAddInventoryCategory({
+        mainCategory: category.name,
+        mainCategoryId: category.id, // Use the category's ID directly
+        subCategory: category.name
+      });
+      setShowAddInventory(true);
+    } else {
+      // If adding from the top button, show action selection dialog
+      setShowActionDialog(true);
+    }
+  }, [remoteCategories]);
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -188,150 +324,205 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
   const [selectedCardIndex, setSelectedCardIndex] = useState(0);
 
   const [selectedItem, setSelectedItem] = useState<MenuItem | null>(null);
+  const [categoryItems, setCategoryItems] = useState<MenuItem[]>([]);
+  const [isLoadingItems, setIsLoadingItems] = useState(false);
+  const { updateInventory, isLoading: isUpdating, error: updateError } = useUpdateInventory();
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [showSelectExtrasModal, setShowSelectExtrasModal] = useState(false);
+  const [selectedItemExtras, setSelectedItemExtras] = useState<ExtraGroup[]>([]);
 
-  const handleItemClick = (item: MenuItem) => {
-    setSelectedItem(item);
+  const handleSelectExtrasGroups = (selectedGroups: any[]) => {
+    // Convert the selected groups to the format expected by the item
+    const formattedExtras = selectedGroups.map(group => ({
+      delika_extras_table_id: group.id,
+      extrasDetails: {
+        id: group.id,
+        extrasTitle: group.extrasTitle,
+        extrasType: group.extrasType || 'multiple',
+        required: group.required || false,
+        extrasDetails: group.extrasDetails || []
+      }
+    }));
+    
+    setSelectedItemExtras(formattedExtras);
+    setShowSelectExtrasModal(false);
   };
 
-  const handleUpdateItem = async (id: string, newPrice: number, newQuantity: number) => {
+  // Update items when category changes
+  useEffect(() => {
+    const loadCategoryItems = async () => {
+      if (!activeId) {
+        setCategoryItems([]);
+        return;
+      }
+
+      setIsLoadingItems(true);
+      try {
+        const activeCategory = remoteCategories.find(category => category.id === activeId);
+        if (!activeCategory?.foods) {
+          setCategoryItems([]);
+          return;
+        }
+
+        // Add a small delay to make the loading state visible
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        // Map only the foods from the active category
+        const items = activeCategory.foods.map((food: CategoryFood) => ({
+          name: food.name,
+          price: Number(food.price),
+          description: food.description || '',
+          quantity: food.quantity || 0,
+          available: food.available ?? false,
+          foodImage: {
+            access: 'public',
+            path: food.foodImage.url,
+            name: food.name,
+            type: 'image',
+            size: 0,
+            mime: 'image/jpeg',
+            meta: { width: 0, height: 0 },
+            url: food.foodImage.url
+          },
+          extras: food.extras || []
+        }));
+
+  
+
+        setCategoryItems(items);
+      } finally {
+        setIsLoadingItems(false);
+      }
+    };
+
+    loadCategoryItems();
+  }, [activeId, remoteCategories]);
+
+  // Filter items based on search
+  const filteredItems = useMemo(() => {
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      return categoryItems.filter(item =>
+        item.name.toLowerCase().includes(lowerQuery)
+      );
+    }
+    return categoryItems;
+  }, [categoryItems, searchQuery]);
+
+  const handleItemClick = (item: MenuItem) => {
+    // Don't reset selection if already in edit mode
+    if (selectedItem?.name === item.name && isEditMode) {
+      return;
+    }
+    setSelectedItem(item);
+    setIsEditMode(false);
+  };
+
+  // Update the category click handler to clear items first
+  const handleCategoryClick = useCallback((categoryId: string) => {
+    setCategoryItems([]); // Clear items first
+    setActiveId(categoryId); // Then set new category
+  }, []);
+
+  // Update the handleUpdateItem function to use the new API function
+  const handleUpdateItem = async (id: string, newPrice: number, available: boolean, itemExtras: ExtraGroup[], name: string, description: string, imageFile?: File) => {
     if (!selectedItem) return;
 
     try {
-      await updateInventory({
-        menuId: activeId,
-        newPrice: newPrice.toString(),
-        name: selectedItem.name,
-        description: selectedItem.description || '',
-        newQuantity: newQuantity
-      });
+              // Format extras to use the correct key for the API
+        const formattedExtras = itemExtras.map(group => ({
+          delika_extras_table_id: group.delika_extras_table_id || ''
+        })).filter(extra => extra.delika_extras_table_id !== '');
 
-      // Add notification
+      if (imageFile) {
+        
+        // Use FormData for file upload with UPDATE_ITEM endpoint
+        const formData = new FormData();
+        formData.append('old_name', selectedItem.name);
+        formData.append('old_item_description', selectedItem.description || '');
+        formData.append('old_item_price', selectedItem.price.toString());
+        formData.append('new_name', name);
+        formData.append('new_item_description', description || '');
+        formData.append('new_item_price', newPrice.toString());
+        formData.append('available', available.toString());
+        formData.append('restaurantId', userProfile.restaurantId || '');
+        formData.append('branchId', userProfile.role === 'Admin' ? selectedBranchId : userProfile.branchId || '');
+        formData.append('value', selectedItem.name);
+        formData.append('extras', JSON.stringify(formattedExtras));
+        formData.append('foodImage', imageFile);
+        
+        await updateInventoryItemWithImage(formData);
+      } else {
+        // Use regular JSON for updates without image
+        await updateInventoryItem({
+          old_name: selectedItem.name,
+          old_item_description: selectedItem.description || '',
+          old_item_price: selectedItem.price,
+          new_name: name,
+          new_item_description: description || '',
+          new_item_price: Number(newPrice),
+          available: available,
+          extras: formattedExtras,
+          restaurantId: userProfile.restaurantId,
+          branchId: userProfile.role === 'Admin' ? selectedBranchId : userProfile.branchId,
+          value: selectedItem.name
+        });
+      }
+
       addNotification({
-        type: 'inventory_update',
-        message: `${selectedItem.name} has been updated (Price: ${newPrice}, Quantity: ${newQuantity})`
+        type: 'inventory_alert',
+        message: `${selectedItem.name} has been updated successfully`
       });
 
-      // Close modal
       setSelectedItem(null);
-
-      // Store the active view in localStorage
-      localStorage.setItem('dashboardActiveView', 'inventory');
       
-      // Force a complete page refresh
-      window.location.href = '/dashboard?view=inventory';
+      // Refresh the whole page after successful update
+      window.location.reload();
 
     } catch (error) {
+      addNotification({
+        type: 'inventory_alert',
+        message: 'Failed to update item. Please try again.'
+      });
     }
   };
 
-  const EditInventoryModal: FunctionComponent<EditInventoryModalProps> = ({ item, onClose, onSave, isUpdating, updateError, branchId }) => {
-    const [quantity, setQuantity] = useState(item?.remainingItems || 0);
-    const [price, setPrice] = useState(item?.price || 0);
+  const handleDeleteItem = async (item: MenuItem) => {
+    if (!item) return;
 
-    if (!item) return null;
+    // Show confirmation dialog
+    const confirmed = window.confirm(`Are you sure you want to delete "${item.name}"? This action cannot be undone.`);
+    if (!confirmed) return;
 
-    return (
-      <Modal
-        open={true}
-        onClose={onClose}
-        className="flex items-center justify-center"
-      >
-        <div className="bg-white dark:bg-[#2c2522] rounded-lg p-6 w-[90%] max-w-[400px] mx-auto">
-          <div className="flex flex-col gap-4">
-            <img
-              src={optimizeImageUrl(item.image)}
-              alt={item.name}
-              className="w-full h-[250px] object-cover rounded-lg"
-              loading="eager"
-            />
-            <div className="flex flex-col gap-1">
-              <h2 className="text-xl font-semibold font-sans">{item.name}</h2>
-              <p className="text-sm text-black font-sans">{item.description}</p>
-            </div>
-          </div>
-          <div className="flex gap-4">
-            {/* Price Control */}
-            <div className="flex flex-col gap-2 flex-1">
-              <label className="text-sm text-gray-600 font-sans">Price (GHS)</label>
-              <input
-                type="number"
-                value={price}
-                onChange={(e) => setPrice(Number(e.target.value))}
-                className="border rounded p-2 font-sans"
-              />
-            </div>
+    try {
+      // Create FormData similar to how items are added
+      const formData = new FormData();
+      formData.append('restaurantId', userProfile.restaurantId || '');
+      formData.append('branchId', userProfile.role === 'Admin' ? selectedBranchId : userProfile.branchId || '');
+      formData.append('categoryId', activeId || ''); // Add the category ID from the currently active category
+      formData.append('itemName', item.name);
+      formData.append('itemPrice', item.price.toString());
+      formData.append('itemDescription', item.description || '');
 
-            {/* Quantity Control */}
-            <div className="flex flex-col gap-2 flex-1">
-              <label className="text-sm text-gray-600 font-sans">Quantity</label>
-              <div className="flex items-center gap-2">
-                <IconButton 
-                  onClick={() => setQuantity(prev => Math.max(0, prev - 1))}
-                  className="border rounded-full"
-                >
-                  <IoMdRemove />
-                </IconButton>
-                <input
-                  type="number"
-                  value={quantity}
-                  onChange={(e) => setQuantity(Number(e.target.value))}
-                  className="border rounded p-2 w-20 text-center font-sans [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
-                <IconButton 
-                  onClick={() => setQuantity(prev => prev + 1)}
-                  className="border rounded-full"
-                >
-                  <IoMdAdd />
-                </IconButton>
-              </div>
-            </div>
-          </div>
+      const response = await deleteMenuItem(formData);
 
-          <div className="flex gap-4 justify-end mt-4">
-            <Button
-              onClick={onClose}
-              variant="outlined"
-              className="font-sans"
-              style={{
-                backgroundColor: '#fd683e',
-                borderColor: '#f5fcf8',
-                color: 'white',
-                padding: '9px 90px',
-                fontSize: '10px',
-                borderRadius: '4px',
-                flex: 1,
-                height: '42px',
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={() => onSave(item.id, price, quantity)}
-              variant="contained"
-              className="font-sans !font-sans"
-              style={{
-                backgroundColor: '#201a18',
-                borderColor: '#f5fcf8',
-                color: 'white',
-                padding: '9px 90px',
-                fontSize: '10px',
-                borderRadius: '4px',
-                flex: 1,
-                height: '42px',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              Save Changes
-            </Button>
-          </div>
-        </div>
-      </Modal>
-    );
+      addNotification({
+        type: 'inventory_alert',
+        message: `${item.name} has been deleted successfully`
+      });
+
+      setSelectedItem(null);
+      
+      // Refresh the whole page after successful deletion
+      window.location.reload();
+
+    } catch (error) {
+      addNotification({
+        type: 'inventory_alert',
+        message: 'Failed to delete item. Please try again.'
+      });
+    }
   };
-
-  const [activeId, setActiveId] = useState<string | null>(null);
-  const [activeCategoryFoods, setActiveCategoryFoods] = useState<MenuItem[]>([]);
-  const { updateInventory, isLoading: isUpdating, error: updateError } = useUpdateInventory();
 
   // Update handleBranchSelect
   const handleBranchSelect = async (branchId: string) => {
@@ -342,9 +533,30 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
   // Function to handle closing the AddInventory modal
   const handleAddInventoryClose = () => {
     setShowAddInventory(false);
-    refreshInventory();
     navigate('/dashboard', { state: { activeView: 'inventory' } });
   };
+
+  // Update the inventory refresh handler
+  const handleInventoryUpdated = useCallback(async () => {
+    try {
+      setShowAddInventory(false);
+      
+      // Show success notification
+      addNotification({
+        type: 'inventory_alert',
+        message: 'Inventory updated successfully'
+      });
+      
+      // Refresh the whole page after successful upload
+      window.location.reload();
+      
+    } catch (error) {
+      addNotification({
+        type: 'inventory_alert',
+        message: 'Item added but failed to refresh inventory. Please refresh the page.'
+      });
+    }
+  }, [addNotification]);
 
   // Set first category as active on mount
   useEffect(() => {
@@ -352,56 +564,6 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
       setActiveId(remoteCategories[0].id);
     }
   }, [remoteCategories]);
-
-  // Update activeCategoryFoods when activeId changes
-  useEffect(() => {
-    if (activeId && remoteCategories.length > 0) {
-      const activeCategory = remoteCategories.find(category => category.id === activeId);
-
-      if (activeCategory) {
-        const activeFoods = Array.isArray(activeCategory.foods) ? activeCategory.foods : [];
-        setActiveCategoryFoods(
-          activeFoods.map((food: CategoryFood) => ({
-            id: food.name,
-            image: food.foodImage.url,
-            name: food.name,
-            price: Number(food.price),
-            description: food.description,
-            quantity: food.quantity || 0,
-            remainingItems: food.quantity || 0
-          }))
-        );
-      }
-    }
-  }, [activeId, remoteCategories]);
-
-  // Filter items across all categories
-  const filteredItems = useMemo(() => {
-    if (!searchQuery) {
-      // When no search query, return the active category's foods
-      return activeCategoryFoods;
-    }
-
-    const lowerQuery = searchQuery.toLowerCase();
-    
-    // Get all items from all categories when searching
-    const allItems = remoteCategories.flatMap(category => 
-      category.foods.map((food: CategoryFood) => ({
-        id: food.name,
-        image: food.foodImage.url,
-        name: food.name,
-        price: Number(food.price),
-        description: food.description || '',
-        quantity: food.quantity || 0,
-        remainingItems: food.quantity || 0
-      }))
-    );
-
-    // Filter items by name
-    return allItems.filter(item =>
-      item.name.toLowerCase().includes(lowerQuery)
-    );
-  }, [remoteCategories, searchQuery, activeCategoryFoods]);
 
   // Update refreshInventory to use selectedBranchId
   const refreshInventory = async () => {
@@ -413,23 +575,158 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
           : (userProfile.branchId || ''),
       }); 
 
-      const response = await api.post(`/get/menu/items?${params.toString()}`);
+      const response = await api.post(`/get/all/menu`, params);
       setCategories(response.data);
+
+      if (addInventoryCategory?.mainCategoryId) {
+        const mainCategory = response.data.find(
+          (cat: { id: string; foodType: string }) => cat.id === addInventoryCategory.mainCategoryId
+        );
+        if (mainCategory) {
+          setAddInventoryCategory({
+            mainCategory: mainCategory.foodType,
+            mainCategoryId: mainCategory.id,
+            subCategory: addInventoryCategory.subCategory
+          });
+        }
+      }
     } catch (error) {
     }
   };
 
   const [categories, setCategories] = useState<Category[]>([]);
 
+
+
+  // Update the category click in the JSX
+  const renderCategories = () => (
+    remoteCategories.map((category) => (
+      <div 
+        key={category.id}
+        onClick={() => handleCategoryClick(category.id)}
+        className={`flex-none w-[180px] rounded-[8px] border-[1px] border-solid border-[#eaeaea]
+                    flex flex-row items-center justify-start p-3 gap-[10px] 
+                    text-center text-[#5e5c57] transition-all duration-300
+                    hover:bg-[#FFFCF7] cursor-pointer
+                    ${category.id === activeId ? 'bg-[#FFFCF7] dark:bg-[#2c2522]' : 'bg-[#F7F7F7] dark:bg-[#201a18]'}`}
+      >
+        <img
+          className="w-[40px] h-[40px] rounded-full object-cover"
+          alt={`${category.name} category`}
+          src={category.image ? optimizeImageUrl(category.image) : '/category.jpg'}
+          loading="eager"
+          draggable="false"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.src = '/category.jpg';
+          }}
+        />
+        <div className="flex flex-col items-start justify-start">
+          <div className="text-[16px] leading-[20px] font-medium text-[#333] font-sans truncate" style={{ maxWidth: '110px' }}>
+            {category.name}
+          </div>
+          <div className="text-[13px] leading-[16px] text-[#999] text-left font-sans">
+            {category.itemCount} items
+          </div>
+        </div>
+      </div>
+    ))
+  );
+
+  // Update the menu items grid section to show loading state
+  const renderMenuItemsGrid = () => (
+    <div className="grid grid-cols-1 min-[433px]:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
+      {isLoadingItems ? (
+        // Loading skeleton
+        Array(6).fill(0).map((_, index) => (
+          <div 
+            key={`skeleton-${index}`}
+            className="w-full bg-white dark:bg-[#2c2522] rounded-[12px] border-[#eaeaeb] border-[1px] border-solid 
+                      overflow-hidden flex flex-col animate-pulse"
+          >
+            <div className="relative w-full h-[180px] bg-gray-200 dark:bg-gray-700" />
+            <div className="p-4 flex flex-col gap-2">
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
+              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
+              <div className="flex items-center gap-2 mt-1">
+                <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/4" />
+              </div>
+            </div>
+          </div>
+        ))
+      ) : filteredItems.length > 0 ? (
+        <>
+          {filteredItems.map((item) => (
+            <div 
+              key={item.name}
+              className="w-full bg-white dark:bg-[#2c2522] rounded-[12px] border-[#eaeaeb] border-[1px] border-solid 
+                        overflow-hidden flex flex-col hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => handleItemClick(item)}
+            >
+              <div className="relative w-full">
+                <OptimizedImage
+                  src={item.foodImage.url}
+                  alt={item.name}
+                  className="w-full h-[180px] object-cover"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                />
+              </div>
+              <div className="p-4 flex flex-col gap-1">
+                <div className="flex-1 min-w-0">
+                  <div className="text-[14px] font-medium text-[#333] dark:text-white font-sans truncate overflow-hidden whitespace-nowrap">
+                    {item.name}
+                  </div>
+                  <div className="text-[12px] font-medium text-[#606060] dark:text-[#a2a2a2] font-sans">
+                    GH₵{item.price}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <FiShoppingCart className="text-[13px] text-[#a2a2a2]" />
+                  <Badge 
+                    className={item.available 
+                      ? "text-[11px] h-5 bg-green-100 text-green-800 border-green-200 hover:bg-green-200" 
+                      : "text-[11px] h-5 bg-red-100 text-red-800 border-red-200 hover:bg-red-200"}
+                  >
+                    {item.available ? t('inventory.available') : t('inventory.unavailable')}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          ))}
+          {/* Add Item Card */}
+          <div
+            className="flex flex-col items-center justify-center bg-[#F7F7F7] dark:bg-[#201a18] rounded-[12px] border border-[#eaeaeb] min-h-[260px] cursor-pointer transition hover:shadow-md"
+            onClick={() => {
+              const activeCategory = remoteCategories.find(cat => cat.id === activeId);
+              if (activeCategory) {
+                onAddItemButtonClick(activeCategory);
+              }
+            }}
+          >
+            <div className="flex items-center justify-center w-16 h-16 rounded-full bg-[#fd4d4d]/10 mb-2">
+              <span className="text-4xl text-[#fd4d4d]">+</span>
+            </div>
+            <span className="text-base font-sans text-[#222]">Add item</span>
+          </div>
+        </>
+      ) : (
+        <div className="col-span-full text-center py-4 text-gray-500 font-sans">
+          {t('inventory.noItems')}
+        </div>
+      )}
+    </div>
+  );
+
+ 
+
   return (
     <div className="h-full w-full bg-white dark:bg-[#201a18] m-0 p-0">
-      <div className="p-[20px] ml-[30px] mr-[30px]">
+      <div className="p-3 ml-4 mr-4">
         {/* Title and Add Item Section */}
-        <div className="flex justify-between items-center mb-[25px]">
-          <b className="text-[20px] font-sans">
-            Items
+        <div className="flex justify-between items-center mb-4">
+          <b className="text-[18px] font-sans">
+            {t('inventory.title')}
           </b>
-          
           <div className="flex items-center gap-2">
             {userProfile?.role === 'Admin' && (
               <BranchFilter 
@@ -440,20 +737,20 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                 className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)]"
               />
             )}
+           
 
             <div
-              className="flex items-center gap-2 px-3 py-1 rounded-[4px] bg-[#313131] border-[#737373] border-[1px] border-solid 
-                    cursor-pointer text-[12px] font-sans"
-              onClick={onAddItemButtonClick}
+              className="flex items-center gap-2 px-3 py-1 rounded-[4px] bg-[#313131] border-[#737373] border-[1px] border-solid cursor-pointer text-[12px] font-sans"
+              onClick={() => onAddItemButtonClick()}
             >
               <IoMdAdd className="w-[18px] h-[18px] text-[#cbcbcb]" />
-              <div className="leading-[18px] font-sans text-white">Add item</div>
+              <div className="leading-[18px] font-sans text-white">{t('inventory.addNewItem')}</div>
             </div>
           </div>
         </div>
         {/* Total Items */}
         <div className="relative leading-[22px] font-sans mb-4">
-          Total item - {remoteCategories.reduce((total, category) => total + (category.foods?.length || 0), 0)}
+          {t('inventory.allItems')} - {remoteCategories.reduce((total, category) => total + (category.foods?.length || 0), 0)}
         </div>
 
         {/* Categories Section */}
@@ -503,33 +800,7 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
                 ) : categoriesError ? (
                   <div className="flex justify-center p-4 text-red-500 font-sans">{categoriesError}</div>
                 ) : (
-                  remoteCategories.map((category) => (
-                    <div 
-                      key={category.id}
-                      onClick={() => setActiveId(category.id)}
-                      className={`flex-none w-[180px] rounded-[8px] border-[1px] border-solid border-[#eaeaea]
-                                  flex flex-row items-center justify-start p-3 gap-[10px] 
-                                  text-center text-[#5e5c57] transition-all duration-300
-                                  hover:bg-[#FFFCF7] cursor-pointer
-                                  ${category.id === activeId ? 'bg-[#FFFCF7] dark:bg-[#2c2522]' : 'bg-[#F7F7F7] dark:bg-[#201a18]'}`}
-                    >
-                      <img
-                        className="w-[40px] h-[40px] rounded-full object-cover"
-                        alt={`${category.name} category`}
-                        src={optimizeImageUrl(category.image)}
-                        loading="eager"
-                        draggable="false"
-                      />
-                      <div className="flex flex-col items-start justify-start">
-                        <div className="text-[16px] leading-[20px] font-medium text-[#333] font-sans">
-                          {category.name}
-                        </div>
-                        <div className="text-[13px] leading-[16px] text-[#999] text-left font-sans">
-                          {category.itemCount} items
-                        </div>
-                      </div>
-                    </div>
-                  ))
+                  renderCategories()
                 )}
               </div>
             </div>
@@ -551,76 +822,59 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }) => {
         </section>
 
         {/* Menu Items Grid - Using filteredItems */}
-        <div className="grid grid-cols-1 min-[433px]:grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
-          {filteredItems.length > 0 ? (
-            filteredItems.map((item) => (
-              <div 
-                key={item.id}
-                className="w-full bg-white dark:bg-[#2c2522] rounded-[12px] border-[#eaeaeb] border-[1px] border-solid 
-                          overflow-hidden flex flex-col hover:shadow-md transition-shadow cursor-pointer"
-                onClick={() => handleItemClick(item)}
-              >
-                <div className="relative w-full">
-                  <OptimizedImage
-                    src={item.image}
-                    alt={item.name}
-                    className="w-full h-[180px] object-cover"
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                  />
-                  <div className={`absolute top-2 right-2 text-[12px] px-2 py-1 rounded-full font-sans
-                    ${(item.quantity ?? 0) > 0 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-red-100 text-red-800'}`}>
-                    {(item.quantity ?? 0) > 0 ? 'In Stock' : 'Out of Stock'}
-                  </div>
-                </div>
-                <div className="p-4 flex flex-col gap-1">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[14px] font-medium text-[#333] dark:text-white font-sans truncate overflow-hidden whitespace-nowrap">
-                      {item.name}
-                    </div>
-                    <div className="text-[12px] font-medium text-[#606060] dark:text-[#a2a2a2] font-sans">
-                    GH₵{item.price}
-                    </div>
-                  </div>
-                  <div className="flex items-center text-[13px] text-[#a2a2a2] mt-1 font-sans">
-                    <FiShoppingCart className="mr-1" />
-                    {item.quantity || 0}
-                  </div>
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="col-span-full text-center py-4 text-gray-500 font-sans">
-              No items found matching 
-            </div>
-          )}
-        </div>
+        {renderMenuItemsGrid()}
       </div>
 
-      {/* Add the modal */}
+
+
+      {/* Add Inventory Modal */}
       {showAddInventory && (
         <AddInventory 
           onClose={handleAddInventoryClose}
-          onInventoryUpdated={() => {
-            refreshInventory();
-            setShowAddInventory(false);
-          }}
+          onInventoryUpdated={handleInventoryUpdated}
           branchId={selectedBranchId || userProfile.branchId}
+          preSelectedCategory={addInventoryCategory || undefined}
         />
       )}
 
-      {/* Add the edit modal */}
+      {/* Action Selection Dialog */}
+      <ActionSelectionDialog
+        open={showActionDialog}
+        onClose={() => setShowActionDialog(false)}
+        onSelectAction={handleActionSelect}
+      />
+
+      {/* Add Extras Modal */}
+      <AddExtrasModal
+        open={showAddExtrasModal}
+        onClose={() => setShowAddExtrasModal(false)}
+        onAdd={(groups) => {
+          setShowAddExtrasModal(false);
+          // Optionally refresh the page or show success notification
+          addNotification({
+            type: 'inventory_alert',
+            message: 'Extras created successfully'
+          });
+        }}
+        mode="create"
+      />
+
+      {/* Edit Inventory Modal */}
       {selectedItem && (
         <EditInventoryModal
           item={selectedItem}
           onClose={() => setSelectedItem(null)}
-          onSave={handleUpdateItem}
+          onSave={(id, newPrice, available, itemExtras, name, description, imageFile) => 
+            handleUpdateItem(id, newPrice, available, itemExtras, name, description, imageFile)}
+          onDelete={handleDeleteItem}
           isUpdating={isUpdating}
           updateError={updateError}
           branchId={selectedBranchId || userProfile.branchId}
+          selectedItemExtras={selectedItemExtras}
+          restaurantId={userProfile.restaurantId || userProfile._restaurantTable?.[0]?.id || userProfile.restaurantData?.id || ''}
         />
       )}
+
     </div>
   );
 };

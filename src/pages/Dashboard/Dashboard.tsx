@@ -1,4 +1,4 @@
-import { FunctionComponent, ReactNode, useState, useEffect } from "react";
+import React, { FunctionComponent, ReactNode, useState, useEffect } from "react";
 import { FiGrid, FiBox } from "react-icons/fi";
 import { IoFastFoodOutline, IoSettingsOutline, IoNotifications } from "react-icons/io5";
 import { HiOutlineUsers } from "react-icons/hi";
@@ -10,6 +10,7 @@ import Reports from "./Reports";
 import Orders from "./Orders";
 import Overview from "./Overview";
 import Inventory from "./Inventory";
+import Extras from "./Extras";
 import { Button, Menu, MenuItem } from "@mui/material";
 import { IoIosHelpCircleOutline, IoMdMoon, IoMdNotificationsOutline, IoMdSunny } from "react-icons/io";
 import { FaRegMoon, FaChevronDown } from "react-icons/fa";
@@ -18,20 +19,26 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import NotificationsModal from '../../components/NotificationsModal';
-import { IoIosArrowDropdown, IoIosCloseCircleOutline } from "react-icons/io";
+import GlobalOrderModal from '../../components/GlobalOrderModal';
+import { IoIosArrowDropdown, IoIosCloseCircleOutline, IoIosArrowBack } from "react-icons/io";
 import { useNotifications } from '../../context/NotificationContext';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import { IoIosClose } from "react-icons/io";
 import { useBackgroundRefresh } from '../../hooks/useBackgroundRefresh';
+import { getAvailableMenuItems, shouldShowRevenue, shouldShowInventory } from '../../permissions/DashboardPermissions';
+import { IconType } from 'react-icons';
+import { useTranslation } from 'react-i18next';
+import useLanguageChange from '../../hooks/useLanguageChange';
 
 interface MainDashboardProps {
   children?: React.ReactNode;
 }
 
 const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { fetchUserProfile } = useAuth();
-  const { userProfile } = useUserProfile();
+  const { userProfile, restaurantData } = useUserProfile();
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState(() => {
     const savedView = localStorage.getItem('activeView');
@@ -50,8 +57,9 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
   const [activeTheme] = useState('light');
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const { notifications } = useNotifications();
-  const restaurantData = userProfile._restaurantTable?.[0] || {};
   const [isViewingOrderDetails, setIsViewingOrderDetails] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const { currentLanguage } = useLanguageChange();
   
   useEffect(() => {
     document.documentElement.classList.remove('dark');
@@ -99,14 +107,7 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
     setSearchQuery('');
   };
 
-  const menuItems = [
-    ...(userProfile?.role !== 'Store Clerk' ? [{ name: "Overview", icon: <FiGrid size={24} />, id: "dashboard" }] : []),
-    { name: "My Orders", icon: <FiBox size={24} />, id: "orders" },
-    ...(!restaurantData?.Inventory ? [{ name: "Menu Items", icon: <IoFastFoodOutline size={24} />, id: "inventory" }] : []),
-    ...(!restaurantData?.Transactions ? [{ name: "Transactions", icon: <LuCircleDollarSign size={24} />, id: "transactions" }] : []),
-    { name: "Reports", icon: <LuFileSpreadsheet size={24} />, id: "reports" },
-    { name: "Settings", icon: <IoSettingsOutline size={24} style={{ fontWeight: 'bold', strokeWidth: '1.5' }}/>, id: "settings" },
-  ];
+  const availableMenuItems = getAvailableMenuItems(restaurantData);
 
   useEffect(() => {
     const initializeDashboard = async () => {
@@ -137,12 +138,17 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
 
   useBackgroundRefresh();
 
+  const toggleSidebar = () => {
+    setIsSidebarCollapsed(!isSidebarCollapsed);
+  };
+
   const renderContent = () => {
     switch (activeView) {
       case 'dashboard':
         return <Overview 
-          setActiveView={setActiveView} 
-          hideRevenue={!!restaurantData.Transactions}
+          setActiveView={setActiveView}
+          showRevenue={shouldShowRevenue(restaurantData)}
+          showInventory={shouldShowInventory(restaurantData)}
         />;
       case 'orders':
         return <Orders 
@@ -151,6 +157,8 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
         />;
       case 'inventory':
         return <Inventory />;
+      case 'extras':
+        return <Extras searchQuery={searchQuery} />;
       case 'transactions':
         return <Transactions />;
       case 'reports':
@@ -167,69 +175,82 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
 
   return (
     <div className="flex h-screen w-full bg-white overflow-hidden">
-      <aside className="hidden lg:block w-[240px] bg-white border-r-[1px] border-solid border-[rgba(167,161,158,0.2)]">
-        <div className="p-[10px] flex flex-col h-full justify-between">
+      <aside className={`hidden lg:block ${isSidebarCollapsed ? 'w-[70px]' : 'w-[240px]'} bg-white border-r-[1px] border-solid border-[rgba(167,161,158,0.2)] transition-all duration-300 fixed h-full`}>
+        <div className="p-[10px] flex flex-col h-full justify-between relative">
+          <button
+            onClick={toggleSidebar}
+            className="absolute -right-3 top-20 bg-white border border-[rgba(167,161,158,0.2)] rounded-full p-1 shadow-md z-10"
+          >
+            <IoIosArrowBack className={`w-4 h-4 text-gray-600 transition-transform duration-300 ${isSidebarCollapsed ? 'rotate-180' : ''}`} />
+          </button>
+
           <div className="flex flex-col gap-[10px]">
-            <div className="w-[180px] h-[70px] flex items-center justify-center">
+            <div className={`${isSidebarCollapsed ? 'w-[50px]' : 'w-[180px]'} h-[70px] flex items-center justify-center transition-all duration-300`}>
               <img
-                className="w-[180px] h-[70px] object-contain"
-                alt="Delika Dashboard Logo"
-                src="/DashboardLogo.png"
+                src={isSidebarCollapsed ? '/delika.png' : '/DashboardLogo.png'}
+                alt="Delika Logo"
+                className={isSidebarCollapsed ? 'w-[40px] h-[40px] object-contain' : 'w-[180px] h-[70px] object-contain'}
               />
             </div>
 
             <div className="flex flex-col items-start justify-start gap-[8px]">
-              {menuItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => handleViewChange(item.id)}
-                  className={`cursor-pointer border-none p-0 w-[200px] h-[40px] flex flex-row items-center justify-start gap-[12px] rounded-tr-[8px] rounded-br-[8px] relative ${
-                    activeView === item.id 
-                      ? 'bg-[rgba(254,91,24,0.05)]'
-                      : 'bg-transparent'
-                  }`}
-                >
-                  <div className={`w-[2px] rounded-[8px] bg-[#fe5b18] h-[40px] absolute left-0 transition-opacity duration-200 ${
-                    activeView === item.id 
-                      ? 'opacity-100'
-                      : 'opacity-0'
-                  }`} />
+              {availableMenuItems.map((item) => {
+                const IconComponent = item.icon;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleViewChange(item.id)}
+                    className={`cursor-pointer border-none p-0 ${isSidebarCollapsed ? 'w-[50px]' : 'w-[200px]'} h-[40px] flex flex-row items-center justify-start gap-[12px] rounded-tr-[8px] rounded-br-[8px] relative transition-all duration-300 ${
+                      activeView === item.id 
+                        ? 'bg-[rgba(254,91,24,0.05)]'
+                        : 'bg-transparent'
+                    }`}
+                  >
+                    <div className={`w-[2px] rounded-[8px] bg-[#fe5b18] h-[40px] absolute left-0 transition-opacity duration-200 ${
+                      activeView === item.id 
+                        ? 'opacity-100'
+                        : 'opacity-0'
+                    }`} />
 
-                  <span className={`pl-[12px] ${
-                    activeView === item.id 
-                      ? 'text-[#fe5b18]'
-                      : 'text-[#201a18]'
-                  }`}>
-                    {item.icon}
-                  </span>
+                    <span className={`pl-[12px] ${
+                      activeView === item.id 
+                        ? 'text-[#fe5b18]'
+                        : 'text-[#201a18]'
+                    }`}>
+                      {React.createElement(IconComponent, { size: 24 })}
+                    </span>
 
-                  <span className={`text-[14px] font-sans text-left ${
-                    activeView === item.id 
-                      ? 'text-[#fe5b18]'
-                      : 'text-[#201a18]'
-                  }`}>
-                    {item.name}
-                  </span>
-                </button>
-              ))}
+                    {!isSidebarCollapsed && (
+                      <span className={`text-[14px] font-sans text-left ${
+                        activeView === item.id 
+                          ? 'text-[#fe5b18]'
+                          : 'text-[#201a18]'
+                      }`}>
+                        {t(`dashboard.${item.id}`)}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
           <div className="flex flex-col gap-1 mb-4">
-            
-            <div className="text-center border-t mr-[100px] mt-4">
-                <p className="text-gray-500 text-xs mb-1 font-sans"> Powered By</p>
+            {!isSidebarCollapsed && (
+              <div className="text-center border-t mr-[100px] mt-4">
+                <p className="text-gray-500 text-xs mb-1 font-sans">{t('common.poweredBy')}</p>
                 <img
                   src="/Krontiva-Black.png"
                   alt="Powered by Krontiva"
                   className="h-6 mx-auto"
                 />
               </div>
+            )}
           </div>
         </div>
       </aside>
 
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+      <div className={`flex-1 flex flex-col h-screen overflow-hidden ${isSidebarCollapsed ? 'lg:ml-[70px]' : 'lg:ml-[240px]'} transition-all duration-300`}>
         <header className="bg-white border-b border-gray-200 px-4 py-2">
           <div className="flex items-center justify-between">
             <button 
@@ -363,7 +384,7 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
                 </div>
 
                 <div className="flex flex-col items-start justify-start gap-[8px] mt-4">
-                  {menuItems.map((item) => (
+                  {availableMenuItems.map((item) => (
                     <button
                       key={item.id}
                       onClick={() => {
@@ -387,7 +408,7 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
                           ? 'text-[#fe5b18]'
                           : 'text-[#201a18]'
                       }`}>
-                        {item.icon}
+                        {React.createElement(item.icon, { size: 24 })}
                       </span>
 
                       <span className={`text-[14px] font-sans text-left ${
@@ -421,6 +442,9 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
         isOpen={isNotificationsOpen} 
         onClose={() => setIsNotificationsOpen(false)} 
       />
+      
+      {/* Global Order Modal - appears on all pages */}
+      <GlobalOrderModal />
     </div>
   );
 };

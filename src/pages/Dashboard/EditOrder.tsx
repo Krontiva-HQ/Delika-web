@@ -3,7 +3,7 @@ import { IoIosCloseCircleOutline, IoIosArrowBack } from "react-icons/io";
 import { RiDeleteBinLine } from "react-icons/ri";
 import LocationInput from '../../components/LocationInput';
 import { LocationData } from "../../types/location";
-import { calculateDistance } from "../../utils/distance";
+import { calculateDeliveryPriceAPI } from '../../services/api';
 import { usePlaceOrderItems } from '../../hooks/usePlaceOrderItems';
 import { useNotifications } from '../../context/NotificationContext';
 import { Order } from '../../types/order';
@@ -13,9 +13,10 @@ interface EditOrderProps {
   order: Order;
   onClose: () => void;
   onOrderEdited: () => void;
+  isFromTransactions?: boolean;
 }
 
-const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderEdited }) => {
+const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderEdited, isFromTransactions = false }) => {
   const { addNotification } = useNotifications();
   const [currentStep, setCurrentStep] = useState(1);
   const [customerName, setCustomerName] = useState(order.customerName);
@@ -40,6 +41,12 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
   const [orderPrice] = useState(parseFloat(order.orderPrice));
   const [totalPrice, setTotalPrice] = useState(parseFloat(order.totalPrice));
   const [comment, setComment] = useState(order.orderComment || '');
+  const [paymentMethod, setPaymentMethod] = useState(() => {
+    if (order.payLater) return 'momo';
+    if (order.payNow) return 'cash';
+    if (order.payVisaCard) return 'visa';
+    return 'cash'; // default
+  });
   
   const { 
     selectedItems,
@@ -56,11 +63,18 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
   const [isValidPhone, setIsValidPhone] = useState(true);
   const [isValidName, setIsValidName] = useState(true);
 
+  // Add state to track modified fields
+  const [modifiedFields, setModifiedFields] = useState<Set<string>>(new Set());
+
+  // Initialize hasCalculatedDelivery based on whether we're editing a walk-in order
+  const [hasCalculatedDelivery, setHasCalculatedDelivery] = useState(order.Walkin);
+
   // Modify the customer phone input handler
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/[^0-9]/g, '');
     setCustomerPhone(value);
-    setIsValidPhone(value.length === 10); // Validate phone number length
+    setIsValidPhone(value.length === 10);
+    setModifiedFields(prev => new Set(Array.from(prev).concat('customerPhoneNumber')));
   };
 
   // Add name input handler
@@ -68,10 +82,34 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
     const value = e.target.value.trim();
     setCustomerName(value);
     setIsValidName(value.length > 0);
+    setModifiedFields(prev => new Set(Array.from(prev).concat('customerName')));
+  };
+
+  // Add handlers for other fields
+  const handleOrderStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setOrderStatus(e.target.value);
+    setModifiedFields(prev => new Set(Array.from(prev).concat('orderStatus')));
+  };
+
+  const handlePaymentStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setPaymentStatus(e.target.value);
+    setModifiedFields(prev => new Set(Array.from(prev).concat('paymentStatus')));
+  };
+
+  const handlePaymentMethodChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setPaymentMethod(e.target.value);
+    setModifiedFields(prev => new Set(Array.from(prev).concat('paymentMethod')));
+  };
+
+  const handleCommentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setComment(e.target.value);
+    setModifiedFields(prev => new Set(Array.from(prev).concat('orderComment')));
   };
 
   // Add validation check
-  const isFormValid = isValidPhone && isValidName && customerName.trim() !== '' && customerPhone.length === 10;
+  const isFormValid = order.Walkin 
+    ? isValidName && customerName.trim() !== ''  // Only validate name for walk-in orders
+    : isValidPhone && isValidName && customerName.trim() !== '' && customerPhone.length === 10;
 
   // Initialize selected items from order
   useEffect(() => {
@@ -84,38 +122,45 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
     setSelectedItems(initialItems);
   }, [order]);
 
-  const calculateDeliveryFee = (distance: number): number => {
-    if (distance <= 1) {
-        return 15; // Fixed fee for distances up to 1km
-    } else if (distance <= 2) {
-        return 20; // Fixed fee for distances between 1km and 2km
-    } else if (distance <= 10) {
-        // For distances > 2km and <= 10km: 17 cedis base price + 2.5 cedis per km beyond 2km
-        return 17 + ((distance - 2) * 2.5);
-    } else {
-        // For distances above 10km: 3.5 * distance + 20
-        return (3.5 * distance) + 20;
-    }
-};
-
   useEffect(() => {
-    if (pickupLocation && dropoffLocation) {
-      const newDistance = calculateDistance(
-        pickupLocation.latitude,
-        pickupLocation.longitude,
-        dropoffLocation.latitude,
-        dropoffLocation.longitude
-      );
-      setDistance(newDistance);
-      
-      // Calculate delivery price based on distance
-      const calculatedPrice = Math.round(calculateDeliveryFee(newDistance));
-      setDeliveryPrice(calculatedPrice);
-      
-      // Update total price
-      setTotalPrice(orderPrice + calculatedPrice);
+    if (pickupLocation && dropoffLocation && !hasCalculatedDelivery && !order.Walkin) {
+      setHasCalculatedDelivery(true);
+      calculateDeliveryPriceAPI({
+        pickup: {
+          fromLongitude: pickupLocation.longitude,
+          fromLatitude: pickupLocation.latitude
+        },
+        dropOff: {
+          toLongitude: dropoffLocation.longitude,
+          toLatitude: dropoffLocation.latitude
+        },
+        rider: false,
+        pedestrian: false
+      })
+        .then(result => {
+          if (result.riderFee !== parseFloat(order.deliveryPrice)) {
+            setDeliveryPrice(result.riderFee);
+            setDistance(result.distance);
+            setTotalPrice(orderPrice + result.riderFee);
+            // Add to modified fields since we recalculated
+            setModifiedFields(prev => new Set([...Array.from(prev), 'deliveryPrice', 'totalPrice', 'deliveryDistance']));
+          }
+        })
+        .catch(() => {
+          // On error, keep the original values from the order
+          setDeliveryPrice(parseFloat(order.deliveryPrice));
+          setDistance(parseFloat(order.deliveryDistance));
+          setTotalPrice(parseFloat(order.totalPrice));
+        });
     }
-  }, [pickupLocation, dropoffLocation, orderPrice]);
+  }, [pickupLocation, dropoffLocation, order.Walkin, order.deliveryPrice, order.totalPrice, order.deliveryDistance, orderPrice, hasCalculatedDelivery]);
+
+  // Reset hasCalculatedDelivery when pickup or dropoff location changes
+  useEffect(() => {
+    if (!order.Walkin) {
+      setHasCalculatedDelivery(false);
+    }
+  }, [pickupLocation, dropoffLocation, order.Walkin]);
 
   useEffect(() => {
     if (order) {
@@ -124,39 +169,74 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
   }, [order]);
 
   const handleSaveChanges = async () => {
-    const params = {
-      dropOff: [
-        {
-          toAddress: dropoffLocation.address,
-          toLatitude: dropoffLocation.latitude.toString(),
-          toLongitude: dropoffLocation.longitude.toString(),
-        },
-      ],
+    // Start with all existing data from the order
+    const params: any = {
       orderNumber: order.orderNumber,
-      customerName: customerName,
-      customerPhoneNumber: customerPhone,
-      deliveryDistance: distance?.toString() || '',
-      trackingUrl: order.trackingUrl, // Assuming this is part of the order object
-      orderStatus,
-      deliveryPrice: deliveryPrice.toString(),
-      totalPrice: totalPrice.toString(),
-      paymentStatus: paymentStatus,
-      dropOffCity: dropoffLocation.name, // Assuming this is the city name
-      orderComment: comment
+      customerName: order.customerName,
+      customerPhoneNumber: order.customerPhoneNumber,
+      deliveryDistance: order.deliveryDistance,
+      orderStatus: order.orderStatus,
+      deliveryPrice: order.deliveryPrice,
+      totalPrice: order.totalPrice,
+      paymentStatus: order.paymentStatus,
+      dropOffCity: order.dropoffName,
+      orderComment: order.orderComment || '',
+      payNow: order.payNow,
+      payLater: order.payLater,
+      payVisaCard: order.payVisaCard,
+      // Add array to track which fields were modified
+      modifiedFields: Array.from(modifiedFields)
     };
+
+    // Update only the modified fields with new values
+    if (modifiedFields.has('customerName')) {
+      params.customerName = customerName;
+    }
+    if (modifiedFields.has('customerPhoneNumber')) {
+      params.customerPhoneNumber = customerPhone;
+    }
+    if (modifiedFields.has('orderStatus')) {
+      params.orderStatus = orderStatus;
+    }
+    if (modifiedFields.has('paymentStatus')) {
+      params.paymentStatus = paymentStatus;
+    }
+    if (modifiedFields.has('orderComment')) {
+      params.orderComment = comment;
+    }
+    if (modifiedFields.has('paymentMethod')) {
+      params.payNow = paymentMethod === 'cash';
+      params.payLater = paymentMethod === 'momo';
+      params.payVisaCard = paymentMethod === 'visa';
+    }
+
+    // Handle delivery-related fields for non-walkin orders
+    if (!order.Walkin) {
+      if (modifiedFields.has('deliveryDistance') || modifiedFields.has('deliveryPrice')) {
+        params.deliveryDistance = distance?.toString() || order.deliveryDistance;
+        params.deliveryPrice = deliveryPrice.toString();
+      }
+      if (modifiedFields.has('totalPrice')) {
+        params.totalPrice = totalPrice.toString();
+      }
+      if (modifiedFields.has('dropOffCity')) {
+        params.dropOffCity = dropoffLocation.name;
+      }
+    } else {
+      // For walk-in orders
+      params.deliveryPrice = '0';
+      params.totalPrice = orderPrice.toString();
+    }
 
     try {
       await editOrder(params);
       onOrderEdited();
       
-      // Add a notification for successful order edit
       addNotification({
         type: 'order_edited',
         message: `Order **#${order.orderNumber}** has been successfully edited.`,
       });
     } catch (err) {
-      
-      // Add a notification for error
       addNotification({
         type: 'order_status',
         message: `Failed to edit Order #${order.orderNumber}. Please try again.`,
@@ -164,129 +244,238 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
     }
   };
 
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case 1:
-        return (
-          <>
-            <b className="font-sans text-sm  gap-2 mb-4">Edit Order #{order.orderNumber}</b>
-            {/* Customer Details Section */}
-            <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4 font-sans text-sm">
-              <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
-                <div className="self-stretch  leading-[18px] font-sans text-black">
-                  Customer Name
-                </div>
-                <input
-                  className={`font-sans border-[1px] border-solid [outline:none] 
-                            text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-center py-[8px] px-[10px] text-black
-                            ${!isValidName ? 'border-red-500' : 'border-[#efefef]'}`}
-                  value={customerName}
-                  onChange={handleNameChange}
-                />
-              </div>
-              <div className="flex-1 flex flex-col items-start justify-start gap-[4px] font-sans text-sm">
-                <div className="self-stretch relative leading-[18px] font-sans text-black">
-                  Customer Phone
-                </div>
-                <input
-                  className={`font-sans border-[1px] border-solid [outline:none] 
-                            text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[8px] px-[10px] text-black
-                            ${!isValidPhone ? 'border-red-500' : 'border-[#efefef]'}`}
-                  value={customerPhone}
-                  onChange={handlePhoneChange}
-                  maxLength={10}
-                />
-              </div>
-            </div>
-            
-            {/* Location Inputs */}
-            <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4 font-sans text-sm">
-              <LocationInput 
-                label="Pick-Up Location" 
-                onLocationSelect={setPickupLocation}
-                prefillData={pickupLocation}
-                disabled={true}
-              />
-            </div>
-            <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4 font-sans text-sm">
-              <LocationInput 
-                label="Drop-Off Location" 
-                onLocationSelect={setDropoffLocation}
-                prefillData={dropoffLocation}
-              />
-            </div>
+  const renderWalkinContent = () => (
+    <>
+      {/* Customer Name Section */}
+      <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4 font-sans text-sm">
+        <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
+          <div className="self-stretch leading-[18px] font-sans text-black">
+            Customer Name
+          </div>
+          <input
+            className={`font-sans border-[1px] border-solid [outline:none] 
+                      text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-center py-[8px] px-[10px] text-black
+                      ${!isValidName ? 'border-red-500' : 'border-[#efefef]'}`}
+            value={customerName}
+            onChange={handleNameChange}
+          />
+        </div>
+      </div>
 
-            {/* Add price display before status dropdowns */}
-            <div className="self-stretch flex flex-col gap-2 mb-4 bg-[#f9fafb] p-3 rounded-lg font-sans text-sm">
-              <div className="flex justify-between items-center">
-                <span className="font-sans text-black text-sm">Order Price:</span>
-                <span className="font-sans font-medium">GH₵{orderPrice.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="font-sans text-black text-sm">Delivery Price:</span>
-                <span className="font-sans font-medium">GH₵{deliveryPrice.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between items-center border-t pt-2">
-                <span className="font-sans text-black text-sm">Total Price:</span>
-                <span className="font-sans font-medium text-[#fd683e]">GH₵{totalPrice.toFixed(2)}</span>
-              </div>
-            </div>
+      {/* Order Summary Section */}
+      <div className="self-stretch flex flex-col gap-2 mb-4 bg-[#f9fafb] p-3 rounded-lg font-sans text-sm">
+        <div className="flex justify-between items-center">
+          <span className="font-sans text-black text-sm">Order Price:</span>
+          <span className="font-sans font-medium">GH₵{orderPrice.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between items-center border-t pt-2">
+          <span className="font-sans text-black text-sm">Total Price:</span>
+          <span className="font-sans font-medium text-[#fd683e]">GH₵{totalPrice.toFixed(2)}</span>
+        </div>
+      </div>
 
-            {/* Order Status Dropdown */}
-            <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4 font-sans text-sm">
-              <div className="self-stretch relative leading-[20px] font-sans text-black">
-                Order Status
-              </div>
-              <select
-                className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                          text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[8px] px-[10px] text-black"
-                value={orderStatus}
-                onChange={(e) => setOrderStatus(e.target.value)}
-              >
-                <option value="ReadyForPickup">Ready For Pickup</option>
-                <option value="Assigned">Assigned</option>
-                <option value="Pickup">Pickup</option>
-                <option value="OnTheWay">On The Way</option>
-                <option value="Delivered">Delivered</option>
-                <option value="Cancelled">Cancelled</option>
-                <option value="DeliveryFailed">Delivery Failed</option>
-              </select>
+      {/* Products List */}
+      <div className="mb-4">
+        <div className="font-sans text-sm font-medium mb-2">Ordered Items:</div>
+        <div className="bg-[#f9fafb] p-3 rounded-lg">
+          {order.products.map((product, index) => (
+            <div key={index} className="flex justify-between items-center mb-2 last:mb-0">
+              <span className="font-sans text-sm">{product.name} x {product.quantity}</span>
+              <span className="font-sans text-sm">GH₵{parseFloat(product.price).toFixed(2)}</span>
             </div>
+          ))}
+        </div>
+      </div>
 
-            {/* Transaction Status Dropdown */}
-            <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4 font-sans text-sm">
-              <div className="self-stretch relative leading-[20px] font-sans text-black">
-                Transaction Status
-              </div>
-              <select
-                className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                          text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[8px] px-[10px] text-black"
-                value={paymentStatus}
-                onChange={(e) => setPaymentStatus(e.target.value)}
-              >
-                <option value="Pending">Pending</option>
-                <option value="Paid">Paid</option>
-              </select>
-            </div>
+      {/* Order Status Dropdown */}
+      <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
+        <div className="self-stretch leading-[18px] font-sans text-black">
+          Order Status
+        </div>
+        <select
+          className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
+                    text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[8px] px-[10px] text-black"
+          value={orderStatus}
+          onChange={handleOrderStatusChange}
+        >
+          <option value="ReadyForPickup">Ready For Pickup</option>
+          <option value="Assigned">Assigned</option>
+          <option value="Pickup">Pickup</option>
+          <option value="OnTheWay">On The Way</option>
+          <option value="Delivered">Delivered</option>
+          <option value="Cancelled">Cancelled</option>
+          <option value="DeliveryFailed">Delivery Failed</option>
+        </select>
+      </div>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-1 font-sans">
-                Additional Comment
-              </label>
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                className="w-[465px] h-[40px] p-2 border border-gray-300 rounded-md text-sm font-sans"
-                rows={3}
-                placeholder="Add any additional comments..."
-              />
-            </div>
-          </>
-        );
+      {/* Transaction Status Dropdown */}
+      <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
+        <div className="self-stretch relative leading-[20px] font-sans text-black">
+          Transaction Status
+        </div>
+        <select
+          className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
+                    text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[8px] px-[10px] text-black"
+          value={paymentStatus}
+          onChange={handlePaymentStatusChange}
+        >
+          <option value="Pending">Pending</option>
+          <option value="Paid">Paid</option>
+        </select>
+      </div>
 
-      // ... Continue with cases 2 and 3 similar to PlaceOrder but with pre-populated data
-    }
-  };
+      {/* Payment Method Dropdown */}
+      <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
+        <div className="self-stretch relative leading-[20px] font-sans text-black">
+          Payment Method
+        </div>
+        <select
+          className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
+                    text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[8px] px-[10px] text-black"
+          value={paymentMethod}
+          onChange={handlePaymentMethodChange}
+        >
+          <option value="cash">Cash</option>
+          <option value="momo">MoMo</option>
+          <option value="visa">Visa Card</option>
+        </select>
+      </div>
+    </>
+  );
+
+  const renderRegularContent = () => (
+    <>
+      <b className="font-sans text-sm  gap-2 mb-4">Edit Order #{order.orderNumber}</b>
+      {/* Customer Details Section */}
+      <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4 font-sans text-sm">
+        <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
+          <div className="self-stretch  leading-[18px] font-sans text-black">
+            Customer Name
+          </div>
+          <input
+            className={`font-sans border-[1px] border-solid [outline:none] 
+                      text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-center py-[8px] px-[10px] text-black
+                      ${!isValidName ? 'border-red-500' : 'border-[#efefef]'}`}
+            value={customerName}
+            onChange={handleNameChange}
+          />
+        </div>
+        <div className="flex-1 flex flex-col items-start justify-start gap-[4px] font-sans text-sm">
+          <div className="self-stretch relative leading-[18px] font-sans text-black">
+            Customer Phone
+          </div>
+          <input
+            className={`font-sans border-[1px] border-solid [outline:none] 
+                      text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[8px] px-[10px] text-black
+                      ${!isValidPhone ? 'border-red-500' : 'border-[#efefef]'}`}
+            value={customerPhone}
+            onChange={handlePhoneChange}
+            maxLength={10}
+          />
+        </div>
+      </div>
+      
+      {/* Location Inputs */}
+      <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4 font-sans text-sm">
+        <LocationInput 
+          label="Pick-Up Location" 
+          onLocationSelect={setPickupLocation}
+          prefillData={pickupLocation}
+          disabled={true}
+        />
+      </div>
+      <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4 font-sans text-sm">
+        <LocationInput 
+          label="Drop-Off Location" 
+          onLocationSelect={setDropoffLocation}
+          prefillData={dropoffLocation}
+        />
+      </div>
+
+      {/* Add price display before status dropdowns */}
+      <div className="self-stretch flex flex-col gap-2 mb-4 bg-[#f9fafb] p-3 rounded-lg font-sans text-sm">
+        <div className="flex justify-between items-center">
+          <span className="font-sans text-black text-sm">Order Price:</span>
+          <span className="font-sans font-medium">GH₵{orderPrice.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between items-center">
+          <span className="font-sans text-black text-sm">Delivery Price:</span>
+          <span className="font-sans font-medium">GH₵{deliveryPrice.toFixed(2)}</span>
+        </div>
+        <div className="flex justify-between items-center border-t pt-2">
+          <span className="font-sans text-black text-sm">Total Price:</span>
+          <span className="font-sans font-medium text-[#fd683e]">GH₵{totalPrice.toFixed(2)}</span>
+        </div>
+      </div>
+
+      {/* Order Status Dropdown */}
+      <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
+        <div className="self-stretch leading-[18px] font-sans text-black">
+          Order Status
+        </div>
+        <select
+          className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
+                    text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[8px] px-[10px] text-black"
+          value={orderStatus}
+          onChange={handleOrderStatusChange}
+        >
+          <option value="ReadyForPickup">Ready For Pickup</option>
+          <option value="Assigned">Assigned</option>
+          <option value="Pickup">Pickup</option>
+          <option value="OnTheWay">On The Way</option>
+          <option value="Delivered">Delivered</option>
+          <option value="Cancelled">Cancelled</option>
+          <option value="DeliveryFailed">Delivery Failed</option>
+        </select>
+      </div>
+
+      {/* Transaction Status Dropdown */}
+      <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4 font-sans text-sm">
+        <div className="self-stretch relative leading-[20px] font-sans text-black">
+          Transaction Status
+        </div>
+        <select
+          className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
+                    text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[8px] px-[10px] text-black"
+          value={paymentStatus}
+          onChange={handlePaymentStatusChange}
+        >
+          <option value="Pending">Pending</option>
+          <option value="Paid">Paid</option>
+        </select>
+      </div>
+
+      {/* Payment Method Dropdown */}
+      <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4 font-sans text-sm">
+        <div className="self-stretch relative leading-[20px] font-sans text-black">
+          Payment Method
+        </div>
+        <select
+          className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
+                    text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[8px] px-[10px] text-black"
+          value={paymentMethod}
+          onChange={handlePaymentMethodChange}
+        >
+          <option value="cash">Cash</option>
+          <option value="momo">MoMo</option>
+          <option value="visa">Visa Card</option>
+        </select>
+      </div>
+
+      <div className="mb-4">
+        <label className="block text-sm font-medium text-gray-700 mb-1 font-sans">
+          Additional Comment
+        </label>
+        <textarea
+          value={comment}
+          onChange={handleCommentChange}
+          className="w-[465px] h-[40px] p-2 border border-gray-300 rounded-md text-sm font-sans"
+          rows={3}
+          placeholder="Add any additional comments..."
+        />
+      </div>
+    </>
+  );
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -298,20 +487,9 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
           <IoIosCloseCircleOutline size={24} />
         </button>
 
-        {renderStepContent()}
+        {order.Walkin ? renderWalkinContent() : renderRegularContent()}
 
-        {/* Show estimated distance only for steps 1 and 2 */}
-        {currentStep !== 3 && distance && (
-          <div className="mt-4 bg-[#f9fafb] rounded-lg p-3">
-            <div className="text-xs !font-sans">
-              <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
-              <div className="text-gray-500 !font-sans">
-                From {pickupLocation?.address} to {dropoffLocation?.address}
-              </div>
-            </div>
-          </div>
-        )}
-
+        
         {/* Navigation Buttons */}
         <button
           onClick={handleSaveChanges}

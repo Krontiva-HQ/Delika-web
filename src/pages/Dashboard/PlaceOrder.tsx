@@ -1,6 +1,6 @@
-import React, { useState, useEffect, FunctionComponent } from "react";
+import React, { useState, useEffect, FunctionComponent, ReactNode } from "react";
 import { Button } from "@mui/material";
-import { getAuthenticatedUser, UserResponse, placeOrder } from "../../services/api";
+import { getAuthenticatedUser, UserResponse, placeOrder, getRidersByBranch, calculateDeliveryPriceAPI } from "../../services/api";
 import LocationInput from '../../components/LocationInput';
 import { LocationData } from "../../types/location";
 import { calculateDistance } from "../../utils/distance";
@@ -18,6 +18,137 @@ import { styled } from '@mui/material/styles';
 import { SelectChangeEvent } from '@mui/material/Select';
 import { toast } from 'react-toastify';
 import BatchSummaryModal from '../../components/BatchSummaryModal';
+import { ArrowLeftIcon } from '@heroicons/react/24/solid';
+import { getAvailableDeliveryMethods } from '../../permissions/DashboardPermissions';
+import { hasAutoCalculatePrice, calculateDeliveryFee, getDeliveryPriceInfo } from '../../permissions/DashboardPermissions';
+import { Rider } from "../../components/RidersTable";
+import { useTranslation } from 'react-i18next';
+import { Card, CardContent, CardFooter } from "../../components/ui/card";
+import { Badge } from "../../components/ui/badge";
+import ServiceTypeModal from './ServiceTypeModal';
+import OnDemandContent from '../../components/OnDemandContent';
+import FullServiceContent from '../../components/FullServiceContent';
+import ScheduleContent from '../../components/ScheduleContent';
+import BatchContent from '../../components/BatchContent';
+import WalkInContent from '../../components/WalkInContent';
+import ExtrasSelectionInline from '../../components/ExtrasSelectionInline';
+import { SelectedItem, SelectedItemExtra, MenuItemData } from '../../types/order';
+
+// Add the API key directly if needed
+const GOOGLE_MAPS_API_KEY = 'AIzaSyAdv28EbwKXqvlKo2henxsKMD-4EKB20l8';
+
+// Add these type definitions at the top if not present
+// @ts-ignore
+// eslint-disable-next-line
+// These are available in browsers with Web Bluetooth API, but may not be in TS env
+// Fallback to 'any' if not available
+
+// PrinterService Web Implementation - based on web-example.html
+class WebPrinterService {
+  // Add helper method for text wrapping
+  static wrapText(text: string, maxChars: number = 10): string[] {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+
+    words.forEach(word => {
+      if ((currentLine + word).length <= maxChars) {
+        currentLine += (currentLine ? ' ' : '') + word;
+      } else {
+        if (currentLine) lines.push(currentLine);
+        // If single word is longer than maxChars, split it
+        if (word.length > maxChars) {
+          const chunks = word.match(new RegExp(`.{1,${maxChars}}`, 'g')) || [];
+          lines.push(...chunks);
+          currentLine = '';
+        } else {
+          currentLine = word;
+        }
+      }
+    });
+    
+    if (currentLine) lines.push(currentLine);
+    return lines;
+  }
+
+  // Add methods for printer persistence
+  static savePrinterConnection(device: any) {
+    if (device && device.name) {
+      localStorage.setItem('lastConnectedPrinter', device.name);
+    }
+  }
+
+  static getLastConnectedPrinter() {
+    return localStorage.getItem('lastConnectedPrinter');
+  }
+
+  static generateTSPL(receiptData: any) {
+    const { orderNumber, customerName, paymentMethod, items, totalPrice } = receiptData;
+    
+    let tsplCommands = 'SIZE 50 mm, 60 mm\n';
+    tsplCommands += 'CLS\n';
+    
+    // Order number at top
+    tsplCommands += `TEXT 100,10,"4",0,2,2,"${orderNumber}"\n`;
+    
+    // Customer name with wrapping
+    const customerNameLines = this.wrapText(customerName);
+    let yPos = 60;
+    customerNameLines.forEach(line => {
+      tsplCommands += `TEXT 100,${yPos},"3",0,1,1,"${line}"\n`;
+      yPos += 25;
+    });
+    
+    // Payment method
+    tsplCommands += `TEXT 200,60,"3",0,1,1,"${paymentMethod}"\n`;
+    
+    // Items list with bullet points and wrapping
+    yPos = Math.max(yPos, 100); // Ensure we start items below customer name
+    items.forEach((item: any) => {
+      const itemText = `• ${item.name} x${item.quantity}`;
+      const itemLines = this.wrapText(itemText);
+      itemLines.forEach(line => {
+        tsplCommands += `TEXT 100,${yPos},"3",0,1,1,"${line}"\n`;
+        yPos += 25;
+      });
+    });
+    
+    // Add timestamp
+    const timestamp = new Date().toLocaleString();
+    tsplCommands += `TEXT 100,${yPos + 50},"2",0,1,1,"${timestamp}"\n`;
+    
+    tsplCommands += 'PRINT 1\n';
+    
+    return tsplCommands;
+  }
+  
+  static async sendRawBytesInChunks(characteristic: any, data: string, chunkSize = 20) {
+    const encoder = new TextEncoder();
+    const rawBytes = encoder.encode(data);
+    
+    for (let i = 0; i < rawBytes.length; i += chunkSize) {
+      const chunk = rawBytes.slice(i, i + chunkSize);
+      
+      try {
+        await characteristic.writeValueWithoutResponse(chunk.buffer);
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (error) {
+        await characteristic.writeValueWithResponse(chunk.buffer);
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+  }
+  
+  static async printReceipt(characteristic: any, receiptData: any) {
+    try {
+      const tsplCommands = this.generateTSPL(receiptData);
+      await this.sendRawBytesInChunks(characteristic, tsplCommands, 20);
+      return true;
+    } catch (error) {
+      throw error;
+    }
+  }
+}
 
 interface PlaceOrderProps {
   onClose: () => void;
@@ -25,13 +156,7 @@ interface PlaceOrderProps {
   branchId: string;
 }
 
-interface SelectedItem {
-  name: string;
-  quantity: number;
-  price: number;
-  image: string;
-}
-
+// Update the OrderPayload interface to match the API's expected structure
 interface OrderPayload {
   restaurantId: string | null;
   branchId: string | null;
@@ -64,6 +189,26 @@ interface OrderPayload {
       type: string;
       size: number;
     };
+    extras?: Array<{
+      delika_extras_table_id: string;
+      extrasDetails: {
+        id: string;
+        extrasTitle: string;
+        extrasType: string;
+        required: boolean;
+        extrasDetails: Array<{
+          delika_inventory_table_id: string;
+          minSelection?: number;
+          maxSelection?: number;
+          inventoryDetails: Array<{
+            id: string;
+            foodName: string;
+            foodPrice: number;
+            foodDescription: string;
+          }>;
+        }>;
+      };
+    }>;
   }>;
   orderDate: string | null;
   deliveryPrice: string;
@@ -79,14 +224,8 @@ interface OrderPayload {
     scheduleTime: string;
     scheduleDateTime: string;
   };
-}
-
-interface MenuItem {
-  name: string;
-  price: number;
-  quantity: number;
-  stockQuantity: number;
-  image?: string;  // Add this line
+  Walkin: boolean; // Add this line
+  payVisaCard: boolean;  // Add this new field
 }
 
 // Style the Select component to match LocationInput
@@ -111,7 +250,7 @@ const StyledSelect = styled(Select)({
 });
 
 // Add new type for delivery method
-type DeliveryMethod = 'on-demand' | 'full-service' | 'schedule' | 'batch-delivery' | null;
+type DeliveryMethod = 'on-demand' | 'full-service' | 'schedule' | 'batch-delivery' | 'walk-in' | null;
 
 // Add this CSS class near your other styled components
 const StyledDateInput = styled('input')({
@@ -129,17 +268,30 @@ const StyledDateInput = styled('input')({
   MozAppearance: 'textfield',
 });
 
-
-const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced, branchId: initialBranchId }) => {
+const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced, branchId: initialBranchId }): ReactNode => {  
+  const { t } = useTranslation();  
   const { addNotification } = useNotifications();
+
+  // Add Selection interface for ExtrasSelectionInline
+  interface Selection {
+    id: string;
+    foodName: string;
+    foodPrice: number;
+    foodDescription?: string;
+    groupTitle?: string;
+    groupType?: string;
+    required?: boolean;
+    minSelection?: number;
+    maxSelection?: number;
+  }
   const { userProfile, restaurantData } = useUserProfile();
   const { branches, isLoading: branchesLoading } = useBranches(userProfile?.restaurantId ?? null);
   const [selectedBranchId, setSelectedBranchId] = useState(initialBranchId || '');
   const [selectCategoryAnchorEl, setSelectCategoryAnchorEl] = useState<null | HTMLElement>(null);
   const [selectItemAnchorEl, setSelectItemAnchorEl] = useState<null | HTMLElement>(null);
-  const [selectedItem, setSelectedItem] = useState("");
+  const [selectedItem, setSelectedItem] = useState<string>("");
   const [isItemsDropdownOpen, setIsItemsDropdownOpen] = useState(false);
-  const [deliveryPrice, setDeliveryPrice] = useState<string>("");  // Change initial state type
+  const [deliveryPrice, setDeliveryPrice] = useState<string>("");
   const [totalFoodPrice, setTotalFoodPrice] = useState("0.00");
   const [currentStep, setCurrentStep] = useState(1);
   const [customerName, setCustomerName] = useState("");
@@ -149,6 +301,13 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userData, setUserData] = useState<UserResponse | null>(null);
   const [distance, setDistance] = useState<number | null>(null);
+
+  // Printer state variables
+  const [connectedDevice, setConnectedDevice] = useState<{name: string, gatt: any} | null>(null);
+  const [printCharacteristic, setPrintCharacteristic] = useState<any | null>(null);
+  const [showPrinterModal, setShowPrinterModal] = useState(false);
+  const [printerConnectionStatus, setPrinterConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
+  const [hasShownPrinterModal, setHasShownPrinterModal] = useState(false);
   const { 
     categories, 
     categoryItems, 
@@ -186,8 +345,10 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   });
   const [scheduledTime, setScheduledTime] = useState('');
 
-  // Add this check
-  const isFullServiceDisabled = restaurantData?.Inventory && restaurantData?.Transactions;
+  // Replace manual delivery method checks with the centralized version
+  const deliveryMethods = getAvailableDeliveryMethods(restaurantData);
+  const isOnDemandDisabled = !deliveryMethods.onDemand;
+  const isFullServiceDisabled = !deliveryMethods.fullService;
 
   // First, add the state at the top with other states
   const [orderComment, setOrderComment] = useState<string>('');
@@ -198,6 +359,73 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   const [showBatchSummary, setShowBatchSummary] = useState(false);
 
   const [currentBatchId, setCurrentBatchId] = useState<string | null>(null);
+
+  // Get WalkIn value with a default if it's undefined (since it's new to the schema)
+  const walkInSetting = restaurantData?.WalkIn !== undefined ? restaurantData.WalkIn : true;
+
+  const { autoCalculate, suggestedPrice, showSuggestedPrice } = getDeliveryPriceInfo(restaurantData, distance);
+
+  // Update useEffect for delivery price calculation
+  useEffect(() => {
+    if (distance !== null && autoCalculate) {
+      const calculatedPrice = Math.round(calculateDeliveryFee(distance));
+      setDeliveryPrice(`${calculatedPrice}.00`);
+    } else if (!autoCalculate) {
+      setDeliveryPrice(''); // Clear the price if auto-calculate is disabled
+    }
+  }, [distance, autoCalculate]);
+
+  // Update the distance section to include suggested price when autoCalculate is false
+  const renderDistanceInfo = () => (
+    <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-4">
+      <div className="text-sm !font-sans">
+        <div className="font-medium mb-1 !font-sans">
+          Estimated Distance: {distance} km
+          {showSuggestedPrice && (
+            <div className="text-gray-600 mt-1">
+              Suggested Delivery Price: GH₵{suggestedPrice}
+            </div>
+          )}
+        </div>
+        <div className="text-gray-500 !font-sans">
+          From {pickupLocation?.address} to {dropoffLocation?.address}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Add this function to check if delivery price is valid
+  const isDeliveryPriceValid = () => {
+    if (autoCalculate) return true;
+    return deliveryPrice !== '' && parseFloat(deliveryPrice) > 0;
+  };
+
+  // Update the delivery price input section
+  const renderDeliveryPriceInput = () => (
+    <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
+      {!autoCalculate && deliveryPrice === '' && (
+        <div className="text-red-500 text-sm mb-2 font-sans">
+          Please enter the delivery price to proceed
+        </div>
+      )}
+      <div className="self-stretch relative leading-[20px] font-sans text-black">Delivery Price</div>
+      <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
+        <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
+          <div className="relative leading-[20px] font-sans">GH₵</div>
+        </div>
+        <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
+          <input
+            type="text"
+            value={deliveryPrice}
+            onChange={handleDeliveryPriceChange}
+            placeholder={autoCalculate ? '' : 'Enter delivery price'}
+            className="w-full bg-transparent border-none outline-none text-[14px] font-sans"
+            readOnly={autoCalculate}
+          />
+        </div>
+      </div>
+    </div>
+  );
 
   const handleSelectCategoryClick = (event: React.MouseEvent<HTMLElement>) => {
     setSelectCategoryAnchorEl(event.currentTarget);
@@ -220,9 +448,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     onClose?.();
   };
 
-  
-  // Remove or comment out the hardcoded menuItems object
-  // const menuItems: { [key: string]: string[] } = { ... };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -252,6 +477,114 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     return `${total}.00`;
   };
 
+  // Printer connection functions
+  const checkWebBluetoothSupport = () => {
+    return typeof navigator !== 'undefined' && typeof (navigator as any).bluetooth !== 'undefined';
+  };
+
+  // Modify the connectToPrinter function to use persistence
+  const connectToPrinter = async () => {
+    if (!checkWebBluetoothSupport()) {
+      addNotification({
+        type: 'order_status',
+        message: 'Web Bluetooth is not supported in this browser'
+      });
+      return;
+    }
+
+    try {
+      setPrinterConnectionStatus('connecting');
+      
+      // Get last connected printer name
+      const lastPrinterName = WebPrinterService.getLastConnectedPrinter();
+      
+      const device = await navigator.bluetooth.requestDevice({
+        filters: [
+          ...(lastPrinterName ? [{ name: lastPrinterName }] : []),
+          { namePrefix: 'DL' },
+          { namePrefix: 'Deli' },
+          { namePrefix: 'Thermal' },
+          { namePrefix: 'Printer' }
+        ],
+        optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', '49535343-fe7d-4ae5-8fa9-9fafd205e455']
+      });
+    
+      const server = await device.gatt!.connect();
+      
+      let service;
+      try {
+        service = await server.getPrimaryService('000018f0-0000-1000-8000-00805f9b34fb');
+      } catch {
+        service = await server.getPrimaryService('49535343-fe7d-4ae5-8fa9-9fafd205e455');
+      }
+      
+      let characteristic;
+      try {
+        characteristic = await service.getCharacteristic('00002af1-0000-1000-8000-00805f9b34fb');
+      } catch {
+        characteristic = await service.getCharacteristic('49535343-8841-43f4-a8d4-ecbe34729bb3');
+      }
+      
+      // Store connection
+      setConnectedDevice({ name: device.name || 'Unknown Device', gatt: server });
+      setPrintCharacteristic(characteristic);
+      setPrinterConnectionStatus('connected');
+      setShowPrinterModal(false);
+      
+      // Save printer connection
+      WebPrinterService.savePrinterConnection(device);
+      
+      addNotification({
+        type: 'order_created',
+        message: `Connected to printer: ${device.name}`
+      });
+      
+    } catch (error) {
+      setPrinterConnectionStatus('error');
+      addNotification({
+        type: 'order_status',
+        message: 'Failed to connect to printer'
+      });
+    }
+  };
+
+  const disconnectPrinter = () => {
+    if (connectedDevice && connectedDevice.gatt) {
+      connectedDevice.gatt.disconnect();
+    }
+    
+    setConnectedDevice(null);
+    setPrintCharacteristic(null);
+    setPrinterConnectionStatus('disconnected');
+    addNotification({
+      type: 'order_status',
+      message: 'Disconnected from printer'
+    });
+  };
+
+  const printReceipt = async (orderData: any) => {
+    if (!printCharacteristic) {
+      addNotification({
+        type: 'order_status',
+        message: 'Please connect to a printer first'
+      });
+      return;
+    }
+
+    try {
+      await WebPrinterService.printReceipt(printCharacteristic, orderData);
+      addNotification({
+        type: 'order_created',
+        message: 'Receipt printed successfully!'
+      });
+    } catch (error) {   
+      addNotification({
+        type: 'order_status',
+        message: 'Failed to print receipt'
+      });
+    }
+  };
+
   // Add this handler function
   const handleQuantityChange = (itemName: string, newQuantity: string) => {
     // Convert to number and validate
@@ -270,31 +603,77 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       return sum + (Number(item.price) * Number(item.quantity));
     }, 0);
     setTotalFoodPrice(`${Math.round(total)}.00`);
+    
+
   }, [selectedItems]);
 
   // Function to handle next step
   const handleNextStep = () => {
-    if (currentStep === 1) {
-      if (deliveryMethod === 'on-demand' || deliveryMethod === 'schedule' || deliveryMethod === 'batch-delivery') {
-        // Skip directly to step 3 for these delivery methods
-        setCurrentStep(3);
-      } else {
-        // Normal progression for full-service
+    const { restaurantData } = useUserProfile();
+    const isFullServiceEnabled = restaurantData.FullService;
+
+    if (deliveryMethod === 'full-service') {
+      if (currentStep === 1) {
+        if (!isDeliveryPriceValid()) {
+          addNotification({
+            type: 'order_status',
+            message: 'Please enter a valid delivery price to proceed'
+          });
+          return;
+        }
         setCurrentStep(2);
+      } else if (currentStep === 2) {
+        if (selectedItems.length === 0) {
+          addNotification({
+            type: 'order_status',
+            message: 'Please select at least one item to proceed'
+          });
+          return;
+        }
+        setCurrentStep(3);
       }
-    } else if (currentStep === 2) {
-      setCurrentStep(3);
+    } else if (deliveryMethod === 'schedule' || deliveryMethod === 'batch-delivery') {
+      if (currentStep === 1) {
+        if (!isDeliveryPriceValid()) {
+          addNotification({
+            type: 'order_status',
+            message: 'Please enter a valid delivery price to proceed'
+          });
+          return;
+        }
+        setCurrentStep(isFullServiceEnabled ? 2 : 3);
+      } else if (currentStep === 2 && isFullServiceEnabled) {
+        if (selectedItems.length === 0) {
+          addNotification({
+            type: 'order_status',
+            message: 'Please select at least one item to proceed'
+          });
+          return;
+        }
+        setCurrentStep(3);
+      }
+    } else {
+      if (!isDeliveryPriceValid()) {
+        addNotification({
+          type: 'order_status',
+          message: 'Please enter a valid delivery price to proceed'
+        });
+        return;
+      }
+      setCurrentStep(2);
     }
   };
 
   // Function to handle previous step
   const handlePreviousStep = () => {
+    const { restaurantData } = useUserProfile();
+    const isFullServiceEnabled = restaurantData.FullService;
+
     if (currentStep === 3) {
-      // For on-demand, schedule and batch delivery, go back to step 1
-      if (deliveryMethod === 'on-demand' || deliveryMethod === 'schedule' || deliveryMethod === 'batch-delivery') {
-        setCurrentStep(1);
+      if (deliveryMethod === 'schedule' || deliveryMethod === 'batch-delivery') {
+        // If FullService is false, go back to step 1, otherwise go to step 2
+        setCurrentStep(isFullServiceEnabled ? 2 : 1);
       } else {
-        // For full-service, go back to step 2
         setCurrentStep(2);
       }
     } else if (currentStep === 2) {
@@ -327,166 +706,284 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     }
   }, [deliveryMethod]);
 
-  // Modify your handlePlaceOrder function
-  const handlePlaceOrder = async (paymentType: 'now' | 'later') => {
-    try {
-      // Set the appropriate loading state
-      if (paymentType === 'now') {
-        setIsPayNowSubmitting(true);
-      } else {
-        setIsPayLaterSubmitting(true);
-      }
-
-      // Create formData instance first
-      const formData = new FormData();
-
-      // When submitting the order, add the scheduled delivery data
-      let scheduledDeliveryData = null;
-      if (deliveryMethod === 'schedule' && scheduledDate && scheduledTime) {
-        const combinedDateTime = `${scheduledDate}T${scheduledTime}:00`;
-        scheduledDeliveryData = {
-          scheduleDate: scheduledDate,
-          scheduleTime: scheduledTime,
-          scheduleDateTime: combinedDateTime
-        };
-        formData.append('scheduleDate', scheduledDate);
-        formData.append('scheduledTime', scheduledTime);
-        formData.append('scheduledDateTime', combinedDateTime);
-      }
-
-      const orderData = {
-        customerName,
-        customerPhone,
-        restaurantId: userProfile?.restaurantId,
-        branchId: selectedBranchId || userProfile?.branchId,
-        deliveryType: deliveryMethod,
-        deliveryPrice,
-        orderPrice: totalFoodPrice,
-        totalPrice: calculateTotal(),
-        orderComment,
-        batchID: currentBatchId, // Only included for batch delivery
-        pickup: [{
-          fromLatitude: pickupLocation?.latitude.toString(),
-          fromLongitude: pickupLocation?.longitude.toString(),
-          fromAddress: pickupLocation?.address,
-        }],
-        dropOff: [{
-          toLatitude: dropoffLocation?.latitude.toString(),
-          toLongitude: dropoffLocation?.longitude.toString(),
-          toAddress: dropoffLocation?.address,
-        }],
-        products: selectedItems.map(item => ({
-          name: item.name,
-          price: item.price,
-          quantity: item.quantity
-        })),
-        ...(scheduledDeliveryData && { scheduleDelivery: scheduledDeliveryData })
+  // Update the OrderPayload interface to include extras
+  interface OrderPayload {
+    restaurantId: string | null;
+    branchId: string | null;
+    dropOff: Array<{
+      toLatitude: string;
+      toLongitude: string;
+      toAddress: string;
+    }>;
+    pickup: Array<{
+      fromLatitude: string;
+      fromLongitude: string;
+      fromAddress: string;
+    }>;
+    customerName: string;
+    customerPhoneNumber: string;
+    orderNumber: number;
+    deliveryDistance: string;
+    orderPrice: string;
+    trackingUrl: string;
+    courierName: string;
+    courierPhoneNumber: string;
+    orderStatus: string;
+    products: Array<{
+      name: string;
+      price: string;
+      quantity: string;
+      foodImage: {
+        url: string;
+        filename: string;
+        type: string;
+        size: number;
       };
-      
-      // Use the selected branch data for Admin users, otherwise use userProfile data
-      if (userProfile?.role === 'Admin') {
-        formData.append('branchId', pickupData.branchId);
-        formData.append('pickup[0][fromAddress]', pickupData.fromAddress);
-        formData.append('pickup[0][fromLatitude]', pickupData.fromLatitude);
-        formData.append('pickup[0][fromLongitude]', pickupData.fromLongitude);
-        formData.append('pickupName', pickupData.fromAddress); // Admin-specific branch name
-      } else {
-        formData.append('branchId', userProfile?.branchId || '');
-        formData.append('pickup[0][fromAddress]', userProfile?.branchesTable?.branchLocation || '');
-        formData.append('pickup[0][fromLatitude]', userProfile?.branchesTable?.branchLatitude || '');
-        formData.append('pickup[0][fromLongitude]', userProfile?.branchesTable?.branchLongitude || '');
-        formData.append('pickupName', userProfile?.branchesTable?.branchName || ''); // Non-Admin branch name
+      extras?: Array<{
+        delika_extras_table_id: string;
+        extrasDetails: {
+          id: string;
+          extrasTitle: string;
+          extrasType: string;
+          required: boolean;
+          extrasDetails: Array<{
+            delika_inventory_table_id: string;
+            minSelection?: number;
+            maxSelection?: number;
+            inventoryDetails: Array<{
+              id: string;
+              foodName: string;
+              foodPrice: number;
+              foodDescription: string;
+            }>;
+          }>;
+        };
+      }>;
+    }>;
+    orderDate: string | null;
+    deliveryPrice: string;
+    pickupName: string;
+    dropoffName: string;
+    totalPrice: string;
+    foodAndDeliveryFee: boolean;
+    onlyDeliveryFee: boolean;
+    payNow: boolean;
+    payLater: boolean;
+    scheduleDelivery?: {
+      scheduleDate: string;
+      scheduleTime: string;
+      scheduleDateTime: string;
+    };
+    Walkin: boolean; // Add this line
+    payVisaCard: boolean;  // Add this new field
+  }
+
+  // Update the handlePlaceOrder function to format extras correctly
+  const handlePlaceOrder = async (paymentType: 'cash' | 'momo' | 'visa') => {
+    setIsSubmitting(true);
+
+    try {
+      if (!isDeliveryPriceValid()) {
+        addNotification({
+          type: 'order_status',
+          message: 'Please enter a valid delivery price to proceed'
+        });
+        return;
       }
       
-
-      // Structured dropOff array
-      formData.append('dropOff[0][toAddress]', dropoffLocation?.address || '');
-      formData.append('dropOff[0][toLatitude]', dropoffLocation?.latitude.toString() || '');
-      formData.append('dropOff[0][toLongitude]', dropoffLocation?.longitude.toString() || '');
-
-      // Rest of the fields
-      formData.append('deliveryDistance', distance ? distance.toString() : '');
-      formData.append('orderNumber', Math.floor(Math.random() * 1000000).toString());
-      formData.append('orderPrice', totalFoodPrice);
-      formData.append('trackingUrl', '');
-      formData.append('courierName', '');
-      formData.append('customerName', customerName);
-      formData.append('customerPhoneNumber', customerPhone);
-      formData.append('restaurantId', userProfile?.restaurantId || '');
-      formData.append('orderStatus', 'ReadyForPickup');
-      formData.append('orderComment', orderComment);
+      const formData = new FormData();
       
-      // Products array without foodImage
-      selectedItems.forEach((item, index) => {
+      // Add products to formData
+      selectedItems.forEach((item: SelectedItem, index: number) => {
         formData.append(`products[${index}][name]`, item.name);
         formData.append(`products[${index}][price]`, item.price.toString());
         formData.append(`products[${index}][quantity]`, item.quantity.toString());
+        
+        if (item.image) {
+          formData.append(`products[${index}][foodImage][url]`, item.image);
+          formData.append(`products[${index}][foodImage][filename]`, item.name);
+          formData.append(`products[${index}][foodImage][type]`, 'image');
+          formData.append(`products[${index}][foodImage][size]`, '0');
+        }
+
+        // Format extras according to the API's expected structure
+        if (item.extras && item.extras.length > 0) {
+          item.extras.forEach((extraGroup: SelectedItemExtra, groupIndex: number) => {
+            formData.append(
+              `products[${index}][extras][${groupIndex}][delika_extras_table_id]`, 
+              extraGroup.delika_extras_table_id
+            );
+            
+            // Add the selected items as the inventory details
+            const extrasDetails = {
+              id: extraGroup.extrasDetails.id,
+              extrasTitle: `Extra Group ${groupIndex + 1}`,
+              extrasType: 'multiple',
+              required: true,
+              extrasDetails: extraGroup.extrasDetails.extrasDetails.map(detail => ({
+                delika_inventory_table_id: detail.delika_inventory_table_id,
+                inventoryDetails: detail.inventoryDetails.map(selection => ({
+                  id: selection.id,
+                  foodName: selection.foodName,
+                  foodPrice: selection.foodPrice,
+                  foodDescription: selection.foodDescription || ''
+                }))
+              }))
+            };
+
+            formData.append(
+              `products[${index}][extras][${groupIndex}][extrasDetails]`,
+              JSON.stringify(extrasDetails)
+            );
+          });
+        }
       });
 
-      formData.append('orderDate', new Date().toISOString());
+      // Add other fields to formData
+      formData.append('customerName', customerName);
+      formData.append('customerPhoneNumber', customerPhone);
+      formData.append('restaurantId', userProfile?.restaurantId || '');
+      formData.append('branchId', selectedBranchId || userProfile?.branchId || '');
       formData.append('deliveryPrice', deliveryPrice);
-      formData.append('dropoffName', dropoffLocation?.name || '');
+      formData.append('pickupName', pickupLocation?.address || '');
+      formData.append('dropoffName', dropoffLocation?.address || '');
+      formData.append('orderPrice', totalFoodPrice);
       formData.append('totalPrice', calculateTotal());
-      formData.append('foodAndDeliveryFee', 'true');
-      formData.append('onlyDeliveryFee', 'false');
-      formData.append('payNow', (paymentType === 'now').toString());
-      formData.append('payLater', (paymentType === 'later').toString());
+      formData.append('orderComment', orderComment);
+      
+      // Set orderStatus based on delivery method and AutoAssign setting
+      let orderStatus = 'ReadyForPickup';
+      if (deliveryMethod === 'walk-in') {
+        orderStatus = 'Delivered';
+      } else if (!restaurantData?.AutoAssign && selectedRider) {
+        orderStatus = 'Assigned';
+      }
+      formData.append('orderStatus', orderStatus);
 
-      // Only append batchID for batch delivery
+      formData.append('orderDate', new Date().toISOString());
+      formData.append('foodAndDeliveryFee', 'true');
+      formData.append('deliveryDistance', distance?.toString() || '');
+      formData.append('onlyDeliveryFee', 'false');
+      formData.append('payNow', (paymentType === 'cash').toString());
+      formData.append('payLater', (paymentType === 'momo').toString());
+      formData.append('payVisaCard', (paymentType === 'visa').toString());
+      formData.append('Walkin', (deliveryMethod === 'walk-in').toString());
+
+      // Add pickup and dropoff locations
+      if (pickupLocation) {
+        formData.append('pickup[0][fromLatitude]', pickupLocation.latitude.toString());
+        formData.append('pickup[0][fromLongitude]', pickupLocation.longitude.toString());
+        formData.append('pickup[0][fromAddress]', pickupLocation.address);
+      }
+      if (dropoffLocation) {
+        formData.append('dropOff[0][toLatitude]', dropoffLocation.latitude.toString());
+        formData.append('dropOff[0][toLongitude]', dropoffLocation.longitude.toString());
+        formData.append('dropOff[0][toAddress]', dropoffLocation.address);
+      }
+
+      // Add batch ID if it's a batch delivery
       if (deliveryMethod === 'batch-delivery' && currentBatchId) {
         formData.append('batchID', currentBatchId);
       }
 
+      // Add schedule information if it's a scheduled delivery
+      if (deliveryMethod === 'schedule' && scheduledDate && scheduledTime) {
+        const scheduleDateTime = new Date(`${scheduledDate}T${scheduledTime}`);
+        formData.append('scheduleTime[scheduleDateTime]', scheduleDateTime.toISOString());
+      }
+
+      // Handle rider assignment based on AutoAssign setting
+      if (restaurantData?.AutoAssign) {
+        // If AutoAssign is enabled, don't send courierId
+      } else if (selectedRider) {
+        // If AutoAssign is disabled and a rider is selected, send the courierId
+        formData.append('courierId', selectedRider);
+      } else {
+        // If AutoAssign is disabled but no rider is selected, show error
+        throw new Error(t('orders.error.noRiderSelected'));
+      }
+
+      // Use the placeOrder function from api.ts
       const response = await placeOrder(formData);
-      const result = response.data;
-      
-      // For batch delivery, add to batched orders and show summary
+
+      if (!response.data) {
+        throw new Error(t('orders.error.failedToPlaceOrder'));
+      }
+
+      // If this is a batch delivery, add the order to batchedOrders and show the modal
       if (deliveryMethod === 'batch-delivery') {
-        setBatchedOrders(prev => [...prev, { ...orderData, id: result.id }]);
+        const orderData = {
+          customerName,
+          customerPhoneNumber: customerPhone,
+          dropOff: [{
+            toAddress: dropoffLocation?.address || ''
+          }],
+          products: selectedItems.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price
+          })),
+          deliveryPrice,
+          totalPrice: calculateTotal()
+        };
+        
+        setBatchedOrders(prev => [...prev, orderData]);
         setShowBatchSummary(true);
+        
+        // Show success notification
         addNotification({
           type: 'order_created',
-          message: `Order number **#${Math.floor(Math.random() * 1000000)}** has been created as a part of batch order`
+          message: t('orders.success.batchOrderAdded')
+        });
+      } else if (deliveryMethod === 'walk-in') {
+        // For walk-in orders, handle printing
+        const orderData = {
+          orderNumber: `#${Date.now().toString().slice(-6)}`,
+          customerName,
+          paymentMethod: paymentType.toUpperCase(),
+          items: selectedItems.map(item => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price
+          })),
+          totalPrice: calculateTotal()
+        };
+
+        // Show printer connection modal on first use
+        if (!hasShownPrinterModal && checkWebBluetoothSupport()) {
+          setShowPrinterModal(true);
+          setHasShownPrinterModal(true);
+        } else if (printCharacteristic) {
+          // Print receipt if already connected
+          await printReceipt(orderData);
+        }
+
+        // Close modal and show success
+        onOrderPlaced();
+        addNotification({
+          type: 'order_created',
+          message: t('orders.success.orderPlaced')
         });
       } else {
-        // Regular notification for other delivery types
+        // For non-batch orders, close the modal and show success
+        onOrderPlaced();
         addNotification({
           type: 'order_created',
-          message: 'Order has been created successfully'
+          message: t('orders.success.orderPlaced')
         });
       }
 
     } catch (error) {
-      console.error('Error placing order:', error);
-      throw new Error('Failed to place order');
+      addNotification({
+        type: 'order_status',
+        message: error instanceof Error ? error.message : t('orders.error.failedToPlaceOrder')
+      });
     } finally {
-      // Reset both loading states
-      setIsPayLaterSubmitting(false);
-      setIsPayNowSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
-  const calculateDeliveryFee = (distance: number): number => {
-    if (distance <= 1) {
-        return 15; // Fixed fee for distances up to 1km
-    } else if (distance <= 2) {
-        return 20; // Fixed fee for distances between 1km and 2km
-    } else if (distance <= 10) {
-        // For distances > 2km and <= 10km: 17 cedis base price + 2.5 cedis per km beyond 2km
-        return 17 + ((distance - 2) * 2.5);
-    } else {
-        // For distances above 10km: 3.5 * distance + 20
-        return (3.5 * distance) + 20;
-    }
-};
 
-  // Update the delivery price calculation in the useEffect
-  useEffect(() => {
-    if (distance !== null) {
-        const calculatedPrice = Math.round(calculateDeliveryFee(distance));
-        setDeliveryPrice(`${calculatedPrice}.00`);
-    }
-  }, [distance]);
 
   // Add validation effects
   useEffect(() => {
@@ -522,1654 +1019,229 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     setIsStep3Valid(isBasicInfoValid && isPricingValid);
   }, [customerName, customerPhone, pickupLocation, dropoffLocation, selectedItems, deliveryPrice]);
 
-  // Render different sections based on current step
+  // Replace the renderStepContent function
   const renderStepContent = () => {
+    // Permission checks for each delivery method
+    if (deliveryMethod === 'on-demand' && !deliveryMethods.onDemand) {
+      setCurrentStep(1);
+      setDeliveryMethod(null);
+      return renderDeliveryMethodSelection();
+    }
+
+    if (deliveryMethod === 'full-service' && !deliveryMethods.fullService) {
+      setCurrentStep(1);
+      setDeliveryMethod(null);
+      return renderDeliveryMethodSelection();
+    }
+
+    if (deliveryMethod === 'schedule' && !deliveryMethods.schedule) {
+      setCurrentStep(1);
+      setDeliveryMethod(null);
+      return renderDeliveryMethodSelection();
+    }
+
+    if (deliveryMethod === 'batch-delivery' && !deliveryMethods.batchDelivery) {
+      setCurrentStep(1);
+      setDeliveryMethod(null);
+      return renderDeliveryMethodSelection();
+    }
+
+    if (deliveryMethod === 'walk-in' && !deliveryMethods.walkIn) {
+      setCurrentStep(1);
+      setDeliveryMethod(null);
+      return renderDeliveryMethodSelection();
+    }
+
+    // If permissions are valid, render the appropriate content
     switch (deliveryMethod) {
       case 'on-demand':
-        return renderOnDemandContent();
-      
-      case 'schedule':
-        return renderScheduleContent();
-        
-      case 'batch-delivery':
-        return renderBatchContent();
-        
+        return (
+          <OnDemandContent
+            currentStep={currentStep}
+            customerName={customerName}
+            setCustomerName={setCustomerName}
+            customerPhone={customerPhone}
+            setCustomerPhone={setCustomerPhone}
+            selectedBranchId={selectedBranchId}
+            setSelectedBranchId={setSelectedBranchId}
+            branches={branches}
+            userProfile={userProfile}
+            handlePickupLocationSelect={handlePickupLocationSelect}
+            handleDropoffLocationSelect={handleDropoffLocationSelect}
+            pickupLocation={pickupLocation}
+            dropoffLocation={dropoffLocation}
+            distance={distance}
+            handleBackToDeliveryType={handleBackToDeliveryType}
+            handleNextStep={handleNextStep}
+            handlePreviousStep={handlePreviousStep}
+            isDeliveryPriceValid={isDeliveryPriceValid}
+            handlePlaceOrder={handlePlaceOrder}
+            isSubmitting={isSubmitting}
+            deliveryPrice={deliveryPrice}
+            totalFoodPrice={totalFoodPrice}
+            calculateTotal={calculateTotal}
+            renderDistanceInfo={renderDistanceInfo}
+            renderDeliveryPriceInput={renderDeliveryPriceInput}
+            renderRiderSelection={renderRiderSelection}
+            orderComment={orderComment}
+            setOrderComment={setOrderComment}
+          />
+        );
       case 'full-service':
-        return renderFullServiceContent();
-        
-      default:
-        return null;
-    }
-  };
-
-  // Then define separate render functions for each delivery method
-  const renderOnDemandContent = () => {
-    switch (currentStep) {
-      case 1:
         return (
-          <>
-            {/* Back to delivery type button */}
-            <div className="flex items-center mb-6">
-              <button
-                className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent"
-                onClick={handleBackToDeliveryType}
-              >
-                <IoIosArrowBack className="w-5 h-5" />
-                <span>Back to Delivery Types</span>
-              </button>
-            </div>
-            
-            <b className="font-sans text-lg font-semibold gap-2 mb-4">
-              {deliveryMethod === 'on-demand' ? 'On Demand Delivery' :
-               deliveryMethod === 'schedule' ? 'Schedule Delivery' :
-               'Batch Delivery'}
-            </b>
-            
-            {/* Add Estimated Distance section here */}
-            <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-4">
-              <div className="text-sm !font-sans">
-                <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
-                <div className="text-gray-500 !font-sans">
-                  From {pickupLocation?.address} to {dropoffLocation?.address}
-                </div>
-              </div>
-            </div>
-
-            {/* Customer Details Section */}
-            <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4">
-              <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
-                <div className="self-stretch relative leading-[20px] font-sans text-black">
-                  Customer Name
-                </div>
-                <input
-                  className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                            text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-center py-[10px] px-[12px] text-black"
-                  placeholder="customer name"
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                />
-              </div>
-              <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
-                <div className="self-stretch relative leading-[20px] font-sans text-black">
-                  Customer Phone
-                </div>
-                <input
-                  className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                            text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[10px] px-[12px] text-black"
-                  placeholder="customer phone number"
-                  type="tel"
-                  value={customerPhone}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9]/g, '');
-                    setCustomerPhone(value);
-                  }}
-                  maxLength={10}
-                />
-              </div>
-            </div>
-            <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4">
-              {userProfile?.role === 'Admin' ? (
-                <div className="w-full">
-                  <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                    Select Branch for Pickup
-                  </div>
-                  <StyledSelect
-                    fullWidth
-                    value={selectedBranchId}
-                    onChange={(event: SelectChangeEvent<unknown>, child: React.ReactNode) => {
-                      const selectedId = event.target.value as string;
-                      setSelectedBranchId(selectedId);
-                      
-                      // Find selected branch
-                      const selectedBranch = branches.find(branch => branch.id === selectedId);
-                      if (selectedBranch) {
-                        setPickupData({
-                          fromLatitude: selectedBranch.branchLatitude,
-                          fromLongitude: selectedBranch.branchLongitude,
-                          fromAddress: selectedBranch.branchLocation,
-                          branchId: selectedBranch.id
-                        });
-                        // Update pickup location for distance calculation
-                        handlePickupLocationSelect({
-                          address: selectedBranch.branchLocation,
-                          latitude: parseFloat(selectedBranch.branchLatitude),
-                          longitude: parseFloat(selectedBranch.branchLongitude),
-                          name: selectedBranch.branchName
-                        });
-                      }
-                    }}
-                    variant="outlined"
-                    size="small"
-                    className="mb-2"
-                  >
-                    {branches.map((branch) => (
-                      <MenuItem key={branch.id} value={branch.id}>
-                        {branch.branchName} - {branch.branchLocation}
-                      </MenuItem>
-                    ))}
-                  </StyledSelect>
-                </div>
-              ) : (
-                <div className="w-full">
-                  <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                    Your Branch
-                  </div>
-                  <div className="font-sans border-[#efefef] border-[1px] border-solid 
-                                bg-[#f9fafb] self-stretch rounded-[3px] overflow-hidden 
-                                flex flex-row items-center py-[10px] px-[12px] text-gray-600">
-                    {userProfile?.branchesTable?.branchName} - {userProfile?.branchesTable?.branchLocation}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4">
-              <LocationInput label="Drop-Off Location" onLocationSelect={handleDropoffLocationSelect} />
-              {dropoffLocation && (
-                <div className="text-sm text-gray-600 mt-2 pl-2">
-                </div>
-              )}
-            </div>
-            <button
-              onClick={handleNextStep}
-              disabled={!isStep1Valid}
-              className={`self-stretch rounded-[4px] border-[1px] border-solid overflow-hidden 
-                         flex flex-row items-center justify-center py-[9px] px-[90px] 
-                         cursor-pointer text-[10px] text-[#fff] mt-4
-                         ${isStep1Valid 
-                           ? 'bg-[#fd683e] border-[#f5fcf8] hover:opacity-90' 
-                           : 'bg-gray-400 border-gray-300 cursor-not-allowed'}`}
-            >
-              <div className="relative leading-[16px] font-sans text-[#fff]">Next</div>
-            </button>
-          </>
+          <FullServiceContent
+            currentStep={currentStep}
+            customerName={customerName}
+            setCustomerName={setCustomerName}
+            customerPhone={customerPhone}
+            setCustomerPhone={setCustomerPhone}
+            selectedBranchId={selectedBranchId}
+            setSelectedBranchId={setSelectedBranchId}
+            branches={branches}
+            userProfile={userProfile}
+            handlePickupLocationSelect={handlePickupLocationSelect}
+            handleDropoffLocationSelect={handleDropoffLocationSelect}
+            pickupLocation={pickupLocation}
+            dropoffLocation={dropoffLocation}
+            distance={distance}
+            handleBackToDeliveryType={handleBackToDeliveryType}
+            handleNextStep={handleNextStep}
+            handlePreviousStep={handlePreviousStep}
+            isDeliveryPriceValid={isDeliveryPriceValid}
+            handlePlaceOrder={handlePlaceOrder}
+            isSubmitting={isSubmitting}
+            deliveryPrice={deliveryPrice}
+            totalFoodPrice={totalFoodPrice}
+            calculateTotal={calculateTotal}
+            renderDistanceInfo={renderDistanceInfo}
+            renderDeliveryPriceInput={renderDeliveryPriceInput}
+            renderRiderSelection={renderRiderSelection}
+            orderComment={orderComment}
+            setOrderComment={setOrderComment}
+            selectedItems={selectedItems}
+            updateQuantity={updateQuantity}
+            removeItem={removeItem}
+            categoryItems={categoryItems}
+            renderEnhancedMenuSelection={renderEnhancedMenuSelection}
+          />
         );
-      case 3:
+      case 'schedule':
         return (
-          <>
-            <div className="flex items-center mb-6">
-           
-              <button
-                className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent"
-                onClick={handlePreviousStep}
-              >
-                <IoIosArrowBack className="w-5 h-5" />
-                <span>Back</span>
-              </button>
-            </div>
-            
-            <b className="font-sans text-lg font-semibold mb-6">Choose Payment Method</b>
-
-            {/* Scrollable container */}
-            <div className="flex-1 overflow-y-auto pr-2" style={{ maxHeight: 'calc(100vh - 250px)' }}>
-              <div className="flex flex-col gap-4">
-                {/* Add scheduling inputs for schedule delivery */}
-                {deliveryMethod === 'schedule' && (
-                  <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4">
-                    <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
-                      <div className="self-stretch relative leading-[20px] font-sans text-black">
-                        Delivery Date
-                      </div>
-                      <StyledDateInput
-                        type="date"
-                        value={scheduledDate}
-                        onChange={handleDateChange}
-                        min={new Date().toISOString().split('T')[0]}
-                        className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                                  text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
-                                  flex flex-row items-center justify-start py-[10px] px-[12px]"
-                      />
-                    </div>
-                    <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
-                      <div className="self-stretch relative leading-[20px] font-sans text-black">
-                        Delivery Time
-                      </div>
-                      <input
-                        type="time"
-                        value={scheduledTime}
-                        onChange={(e) => setScheduledTime(e.target.value)}
-                        className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                                  text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
-                                  flex flex-row items-center justify-start py-[10px] px-[12px]"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Add Estimated Distance section */}
-                <div className="self-stretch bg-[#f9fafb] rounded-lg p-4">
-                  <div className="text-sm !font-sans">
-                    <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
-                    <div className="text-gray-500 !font-sans">
-                      From {pickupLocation?.address} to {dropoffLocation?.address}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Order Price Section */}
-                <div className="self-stretch flex flex-col items-start justify-start gap-[4px] text-[12px] text-[#686868] font-sans">
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
-                    <div className="self-stretch relative leading-[20px] font-sans">Delivery Price</div>
-                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px] mb-4">
-                      <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
-                        <div className="relative leading-[20px] font-sans">GH₵</div>
-                      </div>
-                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
-                        <div className="relative leading-[20px] font-sans">{deliveryPrice}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
-                    <div className="self-stretch relative leading-[20px] font-sans">Food Price</div>
-                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px] mb-4">
-                      <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
-                        <div className="relative leading-[20px] font-sans">GH₵</div>
-                      </div>
-                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
-                        <div className="relative leading-[20px] font-sans">{totalFoodPrice}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-2">
-                    <div className="self-stretch relative leading-[20px] font-sans text-black">Total Price</div>
-                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
-                      <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
-                        <div className="relative leading-[20px] text-black font-sans">GH₵</div>
-                      </div>
-                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
-                        <div className="relative leading-[20px] text-black font-sans">{calculateTotal()}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Additional Comment Section */}
-                <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
-                  <div className="self-stretch relative leading-[20px] font-sans">Additional Comment</div>
-                  <textarea
-                    className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                              text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
-                              flex flex-row items-start justify-start py-[10px] px-[12px] 
-                              min-h-[20px] resize-none w-[550px]"
-                    placeholder="Add any special instructions or notes here..."
-                    value={orderComment}
-                    onChange={(e) => setOrderComment(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Payment Buttons - Keep outside scrollable area */}
-            <div className="flex gap-4 w-full pt-4 mt-4">
-              <button
-                className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
-                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                          ${isPayLaterSubmitting || isPayNowSubmitting
-                            ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
-                            : 'bg-[#201a18] border-[#201a18]'}`}
-                onClick={() => handlePlaceOrder('later')}
-                disabled={isPayLaterSubmitting || isPayNowSubmitting}
-              >
-                {isPayLaterSubmitting ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Processing...
-                  </div>
-                ) : (
-                  'Pay on Delivery'
-                )}
-              </button>
-              <button
-                className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
-                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                          ${isPayLaterSubmitting || isPayNowSubmitting
-                            ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
-                            : 'bg-[#fd683e] border-[#fd683e]'}`}
-                onClick={() => handlePlaceOrder('now')}
-                disabled={isPayLaterSubmitting || isPayNowSubmitting}
-              >
-                {isPayNowSubmitting ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Processing...
-                  </div>
-                ) : (
-                  'Request Payment'
-                )}
-              </button>
-            </div>
-          </>
+          <ScheduleContent
+            currentStep={currentStep}
+            customerName={customerName}
+            setCustomerName={setCustomerName}
+            customerPhone={customerPhone}
+            setCustomerPhone={setCustomerPhone}
+            selectedBranchId={selectedBranchId}
+            setSelectedBranchId={setSelectedBranchId}
+            branches={branches}
+            userProfile={userProfile}
+            handlePickupLocationSelect={handlePickupLocationSelect}
+            handleDropoffLocationSelect={handleDropoffLocationSelect}
+            pickupLocation={pickupLocation}
+            dropoffLocation={dropoffLocation}
+            distance={distance}
+            handleBackToDeliveryType={handleBackToDeliveryType}
+            handleNextStep={handleNextStep}
+            handlePreviousStep={handlePreviousStep}
+            isDeliveryPriceValid={isDeliveryPriceValid}
+            handlePlaceOrder={handlePlaceOrder}
+            isSubmitting={isSubmitting}
+            deliveryPrice={deliveryPrice}
+            totalFoodPrice={totalFoodPrice}
+            calculateTotal={calculateTotal}
+            renderDistanceInfo={renderDistanceInfo}
+            renderDeliveryPriceInput={renderDeliveryPriceInput}
+            renderRiderSelection={renderRiderSelection}
+            orderComment={orderComment}
+            setOrderComment={setOrderComment}
+            selectedItems={selectedItems}
+            updateQuantity={updateQuantity}
+            removeItem={removeItem}
+            categoryItems={categoryItems}
+            renderEnhancedMenuSelection={renderEnhancedMenuSelection}
+            scheduledDate={scheduledDate}
+            scheduledTime={scheduledTime}
+            handleDateChange={handleDateChange}
+            setScheduledTime={setScheduledTime}
+          />
+        );
+      case 'batch-delivery':
+        return (
+          <BatchContent
+            currentStep={currentStep}
+            customerName={customerName}
+            setCustomerName={setCustomerName}
+            customerPhone={customerPhone}
+            setCustomerPhone={setCustomerPhone}
+            selectedBranchId={selectedBranchId}
+            setSelectedBranchId={setSelectedBranchId}
+            branches={branches}
+            userProfile={userProfile}
+            handlePickupLocationSelect={handlePickupLocationSelect}
+            handleDropoffLocationSelect={handleDropoffLocationSelect}
+            pickupLocation={pickupLocation}
+            dropoffLocation={dropoffLocation}
+            distance={distance}
+            handleBackToDeliveryType={handleBackToDeliveryType}
+            handleNextStep={handleNextStep}
+            handlePreviousStep={handlePreviousStep}
+            isDeliveryPriceValid={isDeliveryPriceValid}
+            handlePlaceOrder={handlePlaceOrder}
+            isSubmitting={isSubmitting}
+            deliveryPrice={deliveryPrice}
+            totalFoodPrice={totalFoodPrice}
+            calculateTotal={calculateTotal}
+            renderDistanceInfo={renderDistanceInfo}
+            renderDeliveryPriceInput={renderDeliveryPriceInput}
+            renderRiderSelection={renderRiderSelection}
+            orderComment={orderComment}
+            setOrderComment={setOrderComment}
+            selectedItems={selectedItems}
+            updateQuantity={updateQuantity}
+            removeItem={removeItem}
+            categoryItems={categoryItems}
+            renderEnhancedMenuSelection={renderEnhancedMenuSelection}
+            currentBatchId={currentBatchId}
+            handleAddAnotherOrder={handleAddAnotherOrder}
+            handleCompleteBatch={handleCompleteBatch}
+          />
+        );
+      case 'walk-in':
+        return (
+          <WalkInContent
+            currentStep={currentStep}
+            customerName={customerName}
+            setCustomerName={setCustomerName}
+            customerPhone={customerPhone}
+            setCustomerPhone={setCustomerPhone}
+            handleBackToDeliveryType={handleBackToDeliveryType}
+            handleNextStep={handleNextStep}
+            handlePreviousStep={handlePreviousStep}
+            handlePlaceOrder={handlePlaceOrder}
+            isSubmitting={isSubmitting}
+            totalFoodPrice={totalFoodPrice}
+            calculateTotal={calculateTotal}
+            orderComment={orderComment}
+            setOrderComment={setOrderComment}
+            selectedItems={selectedItems}
+            updateQuantity={updateQuantity}
+            removeItem={removeItem}
+            categoryItems={categoryItems}
+            renderEnhancedMenuSelection={renderEnhancedMenuSelection}
+            showPrinterModal={showPrinterModal}
+            setShowPrinterModal={setShowPrinterModal}
+            printerConnectionStatus={printerConnectionStatus}
+            connectToPrinter={connectToPrinter}
+            disconnectPrinter={disconnectPrinter}
+            connectedDevice={connectedDevice}
+            updateItemWithExtras={updateItemWithExtras}
+          />
         );
       default:
-        // Redirect to step 1 if somehow we get to an invalid step
         setCurrentStep(1);
-        return null;
-    }
-  };
-
-  const renderScheduleContent = () => {
-    switch (currentStep) {
-      case 1:
-        return (
-          <>
-            {/* Back to delivery type button */}
-            <div className="flex items-center mb-6">
-              <button
-                className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent"
-                onClick={handleBackToDeliveryType}
-              >
-                <IoIosArrowBack className="w-5 h-5" />
-                <span>Back to Delivery Types</span>
-              </button>
-            </div>
-            
-            <b className="font-sans text-lg font-semibold gap-2 mb-4">
-              {deliveryMethod === 'on-demand' ? 'On Demand Delivery' :
-               deliveryMethod === 'schedule' ? 'Schedule Delivery' :
-               'Batch Delivery'}
-            </b>
-            
-            {/* Add Estimated Distance section here */}
-            <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-4">
-              <div className="text-sm !font-sans">
-                <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
-                <div className="text-gray-500 !font-sans">
-                  From {pickupLocation?.address} to {dropoffLocation?.address}
-                </div>
-              </div>
-            </div>
-
-            {/* Customer Details Section */}
-            <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4">
-              <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
-                <div className="self-stretch relative leading-[20px] font-sans text-black">
-                  Customer Name
-                </div>
-                <input
-                  className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                            text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-center py-[10px] px-[12px] text-black"
-                  placeholder="customer name"
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                />
-              </div>
-              <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
-                <div className="self-stretch relative leading-[20px] font-sans text-black">
-                  Customer Phone
-                </div>
-                <input
-                  className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                            text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[10px] px-[12px] text-black"
-                  placeholder="customer phone number"
-                  type="tel"
-                  value={customerPhone}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9]/g, '');
-                    setCustomerPhone(value);
-                  }}
-                  maxLength={10}
-                />
-              </div>
-            </div>
-            <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4">
-              {userProfile?.role === 'Admin' ? (
-                <div className="w-full">
-                  <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                    Select Branch for Pickup
-                  </div>
-                  <StyledSelect
-                    fullWidth
-                    value={selectedBranchId}
-                    onChange={(event: SelectChangeEvent<unknown>, child: React.ReactNode) => {
-                      const selectedId = event.target.value as string;
-                      setSelectedBranchId(selectedId);
-                      
-                      // Find selected branch
-                      const selectedBranch = branches.find(branch => branch.id === selectedId);
-                      if (selectedBranch) {
-                        setPickupData({
-                          fromLatitude: selectedBranch.branchLatitude,
-                          fromLongitude: selectedBranch.branchLongitude,
-                          fromAddress: selectedBranch.branchLocation,
-                          branchId: selectedBranch.id
-                        });
-                        // Update pickup location for distance calculation
-                        handlePickupLocationSelect({
-                          address: selectedBranch.branchLocation,
-                          latitude: parseFloat(selectedBranch.branchLatitude),
-                          longitude: parseFloat(selectedBranch.branchLongitude),
-                          name: selectedBranch.branchName
-                        });
-                      }
-                    }}
-                    variant="outlined"
-                    size="small"
-                    className="mb-2"
-                  >
-                    {branches.map((branch) => (
-                      <MenuItem key={branch.id} value={branch.id}>
-                        {branch.branchName} - {branch.branchLocation}
-                      </MenuItem>
-                    ))}
-                  </StyledSelect>
-                </div>
-              ) : (
-                <div className="w-full">
-                  <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                    Your Branch
-                  </div>
-                  <div className="font-sans border-[#efefef] border-[1px] border-solid 
-                                bg-[#f9fafb] self-stretch rounded-[3px] overflow-hidden 
-                                flex flex-row items-center py-[10px] px-[12px] text-gray-600">
-                    {userProfile?.branchesTable?.branchName} - {userProfile?.branchesTable?.branchLocation}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4">
-              <LocationInput label="Drop-Off Location" onLocationSelect={handleDropoffLocationSelect} />
-              {dropoffLocation && (
-                <div className="text-sm text-gray-600 mt-2 pl-2">
-                </div>
-              )}
-            </div>
-            <button
-              onClick={handleNextStep}
-              disabled={!isStep1Valid}
-              className={`self-stretch rounded-[4px] border-[1px] border-solid overflow-hidden 
-                         flex flex-row items-center justify-center py-[9px] px-[90px] 
-                         cursor-pointer text-[10px] text-[#fff] mt-4
-                         ${isStep1Valid 
-                           ? 'bg-[#fd683e] border-[#f5fcf8] hover:opacity-90' 
-                           : 'bg-gray-400 border-gray-300 cursor-not-allowed'}`}
-            >
-              <div className="relative leading-[16px] font-sans text-[#fff]">Next</div>
-            </button>
-          </>
-        );
-      case 2:
-        return (
-          <>
-            <div className="flex items-center mb-6">
-              
-              <button
-                className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent"
-                onClick={handlePreviousStep}
-              >
-                <IoIosArrowBack className="w-5 h-5" />
-                <span>Back</span>
-              </button>
-            </div>
-            
-            <b className="font-sans text-lg font-semibold">Add Menu Item</b>
-            {/* Add this scrollable container */}
-            <div className="flex-1 overflow-y-auto max-h-[75vh] pr-2">
-              {/* Delivery Price Section */}
-              <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
-                <div className="self-stretch relative leading-[20px] font-sans text-black">Delivery Price</div>
-                <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
-                  <div className="w-[60px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
-                    <div className="relative leading-[20px] font-sans">GH₵</div>
-                  </div>
-                  <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-between py-[12px] px-[16px] text-[#858a89] font-sans">
-                    <div className="relative leading-[20px]">{deliveryPrice}</div> 
-                  </div>
-                </div>
-              </div>
-             
-              {/* Menu Items Section */}
-              <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-4">
-                <div className="self-stretch relative leading-[20px] font-sans">Menu</div>
-                <div className="w-full">
-                  <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                    Select Category
-                  </div>
-                  <StyledSelect
-                    fullWidth
-                    value={selectedCategory}
-                    onChange={(event: SelectChangeEvent<unknown>, child: React.ReactNode) => {
-                      setSelectedCategory(event.target.value as string);
-                    }}
-                    variant="outlined"
-                    size="small"
-                    className="mb-2"
-                    displayEmpty
-                  >
-                    <MenuItem value="" disabled>
-                      Select Category
-                    </MenuItem>
-                    {categories.map((category) => (
-                      <MenuItem key={category.value} value={category.label}>
-                        {category.label}
-                      </MenuItem>
-                    ))}
-                  </StyledSelect>
-                </div>
-              </div>
-              <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] text-[#6f7070] pt-4">
-                <div className="flex-1 flex flex-col items-start justify-start gap-[6px]">
-                  <div className="self-stretch relative leading-[20px] font-sans text-black">Items</div>
-                  <div className="relative w-full">
-                    <button
-                      onClick={() => setIsItemsDropdownOpen(!isItemsDropdownOpen)}
-                      className="w-full p-2 text-left border-[#efefef] border-[1px] border-solid rounded-md bg-white"
-                    >
-                      <div className="text-[14px] leading-[22px] font-sans">
-                        {selectedItem || "Select Item"}
-                      </div>
-                    </button>
-                    
-                    {isItemsDropdownOpen && (
-                      <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
-                        {categoryItems.map((item) => (
-                          <div
-                            key={item.name}
-                            className={`p-2 ${
-                              item.quantity > 0 
-                                ? 'hover:bg-gray-100 cursor-pointer'
-                                : 'cursor-not-allowed opacity-100'
-                            }`}
-                            onClick={() => {
-                              if (item.quantity > 0) {
-                                setSelectedItem(item.name);
-                                setIsItemsDropdownOpen(false);
-                                addItem(item);
-                              }
-                            }}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <span className="text-[14px] leading-[22px] font-sans">
-                                  {item.name}
-                                </span>
-                                {item.quantity === 0 && (
-                                  <span className="ml-2 text-[12px] text-red-500">
-                                    Out of stock
-                                  </span>
-                                )}
-                              </div>
-                              <span className="text-[14px] leading-[22px] font-sans">
-                                GH₵ {item.price}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
-                <div className="self-stretch relative leading-[20px] font-sans text-black">Selected Items</div>
-                {selectedItems.map((item, index) => (
-                  <div 
-                    key={`${item.name}-${index}`}
-                    className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-start justify-between p-[1px]"
-                  >
-                    <div className="w-[61px] rounded-[6px] bg-[#f6f6f6] box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[20px] gap-[7px]">
-                      <div className="flex flex-row items-center gap-1">
-                        <button 
-                          onClick={() => updateQuantity(item.name, item.quantity - 1)}
-                          disabled={item.quantity <= 1}
-                          className={`w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center 
-                                 ${item.quantity <= 1 ? 'text-gray-400 cursor-not-allowed' : 'text-black cursor-pointer'} 
-                                 font-sans`}
-                        >
-                          -
-                        </button>
-                        <div className="w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center text-black font-sans">
-                          {item.quantity}
-                        </div>
-                        <button 
-                          onClick={() => {
-                            const menuItem = categoryItems.find(mi => mi.name === item.name);
-                            if (menuItem && item.quantity < menuItem.quantity) {
-                              updateQuantity(item.name, item.quantity + 1);
-                            } else {
-                              toast.error(`Maximum available quantity is ${menuItem?.quantity}`);
-                            }
-                          }}
-                          disabled={!categoryItems.find(mi => mi.name === item.name)?.quantity || 
-                                    item.quantity >= (categoryItems.find(mi => mi.name === item.name)?.quantity || 0)}
-                          className={`w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center 
-                                 ${!categoryItems.find(mi => mi.name === item.name)?.quantity || 
-                                   item.quantity >= (categoryItems.find(mi => mi.name === item.name)?.quantity || 0)
-                                   ? 'text-gray-400 cursor-not-allowed' 
-                                   : 'text-black cursor-pointer'} 
-                                 font-sans`}
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-between py-[15px] px-[20px] text-[#858a89]">
-                      <div className="relative leading-[20px] text-black font-sans">{item.name}</div>
-                      <div className="flex items-center gap-3">
-                        <div className="relative leading-[20px] text-black font-sans">{item.price * item.quantity} GHS</div>
-                        <RiDeleteBinLine 
-                          className="cursor-pointer text-red-500 hover:text-red-600" 
-                          onClick={() => removeItem(item.name)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {selectedItems.length === 0 && (
-                  <div className="text-[#b1b4b3] text-[13px] italic font-sans">No items selected</div>
-                )}
-              </div>
-              <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
-                <div className="self-stretch relative leading-[20px] font-sans text-black">
-                  Total Price
-                </div>
-                <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
-                  <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
-                    <div className="relative leading-[20px] text-black font-sans">GH₵</div>
-                  </div>
-                  <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
-                    <div className="relative leading-[20px] text-black font-sans">{calculateTotal()}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Navigation Buttons - Keep outside scrollable area */}
-            <div className="flex justify-between mt-8 pt-4 border-t">
-              <button
-                className="flex-1 font-sans cursor-pointer bg-[#201a18] border-[#201a18] border-[1px] border-solid 
-                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center"
-                onClick={handlePreviousStep}
-                disabled={isSubmitting}
-              >
-                Back
-              </button>
-              <div className="mx-2" /> {/* Add space between buttons */}
-              <button
-                className={`flex-1 font-sans cursor-pointer border-[#fd683e] border-[1px] border-solid 
-                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                          ${selectedItems.length === 0 ? 'bg-[#fd683e] cursor-not-allowed' : 'bg-[#fd683e] cursor-pointer'}`}
-                onClick={handleNextStep}
-                disabled={selectedItems.length === 0}
-              >
-                Next
-              </button>
-            </div>
-          </>
-        );
-      case 3:
-        return (
-          <>
-            <div className="flex items-center mb-6">
-              
-             
-              <button
-                className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent"
-                onClick={handlePreviousStep}
-              >
-                <IoIosArrowBack className="w-5 h-5" />
-                <span>Back</span>
-              </button>
-            </div>
-            
-            <b className="font-sans text-lg font-semibold mb-6">Choose Payment Method</b>
-
-            {/* Scrollable container */}
-            <div className="flex-1 overflow-y-auto pr-2" style={{ maxHeight: 'calc(100vh - 250px)' }}>
-              <div className="flex flex-col gap-4">
-                {/* Only show scheduling inputs for schedule delivery method */}
-                {deliveryMethod === 'schedule' && (
-                  <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4">
-                    <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
-                      <div className="self-stretch relative leading-[20px] font-sans text-black">
-                        Delivery Date
-                      </div>
-                      <StyledDateInput
-                        type="date"
-                        value={scheduledDate}
-                        onChange={handleDateChange}
-                        min={new Date().toISOString().split('T')[0]}
-                        className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                                  text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
-                                  flex flex-row items-center justify-start py-[10px] px-[12px]"
-                      />
-                    </div>
-                    <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
-                      <div className="self-stretch relative leading-[20px] font-sans text-black">
-                        Delivery Time
-                      </div>
-                      <input
-                        type="time"
-                        value={scheduledTime}
-                        onChange={(e) => setScheduledTime(e.target.value)}
-                        className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                                  text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
-                                  flex flex-row items-center justify-start py-[10px] px-[12px]"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Add Estimated Distance section */}
-                <div className="self-stretch bg-[#f9fafb] rounded-lg p-4">
-                  <div className="text-sm !font-sans">
-                    <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
-                    <div className="text-gray-500 !font-sans">
-                      From {pickupLocation?.address} to {dropoffLocation?.address}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Order Price Section */}
-                <div className="self-stretch flex flex-col items-start justify-start gap-[4px] text-[12px] text-[#686868] font-sans">
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
-                    <div className="self-stretch relative leading-[20px] font-sans">Delivery Price</div>
-                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px] mb-4">
-                      <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
-                        <div className="relative leading-[20px] font-sans">GH₵</div>
-                      </div>
-                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
-                        <div className="relative leading-[20px] font-sans">{deliveryPrice}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
-                    <div className="self-stretch relative leading-[20px] font-sans">Food Price</div>
-                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px] mb-4">
-                      <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
-                        <div className="relative leading-[20px] font-sans">GH₵</div>
-                      </div>
-                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
-                        <div className="relative leading-[20px] font-sans">{totalFoodPrice}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-2">
-                    <div className="self-stretch relative leading-[20px] font-sans text-black">Total Price</div>
-                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
-                      <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
-                        <div className="relative leading-[20px] text-black font-sans">GH₵</div>
-                      </div>
-                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
-                        <div className="relative leading-[20px] text-black font-sans">{calculateTotal()}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Additional Comment Section */}
-                <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
-                  <div className="self-stretch relative leading-[20px] font-sans">Additional Comment</div>
-                  <textarea
-                    className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                              text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
-                              flex flex-row items-start justify-start py-[10px] px-[12px] 
-                              min-h-[20px] resize-none w-[550px]"
-                    placeholder="Add any special instructions or notes here..."
-                    value={orderComment}
-                    onChange={(e) => setOrderComment(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Payment Buttons - Keep outside scrollable area */}
-            <div className="flex gap-4 w-full pt-4 mt-4">
-              <button
-                className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
-                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                          ${isPayLaterSubmitting || isPayNowSubmitting
-                            ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
-                            : 'bg-[#201a18] border-[#201a18]'}`}
-                onClick={() => handlePlaceOrder('later')}
-                disabled={isPayLaterSubmitting || isPayNowSubmitting}
-              >
-                {isPayLaterSubmitting ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Processing...
-                  </div>
-                ) : (
-                  'Pay on Delivery'
-                )}
-              </button>
-              <button
-                className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
-                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                          ${isPayLaterSubmitting || isPayNowSubmitting
-                            ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
-                            : 'bg-[#fd683e] border-[#fd683e]'}`}
-                onClick={() => handlePlaceOrder('now')}
-                disabled={isPayLaterSubmitting || isPayNowSubmitting}
-              >
-                {isPayNowSubmitting ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Processing...
-                  </div>
-                ) : (
-                  'Request Payment'
-                )}
-              </button>
-            </div>
-          </>
-        );
-      default:
-        // Redirect to step 1 if somehow we get to an invalid step
-        setCurrentStep(1);
-        return null;
-    }
-  };
-
-  const renderBatchContent = () => {
-    switch (currentStep) {
-      case 1:
-        return (
-          <>
-            {/* Back to delivery type button */}
-            <div className="flex items-center mb-6">
-              <button
-                className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent"
-                onClick={handleBackToDeliveryType}
-              >
-                <IoIosArrowBack className="w-5 h-5" />
-                <span>Back to Delivery Types</span>
-              </button>
-            </div>
-            
-            <b className="font-sans text-lg font-semibold gap-2 mb-4">
-              {deliveryMethod === 'on-demand' ? 'On Demand Delivery' :
-               deliveryMethod === 'schedule' ? 'Schedule Delivery' :
-               'Batch Delivery'}
-            </b>
-            
-            {/* Add Estimated Distance section here */}
-            <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-4">
-              <div className="text-sm !font-sans">
-                <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
-                <div className="text-gray-500 !font-sans">
-                  From {pickupLocation?.address} to {dropoffLocation?.address}
-                </div>
-              </div>
-            </div>
-
-            {/* Customer Details Section */}
-            <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4">
-              <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
-                <div className="self-stretch relative leading-[20px] font-sans text-black">
-                  Customer Name
-                </div>
-                <input
-                  className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                            text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-center py-[10px] px-[12px] text-black"
-                  placeholder="customer name"
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                />
-              </div>
-              <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
-                <div className="self-stretch relative leading-[20px] font-sans text-black">
-                  Customer Phone
-                </div>
-                <input
-                  className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                            text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[10px] px-[12px] text-black"
-                  placeholder="customer phone number"
-                  type="tel"
-                  value={customerPhone}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9]/g, '');
-                    setCustomerPhone(value);
-                  }}
-                  maxLength={10}
-                />
-              </div>
-            </div>
-            <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4">
-              {userProfile?.role === 'Admin' ? (
-                <div className="w-full">
-                  <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                    Select Branch for Pickup
-                  </div>
-                  <StyledSelect
-                    fullWidth
-                    value={selectedBranchId}
-                    onChange={(event: SelectChangeEvent<unknown>, child: React.ReactNode) => {
-                      const selectedId = event.target.value as string;
-                      setSelectedBranchId(selectedId);
-                      
-                      // Find selected branch
-                      const selectedBranch = branches.find(branch => branch.id === selectedId);
-                      if (selectedBranch) {
-                        setPickupData({
-                          fromLatitude: selectedBranch.branchLatitude,
-                          fromLongitude: selectedBranch.branchLongitude,
-                          fromAddress: selectedBranch.branchLocation,
-                          branchId: selectedBranch.id
-                        });
-                        // Update pickup location for distance calculation
-                        handlePickupLocationSelect({
-                          address: selectedBranch.branchLocation,
-                          latitude: parseFloat(selectedBranch.branchLatitude),
-                          longitude: parseFloat(selectedBranch.branchLongitude),
-                          name: selectedBranch.branchName
-                        });
-                      }
-                    }}
-                    variant="outlined"
-                    size="small"
-                    className="mb-2"
-                  >
-                    {branches.map((branch) => (
-                      <MenuItem key={branch.id} value={branch.id}>
-                        {branch.branchName} - {branch.branchLocation}
-                      </MenuItem>
-                    ))}
-                  </StyledSelect>
-                </div>
-              ) : (
-                <div className="w-full">
-                  <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                    Your Branch
-                  </div>
-                  <div className="font-sans border-[#efefef] border-[1px] border-solid 
-                                bg-[#f9fafb] self-stretch rounded-[3px] overflow-hidden 
-                                flex flex-row items-center py-[10px] px-[12px] text-gray-600">
-                    {userProfile?.branchesTable?.branchName} - {userProfile?.branchesTable?.branchLocation}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4">
-              <LocationInput label="Drop-Off Location" onLocationSelect={handleDropoffLocationSelect} />
-              {dropoffLocation && (
-                <div className="text-sm text-gray-600 mt-2 pl-2">
-                </div>
-              )}
-            </div>
-            <button
-              onClick={handleNextStep}
-              disabled={!isStep1Valid}
-              className={`self-stretch rounded-[4px] border-[1px] border-solid overflow-hidden 
-                         flex flex-row items-center justify-center py-[9px] px-[90px] 
-                         cursor-pointer text-[10px] text-[#fff] mt-4
-                         ${isStep1Valid 
-                           ? 'bg-[#fd683e] border-[#f5fcf8] hover:opacity-90' 
-                           : 'bg-gray-400 border-gray-300 cursor-not-allowed'}`}
-            >
-              <div className="relative leading-[16px] font-sans text-[#fff]">Next</div>
-            </button>
-          </>
-        );
-      case 3:
-        return (
-          <>
-            <div className="flex items-center mb-6">
-              
-              
-              <button
-                className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent"
-                onClick={handlePreviousStep}
-              >
-                <IoIosArrowBack className="w-5 h-5" />
-                <span>Back</span>
-              </button>
-            </div>
-            
-            <b className="font-sans text-lg font-semibold mb-6">Choose Payment Method</b>
-
-            {/* Scrollable container */}
-            <div className="flex-1 overflow-y-auto pr-2" style={{ maxHeight: 'calc(100vh - 250px)' }}>
-              <div className="flex flex-col gap-4">
-                {/* Only show scheduling inputs for schedule delivery method */}
-                {deliveryMethod === 'schedule' && (
-                  <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4">
-                    <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
-                      <div className="self-stretch relative leading-[20px] font-sans text-black">
-                        Delivery Date
-                      </div>
-                      <StyledDateInput
-                        type="date"
-                        value={scheduledDate}
-                        onChange={handleDateChange}
-                        min={new Date().toISOString().split('T')[0]}
-                        className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                                  text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
-                                  flex flex-row items-center justify-start py-[10px] px-[12px]"
-                      />
-                    </div>
-                    <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
-                      <div className="self-stretch relative leading-[20px] font-sans text-black">
-                        Delivery Time
-                      </div>
-                      <input
-                        type="time"
-                        value={scheduledTime}
-                        onChange={(e) => setScheduledTime(e.target.value)}
-                        className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                                  text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
-                                  flex flex-row items-center justify-start py-[10px] px-[12px]"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Add Estimated Distance section */}
-                <div className="self-stretch bg-[#f9fafb] rounded-lg p-4">
-                  <div className="text-sm !font-sans">
-                    <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
-                    <div className="text-gray-500 !font-sans">
-                      From {pickupLocation?.address} to {dropoffLocation?.address}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Order Price Section */}
-                <div className="self-stretch flex flex-col items-start justify-start gap-[4px] text-[12px] text-[#686868] font-sans">
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
-                    <div className="self-stretch relative leading-[20px] font-sans">Delivery Price</div>
-                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px] mb-4">
-                      <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
-                        <div className="relative leading-[20px] font-sans">GH₵</div>
-                      </div>
-                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
-                        <div className="relative leading-[20px] font-sans">{deliveryPrice}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
-                    <div className="self-stretch relative leading-[20px] font-sans">Food Price</div>
-                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px] mb-4">
-                      <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
-                        <div className="relative leading-[20px] font-sans">GH₵</div>
-                      </div>
-                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
-                        <div className="relative leading-[20px] font-sans">{totalFoodPrice}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-2">
-                    <div className="self-stretch relative leading-[20px] font-sans text-black">Total Price</div>
-                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
-                      <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
-                        <div className="relative leading-[20px] text-black font-sans">GH₵</div>
-                      </div>
-                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
-                        <div className="relative leading-[20px] text-black font-sans">{calculateTotal()}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Additional Comment Section */}
-                <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
-                  <div className="self-stretch relative leading-[20px] font-sans">Additional Comment</div>
-                  <textarea
-                    className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                              text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
-                              flex flex-row items-start justify-start py-[10px] px-[12px] 
-                              min-h-[20px] resize-none w-[550px]"
-                    placeholder="Add any special instructions or notes here..."
-                    value={orderComment}
-                    onChange={(e) => setOrderComment(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Payment Buttons - Keep outside scrollable area */}
-            <div className="flex gap-4 w-full pt-4 mt-4">
-              <button
-                className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
-                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                          ${isPayLaterSubmitting || isPayNowSubmitting
-                            ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
-                            : 'bg-[#201a18] border-[#201a18]'}`}
-                onClick={() => handlePlaceOrder('later')}
-                disabled={isPayLaterSubmitting || isPayNowSubmitting}
-              >
-                {isPayLaterSubmitting ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Processing...
-                  </div>
-                ) : (
-                  'Pay on Delivery'
-                )}
-              </button>
-              <button
-                className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
-                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                          ${isPayLaterSubmitting || isPayNowSubmitting
-                            ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
-                            : 'bg-[#fd683e] border-[#fd683e]'}`}
-                onClick={() => handlePlaceOrder('now')}
-                disabled={isPayLaterSubmitting || isPayNowSubmitting}
-              >
-                {isPayNowSubmitting ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Processing...
-                  </div>
-                ) : (
-                  'Request Payment'
-                )}
-              </button>
-            </div>
-          </>
-        );
-      default:
-        // Redirect to step 1 if somehow we get to an invalid step
-        setCurrentStep(1);
-        return null;
-    }
-  };
-
-  const renderFullServiceContent = () => {
-    switch (currentStep) {
-      case 1:
-        return (
-          <>
-            <div className="flex items-center mb-6">
-              <button
-                className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent"
-                onClick={handleBackToDeliveryType}
-              >
-                <IoIosArrowBack className="w-5 h-5" />
-                <span>Back to Delivery Types</span>
-              </button>
-            </div>
-            
-            <b className="font-sans text-lg font-semibold gap-2 mb-4">Full Service Delivery</b>
-            
-            {/* Add Estimated Distance section here */}
-            <div className="self-stretch bg-[#f9fafb] rounded-lg p-4 mb-4">
-              <div className="text-sm !font-sans">
-                <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
-                <div className="text-gray-500 !font-sans">
-                  From {pickupLocation?.address} to {dropoffLocation?.address}
-                </div>
-              </div>
-            </div>
-
-            {/* Customer Details Section */}
-            <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4">
-              <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
-                <div className="self-stretch relative leading-[20px] font-sans text-black">
-                  Customer Name
-                </div>
-                <input
-                  className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                            text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-center py-[10px] px-[12px] text-black"
-                  placeholder="customer name"
-                  type="text"
-                  value={customerName}
-                  onChange={(e) => setCustomerName(e.target.value)}
-                />
-              </div>
-              <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
-                <div className="self-stretch relative leading-[20px] font-sans text-black">
-                  Customer Phone
-                </div>
-                <input
-                  className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                            text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-start py-[10px] px-[12px] text-black"
-                  placeholder="customer phone number"
-                  type="tel"
-                  value={customerPhone}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^0-9]/g, '');
-                    setCustomerPhone(value);
-                  }}
-                  maxLength={10}
-                />
-              </div>
-            </div>
-            <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4">
-              {userProfile?.role === 'Admin' ? (
-                <div className="w-full">
-                  <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                    Select Branch for Pickup
-                  </div>
-                  <StyledSelect
-                    fullWidth
-                    value={selectedBranchId}
-                    onChange={(event: SelectChangeEvent<unknown>, child: React.ReactNode) => {
-                      const selectedId = event.target.value as string;
-                      setSelectedBranchId(selectedId);
-                      
-                      // Find selected branch
-                      const selectedBranch = branches.find(branch => branch.id === selectedId);
-                      if (selectedBranch) {
-                        setPickupData({
-                          fromLatitude: selectedBranch.branchLatitude,
-                          fromLongitude: selectedBranch.branchLongitude,
-                          fromAddress: selectedBranch.branchLocation,
-                          branchId: selectedBranch.id
-                        });
-                        // Update pickup location for distance calculation
-                        handlePickupLocationSelect({
-                          address: selectedBranch.branchLocation,
-                          latitude: parseFloat(selectedBranch.branchLatitude),
-                          longitude: parseFloat(selectedBranch.branchLongitude),
-                          name: selectedBranch.branchName
-                        });
-                      }
-                    }}
-                    variant="outlined"
-                    size="small"
-                    className="mb-2"
-                  >
-                    {branches.map((branch) => (
-                      <MenuItem key={branch.id} value={branch.id}>
-                        {branch.branchName} - {branch.branchLocation}
-                      </MenuItem>
-                    ))}
-                  </StyledSelect>
-                </div>
-              ) : (
-                <div className="w-full">
-                  <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                    Your Branch
-                  </div>
-                  <div className="font-sans border-[#efefef] border-[1px] border-solid 
-                                bg-[#f9fafb] self-stretch rounded-[3px] overflow-hidden 
-                                flex flex-row items-center py-[10px] px-[12px] text-gray-600">
-                    {userProfile?.branchesTable?.branchName} - {userProfile?.branchesTable?.branchLocation}
-                  </div>
-                </div>
-              )}
-            </div>
-            <div className="self-stretch flex flex-col items-start justify-start gap-[1px] mb-4">
-              <LocationInput label="Drop-Off Location" onLocationSelect={handleDropoffLocationSelect} />
-              {dropoffLocation && (
-                <div className="text-sm text-gray-600 mt-2 pl-2">
-                </div>
-              )}
-            </div>
-            <button
-              onClick={handleNextStep}
-              disabled={!isStep1Valid}
-              className={`self-stretch rounded-[4px] border-[1px] border-solid overflow-hidden 
-                         flex flex-row items-center justify-center py-[9px] px-[90px] 
-                         cursor-pointer text-[10px] text-[#fff] mt-4
-                         ${isStep1Valid 
-                           ? 'bg-[#fd683e] border-[#f5fcf8] hover:opacity-90' 
-                           : 'bg-gray-400 border-gray-300 cursor-not-allowed'}`}
-            >
-              <div className="relative leading-[16px] font-sans text-[#fff]">Next</div>
-            </button>
-          </>
-        );
-        case 2:
-          return (
-            <>
-              <b className="font-sans text-lg font-semibold">Add Menu Item</b>
-              {/* Add this scrollable container */}
-              <div className="flex-1 overflow-y-auto max-h-[75vh] pr-2">
-                {/* Delivery Price Section */}
-                <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
-                  <div className="self-stretch relative leading-[20px] font-sans text-black">Delivery Price</div>
-                  <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
-                    <div className="w-[60px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
-                      <div className="relative leading-[20px] font-sans">GH₵</div>
-                    </div>
-                    <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-between py-[12px] px-[16px] text-[#858a89] font-sans">
-                      <div className="relative leading-[20px]">{deliveryPrice}</div> 
-                    </div>
-                  </div>
-                </div>
-               
-                {/* Menu Items Section */}
-                <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-4">
-                  <div className="self-stretch relative leading-[20px] font-sans">Menu</div>
-                  <div className="w-full">
-                    <div className="text-[12px] leading-[20px] font-sans text-[#535353] mb-1">
-                      Select Category
-                    </div>
-                    <StyledSelect
-                      fullWidth
-                      value={selectedCategory}
-                      onChange={(event: SelectChangeEvent<unknown>, child: React.ReactNode) => {
-                        setSelectedCategory(event.target.value as string);
-                      }}
-                      variant="outlined"
-                      size="small"
-                      className="mb-2"
-                      displayEmpty
-                    >
-                      <MenuItem value="" disabled>
-                        Select Category
-                      </MenuItem>
-                      {categories.map((category) => (
-                        <MenuItem key={category.value} value={category.label}>
-                          {category.label}
-                        </MenuItem>
-                      ))}
-                    </StyledSelect>
-                  </div>
-                </div>
-                <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] text-[#6f7070] pt-4">
-                  <div className="flex-1 flex flex-col items-start justify-start gap-[6px]">
-                    <div className="self-stretch relative leading-[20px] font-sans text-black">Items</div>
-                    <div className="relative w-full">
-                      <button
-                        onClick={() => setIsItemsDropdownOpen(!isItemsDropdownOpen)}
-                        className="w-full p-2 text-left border-[#efefef] border-[1px] border-solid rounded-md bg-white"
-                      >
-                        <div className="text-[14px] leading-[22px] font-sans">
-                          {selectedItem || "Select Item"}
-                        </div>
-                      </button>
-                      
-                      {isItemsDropdownOpen && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg">
-                          {categoryItems.map((item) => (
-                            <div
-                              key={item.name}
-                              className={`p-2 ${
-                                item.quantity > 0 
-                                  ? 'hover:bg-gray-100 cursor-pointer'
-                                  : 'cursor-not-allowed opacity-100'
-                              }`}
-                              onClick={() => {
-                                if (item.quantity > 0) {
-                                  setSelectedItem(item.name);
-                                  setIsItemsDropdownOpen(false);
-                                  addItem(item);
-                                }
-                              }}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <span className="text-[14px] leading-[22px] font-sans">
-                                    {item.name}
-                                  </span>
-                                  {item.quantity === 0 && (
-                                    <span className="ml-2 text-[12px] text-red-500">
-                                      Out of stock
-                                    </span>
-                                  )}
-                                </div>
-                                <span className="text-[14px] leading-[22px] font-sans">
-                                  GH₵ {item.price}
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
-                  <div className="self-stretch relative leading-[20px] font-sans text-black">Selected Items</div>
-                  {selectedItems.map((item, index) => (
-                    <div 
-                      key={`${item.name}-${index}`}
-                      className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-start justify-between p-[1px]"
-                    >
-                      <div className="w-[61px] rounded-[6px] bg-[#f6f6f6] box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[20px] gap-[7px]">
-                        <div className="flex flex-row items-center gap-1">
-                          <button 
-                            onClick={() => updateQuantity(item.name, item.quantity - 1)}
-                            disabled={item.quantity <= 1}
-                            className={`w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center 
-                                   ${item.quantity <= 1 ? 'text-gray-400 cursor-not-allowed' : 'text-black cursor-pointer'} 
-                                   font-sans`}
-                          >
-                            -
-                          </button>
-                          <div className="w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center text-black font-sans">
-                            {item.quantity}
-                          </div>
-                          <button 
-                            onClick={() => {
-                              const menuItem = categoryItems.find(mi => mi.name === item.name);
-                              if (menuItem && item.quantity < menuItem.quantity) {
-                                updateQuantity(item.name, item.quantity + 1);
-                              } else {
-                                toast.error(`Maximum available quantity is ${menuItem?.quantity}`);
-                              }
-                            }}
-                            disabled={!categoryItems.find(mi => mi.name === item.name)?.quantity || 
-                                      item.quantity >= (categoryItems.find(mi => mi.name === item.name)?.quantity || 0)}
-                            className={`w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center 
-                                   ${!categoryItems.find(mi => mi.name === item.name)?.quantity || 
-                                     item.quantity >= (categoryItems.find(mi => mi.name === item.name)?.quantity || 0)
-                                     ? 'text-gray-400 cursor-not-allowed' 
-                                     : 'text-black cursor-pointer'} 
-                                   font-sans`}
-                          >
-                            +
-                          </button>
-                        </div>
-                      </div>
-                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-between py-[15px] px-[20px] text-[#858a89]">
-                        <div className="relative leading-[20px] text-black font-sans">{item.name}</div>
-                        <div className="flex items-center gap-3">
-                          <div className="relative leading-[20px] text-black font-sans">{item.price * item.quantity} GHS</div>
-                          <RiDeleteBinLine 
-                            className="cursor-pointer text-red-500 hover:text-red-600" 
-                            onClick={() => removeItem(item.name)}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {selectedItems.length === 0 && (
-                    <div className="text-[#b1b4b3] text-[13px] italic font-sans">No items selected</div>
-                  )}
-                </div>
-                <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
-                  <div className="self-stretch relative leading-[20px] font-sans text-black">
-                    Total Price
-                  </div>
-                  <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
-                    <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
-                      <div className="relative leading-[20px] text-black font-sans">GH₵</div>
-                    </div>
-                    <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
-                      <div className="relative leading-[20px] text-black font-sans">{calculateTotal()}</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Navigation Buttons - Keep outside scrollable area */}
-              <div className="flex justify-between mt-8 pt-4 border-t">
-                <button
-                  className="flex-1 font-sans cursor-pointer bg-[#201a18] border-[#201a18] border-[1px] border-solid 
-                            py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center"
-                  onClick={handlePreviousStep}
-                  disabled={isSubmitting}
-                >
-                  Back
-                </button>
-                <div className="mx-2" /> {/* Add space between buttons */}
-                <button
-                  className={`flex-1 font-sans cursor-pointer border-[#fd683e] border-[1px] border-solid 
-                            py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                            ${selectedItems.length === 0 ? 'bg-[#fd683e] cursor-not-allowed' : 'bg-[#fd683e] cursor-pointer'}`}
-                  onClick={handleNextStep}
-                  disabled={selectedItems.length === 0}
-                >
-                  Next
-                </button>
-              </div>
-            </>
-          ); 
-      case 3:
-        return (
-          <>
-            <div className="flex items-center mb-6">
-              
-             
-              <button
-                className="flex items-center gap-2 text-[#201a18] text-sm font-sans hover:text-gray-700 bg-transparent"
-                onClick={handlePreviousStep}
-              >
-                <IoIosArrowBack className="w-5 h-5" />
-                <span>Back</span>
-              </button>
-            </div>
-            
-            <b className="font-sans text-lg font-semibold mb-6">Choose Payment Method</b>
-
-            {/* Scrollable container */}
-            <div className="flex-1 overflow-y-auto pr-2" style={{ maxHeight: 'calc(100vh - 250px)' }}>
-              <div className="flex flex-col gap-4">
-                {/* Only show scheduling inputs for schedule delivery method */}
-                {deliveryMethod === 'schedule' && (
-                  <div className="self-stretch flex flex-row items-start justify-center flex-wrap content-start gap-[15px] mb-4">
-                    <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
-                      <div className="self-stretch relative leading-[20px] font-sans text-black">
-                        Delivery Date
-                      </div>
-                      <StyledDateInput
-                        type="date"
-                        value={scheduledDate}
-                        onChange={handleDateChange}
-                        min={new Date().toISOString().split('T')[0]}
-                        className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                                  text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
-                                  flex flex-row items-center justify-start py-[10px] px-[12px]"
-                      />
-                    </div>
-                    <div className="flex-1 flex flex-col items-start justify-start gap-[4px]">
-                      <div className="self-stretch relative leading-[20px] font-sans text-black">
-                        Delivery Time
-                      </div>
-                      <input
-                        type="time"
-                        value={scheduledTime}
-                        onChange={(e) => setScheduledTime(e.target.value)}
-                        className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                                  text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
-                                  flex flex-row items-center justify-start py-[10px] px-[12px]"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Add Estimated Distance section */}
-                <div className="self-stretch bg-[#f9fafb] rounded-lg p-4">
-                  <div className="text-sm !font-sans">
-                    <div className="font-medium mb-1 !font-sans">Estimated Distance: {distance} km</div>
-                    <div className="text-gray-500 !font-sans">
-                      From {pickupLocation?.address} to {dropoffLocation?.address}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Order Price Section */}
-                <div className="self-stretch flex flex-col items-start justify-start gap-[4px] text-[12px] text-[#686868] font-sans">
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
-                    <div className="self-stretch relative leading-[20px] font-sans">Delivery Price</div>
-                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px] mb-4">
-                      <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
-                        <div className="relative leading-[20px] font-sans">GH₵</div>
-                      </div>
-                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
-                        <div className="relative leading-[20px] font-sans">{deliveryPrice}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px]">
-                    <div className="self-stretch relative leading-[20px] font-sans">Food Price</div>
-                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px] mb-4">
-                      <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[12px] px-[16px]">
-                        <div className="relative leading-[20px] font-sans">GH₵</div>
-                      </div>
-                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[12px] px-[16px] text-[#858a89]">
-                        <div className="relative leading-[20px] font-sans">{totalFoodPrice}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-2">
-                    <div className="self-stretch relative leading-[20px] font-sans text-black">Total Price</div>
-                    <div className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[1px] px-[0px]">
-                      <div className="w-[64px] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[18px]">
-                        <div className="relative leading-[20px] text-black font-sans">GH₵</div>
-                      </div>
-                      <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-start py-[15px] px-[20px] text-[#858a89]">
-                        <div className="relative leading-[20px] text-black font-sans">{calculateTotal()}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Additional Comment Section */}
-                <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
-                  <div className="self-stretch relative leading-[20px] font-sans">Additional Comment</div>
-                  <textarea
-                    className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
-                              text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
-                              flex flex-row items-start justify-start py-[10px] px-[12px] 
-                              min-h-[20px] resize-none w-[550px]"
-                    placeholder="Add any special instructions or notes here..."
-                    value={orderComment}
-                    onChange={(e) => setOrderComment(e.target.value)}
-
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Payment Buttons - Keep outside scrollable area */}
-            <div className="flex gap-4 w-full pt-4 mt-4">
-              <button
-                className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
-                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                          ${isPayLaterSubmitting || isPayNowSubmitting
-                            ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
-                            : 'bg-[#201a18] border-[#201a18]'}`}
-                onClick={() => handlePlaceOrder('later')}
-                disabled={isPayLaterSubmitting || isPayNowSubmitting}
-              >
-                {isPayLaterSubmitting ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Processing...
-                  </div>
-                ) : (
-                  'Pay on Delivery'
-                )}
-              </button>
-              <button
-                className={`flex-1 font-sans cursor-pointer border-[1px] border-solid 
-                          py-[8px] text-white text-[10px] rounded-[4px] hover:opacity-90 text-center justify-center
-                          ${isPayLaterSubmitting || isPayNowSubmitting
-                            ? 'bg-gray-400 border-gray-400 cursor-not-allowed'
-                            : 'bg-[#fd683e] border-[#fd683e]'}`}
-                onClick={() => handlePlaceOrder('now')}
-                disabled={isPayLaterSubmitting || isPayNowSubmitting}
-              >
-                {isPayNowSubmitting ? (
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    Processing...
-                  </div>
-                ) : (
-                  'Request Payment'
-                )}
-              </button>
-            </div>
-          </>
-        );
-      default:
-        // Redirect to step 1 if somehow we get to an invalid step
-        setCurrentStep(1);
-        return null;
+        return renderDeliveryMethodSelection();
     }
   };
 
@@ -2177,8 +1249,31 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     setPickupLocation(location);
   };
 
-  const handleDropoffLocationSelect = (location: LocationData) => {
+  const handleDropoffLocationSelect = async (location: LocationData) => {
     setDropoffLocation(location);
+    // Only run calculation if pickupLocation is set and not already calculated for this dropoff
+    if (pickupLocation && location && !hasCalculatedDelivery) {
+      try {
+        setHasCalculatedDelivery(true);
+        const result = await calculateDeliveryPriceAPI({
+          pickup: {
+            fromLongitude: pickupLocation.longitude,
+            fromLatitude: pickupLocation.latitude
+          },
+          dropOff: {
+            toLongitude: location.longitude,
+            toLatitude: location.latitude
+          },
+          rider: false,
+          pedestrian: false
+        });
+        setDeliveryPrice(result.riderFee.toString());
+        setDistance(result.distance);
+      } catch (err) {
+        setDeliveryPrice('');
+        setDistance(null);
+      }
+    }
   };
 
   useEffect(() => {
@@ -2326,10 +1421,49 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   // Modify the handleDeliveryMethodSelect function
   const handleDeliveryMethodSelect = (method: DeliveryMethod) => {
     setDeliveryMethod(method);
-    // For schedule and on-demand, start at step 1
-    if (method === 'schedule' || method === 'on-demand') {
-      setCurrentStep(1);
+    
+    // Initialize specific data based on delivery method
+    switch (method) {
+      case 'batch-delivery':
+        // Generate a new batch ID when batch delivery is selected
+        const newBatchId = generateBatchId();
+        setCurrentBatchId(newBatchId);
+        setBatchedOrders([]); // Reset batched orders
+        break;
+        
+      case 'schedule':
+        // Initialize schedule with default values
+        setScheduledDate(new Date().toISOString().split('T')[0]);
+        setScheduledTime('');
+        break;
+        
+      case 'walk-in':
+        // Walk-in orders are handled in handlePlaceOrder
+        break;
+
+      case 'full-service':
+        // Initialize full service specific states
+        setCurrentBatchId(null);
+        setBatchedOrders([]);
+        setScheduledDate('');
+        setScheduledTime('');
+        break;
+        
+      default:
+        // Reset any delivery-specific states
+        setCurrentBatchId(null);
+        setBatchedOrders([]);
+        setScheduledDate('');
+        setScheduledTime('');
     }
+    
+    // Reset form fields
+    setCustomerName('');
+    setCustomerPhone('');
+    setSelectedItems([]);
+    setDeliveryPrice('');
+    setOrderComment('');
+    setCurrentStep(1);
   };
 
   // Add this function to handle date changes with validation
@@ -2354,32 +1488,84 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     return null;
   };
 
-  const handleAddItem = (item: MenuItem) => {
-    // Check if item already exists in selected items
-    const existingItem = selectedItems.find(i => i.name === item.name);
+  const handleAddItem = (item: MenuItemData) => {
+    // Always add the item immediately, regardless of extras
+    const newItem: SelectedItem = {
+      name: item.name,
+      quantity: 1,
+      price: Number(item.price),
+      image: item.foodImage?.url || '',
+      extras: []
+    };
+    setSelectedItems(prev => [...prev, newItem]);
     
-    if (existingItem) {
-      // Check if adding one more would exceed stock
-      if (existingItem.quantity >= item.stockQuantity) {
-        toast.error(`Cannot add more. Only ${item.stockQuantity} items available in stock`);
-        return;
-      }
-      
-      updateQuantity(item.name, existingItem.quantity + 1);
-    } else {
-      // Adding new item
-      if (item.stockQuantity <= 0) {
-        toast.error('This item is out of stock');
-        return;
-      }
-      
-      setSelectedItems([...selectedItems, { 
-        name: item.name, 
-        price: item.price, 
-        quantity: 1,
-        image: item.image || '' // Add this line
-      }]);
+    // If item has extras, also set it for extras selection
+    if (item.extras && item.extras.length > 0) {
+      setSelectedItemForExtrasDisplay(item);
     }
+  };
+
+  // Add new state for extras selection
+  const [showSelectExtrasModal, setShowSelectExtrasModal] = useState(false);
+  const [selectedItemForExtras, setSelectedItemForExtras] = useState<MenuItemData | null>(null);
+  const [selectedItemForExtrasDisplay, setSelectedItemForExtrasDisplay] = useState<MenuItemData | null>(null);
+
+  // Add new function to handle extras confirmation
+  const handleExtrasConfirm = (selectedExtras: { [key: string]: any[] }) => {
+    if (!selectedItemForExtrasDisplay) return;
+
+    // First, remove any existing extras for this main item
+    setSelectedItems(prev => {
+      const filteredItems = prev.filter(item => {
+        // Keep the main item and remove any existing extras for this item
+        if (item.name === selectedItemForExtrasDisplay.name) {
+          return true; // Keep the main item
+        }
+        // Remove any extras that belong to this main item
+        if (item.name.startsWith(`${selectedItemForExtrasDisplay.name} - `)) {
+          return false; // Remove existing extras
+        }
+        return true; // Keep other items
+      });
+      return filteredItems;
+    });
+
+    // Then add the new selections as separate line items
+    Object.entries(selectedExtras).forEach(([groupId, selections]) => {
+      const extraGroup = selectedItemForExtrasDisplay.extras?.find(e => e.delika_extras_table_id === groupId);
+      if (!extraGroup) return;
+
+      selections.forEach(selection => {
+        const extraItem: SelectedItem = {
+          name: `${selectedItemForExtrasDisplay.name} - ${selection.foodName}`,
+          quantity: 1,
+          price: Number(selection.foodPrice),
+          image: selectedItemForExtrasDisplay.foodImage?.url || '',
+          extras: []
+        };
+        setSelectedItems(prev => [...prev, extraItem]);
+      });
+    });
+  };
+
+  // Add a function to update items with extras for WalkInContent
+  const updateItemWithExtras = (itemName: string, extras: SelectedItemExtra[], extrasCost: number) => {
+    setSelectedItems(prev => {
+      const existingItemIndex = prev.findIndex(item => item.name === itemName);
+      
+      if (existingItemIndex !== -1) {
+        // Update existing item with extras
+        const updatedItems = [...prev];
+        const originalItem = updatedItems[existingItemIndex];
+        updatedItems[existingItemIndex] = {
+          ...originalItem,
+          price: originalItem.price + extrasCost,
+          extras: extras
+        };
+        return updatedItems;
+      }
+      return prev; // If item doesn't exist, don't do anything
+    });
   };
 
   // Add these functions inside the PlaceOrder component
@@ -2418,8 +1604,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     onClose();
     
     addNotification({
-      type: 'batch_completed',
-      message: `Batch #${currentBatchId} has been completed with ${batchedOrders.length} orders`
+      type: 'system',
+      message: t('orders.success.batchCompleted')
     });
   };
 
@@ -2447,77 +1633,387 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     resetFormState();
   };
 
-  return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white p-8 rounded-lg w-[600px] relative flex flex-col">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 bg-transparent"
-        >
-          <IoIosCloseCircleOutline size={24} />
-        </button>
-
-        {!deliveryMethod ? (
-          // Initial delivery method selection modal
-          <div className="flex flex-col items-center">
-            <h2 className="text-2xl font-semibold mb-8 font-sans">Select Delivery Type</h2>
-            <div className="flex gap-4 w-full justify-center">
-              {/* On-Demand Delivery */}
-              <div
-                onClick={() => handleDeliveryMethodSelect('on-demand')}
-                className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[200px]"
+  // New enhanced menu selection component
+  const renderEnhancedMenuSelection = () => {
+    return (
+      <>
+        {/* Category Selection */}
+        <div className="mb-6">
+          <div className="text-lg font-semibold mb-4 font-sans">Select Category</div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {categories.map((category) => (
+              <button
+                key={category.value}
+                onClick={() => setSelectedCategory(category.label)}
+                className={`p-4 rounded-lg border-2 transition-all font-sans text-sm font-medium ${
+                  selectedCategory === category.label
+                    ? 'border-[#fd683e] bg-[#fff5f3] text-[#fd683e]'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                }`}
               >
-                <div className="w-14 h-14 mb-4">
-                  <img src="/on-demand-delivery.svg" alt="On-Demand" className="w-full h-full" />
-                </div>
-                <span className="text-center font-medium font-sans">On Demand<br/>Delivery</span>
-              </div>
+                {category.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
-              {/* Full-service */}
-              <div
-                className={`flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg relative w-[200px]
-                  ${isFullServiceDisabled 
-                    ? 'opacity-50 cursor-not-allowed' 
-                    : 'cursor-pointer hover:bg-[#FFE5E0] transition-colors'}`}
-                onClick={() => {
-                  if (!isFullServiceDisabled) {
-                    handleDeliveryMethodSelect('full-service');
-                  }
-                }}
-              >
-                <div className="w-14 h-14 mb-4">
-                  <img src="/full-service.svg" alt="Full-service" className="w-full h-full" />
-                </div>
-                <span className="text-center font-medium font-sans">Full-service<br/>Delivery</span>
-              </div>  
-
-              {/* Schedule Delivery */}
-              <div
-                onClick={() => handleDeliveryMethodSelect('schedule')}
-                className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[200px]"
-              >
-                <div className="w-14 h-14 mb-4">
-                  <img src="/schedule-delivery.svg" alt="Schedule" className="w-full h-full" />
-                </div>
-                <span className="text-center font-medium font-sans">Schedule<br/>Delivery</span>
-              </div>
-
-              {/* Batch Delivery */}
-              <div
-                onClick={() => handleDeliveryMethodSelect('batch-delivery')}
-                className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg cursor-pointer hover:bg-[#FFE5E0] transition-colors w-[200px]"
-              >
-                <div className="w-14 h-14 mb-4">
-                  <img src="/batch-delivery.svg" alt="Batch" className="w-full h-full" />
-                </div>
-                <span className="text-center font-medium font-sans">Batch<br/>Delivery</span>
+        {/* Items Grid - Only show when category is selected */}
+        {selectedCategory && (
+          <div className="mb-6">
+            <div className="text-lg font-semibold mb-4 font-sans">
+              Select Items from {selectedCategory}
+            </div>
+            {/* Two-row horizontal scrolling grid with placeholder for odd items */}
+            <div className="overflow-x-auto pb-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2" style={{ minWidth: 'min-content' }}>
+                {(() => {
+                  // Sort items by name in ascending order
+                  const sortedItems = [...categoryItems].sort((a, b) => a.name.localeCompare(b.name));
+                  const cards = sortedItems.map((item) => {
+                    const isSelected = selectedItems.some(selected => selected.name === item.name);
+                    return (
+                      <Card
+                        key={item.name}
+                        className={`cursor-pointer w-[220px] relative ${!item.available ? 'grayscale opacity-60' : ''} ${isSelected ? 'border-2 border-[#fd683e]' : ''}`}
+                        onClick={() => {
+                          if (item.available) {
+                            if (isSelected) {
+                              setSelectedItems(prev => prev.filter(i => i.name !== item.name));
+                              setSelectedItemForExtrasDisplay(null);
+                            } else {
+                              // Always use handleAddItem to add the item immediately
+                              handleAddItem(item);
+                            }
+                          }
+                        }}
+                      >
+                        {isSelected && (
+                          <div className="absolute top-1.5 right-1.5 bg-[#fd683e] rounded-full p-0.5">
+                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                        )}
+                        <CardContent className="p-3">
+                          <div className="flex items-center gap-2">
+                            {/* Product Image */}
+                            <div className={`w-12 h-12 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0 ${!item.available ? 'grayscale' : ''}`}>
+                              {item.foodImage?.url || item.image ? (
+                                <img
+                                  src={item.foodImage?.url || item.image}
+                                  alt={item.name}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = '/placeholder-food.png';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-400">
+                                  <span className="text-[10px]">No Image</span>
+                                </div>
+                              )}
+                            </div>
+                            {/* Product Info */}
+                            <div className="flex flex-col h-full">
+                              <div className="flex-1">
+                                <h3 className="font-medium text-xs font-sans text-gray-900 break-words leading-tight">
+                                  {item.name}
+                                </h3>
+                              </div>
+                              {/* Price */}
+                              <div className="flex items-center justify-between mt-1">
+                                <p className="text-xs font-sans text-gray-900 font-semibold">
+                                  GH₵ {item.price}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  });
+                  return cards;
+                })()}
               </div>
             </div>
+            {categoryItems.length === 0 && (
+              <div className="text-center py-8 text-gray-500 font-sans">
+                No items available in this category
+              </div>
+            )}
           </div>
+        )}
+
+        {/* Extras Selection - Only show when an item with extras is selected for display */}
+        {selectedItemForExtrasDisplay && selectedItemForExtrasDisplay.extras && selectedItemForExtrasDisplay.extras.length > 0 && (
+          <div className="mb-6 p-4 border-2 border-[#fd683e] bg-[#fff5f3] rounded-lg">
+            <div className="text-lg font-semibold mb-4 font-sans text-[#fd683e]">
+              Select Extras for {selectedItemForExtrasDisplay.name}
+            </div>
+            <ExtrasSelectionInline
+              extras={selectedItemForExtrasDisplay.extras}
+              existingSelections={(() => {
+                // Get existing selections for this item from selectedItems
+                // Look for separate line items that start with the main item name
+                const existingExtras = selectedItems.filter(item => 
+                  item.name.startsWith(`${selectedItemForExtrasDisplay.name} - `)
+                );
+                
+                if (existingExtras.length === 0) return {};
+                
+                // Convert existing extras back to the format expected by ExtrasSelectionInline
+                const existingSelections: { [key: string]: Selection[] } = {};
+                
+                existingExtras.forEach(extraItem => {
+                  // Extract the extra name from "MainItem - ExtraName"
+                  const extraName = extraItem.name.replace(`${selectedItemForExtrasDisplay.name} - `, '');
+                  
+                  // Find the corresponding extra group and item
+                  selectedItemForExtrasDisplay.extras?.forEach(extraGroup => {
+                    extraGroup.extrasDetails.extrasDetails.forEach(detail => {
+                      const matchingItem = detail.inventoryDetails.find(item => 
+                        item.foodName === extraName
+                      );
+                      
+                      if (matchingItem) {
+                        const groupId = extraGroup.delika_extras_table_id;
+                        if (!existingSelections[groupId]) {
+                          existingSelections[groupId] = [];
+                        }
+                        existingSelections[groupId].push({
+                          id: matchingItem.id,
+                          foodName: matchingItem.foodName,
+                          foodPrice: matchingItem.foodPrice,
+                          foodDescription: matchingItem.foodDescription || '',
+                          groupTitle: extraGroup.extrasDetails.extrasTitle,
+                          groupType: extraGroup.extrasDetails.extrasType,
+                          required: extraGroup.extrasDetails.required,
+                          minSelection: detail.minSelection,
+                          maxSelection: detail.maxSelection
+                        });
+                      }
+                    });
+                  });
+                });
+                
+                return existingSelections;
+              })()}
+              onConfirm={(selectedExtras) => {
+                handleExtrasConfirm(selectedExtras);
+              }}
+              itemName={selectedItemForExtrasDisplay.name}
+            />
+          </div>
+        )}
+      </>
+    );
+  };
+
+  const isWalkInValid = () => {
+    return (
+        customerName.trim() !== '' &&
+        customerPhone.length === 10 &&
+        selectedItems.length > 0
+    );
+};
+
+  const renderDeliveryMethodSelection = () => {    return (      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">        {/* Only show On-Demand if walkInSetting is true */}        {walkInSetting && (          <div             className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg relative cursor-pointer hover:bg-[#FFE5E0] transition-colors"            onClick={() => handleDeliveryMethodSelect('on-demand')}          >            <h3 className="text-lg font-medium text-[#333]">On Demand Delivery</h3>            <p className="text-sm text-gray-600 mt-2 text-center">Immediate delivery service</p>          </div>        )}                {/* Other delivery options like schedule, batch, full-service */}        <div           className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg relative cursor-pointer hover:bg-[#FFE5E0] transition-colors"          onClick={() => handleDeliveryMethodSelect('full-service')}        >          <h3 className="text-lg font-medium text-[#333]">Full Service Delivery</h3>          <p className="text-sm text-gray-600 mt-2 text-center">Complete delivery service with menu selection</p>        </div>                <div           className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg relative cursor-pointer hover:bg-[#FFE5E0] transition-colors"          onClick={() => handleDeliveryMethodSelect('schedule')}        >          <h3 className="text-lg font-medium text-[#333]">Schedule Delivery</h3>          <p className="text-sm text-gray-600 mt-2 text-center">Schedule delivery for later</p>        </div>                {/* Show Walk-In regardless of WalkIn setting */}        <div           className="flex flex-col items-center p-6 bg-[#FFF5F3] rounded-lg relative cursor-pointer hover:bg-[#FFE5E0] transition-colors"          onClick={() => handleDeliveryMethodSelect('walk-in')}         >          <h3 className="text-lg font-medium text-[#333]">Walk-In Service</h3>          <p className="text-sm text-gray-600 mt-2 text-center">In-store dining or takeout</p>        </div>      </div>    );  };
+
+  const [riders, setRiders] = useState<Rider[]>([]);
+  const [selectedRider, setSelectedRider] = useState<string>('');
+  const [isLoadingRiders, setIsLoadingRiders] = useState(false);
+
+  // Update useEffect to fetch riders when component mounts
+  useEffect(() => {
+    const fetchRiders = async () => {
+      // Use the active branch ID instead of branch name
+      const activeBranchId = selectedBranchId || userProfile?.branchId;
+      if (!activeBranchId) return;
+
+      try {
+        setIsLoadingRiders(true);
+        const response = await getRidersByBranch(activeBranchId);
+        if (response.data) {
+          setRiders(response.data);
+        }
+      } catch (err) {
+        addNotification({
+          type: 'order_status',
+          message: 'Failed to fetch riders. Please try again.'
+        });
+      } finally {
+        setIsLoadingRiders(false);
+      }
+    };
+
+    // Only fetch riders if AutoAssign is false
+    if (restaurantData && !restaurantData.AutoAssign) {
+      fetchRiders();
+    }
+  }, [selectedBranchId, userProfile?.branchId, restaurantData?.AutoAssign]);
+
+  // Update renderRiderSelection to handle loading state
+  const renderRiderSelection = () => {
+    // Only show rider selection when AutoAssign is false
+    if (restaurantData?.AutoAssign) {
+      return null;
+    }
+
+
+    return (
+      <div className="self-stretch flex flex-col items-start justify-start gap-[4px] mb-4">
+        <div className="self-stretch relative leading-[20px] font-sans text-black">Assign Rider</div>
+        <select
+          className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
+                    text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden 
+                    flex flex-row items-center justify-start py-[10px] px-[12px]"
+          value={riders.find(r => r.userTable?.id === selectedRider || r.userId === selectedRider)?.id || ''}
+          onChange={handleRiderSelect}
+          disabled={isLoadingRiders}
+        >
+          <option value="">
+            {isLoadingRiders ? 'Loading riders...' : 'Select a rider'}
+          </option>
+          {riders.map((rider) => (
+            <option key={rider.id} value={rider.id}>
+              {rider.userTable?.fullName || rider.fullName || 'N/A'} - {rider.userTable?.phoneNumber || rider.phoneNumber || 'N/A'}
+            </option>
+          ))}
+        </select>
+        {!isLoadingRiders && riders.length === 0 && (
+          <div className="text-[12px] text-red-500 mt-1">
+            No riders available for this branch
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Update the rider selection handler to store userId instead of rider id
+  const handleRiderSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const riderId = e.target.value;
+    
+    // Find the selected rider's userId from the riders array
+    const selectedRiderData = riders.find(rider => rider.id === riderId);
+    const userId = selectedRiderData?.userTable?.id || selectedRiderData?.userId || '';
+    
+    setSelectedRider(userId);
+  };
+
+  const [hasCalculatedDelivery, setHasCalculatedDelivery] = useState(false);
+
+  // Reset hasCalculatedDelivery when pickup or dropoff changes
+  useEffect(() => {
+    setHasCalculatedDelivery(false);
+  }, [pickupLocation]);
+
+  // Printer Connection Modal Component
+  const renderPrinterModal = () => {
+    if (!showPrinterModal) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-semibold">🖨️ Connect to Printer</h2>
+            <button
+              onClick={() => setShowPrinterModal(false)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              <IoIosCloseCircleOutline size={24} />
+            </button>
+          </div>
+          
+          <div className="mb-4">
+            <div className={`p-3 rounded-lg mb-4 ${
+              printerConnectionStatus === 'connected' 
+                ? 'bg-green-100 text-green-800' 
+                : printerConnectionStatus === 'connecting'
+                ? 'bg-blue-100 text-blue-800'
+                : printerConnectionStatus === 'error'
+                ? 'bg-red-100 text-red-800'
+                : 'bg-gray-100 text-gray-800'
+            }`}>
+              {printerConnectionStatus === 'connected' && connectedDevice && (
+                <span>✅ Connected to {connectedDevice.name}</span>
+              )}
+              {printerConnectionStatus === 'connecting' && (
+                <span>🔄 Connecting to printer...</span>
+              )}
+              {printerConnectionStatus === 'error' && (
+                <span>❌ Failed to connect to printer</span>
+              )}
+              {printerConnectionStatus === 'disconnected' && (
+                <span>📱 Ready to connect to printer</span>
+              )}
+            </div>
+            
+            <p className="text-sm text-gray-600 mb-4">
+              Connect to a thermal printer to automatically print receipts for walk-in orders.
+            </p>
+          </div>
+
+          <div className="flex gap-3">
+            {printerConnectionStatus !== 'connected' ? (
+              <button
+                onClick={connectToPrinter}
+                disabled={printerConnectionStatus === 'connecting'}
+                className={`flex-1 py-2 px-4 rounded-lg font-medium ${
+                  printerConnectionStatus === 'connecting'
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-500 text-white hover:bg-blue-600'
+                }`}
+              >
+                {printerConnectionStatus === 'connecting' ? 'Connecting...' : 'Connect Printer'}
+              </button>
+            ) : (
+              <button
+                onClick={disconnectPrinter}
+                className="flex-1 py-2 px-4 bg-red-500 text-white rounded-lg font-medium hover:bg-red-600"
+              >
+                Disconnect
+              </button>
+            )}
+            
+            <button
+              onClick={() => setShowPrinterModal(false)}
+              className="flex-1 py-2 px-4 bg-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-400"
+            >
+              Skip
+            </button>
+          </div>
+
+          <div className="mt-4 text-xs text-gray-500">
+            <p><strong>Supported browsers:</strong> Chrome 56+, Edge 79+, Opera 43+</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white p-10 rounded-lg relative flex flex-col overflow-y-auto max-h-[90vh] w-full sm:w-[900px] mx-4 sm:mx-0">
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 text-gray-500 hover:text-gray-700 bg-transparent z-50"
+        >
+          <IoIosCloseCircleOutline className="w-8 h-8" />
+        </button>
+        {!deliveryMethod ? (
+          <ServiceTypeModal
+            onSelect={handleDeliveryMethodSelect}
+            onClose={onClose}
+            deliveryMethods={{
+              onDemand: !!deliveryMethods.onDemand,
+              fullService: !!deliveryMethods.fullService,
+              schedule: !!deliveryMethods.schedule,
+              batchDelivery: !!deliveryMethods.batchDelivery,
+              walkIn: !!deliveryMethods.walkIn,
+            }}
+          />
         ) : (
-          // Existing order placement modal content
           <>
-            {/* Main content */}
             {renderStepContent()}
           </>
         )}
@@ -2529,6 +2025,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
           onAddAnother={handleAddAnotherOrder}
           onComplete={handleCompleteBatch}
         />
+        {renderPrinterModal()}
       </div>
     </div>
   );

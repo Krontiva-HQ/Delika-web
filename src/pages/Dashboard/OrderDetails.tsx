@@ -1,3 +1,4 @@
+import React from 'react';
 import { FunctionComponent, useState, useEffect, useRef } from "react";
 import { FaLocationDot } from "react-icons/fa6";
 import { useParams, useNavigate } from 'react-router-dom';
@@ -7,6 +8,10 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { MdOutlineFileDownload } from 'react-icons/md';
 import { useUserProfile } from '../../hooks/useUserProfile';
+import { useTranslation } from 'react-i18next';
+import { formatDate, translateOrderStatus, translateKitchenStatus } from '../../i18n/i18n';
+import dayjs from 'dayjs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 
 interface InvoiceData {
   invoiceNumber: string;
@@ -26,6 +31,11 @@ interface InvoiceData {
     unitPrice: number;
     quantity: number;
     totalPrice: number;
+    extras?: Array<{
+      extrasName: string;
+      extrasQuantity: number;
+      extrasPrice: number;
+    }>;
   }[];
   payment: {
     method: string;
@@ -57,6 +67,8 @@ interface InvoiceData {
     branchName: string;
   };
   orderComment?: string;
+  Walkin: boolean;
+  kitchenStatus?: string;
 }
 
 const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
@@ -99,6 +111,7 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       payNow: false,
       payLater: false,
       scheduledTime: null,
+      Walkin: false,
     };
   }
 
@@ -125,12 +138,14 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       orderCompletedTime,
       scheduledTime,
       branch,
-      orderComment
+      orderComment,
+      Walkin = false,
+      kitchenStatus
     } = apiResponse;
 
     return {
       invoiceNumber: orderNumber.toString(),
-      orderDate: orderDate ? new Date(orderDate).toLocaleDateString() : 'N/A',
+      orderDate: orderDate ? formatDate(new Date(orderDate)) : 'N/A',
       location: pickup[0]?.fromAddress || 'N/A',
       pickup,
       dropOff,
@@ -145,6 +160,7 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
         unitPrice: parseFloat(product.price) || 0,
         quantity: parseInt(product.quantity) || 0,
         totalPrice: (parseFloat(product.price) || 0) * (parseInt(product.quantity) || 0),
+        extras: product.extras || [],
       })),
       payment: {
         method: paymentStatus,
@@ -157,10 +173,10 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       courierName,
       courierPhoneNumber,
       timeline: {
-        received: orderReceivedTime ? new Date(orderReceivedTime).toLocaleString() : null,
-        pickedUp: orderPickedUpTime ? new Date(orderPickedUpTime).toLocaleString() : null,
-        onWay: orderOnmywayTime ? new Date(orderOnmywayTime).toLocaleString() : null,
-        completed: orderCompletedTime ? new Date(orderCompletedTime).toLocaleString() : null,
+        received: orderReceivedTime ? formatDate(new Date(orderReceivedTime), 'DD MMM YYYY HH:mm') : null,
+        pickedUp: orderPickedUpTime ? formatDate(new Date(orderPickedUpTime), 'DD MMM YYYY HH:mm') : null,
+        onWay: orderOnmywayTime ? formatDate(new Date(orderOnmywayTime), 'DD MMM YYYY HH:mm') : null,
+        completed: orderCompletedTime ? formatDate(new Date(orderCompletedTime), 'DD MMM YYYY HH:mm') : null,
       },
       restaurant: {
         name: restaurantName,
@@ -170,7 +186,9 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       payLater: false,
       scheduledTime: scheduledTime || null,
       branch,
-      orderComment
+      orderComment,
+      Walkin,
+      kitchenStatus
     };
   } catch (error) {
     throw error;
@@ -186,6 +204,7 @@ interface OrderDetailsViewProps {
 }
 
 const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, onBack }) => {
+  const { t } = useTranslation();
   const { id: orderIdFromUrl } = useParams();
   const navigate = useNavigate();
   const [invoiceData, setInvoiceData] = useState<InvoiceData | null>(null);
@@ -275,8 +294,8 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
           
           // Quantity, unit price, and total aligned in columns
           pdf.text(order.quantity.toString(), 35, yPos);
-          pdf.text(`GHS ${order.unitPrice.toFixed(2)}`, 45, yPos);
-          pdf.text(`GHS ${order.totalPrice.toFixed(2)}`, 60, yPos);
+          pdf.text(`₵${Number(order.unitPrice).toFixed(2)}`, 45, yPos);
+          pdf.text(`₵${Number(order.totalPrice).toFixed(2)}`, 60, yPos);
           
           yPos += (nameLines.length * 4) + 2;
         });
@@ -288,17 +307,17 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
 
       // Totals
       pdf.text('Subtotal:', leftMargin, yPos);
-      pdf.text(`GHS ${invoiceData.payment.subTotal.toFixed(2)}`, 75, yPos, { align: 'right' });
+      pdf.text(`₵${invoiceData.payment.subTotal.toFixed(2)}`, 75, yPos, { align: 'right' });
       yPos += 4;
       
       pdf.text('Delivery:', leftMargin, yPos);
-      pdf.text(`GHS ${invoiceData.payment.deliveryCost.toFixed(2)}`, 75, yPos, { align: 'right' });
+      pdf.text(`₵${invoiceData.payment.deliveryCost.toFixed(2)}`, 75, yPos, { align: 'right' });
       yPos += 4;
       
       // Grand total
       pdf.setFontSize(8);
       pdf.text('Total:', leftMargin, yPos);
-      pdf.text(`GHS ${invoiceData.payment.grandTotal.toFixed(2)}`, 75, yPos, { align: 'right' });
+      pdf.text(`₵${invoiceData.payment.grandTotal.toFixed(2)}`, 75, yPos, { align: 'right' });
       yPos += 6;
 
       // Payment method
@@ -331,15 +350,15 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div>{t('common.loading')}</div>;
   }
 
   if (error) {
-    return <div>Error: {error}</div>;
+    return <div>{t('common.error')}: {error}</div>;
   }
 
   if (!invoiceData) {
-    return <div>No order details available.</div>;
+    return <div>{t('orders.noOrderDetails')}</div>;
   }
 
   return (
@@ -354,7 +373,7 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
             alt=""
             src="/vuesaxlineararrowleft.svg"
           />
-          <div className="relative text-sm">Back</div>
+          <div className="relative text-sm">{t('common.back')}</div>
         </button>
       </div>
 
@@ -377,25 +396,35 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                       {invoiceData.restaurant.name}
                     </h2>
                     <p className="text-gray-500 text-xs font-sans mt-[1px]">
-                      Order Number #{invoiceData.invoiceNumber || 'N/A'}
+                      {t('orders.orderNumber')} #{invoiceData.invoiceNumber || 'N/A'}
                     </p>
                   </div>
                 </div>
                 <div className="flex flex-col text-gray-500 text-xs mt-2 font-sans">
-                  <span>Order Date: {invoiceData.orderDate}</span>
+                  <span>{t('orders.date')}: {invoiceData.orderDate}</span>
                   <div className="flex items-center gap-1">
-                    <span className="text-gray-600 font-medium text-xs">Order Status:</span>
-                    <span className="text-xs font-bold">{invoiceData.orderStatus || 'N/A'}</span>
+                    <span className="text-gray-600 font-medium text-xs">{t('orders.orderStatus')}:</span>
+                    <span className="text-xs font-bold">{translateOrderStatus(invoiceData.orderStatus) || 'N/A'}</span>
                   </div>
+                  {invoiceData.Walkin && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-gray-600 font-medium">{t('orders.detail.serviceType')}:</span>
+                      <span className="text-xs font-bold">{t('orders.walkIn')}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-1">
-                    <span className="text-gray-600 font-medium">Scheduled Time:</span>
-                    <span>{invoiceData.scheduledTime ? new Date(invoiceData.scheduledTime).toLocaleString() : 'no scheduled time'}</span>
+                    <span className="text-gray-600 font-medium">{t('orders.detail.scheduledTime')}:</span>
+                    <span>
+                      {invoiceData.scheduledTime 
+                        ? formatDate(new Date(invoiceData.scheduledTime), 'DD MMM YYYY HH:mm') 
+                        : t('orders.detail.noScheduledTime')}
+                    </span>
                   </div>
                   <div className="flex flex-col gap-1">
                     <div className="flex items-center gap-1">
                       <FaLocationDot className="w-4 h-4 text-green-600" />
                       <div className="flex gap-1">
-                        <span className="text-gray-600 font-medium">Pickup:</span>
+                        <span className="text-gray-600 font-medium">{t('orders.detail.pickup')}:</span>
                         <span>{invoiceData.pickup?.[0]?.fromAddress || 'N/A'}</span>
                       </div>
                     </div>
@@ -403,7 +432,7 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                     <div className="flex items-center gap-1">
                       <FaLocationDot className="w-4 h-4 text-red-600" />
                       <div className="flex gap-1">
-                        <span className="text-gray-600 font-medium">Dropoff:</span>
+                        <span className="text-gray-600 font-medium">{t('orders.detail.dropoff')}:</span>
                         <span>{invoiceData.dropOff?.[0]?.toAddress || 'N/A'}</span>
                       </div>  
                     </div>
@@ -418,146 +447,139 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                   className="bg-[#201a18] text-white px-3 py-1 rounded-md flex items-center gap-2 font-sans text-xs"
                 >
                   <MdOutlineFileDownload className="w-4 h-4" />
-                  Print
+                  {t('orders.detail.print')}
                 </button>
               </div>
             </div>
 
             {/* Customer and Orders Info */}
             <div className="flex-1 border-[2px] border-[rgba(167,161,158,0.1)] bg-[#FFFFFF] rounded-lg p-4 pb-1 mb-6">
-              <div className="flex gap-4">
+              <div className="flex flex-row gap-8 mb-6">
                 {/* Customer Info */}
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold mb-4 font-sans">Customer Info</h3>
-                  <div className="flex flex-col gap-2 font-sans text-xs">
-                    <div className="flex">
-                      <span className="text-gray-500 w-11">Name:</span>
-                      <span>{invoiceData.customer.name}</span>
-                    </div>
-                    <div className="flex">
-                      <span className="text-gray-500 w-11">Phone:</span>
-                      <span>{invoiceData.customer.phone}</span>
-                    </div>
+                <div className="flex-1 bg-white rounded-lg p-4 border">
+                  <h3 className="text-lg font-semibold mb-4">Customer Info</h3>
+                  <div className="grid grid-cols-2 gap-y-2 text-sm">
+                    <span className="text-gray-500">Name:</span>
+                    <span>{invoiceData.customer.name}</span>
+                    <span className="text-gray-500">Phone:</span>
+                    <span>{invoiceData.customer.phone}</span>
                   </div>
                 </div>
-
                 {/* Courier Info */}
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold mb-4 font-sans">Courier Info</h3>
-                  <div className="flex flex-col gap-2 font-sans text-xs">
-                    <div className="flex">
-                      <span className="text-gray-500 w-11">Name:</span>
-                      <span>{invoiceData.courierName || 'not assigned'}</span>
-                    </div>
-                    <div className="flex">
-                      <span className="text-gray-500 w-11">Phone:</span>
-                      <span>{invoiceData.courierPhoneNumber || 'not assigned'}</span>
-                    </div>
+                <div className="flex-1 bg-white rounded-lg p-4 border">
+                  <h3 className="text-lg font-semibold mb-4">Courier Info</h3>
+                  <div className="grid grid-cols-2 gap-y-2 text-sm">
+                    <span className="text-gray-500">Name:</span>
+                    <span>{invoiceData.courierName}</span>
+                    <span className="text-gray-500">Phone:</span>
+                    <span>{invoiceData.courierPhoneNumber}</span>
                   </div>
                 </div>
-
-                {/* Order Status Info */}
-                <div className="flex-1 -ml-24">
-                  <h3 className="text-lg font-semibold mb-2 font-sans mr-24">Order Status</h3>
-                  <ul className="list-none font-sans text-xs -ml-10">
-                    <li className="flex items-center mb-[2px]">
-                      <span className={`${invoiceData.timeline.received ? 'text-red-500' : 'text-gray-400'} mr-1 w-2`}>•</span>
-                      <span>Order Received | <strong>{invoiceData.timeline.received || ''}</strong></span>
-                    </li>
-                    <li className="flex items-center mb-[2px]">
-                      <span className={`${invoiceData.timeline.pickedUp ? 'text-red-500' : 'text-gray-400'} mr-1 w-2`}>•</span>
-                      <span>Order Picked Up | <strong>{invoiceData.timeline.pickedUp || 'pending'}</strong></span>
-                    </li>
-                    <li className="flex items-center mb-[2px]">
-                      <span className={`${invoiceData.timeline.onWay ? 'text-red-500' : 'text-gray-400'} mr-1 w-2`}>•</span>
-                      <span>Order On Way | <strong>{invoiceData.timeline.onWay || 'pending'}</strong></span>
-                    </li>
-                    <li className="flex items-center">
-                      <span className={`${invoiceData.timeline.completed ? 'text-red-500' : 'text-gray-400'} mr-1 w-2`}>•</span>
-                      <span>Order Complete | <strong>{invoiceData.timeline.completed || 'pending'}</strong></span>
-                    </li>
+                {/* Order Status */}
+                <div className="flex-1 bg-white rounded-lg p-4 border">
+                  <h3 className="text-lg font-semibold mb-4">Order Status</h3>
+                  <ul className="list-none text-sm">
+                    <li>Order Received | <strong>{invoiceData.timeline.received || 'Pending'}</strong></li>
+                    <li>Order Picked Up | <strong>{invoiceData.timeline.pickedUp || 'Pending'}</strong></li>
+                    <li>Order On Way | <strong>{invoiceData.timeline.onWay || 'Pending'}</strong></li>
+                    <li>Order Complete | <strong>{invoiceData.timeline.completed || 'Pending'}</strong></li>
                   </ul>
                 </div>
               </div>
 
             
               {/* Order Table */}
-              {!userProfile._restaurantTable?.[0]?.Inventory && 
-               !userProfile._restaurantTable?.[0]?.Transactions && 
-               invoiceData.orders.length > 0 && (
+              {invoiceData.orders.length > 0 && (
                 <div className="mb-6 w-full border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden bg-white">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-[#ffffff]" style={{ borderBottom: '1px solid #eaeaea' }}>
-                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">S/L</th>
-                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Product</th>
-                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Unit price</th>
-                        <th className="text-left p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">QTY</th>
-                        <th className="text-right p-2 text-[12px] leading-[20px] font-sans text-[#666] font-bold">Total price</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {invoiceData.orders.map((order) => (
-                        <tr key={order.id} className="hover:bg-[#f9f9f9]" style={{ borderBottom: '1px solid #eaeaea' }}>
-                          <td className="p-2 text-[12px] leading-[20px] font-sans text-[#444]">{order.id}</td>
-                          <td className="p-2">
-                            <span className="text-[12px] leading-[20px] font-sans text-[#444]">
-                              {order.productName}
-                            </span>
-                          </td>
-                          <td className="p-2 text-[12px] leading-[20px] font-sans text-[#666]">
-                            GHS{order.unitPrice}
-                          </td>
-                          <td className="p-2 text-[12px] leading-[20px] font-sans text-[#666]">
-                            {order.quantity}
-                          </td>
-                          <td className="p-2 text-right text-[12px] leading-[20px] font-sans text-[#444]">
-                            GHS{order.totalPrice}
-                          </td>
-                        </tr>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>#</TableHead>
+                        <TableHead>Product</TableHead>
+                        <TableHead>Unit Price ₵</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead className="text-right">Total ₵</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {invoiceData.orders.map((order, idx) => (
+                        <React.Fragment key={order.id}>
+                          <TableRow>
+                            <TableCell className="font-sans align-top">{idx + 1}</TableCell>
+                            <TableCell className="font-sans font-semibold align-top">{order.productName}</TableCell>
+                            <TableCell className="font-sans align-top">{Number(order.unitPrice).toFixed(2)}</TableCell>
+                            <TableCell className="font-sans align-top">{order.quantity}</TableCell>
+                            <TableCell className="font-sans align-top text-right">{Number(order.totalPrice).toFixed(2)}</TableCell>
+                          </TableRow>
+                          {order.extras && order.extras.length > 0 && order.extras.map((extra, eIdx) => (
+                            <TableRow key={eIdx}>
+                              <TableCell className="font-sans"></TableCell>
+                              <TableCell className="font-sans pl-8 text-xs text-gray-500">• {extra.extrasName}</TableCell>
+                              <TableCell className="font-sans text-xs text-gray-500">{Number(extra.extrasPrice).toFixed(2)}</TableCell>
+                              <TableCell className="font-sans text-xs text-gray-500">{extra.extrasQuantity}</TableCell>
+                              <TableCell className="font-sans text-xs text-gray-500 text-right">{(Number(extra.extrasPrice) * Number(extra.extrasQuantity)).toFixed(2)}</TableCell>
+                            </TableRow>
+                          ))}
+                        </React.Fragment>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               )}
 
               {/* Payment Summary */}
               <div className="flex justify-between items-start bg-white rounded-lg">
-                <div>
-                  <p className="text-[12px] leading-[20px] font-sans text-[#666] mb-2 ml-4 font-bold">
-                    Transaction Status
-                  </p>
-                  <p className="text-[12px] leading-[20px] font-sans text-[#444] ml-4">
-                    {invoiceData.payment.method}
-                  </p>
+                <div className="flex gap-8">
+                  <div>
+                    <p className="text-[12px] leading-[20px] font-sans text-[#666] mb-2 ml-4 font-bold">
+                      {t('orders.detail.transactionStatus')}
+                    </p>
+                    <p className="text-[12px] leading-[20px] font-sans text-[#444] ml-4">
+                      {invoiceData.payment.method}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[12px] leading-[20px] font-sans text-[#666] mb-2 font-bold">
+                      {t('orders.kitchenStatus')}
+                    </p>
+                    <span className={`px-2 py-1 rounded-full text-[10px] leading-[20px] font-sans
+                      ${invoiceData.kitchenStatus === 'preparing' 
+                        ? 'bg-yellow-100 text-yellow-800'
+                        : invoiceData.kitchenStatus === 'prepared'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-800'}`}
+                    >
+                      {translateKitchenStatus(invoiceData.kitchenStatus || '')}
+                    </span>
+                  </div>
                 </div>
                 <div className="flex gap-8">
                   {invoiceData.orders.length > 0 && (
                     <div className="text-[12px] leading-[20px] font-sans">
-                      <p className="text-[#666] mb-2 font-bold">Sub Total</p>
-                      <p className="text-[#444]">GHS{invoiceData.payment.subTotal}</p>
+                      <p className="text-[#666] mb-2 font-bold">{t('orders.detail.subTotal')}</p>
+                      <p className="text-[#444]">₵{invoiceData.payment.subTotal}</p>
                     </div>
                   )}
                   <div className="text-[12px] leading-[20px] font-sans">
-                    <p className="text-[#666] mb-2 font-bold">Delivery Cost</p>
-                    <p className="text-[#444]">GHS{invoiceData.payment.deliveryCost}</p>
+                    <p className="text-[#666] mb-2 font-bold">{t('orders.detail.deliveryCost')}</p>
+                    <p className="text-[#444]">₵{invoiceData.payment.deliveryCost}</p>
                   </div>
                   <div className="text-[12px] leading-[20px] font-sans">
-                    <p className="text-[#666] mb-2 font-bold">Grand Total</p>
-                    <p className="text-[#444] font-medium">GHS{invoiceData.payment.grandTotal}</p>
+                    <p className="text-[#666] mb-2 font-bold">{t('orders.detail.grandTotal')}</p>
+                    <p className="text-[#444] font-medium">₵{invoiceData.payment.grandTotal}</p>
                   </div>
                 </div>
               </div>
 
               {/* Order Comment */}
               <div className="mt-4 ml-4 text-[12px] leading-[20px] font-sans">
-                <span className="text-[#666] font-bold mr-2">Order Comment:</span>
-                <span className="text-[#444]">{invoiceData.orderComment || 'No comment available'}</span>
+                <span className="text-[#666] font-bold mr-2">{t('orders.detail.orderComment')}:</span>
+                <span className="text-[#444]">{invoiceData.orderComment || t('orders.detail.noCommentAvailable')}</span>
               </div>
 
               {/* Krontiva Footer Logo */}
               <div className="mt-6 text-center border-t pt-4">
-                <p className="text-gray-500 text-xs mb-2 font-sans">Powered By</p>
+                <p className="text-gray-500 text-xs mb-2 font-sans">{t('common.poweredBy')}</p>
                 <img
                   src="/Krontiva-Black.png"
                   alt="Powered by Krontiva"

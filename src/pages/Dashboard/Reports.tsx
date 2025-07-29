@@ -19,6 +19,7 @@ import 'jspdf-autotable';
 import { jsPDF as JsPDFType } from 'jspdf';
 import { useBranches } from '../../hooks/useBranches';
 import BranchFilter from '../../components/BranchFilter';
+import { getAvailableReports, hasAllSpecialPermissions } from '../../permissions/DashboardPermissions';
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -60,6 +61,14 @@ const reportItems: ReportItem[] = [
   {
     id: 4,
     name: "Delivery Report",
+    date: "All Time",
+    format: "PDF",
+    status: "Active",
+    requiresPermissions: false
+  },
+  {
+    id: 5,
+    name: "Transaction Report",
     date: "All Time",
     format: "PDF",
     status: "Active",
@@ -140,6 +149,34 @@ interface DeliveryReport {
   dropOffName?: string;
 }
 
+// Update the interface
+interface TransactionBreakdown {
+  date: string;
+  amount: number;
+  orderId: string;
+}
+
+interface TransactionReport {
+  paymentMethod: string;
+  totalTransactions: number;
+  totalAmount: number;
+  averageAmount: number;
+  lastTransactionDate: string;
+  transactionBreakdown: TransactionBreakdown[];
+}
+
+// First, add this interface for transaction summary
+interface TransactionSummary {
+  totalTransactions: number;
+  totalRevenue: number;
+  cashTransactions: number;
+  momoTransactions: number;
+  cardTransactions: number;
+  cashAmount: number;
+  momoAmount: number;
+  cardAmount: number;
+}
+
 const Reports: FunctionComponent = () => {
   // Move all hooks to the top level
   const [activeTab, setActiveTab] = useState('all');
@@ -158,30 +195,20 @@ const Reports: FunctionComponent = () => {
   const [page, setPage] = useState(1);
   const [itemsPerPage] = useState(10);
   const [expandedRows, setExpandedRows] = useState<Set<number>>(new Set());
+  const [transactionReports, setTransactionReports] = useState<TransactionReport[]>([]);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('all');
+  const [selectedDate, setSelectedDate] = useState<Dayjs | null>(null);
+  const [calendarMode, setCalendarMode] = useState<'start' | 'end'>('start');
 
   const { userProfile, restaurantData } = useUserProfile();
   const { branches, isLoading: branchesLoading } = useBranches(userProfile?.restaurantId ?? null);
   const { categories } = useMenuCategories();
 
-  // Check if all special permissions are true
-  const hasAllSpecialPermissions = restaurantData.Reports && 
-                                 restaurantData.Inventory && 
-                                 restaurantData.Transactions;
+  // Replace the manual report filtering with the one from permissions
+  const availableReports = getAvailableReports(restaurantData);
 
-  // Filter reports based on permissions - MODIFIED LOGIC
-  const availableReports = reportItems.filter((report: ReportItem) => {
-    // Always show Delivery Report
-    if (report.name === "Delivery Report") {
-      return true;
-    }
-    
-    // For other reports, apply the permission logic
-    if (hasAllSpecialPermissions) {
-      return report.requiresPermissions === true;
-    } else {
-      return report.requiresPermissions === false;
-    }
-  });
+  // Remove the manual permission check and use the helper function
+  const hasAllPermissions = hasAllSpecialPermissions(restaurantData);
 
   // Effect for initial branch setup - always declare it
   useEffect(() => {
@@ -355,6 +382,73 @@ const Reports: FunctionComponent = () => {
 
           setDeliveryReports(deliveryStats);
           break;
+
+        case "Transaction Report":
+          // Process orders to get transaction statistics
+          const transactionMap = new Map<string, {
+            totalTransactions: number;
+            totalAmount: number;
+            lastTransactionDate: string;
+            transactions: TransactionBreakdown[];
+          }>();
+
+          filteredData.forEach((order: {
+            orderDate: string;
+            orderPrice: string;
+            orderNumber: number;
+            payNow: boolean;
+            payLater: boolean;
+            payVisaCard: boolean;
+          }) => {
+            let paymentMethod = 'Unknown';
+            if (order.payNow) {
+              paymentMethod = 'Cash';
+            } else if (order.payLater) {
+              paymentMethod = 'Momo';
+            } else if (order.payVisaCard) {
+              paymentMethod = 'Visa Card';
+            }
+
+            const existing = transactionMap.get(paymentMethod) || {
+              totalTransactions: 0,
+              totalAmount: 0,
+              lastTransactionDate: order.orderDate,
+              transactions: [] as TransactionBreakdown[]
+            };
+
+            const amount = parseFloat(order.orderPrice || '0');
+            
+            existing.totalTransactions += 1;
+            existing.totalAmount += amount;
+            existing.lastTransactionDate = new Date(order.orderDate) > new Date(existing.lastTransactionDate)
+              ? order.orderDate
+              : existing.lastTransactionDate;
+            
+            const transaction: TransactionBreakdown = {
+              date: order.orderDate,
+              amount: amount,
+              orderId: order.orderNumber?.toString() || 'N/A'
+            };
+            
+            existing.transactions.push(transaction);
+
+            transactionMap.set(paymentMethod, existing);
+          });
+
+          const transactionStats: TransactionReport[] = Array.from(transactionMap.entries())
+            .map(([paymentMethod, data]) => ({
+              paymentMethod,
+              totalTransactions: data.totalTransactions,
+              totalAmount: data.totalAmount,
+              averageAmount: data.totalAmount / data.totalTransactions,
+              lastTransactionDate: new Date(data.lastTransactionDate).toLocaleDateString(),
+              transactionBreakdown: data.transactions.sort((a, b) => 
+                new Date(b.date).getTime() - new Date(a.date).getTime()
+              )
+            }));
+
+          setTransactionReports(transactionStats);
+          break;
       }
     } catch (error) {
       setOrderDetails([]);
@@ -387,9 +481,10 @@ const Reports: FunctionComponent = () => {
 
   // Update handleReportClick
   const handleReportClick = async (reportName: string) => {
-    // Always reset date range when switching reports
+    // Always reset date range and payment method filter when switching reports
     if (reportName !== selectedReport) {
       setDateRange([null, null]);
+      setSelectedPaymentMethod('all');
     }
     
     setSelectedReport(reportName);
@@ -469,6 +564,17 @@ const Reports: FunctionComponent = () => {
             report.courierName,
             report.deliveryPrice.toFixed(2),
             report.deliveryLocation
+          ]);
+          break;
+
+        case "Transaction Report":
+          headers = ["Payment Method", "Total Transactions", "Total Amount GH₵", "Average Amount GH₵", "Last Transaction"];
+          csvData = transactionReports.map(report => [
+            report.paymentMethod,
+            report.totalTransactions,
+            report.totalAmount.toFixed(2),
+            report.averageAmount.toFixed(2),
+            report.lastTransactionDate
           ]);
           break;
       }
@@ -551,6 +657,17 @@ const Reports: FunctionComponent = () => {
                 report.orderDate,
                 report.deliveryPrice.toFixed(2),
                 report.deliveryLocation
+              ]);
+              break;
+
+            case "Transaction Report":
+              headers = ["Payment Method", "Total Transactions", "Total Amount GH₵", "Average Amount GH₵", "Last Transaction"];
+              data = transactionReports.map(report => [
+                report.paymentMethod,
+                report.totalTransactions,
+                `${report.totalAmount.toFixed(2)} GH₵`,
+                `${report.averageAmount.toFixed(2)} GH₵`,
+                report.lastTransactionDate
               ]);
               break;
           }
@@ -637,7 +754,6 @@ const Reports: FunctionComponent = () => {
   };
 
   const renderDateFilter = () => {
-    // Only show date filter for Orders Report and Delivery Report
     if (selectedReport === "Orders Report" || selectedReport === "Delivery Report") {
       return (
         <div className="relative">
@@ -659,9 +775,11 @@ const Reports: FunctionComponent = () => {
                 d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
               />
             </svg>
-            <span className="text-[14px] font-sans text-[#666]">
+            <span className="text-[14px] font-sans text-[#666] whitespace-nowrap">
               {dateRange[0] && dateRange[1] 
                 ? `${dayjs(dateRange[0]).format('DD MMM')} - ${dayjs(dateRange[1]).format('DD MMM YYYY')}`
+                : dateRange[0]
+                ? `${dayjs(dateRange[0]).format('DD MMM YYYY')} - Select End`
                 : 'Select Date Range'
               }
             </span>
@@ -686,59 +804,149 @@ const Reports: FunctionComponent = () => {
                   border: '1px solid rgba(167,161,158,0.1)',
                   boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
                   marginTop: '8px',
-                },
-                '& .MuiPickersDay-root.Mui-selected': {
-                  backgroundColor: '#fe5b18',
-                  '&:hover': {
-                    backgroundColor: '#fe5b18',
-                  }
-                },
-                '& .MuiPickersDay-root.Mui-inRange': {
-                  backgroundColor: '#fff3e0',
-                  '&:hover': {
-                    backgroundColor: '#ffe0b2',
-                  }
-                },
-                '& .MuiPickersDay-root:hover': {
-                  backgroundColor: '#fff3e0',
-                },
-                '& .MuiTypography-root': {
-                  fontFamily: 'Inter',
+                  width: 'fit-content',
                 },
               }}
             >
-              <div className="flex p-4">
+              <div className="p-4">
                 <div className="flex flex-col">
-                  <div className="text-sm font-medium text-gray-600 mb-2">Start Date</div>
-                  <DateCalendar 
-                    value={dateRange[0]}
-                    onChange={(newDate) => handleDateSelect(newDate, true)}
-                    sx={{
-                      fontFamily: 'Inter',
-                      '& .MuiTypography-root': {
-                        fontFamily: 'Inter',
-                      },
-                    }}
-                  />
-                </div>
-                <div className="border-l border-gray-200" />
-                <div className="flex flex-col">
-                  <div className="text-sm font-medium text-gray-600 mb-2">End Date</div>
-                  <DateCalendar 
-                    value={dateRange[1]}
-                    minDate={dateRange[0] || undefined}
-                    onChange={(newDate) => handleDateSelect(newDate, false)}
-                    sx={{
-                      fontFamily: 'Inter',
-                      '& .MuiTypography-root': {
-                        fontFamily: 'Inter',
-                      },
-                    }}
-                  />
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="text-sm font-medium text-gray-600">
+                      {calendarMode === 'start' ? 'Select Start Date' : 'Select End Date'}
+                    </div>
+                    {dateRange[0] && calendarMode === 'end' && (
+                      <button
+                        onClick={() => setCalendarMode('start')}
+                        className="text-xs text-[#fe5b18] hover:text-[#e54d0e] font-sans"
+                      >
+                        Change Start Date
+                      </button>
+                    )}
+                  </div>
+
+                  {calendarMode === 'start' ? (
+                    <DateCalendar 
+                      value={dateRange[0]}
+                      onChange={(newDate) => {
+                        handleDateSelect(newDate, true);
+                        setCalendarMode('end');
+                      }}
+                      sx={{
+                        width: '100%',
+                        maxWidth: '320px',
+                        '& .MuiPickersDay-root.Mui-selected': {
+                          backgroundColor: '#fe5b18',
+                          '&:hover': { backgroundColor: '#fe5b18' }
+                        },
+                        '& .MuiTypography-root': {
+                          fontFamily: 'Inter',
+                        },
+                      }}
+                    />
+                  ) : (
+                    <DateCalendar 
+                      value={dateRange[1]}
+                      minDate={dateRange[0] || undefined}
+                      onChange={(newDate) => {
+                        handleDateSelect(newDate, false);
+                        handleClose();
+                        setCalendarMode('start'); // Reset for next time
+                      }}
+                      sx={{
+                        width: '100%',
+                        maxWidth: '320px',
+                        '& .MuiPickersDay-root.Mui-selected': {
+                          backgroundColor: '#fe5b18',
+                          '&:hover': { backgroundColor: '#fe5b18' }
+                        },
+                        '& .MuiTypography-root': {
+                          fontFamily: 'Inter',
+                        },
+                      }}
+                    />
+                  )}
                 </div>
               </div>
             </Popover>
           </LocalizationProvider>
+        </div>
+      );
+    } else if (selectedReport === "Transaction Report") {
+      return (
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <div 
+              onClick={handleDateClick}
+              className="flex items-center gap-2 px-3 py-2 border border-[rgba(167,161,158,0.1)] rounded-md cursor-pointer hover:bg-gray-50"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                className="h-4 w-4 text-[#666]" 
+                fill="none" 
+                viewBox="0 0 24 24" 
+                stroke="currentColor"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" 
+                />
+              </svg>
+              <span className="text-[14px] font-sans text-[#666] whitespace-nowrap">
+                {selectedDate ? selectedDate.format('DD MMM YYYY') : 'Select Date'}
+              </span>
+            </div>
+
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <Popover
+                open={open}
+                anchorEl={anchorEl}
+                onClose={handleClose}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'right',
+                }}
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'right',
+                }}
+                sx={{
+                  '& .MuiPaper-root': {
+                    borderRadius: '8px',
+                    border: '1px solid rgba(167,161,158,0.1)',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    marginTop: '8px',
+                    width: 'fit-content',
+                  },
+                }}
+              >
+                <div className="p-4">
+                  <DateCalendar
+                    value={selectedDate}
+                    onChange={(newDate) => {
+                      setSelectedDate(newDate);
+                      if (newDate) {
+                        handleDateRangeSelect([newDate, newDate]);
+                      }
+                      handleClose();
+                    }}
+                    sx={{
+                      width: '100%',
+                      maxWidth: '320px',
+                      '& .MuiPickersDay-root.Mui-selected': {
+                        backgroundColor: '#fe5b18',
+                        '&:hover': { backgroundColor: '#fe5b18' }
+                      },
+                      '& .MuiTypography-root': {
+                        fontFamily: 'Inter',
+                      },
+                    }}
+                  />
+                </div>
+              </Popover>
+            </LocalizationProvider>
+          </div>
         </div>
       );
     }
@@ -790,162 +998,424 @@ const Reports: FunctionComponent = () => {
     setExpandedRows(newExpandedRows);
   };
 
+  // Add payment method filter handler
+  const handlePaymentMethodChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedPaymentMethod(event.target.value);
+  };
+
   const renderContent = () => {
     switch (selectedReport) {
       case "Orders Report":
         return (
           <>
-            <div className="grid grid-cols-7 bg-[#f9f9f9] p-4" style={{ borderBottom: '1px solid #eaeaea' }}>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Customer Name</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Phone Number</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Courier Name</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Order Date</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Food Price GH₵</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Delivery Price GH₵</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Price GH₵</div>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Total Orders</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">{orderDetails.length}</div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Total Revenue</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  GH₵ {orderDetails.reduce((sum, order) => sum + (order.totalPrice || 0), 0).toFixed(2)}
+                </div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Average Order Value</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  GH₵ {(orderDetails.reduce((sum, order) => sum + (order.totalPrice || 0), 0) / (orderDetails.length || 1)).toFixed(2)}
+                </div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Delivery Revenue</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  GH₵ {orderDetails.reduce((sum, order) => sum + (order.deliveryPrice || 0), 0).toFixed(2)}
+                </div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
             </div>
 
-            {paginateData(orderDetails).map((order, index) => (
-              <div key={index} className="border-b border-gray-200">
-                <div 
-                  className="grid grid-cols-7 p-4 hover:bg-[#f9f9f9] cursor-pointer"
-                  onClick={() => toggleRowExpansion(index)}
-                >
-                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.customerName}</div>
-                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.customerPhone}</div>
-                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.courierName}</div>
-                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.orderDate}</div>
-                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.amount?.toFixed(2) || '0.00'}</div>
-                  <div className="text-[14px] leading-[22px] font-sans text-[#444]">{order.deliveryPrice?.toFixed(2) || '0.00'}</div>
-                  <div className="text-[14px] leading-[22px] font-sans text-[#444] flex items-center gap-2">
-                    {order.totalPrice?.toFixed(2) || '0.00'}
-                    <svg 
-                      className={`w-4 h-4 transition-transform ${expandedRows.has(index) ? 'transform rotate-180' : ''}`} 
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </div>
-                </div>
+            {/* Orders Table */}
+            <div className="bg-white dark:bg-[#1a1a1a] rounded-lg border border-gray-100 dark:border-gray-800 overflow-hidden">
+              <div className="grid grid-cols-7 bg-gray-50 dark:bg-[#2a2a2a] p-4">
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Customer Name</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Phone Number</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Courier Name</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Order Date</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Food Price GH₵</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Delivery Price GH₵</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Price GH₵</div>
+              </div>
 
-                {expandedRows.has(index) && (
-                  <div className="bg-gray-50 p-4 border-t border-gray-100">
-                    <div className="text-sm font text-gray-600 mb-2 font-sans">Products:</div>
-                    <div className="grid gap-2">
-                      {/* Add header for products table */}
-                      <div className="grid grid-cols-3 gap-4 bg-white p-2 rounded-md font-medium text-[14px] font-sans text-[#666]">
-                        <span>Product Name</span>
-                        <span>Quantity</span>
-                        <span>Unit Price (GH₵)</span>
-                      </div>
-
-                      {order.products.map((product, idx) => (
-                        <div 
-                          key={idx} 
-                          className="grid grid-cols-3 gap-4 bg-white p-2 rounded-md items-center"
-                        >
-                          <span className="text-[14px] font-sans text-[#444]">{product.name}</span>
-                          <span className="text-[14px] font-sans text-[#666] bg-gray-100 px-2 py-1 rounded w-fit">
-                            x{product.quantity}
-                          </span>
-                          <span className="text-[14px] font-sans text-[#444]">
-                            {Number(product.price).toFixed(2) || '0.00'}
-                          </span>
-                        </div>
-                      ))}
+              {paginateData(orderDetails).map((order, index) => (
+                <div key={index} className="border-t border-gray-100 dark:border-gray-800">
+                  <div 
+                    className="grid grid-cols-7 p-4 hover:bg-gray-50 dark:hover:bg-[#2a2a2a] cursor-pointer transition-colors"
+                    onClick={() => toggleRowExpansion(index)}
+                  >
+                    <div className="text-sm text-gray-900 dark:text-gray-100">{order.customerName}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">{order.customerPhone}</div>
+                    <div className="text-sm text-gray-900 dark:text-gray-100">{order.courierName}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400">{order.orderDate}</div>
+                    <div className="text-sm text-gray-900 dark:text-gray-100">{order.amount?.toFixed(2) || '0.00'}</div>
+                    <div className="text-sm text-gray-900 dark:text-gray-100">{order.deliveryPrice?.toFixed(2) || '0.00'}</div>
+                    <div className="text-sm text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                      {order.totalPrice?.toFixed(2) || '0.00'}
+                      <svg 
+                        className={`w-4 h-4 transition-transform ${expandedRows.has(index) ? 'transform rotate-180' : ''}`} 
+                        fill="none" 
+                        stroke="currentColor" 
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
                     </div>
                   </div>
-                )}
-              </div>
-            ))}
+
+                  {expandedRows.has(index) && (
+                    <div className="bg-gray-50 dark:bg-[#2a2a2a] p-4 border-t border-gray-100 dark:border-gray-800">
+                      <div className="text-sm font-medium text-gray-600 dark:text-gray-300 mb-2">Products:</div>
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-3 gap-4 bg-white dark:bg-[#1a1a1a] p-2 rounded-md">
+                          <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Product Name</div>
+                          <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Quantity</div>
+                          <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Unit Price (GH₵)</div>
+                        </div>
+
+                        {order.products.map((product, idx) => (
+                          <div 
+                            key={idx} 
+                            className="grid grid-cols-3 gap-4 bg-white dark:bg-[#1a1a1a] p-2 rounded-md items-center"
+                          >
+                            <div className="text-sm text-gray-900 dark:text-gray-100">{product.name}</div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded w-fit">
+                              x{product.quantity}
+                            </div>
+                            <div className="text-sm text-gray-900 dark:text-gray-100">
+                              {Number(product.price).toFixed(2) || '0.00'}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
 
             {renderPagination(orderDetails.length)}
           </>
         );
       case "Top Sold Items":
+        const totalQuantitySold = mostSellingItems.reduce((sum, item) => sum + item.totalQuantitySold, 0);
+        const totalRevenue = mostSellingItems.reduce((sum, item) => sum + item.totalRevenue, 0);
+        const averagePrice = totalQuantitySold > 0 ? totalRevenue / totalQuantitySold : 0;
+
         return (
           <>
-            <div className="grid grid-cols-4 bg-[#f9f9f9] p-4" style={{ borderBottom: '1px solid #eaeaea' }}>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Item Name</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Quantity Sold</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Revenue GH₵</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Last Sold</div>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Total Items Sold</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">{totalQuantitySold}</div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Total Revenue</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  GH₵ {totalRevenue.toFixed(2)}
+                </div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Average Price</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  GH₵ {averagePrice.toFixed(2)}
+                </div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Unique Items</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  {mostSellingItems.length}
+                </div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
             </div>
 
-            {paginateData(mostSellingItems).map((item, index) => (
-              <div 
-                key={index}
-                className="grid grid-cols-4 p-4 hover:bg-[#f9f9f9]"
-                style={{ borderBottom: '1px solid #eaeaea' }}
-              >
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{item.name}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{item.totalQuantitySold}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{item.totalRevenue.toFixed(2)}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{item.lastSoldDate}</div>
+            {/* Items Table */}
+            <div className="bg-white dark:bg-[#1a1a1a] rounded-lg border border-gray-100 dark:border-gray-800 overflow-hidden">
+              <div className="grid grid-cols-4 bg-gray-50 dark:bg-[#2a2a2a] p-4">
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Item Name</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Quantity Sold</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Revenue GH₵</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Last Sold</div>
               </div>
-            ))}
+
+              {paginateData(mostSellingItems).map((item, index) => (
+                <div 
+                  key={index}
+                  className="grid grid-cols-4 p-4 border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition-colors"
+                >
+                  <div className="text-sm text-gray-900 dark:text-gray-100">{item.name}</div>
+                  <div className="text-sm text-gray-900 dark:text-gray-100">{item.totalQuantitySold}</div>
+                  <div className="text-sm text-gray-900 dark:text-gray-100">{item.totalRevenue.toFixed(2)}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">{item.lastSoldDate}</div>
+                </div>
+              ))}
+            </div>
 
             {renderPagination(mostSellingItems.length)}
           </>
         );
-      case "Customer Report": 
+      case "Customer Report":
+        const totalCustomers = customerReports.length;
+        const totalCustomerOrders = customerReports.reduce((sum, customer) => sum + customer.totalOrders, 0);
+        const totalCustomerSpent = customerReports.reduce((sum, customer) => sum + customer.totalSpent, 0);
+        const averageOrderValue = totalCustomerOrders > 0 ? totalCustomerSpent / totalCustomerOrders : 0;
+
         return (
           <>
-            <div className="grid grid-cols-5 bg-[#f9f9f9] p-4" style={{ borderBottom: '1px solid #eaeaea' }}>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Customer Name</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Phone Number</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Orders</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Total Spent GH₵</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Last Order</div>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Total Customers</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">{totalCustomers}</div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Total Orders</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">{totalCustomerOrders}</div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Total Revenue</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  GH₵ {totalCustomerSpent.toFixed(2)}
+                </div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Average Order Value</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  GH₵ {averageOrderValue.toFixed(2)}
+                </div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
             </div>
 
-            {paginateData(customerReports).map((customer, index) => (
-              <div 
-                key={index}
-                className="grid grid-cols-5 p-4 hover:bg-[#f9f9f9]"
-                style={{ borderBottom: '1px solid #eaeaea' }}
-              >
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{customer.customerName}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{customer.phoneNumber}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{customer.totalOrders}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{customer.totalSpent.toFixed(2)}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{customer.lastOrderDate}</div>
+            {/* Customers Table */}
+            <div className="bg-white dark:bg-[#1a1a1a] rounded-lg border border-gray-100 dark:border-gray-800 overflow-hidden">
+              <div className="grid grid-cols-5 bg-gray-50 dark:bg-[#2a2a2a] p-4">
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Customer Name</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Phone Number</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Orders</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Total Spent GH₵</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Last Order</div>
               </div>
-            ))}
+
+              {paginateData(customerReports).map((customer, index) => (
+                <div 
+                  key={index}
+                  className="grid grid-cols-5 p-4 border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition-colors"
+                >
+                  <div className="text-sm text-gray-900 dark:text-gray-100">{customer.customerName}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">{customer.phoneNumber}</div>
+                  <div className="text-sm text-gray-900 dark:text-gray-100">{customer.totalOrders}</div>
+                  <div className="text-sm text-gray-900 dark:text-gray-100">{customer.totalSpent.toFixed(2)}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">{customer.lastOrderDate}</div>
+                </div>
+              ))}
+            </div>
 
             {renderPagination(customerReports.length)}
           </>
         );
       case "Delivery Report":
+        const totalDeliveries = deliveryReports.length;
+        const totalDeliveryRevenue = deliveryReports.reduce((sum, report) => sum + report.deliveryPrice, 0);
+        const averageDeliveryPrice = totalDeliveries > 0 ? totalDeliveryRevenue / totalDeliveries : 0;
+        const uniqueRiders = new Set(deliveryReports.map(report => report.courierPhone)).size;
+
         return (
           <>
-            <div className="grid grid-cols-6 bg-[#f9f9f9] p-4" style={{ borderBottom: '1px solid #eaeaea' }}>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Courier Name</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Courier Phone</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Customer Name</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Order Date</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Delivery Price GH₵</div>
-              <div className="text-[14px] leading-[22px] font-sans text-[#666]">Delivery Location</div>
+            {/* Summary Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Total Deliveries</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">{totalDeliveries}</div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Total Revenue</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  GH₵ {totalDeliveryRevenue.toFixed(2)}
+                </div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Average Delivery Price</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">
+                  GH₵ {averageDeliveryPrice.toFixed(2)}
+                </div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1a1a1a] rounded-lg p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+                <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Active Riders</div>
+                <div className="text-2xl font-semibold text-gray-900 dark:text-white">{uniqueRiders}</div>
+                <div className="text-sm text-[#fe5b18] mt-1">
+                  View Details
+                </div>
+              </div>
             </div>
 
-            {paginateData(deliveryReports).map((report, index) => (
-              <div 
-                key={index}
-                className="grid grid-cols-6 p-4 hover:bg-[#f9f9f9]"
-                style={{ borderBottom: '1px solid #eaeaea' }}
-              >
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.courierName}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.courierPhone}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.customerName}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.orderDate}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.deliveryPrice.toFixed(2)}</div>
-                <div className="text-[14px] leading-[22px] font-sans text-[#444]">{report.deliveryLocation}</div>
+            {/* Delivery Table */}
+            <div className="bg-white dark:bg-[#1a1a1a] rounded-lg border border-gray-100 dark:border-gray-800 overflow-hidden">
+              <div className="grid grid-cols-6 bg-gray-50 dark:bg-[#2a2a2a] p-4">
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Courier Name</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Courier Phone</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Customer Name</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Order Date</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Delivery Price GH₵</div>
+                <div className="text-sm font-medium text-gray-600 dark:text-gray-300">Delivery Location</div>
               </div>
-            ))}
+
+              {paginateData(deliveryReports).map((report, index) => (
+                <div 
+                  key={index}
+                  className="grid grid-cols-6 p-4 border-t border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#2a2a2a] transition-colors"
+                >
+                  <div className="text-sm text-gray-900 dark:text-gray-100">{report.courierName}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">{report.courierPhone}</div>
+                  <div className="text-sm text-gray-900 dark:text-gray-100">{report.customerName}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">{report.orderDate}</div>
+                  <div className="text-sm text-gray-900 dark:text-gray-100">{report.deliveryPrice.toFixed(2)}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400">{report.deliveryLocation}</div>
+                </div>
+              ))}
+            </div>
 
             {renderPagination(deliveryReports.length)}
+          </>
+        );
+      case "Transaction Report":
+        // Calculate summary statistics
+        const summary: TransactionSummary = transactionReports.reduce((acc, report) => {
+          acc.totalTransactions += report.totalTransactions;
+          acc.totalRevenue += report.totalAmount;
+          
+          switch (report.paymentMethod) {
+            case 'Cash':
+              acc.cashTransactions += report.totalTransactions;
+              acc.cashAmount += report.totalAmount;
+              break;
+            case 'Momo':
+              acc.momoTransactions += report.totalTransactions;
+              acc.momoAmount += report.totalAmount;
+              break;
+            case 'Visa Card':
+              acc.cardTransactions += report.totalTransactions;
+              acc.cardAmount += report.totalAmount;
+              break;
+          }
+          
+          return acc;
+        }, {
+          totalTransactions: 0,
+          totalRevenue: 0,
+          cashTransactions: 0,
+          momoTransactions: 0,
+          cardTransactions: 0,
+          cashAmount: 0,
+          momoAmount: 0,
+          cardAmount: 0
+        });
+
+        return (
+          <>
+            {/* Summary Statistics Cards */}
+            <div className="grid grid-cols-5 gap-4 p-4 border-b border-gray-200">
+              <div className="bg-white rounded-lg p-4 border border-[rgba(167,161,158,0.1)] shadow-sm">
+                <div className="text-[12px] font-sans text-gray-500 mb-1">Total Transactions</div>
+                <div className="text-[18px] font-sans font-semibold">{summary.totalTransactions}</div>
+                <div className="text-[14px] font-sans text-[#fe5b18] mt-1">
+                  GH₵ {summary.totalRevenue.toFixed(2)}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-4 border border-[rgba(167,161,158,0.1)] shadow-sm">
+                <div className="text-[12px] font-sans text-gray-500 mb-1">Cash Transactions</div>
+                <div className="text-[18px] font-sans font-semibold">{summary.cashTransactions}</div>
+                <div className="text-[14px] font-sans text-yellow-600 mt-1">
+                  GH₵ {summary.cashAmount.toFixed(2)}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-4 border border-[rgba(167,161,158,0.1)] shadow-sm">
+                <div className="text-[12px] font-sans text-gray-500 mb-1">Momo Transactions</div>
+                <div className="text-[18px] font-sans font-semibold">{summary.momoTransactions}</div>
+                <div className="text-[14px] font-sans text-green-600 mt-1">
+                  GH₵ {summary.momoAmount.toFixed(2)}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-4 border border-[rgba(167,161,158,0.1)] shadow-sm">
+                <div className="text-[12px] font-sans text-gray-500 mb-1">Card Transactions</div>
+                <div className="text-[18px] font-sans font-semibold">{summary.cardTransactions}</div>
+                <div className="text-[14px] font-sans text-blue-600 mt-1">
+                  GH₵ {summary.cardAmount.toFixed(2)}
+                </div>
+              </div>
+
+              <div className="bg-white rounded-lg p-4 border border-[rgba(167,161,158,0.1)] shadow-sm">
+                <div className="text-[12px] font-sans text-gray-500 mb-1">Total Revenue</div>
+                <div className="text-[18px] font-sans font-semibold">GH₵ {summary.totalRevenue.toFixed(2)}</div>
+                <div className="text-[14px] font-sans text-[#fe5b18] mt-1">
+                  {summary.totalTransactions} transactions
+                </div>
+              </div>
+            </div>
+
+           
+
+            {renderPagination(
+              selectedPaymentMethod === 'all' 
+                ? transactionReports.length 
+                : transactionReports.filter(report => report.paymentMethod === selectedPaymentMethod).length
+            )}
           </>
         );
       default:
@@ -958,106 +1428,114 @@ const Reports: FunctionComponent = () => {
       <div className="p-3 ml-4 mr-4">
         {/* Header Section */}
         <div className="flex justify-between items-center mb-4">
-          <b className="text-[18px] font-sans">
+          <b className="text-[18px] font-sans whitespace-nowrap">
             Reports Template
           </b>
-          
           {/* Filter Controls */}
-          <div className="flex items-center gap-4">
-            {/* Report Type Dropdown */}
-            <div className="relative">
-              <select
-                value={selectedReport || ''}
-                onChange={(e) => handleReportClick(e.target.value)}
-                className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)]"
-              >
-                <option value="">Select Report Type</option>
-                {availableReports.map((item) => (
-                  <option key={item.id} value={item.name}>
-                    {item.name}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
-                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                </svg>
-              </div>
-            </div>
-
-            {/* Branch Filter - Only show for Admin */}
-            {userProfile?.role === 'Admin' && (
-              <BranchFilter 
-                restaurantId={userProfile.restaurantId || undefined}
-                onBranchSelect={handleBranchSelect}
-                selectedBranchId={selectedBranchId}
-                hideAllBranches={true}
-                className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)]"
-              />
-            )}
-
-            {/* Date Range Picker - Now using the renderDateFilter function */}
-            {renderDateFilter()}
-
-            {/* Download Button */}
-            {selectedReport && (
-              <>
-                <div
-                  className="flex items-center gap-2 px-4 py-2 rounded-[4px] bg-[#313131] border-[#737373] border-[1px] border-solid 
-                            cursor-pointer text-[13px] text-[#cbcbcb]"
-                  onClick={handleDownloadClick}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full sm:w-auto">
+            <div className="flex flex-wrap items-center gap-4">
+              {/* Report Type Dropdown */}
+              <div className="relative">
+                <select
+                  value={selectedReport || ''}
+                  onChange={(e) => handleReportClick(e.target.value)}
+                  className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)] min-w-[180px]"
                 >
-                  <MdOutlineFileDownload className="w-[18px] h-[18px]" />
-                  <span className="font-sans text-white">Download</span>
+                  <option value="">Select Report Type</option>
+                  {availableReports.map((item) => (
+                    <option key={item.id} value={item.name}>
+                      {item.name}
+                    </option>
+                  ))}
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                  <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
+                  </svg>
                 </div>
+              </div>
 
-                {/* Download Format Menu */}
-                <Menu
-                  anchorEl={downloadAnchorEl}
-                  open={Boolean(downloadAnchorEl)}
-                  onClose={handleDownloadClose}
-                  anchorOrigin={{
-                    vertical: 'bottom',
-                    horizontal: 'right',
-                  }}
-                  transformOrigin={{
-                    vertical: 'top',
-                    horizontal: 'right',
-                  }}
-                  sx={{
-                    '& .MuiPaper-root': {
-                      borderRadius: '8px',
-                      border: '1px solid rgba(167,161,158,0.1)',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                      marginTop: '8px',
-                    },
-                  }}
-                >
-                  {selectedReport !== "Orders Report" && (
+              {/* Branch Filter - Only show for Admin */}
+              {userProfile?.role === 'Admin' && (
+                <BranchFilter 
+                  restaurantId={userProfile.restaurantId || undefined}
+                  onBranchSelect={handleBranchSelect}
+                  selectedBranchId={selectedBranchId}
+                  hideAllBranches={true}
+                  className="appearance-none bg-white border border-[rgba(167,161,158,0.1)] rounded-md px-4 py-2 pr-8 text-[14px] font-sans text-[#666] cursor-pointer hover:bg-gray-50 focus:outline-none focus:ring-0 focus:border-[rgba(167,161,158,0.1)] min-w-[150px]"
+                />
+              )}
+
+              {/* Date Range Picker */}
+              {renderDateFilter()}
+
+              {/* Download Button - Only show when report is selected */}
+              {selectedReport && (
+                <>
+                  <div
+                    className={`flex items-center gap-2 px-4 py-2 rounded-[4px] border-[1px] border-solid 
+                              ${(!dateRange[0] || !dateRange[1]) && selectedReport !== "Transaction Report"
+                                ? 'bg-gray-300 border-gray-300 cursor-not-allowed opacity-50'
+                                : 'bg-[#313131] border-[#737373] cursor-pointer hover:bg-[#404040]'} 
+                              text-[13px] text-[#cbcbcb] whitespace-nowrap order-last sm:order-none`}
+                    onClick={(e) => {
+                      if (selectedReport === "Transaction Report" || (dateRange[0] && dateRange[1])) {
+                        handleDownloadClick(e);
+                      }
+                    }}
+                  >
+                    <MdOutlineFileDownload className="w-[18px] h-[18px]" />
+                    <span className="font-sans text-white">Download</span>
+                  </div>
+
+                  {/* Download Format Menu */}
+                  <Menu
+                    anchorEl={downloadAnchorEl}
+                    open={Boolean(downloadAnchorEl)}
+                    onClose={handleDownloadClose}
+                    anchorOrigin={{
+                      vertical: 'bottom',
+                      horizontal: 'right',
+                    }}
+                    transformOrigin={{
+                      vertical: 'top',
+                      horizontal: 'right',
+                    }}
+                    sx={{
+                      '& .MuiPaper-root': {
+                        borderRadius: '8px',
+                        border: '1px solid rgba(167,161,158,0.1)',
+                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                        marginTop: '8px',
+                      },
+                    }}
+                  >
+                    {selectedReport !== "Orders Report" && (
+                      <MenuItem 
+                        onClick={() => handleDownloadFormat('PDF')}
+                        sx={{ 
+                          fontSize: '14px',
+                          fontFamily: 'Inter',
+                          '&:hover': { backgroundColor: '#fff3e0' }
+                        }}
+                      >
+                        Download as PDF
+                      </MenuItem>
+                    )}
                     <MenuItem 
-                      onClick={() => handleDownloadFormat('PDF')}
+                      onClick={() => handleDownloadFormat('CSV')}
                       sx={{ 
                         fontSize: '14px',
                         fontFamily: 'Inter',
                         '&:hover': { backgroundColor: '#fff3e0' }
                       }}
                     >
-                      Download as PDF
+                      Download as CSV
                     </MenuItem>
-                  )}
-                  <MenuItem 
-                    onClick={() => handleDownloadFormat('CSV')}
-                    sx={{ 
-                      fontSize: '14px',
-                      fontFamily: 'Inter',
-                      '&:hover': { backgroundColor: '#fff3e0' }
-                    }}
-                  >
-                    Download as CSV
-                  </MenuItem>
-                </Menu>
-              </>
-            )}
+                  </Menu>
+                </>
+              )}
+            </div>
           </div>
         </div>
 
@@ -1072,7 +1550,42 @@ const Reports: FunctionComponent = () => {
 
         {/* Table Section */}
         <div className="w-full border-[1px] border-solid border-[rgba(167,161,158,0.1)] rounded-lg overflow-hidden">
-          {renderContent()}
+          {selectedReport === "Orders Report" && (
+            <div className="w-full overflow-x-auto">
+              <div className="min-w-[1000px]">
+                {renderContent()}
+              </div>
+            </div>
+          )}
+          {selectedReport === "Top Sold Items" && (
+            <div className="w-full overflow-x-auto">
+              <div className="min-w-[800px]">
+                {renderContent()}
+              </div>
+            </div>
+          )}
+          {selectedReport === "Customer Report" && (
+            <div className="w-full overflow-x-auto">
+              <div className="min-w-[900px]">
+                {renderContent()}
+              </div>
+            </div>
+          )}
+          {selectedReport === "Delivery Report" && (
+            <div className="w-full overflow-x-auto">
+              <div className="min-w-[1000px]">
+                {renderContent()}
+              </div>
+            </div>
+          )}
+          {selectedReport === "Transaction Report" && (
+            <div className="w-full overflow-x-auto">
+              <div className="min-w-[1000px]">
+                {renderContent()}
+              </div>
+            </div>
+          )}
+          {!selectedReport && renderContent()}
         </div>
       </div>
     </div>
