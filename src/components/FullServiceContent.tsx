@@ -240,69 +240,115 @@ const FullServiceContent: React.FC<FullServiceContentProps> = ({
             {/* Selected Items */}
             <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
               <div className="self-stretch relative leading-[20px] font-sans text-black">Selected Items</div>
-              {selectedItems.map((item, index) => (
-                <div 
-                  key={`${item.name}-${index}`}
-                  className="self-stretch shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-col items-start justify-between p-[1px]"
-                >
-                  <div className="w-full flex items-center">
-                    <div className="w-[61px] rounded-[6px] bg-[#f6f6f6] box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[20px] gap-[7px]">
-                      <div className="flex flex-row items-center gap-1">
-                        <button 
-                          onClick={() => updateQuantity(item.name, item.quantity - 1)}
-                          disabled={item.quantity <= 1}
-                          className={`w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center 
-                               ${item.quantity <= 1 ? 'text-gray-400 cursor-not-allowed' : 'text-black cursor-pointer'} 
-                               font-sans`}
+              <div className="w-full">
+                {(() => {
+                  // Group items by their base name (before the " - " separator)
+                  const groupedItems = selectedItems.reduce((groups, item) => {
+                    const baseName = item.name.includes(' - ') ? item.name.split(' - ')[0] : item.name;
+                    if (!groups[baseName]) {
+                      groups[baseName] = [];
+                    }
+                    groups[baseName].push(item);
+                    return groups;
+                  }, {} as { [key: string]: typeof selectedItems });
+
+                  return Object.entries(groupedItems).map(([baseName, items]) => (
+                    <div key={baseName} className="mb-4 w-full">
+                      {/* Main Item */}
+                      {items.filter(item => !item.name.includes(' - ')).map((item, index) => (
+                        <div 
+                          key={`${item.name}-${index}`}
+                          className="w-full shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-col items-start justify-between p-[1px]"
                         >
-                          -
-                        </button>
-                        <div className="w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center text-black font-sans">
-                          {item.quantity}
-                        </div>
-                        <button 
-                          onClick={() => updateQuantity(item.name, item.quantity + 1)}
-                          disabled={!categoryItems.find(mi => mi.name === item.name)?.available}
-                          className={`w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center 
-                               ${!categoryItems.find(mi => mi.name === item.name)?.available
-                                 ? 'text-gray-400 cursor-not-allowed' 
-                                 : 'text-black cursor-pointer'} 
-                               font-sans`}
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-between py-[15px] px-[20px] text-[#858a89]">
-                      <div className="flex flex-col">
-                        <div className="relative leading-[20px] text-black font-sans">{item.name}</div>
-                        {item.extras && item.extras.length > 0 && (
-                          <div className="mt-1 space-y-1">
-                            {item.extras.map((group, groupIndex) => (
-                              <div key={`${group.groupId}-${groupIndex}`} className="text-sm text-gray-600">
-                                {group.selections.map((selection, selIndex) => (
-                                  <div key={`${selection.id}-${selIndex}`} className="flex items-center gap-2">
-                                    <span className="text-xs">•</span>
-                                    <span>{selection.foodName}</span>
-                                    <span className="text-xs text-gray-500">(+GH₵{selection.foodPrice})</span>
-                                  </div>
-                                ))}
+                          <div className="w-full flex items-center">
+                            <div className="w-[61px] rounded-[6px] bg-[#f6f6f6] box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[20px] gap-[7px]">
+                              <div className="flex flex-row items-center gap-1">
+                                <button 
+                                  onClick={() => updateQuantity(item.name, item.quantity - 1)}
+                                  disabled={item.quantity <= 1}
+                                  className={`w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center 
+                                       ${item.quantity <= 1 ? 'text-gray-400 cursor-not-allowed' : 'text-black cursor-pointer'} 
+                                       font-sans`}
+                                >
+                                  -
+                                </button>
+                                <div className="w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center text-black font-sans">
+                                  {item.quantity}
+                                </div>
+                                <button 
+                                  onClick={() => updateQuantity(item.name, item.quantity + 1)}
+                                  className="w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center text-black cursor-pointer font-sans"
+                                >
+                                  +
+                                </button>
                               </div>
-                            ))}
+                            </div>
+                            <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-between py-[15px] px-[20px] text-[#858a89]">
+                              <div className="flex flex-col">
+                                <div className="relative leading-[20px] text-black font-sans font-medium">{item.name}</div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <div className="relative leading-[20px] text-black font-sans">{item.price * item.quantity} GHS</div>
+                                <RiDeleteBinLine 
+                                  className="cursor-pointer text-red-500 hover:text-red-600" 
+                                  onClick={() => removeItem(item.name)}
+                                />
+                              </div>
+                            </div>
                           </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <div className="relative leading-[20px] text-black font-sans">{item.price * item.quantity} GHS</div>
-                        <RiDeleteBinLine 
-                          className="cursor-pointer text-red-500 hover:text-red-600" 
-                          onClick={() => removeItem(item.name)}
-                        />
-                      </div>
+                        </div>
+                      ))}
+                      
+                      {/* Related Extras */}
+                      {items.filter(item => item.name.includes(' - ')).map((item, index) => (
+                        <div 
+                          key={`${item.name}-${index}`}
+                          className="w-full shadow-[0px_0px_2px_rgba(23,_26,_31,_0.12),_0px_0px_1px_rgba(23,_26,_31,_0.07)] rounded-[6px] bg-[#f6f6f6] border-[#fff] border-[1px] border-solid flex flex-col items-start justify-between p-[1px]"
+                        >
+                          <div className="w-full flex items-center">
+                            <div className="w-[61px] rounded-[6px] bg-[#f6f6f6] box-border overflow-hidden shrink-0 flex flex-row items-center justify-center py-[16px] px-[20px] gap-[7px]">
+                              <div className="flex flex-row items-center gap-1">
+                                <button 
+                                  onClick={() => updateQuantity(item.name, item.quantity - 1)}
+                                  disabled={item.quantity <= 1}
+                                  className={`w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center 
+                                       ${item.quantity <= 1 ? 'text-gray-400 cursor-not-allowed' : 'text-black cursor-pointer'} 
+                                       font-sans`}
+                                >
+                                  -
+                                </button>
+                                <div className="w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center text-black font-sans">
+                                  {item.quantity}
+                                </div>
+                                <button 
+                                  onClick={() => updateQuantity(item.name, item.quantity + 1)}
+                                  className="w-[20px] h-[20px] bg-[#f6f6f6] rounded flex items-center justify-center text-black cursor-pointer font-sans"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                            <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-between py-[15px] px-[20px] text-[#858a89]">
+                              <div className="flex flex-col">
+                                <div className="relative leading-[20px] text-gray-600 font-sans">
+                                  <span className="text-xs text-gray-400">•</span> {item.name.split(' - ')[1]}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <div className="relative leading-[20px] text-black font-sans">{item.price * item.quantity} GHS</div>
+                                <RiDeleteBinLine 
+                                  className="cursor-pointer text-red-500 hover:text-red-600" 
+                                  onClick={() => removeItem(item.name)}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-                </div>
-              ))}
+                  ));
+                })()}
+              </div>
               {selectedItems.length === 0 && (
                 <div className="text-[#b1b4b3] text-[13px] italic font-sans">No items selected</div>
               )}
