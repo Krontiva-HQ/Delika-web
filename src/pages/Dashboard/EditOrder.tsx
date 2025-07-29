@@ -92,7 +92,7 @@ const EditOrder: FunctionComponent<EditOrderProps> = ({ order, onClose, onOrderE
   };
 
   const handlePaymentStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setPaymentStatus(e.target.value);
+    setPaymentStatus(e.target.value as 'pending' | 'paid' | 'failed');
     setModifiedFields(prev => new Set(Array.from(prev).concat('paymentStatus')));
   };
 

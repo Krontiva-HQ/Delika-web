@@ -83,7 +83,7 @@ const Transactions: FunctionComponent = () => {
 
       const sortedOrders = Array.isArray(response.data) 
         ? response.data.sort((a: Order, b: Order) => {
-            return new Date(b.orderReceivedTime).getTime() - new Date(a.orderReceivedTime).getTime();
+            return new Date(b.orderReceivedTime || '').getTime() - new Date(a.orderReceivedTime || '').getTime();
           })
         : [];
         
