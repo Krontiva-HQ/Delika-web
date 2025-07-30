@@ -338,7 +338,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
           }
         }
       } catch (error) {
-        console.error('Error loading persisted orders:', error);
+        // Handle error silently
       }
     };
 
@@ -351,7 +351,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       localStorage.setItem('pendingOrders', JSON.stringify(newOrders));
       localStorage.setItem('pendingDecisionOrders', JSON.stringify(Array.from(pendingDecisionOrders)));
     } catch (error) {
-      console.error('Error persisting orders:', error);
+      // Handle error silently
     }
   }, [newOrders, pendingDecisionOrders]);
 
@@ -716,9 +716,20 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         if (shouldPlayAudio) {
           const audio = new Audio('/orderRinging.mp3');
           audio.volume = 0.5; // Lower volume since global handles primary audio
-          audio.play().catch((e) => { 
-            console.error('Audio play failed in checkForNewOrders:', e);
-          });
+          audio.play()
+            .then(() => {
+              // Audio played successfully
+            })
+            .catch((error) => {
+              // Try playing with user interaction if autoplay failed
+              if (error.name === 'NotAllowedError') {
+                // Show a visual notification instead
+                addNotification({
+                  type: 'order_created',
+                  message: `New order received! (Audio blocked by browser)`
+                });
+              }
+            });
         }
       } else if (showGlobalOrderModal && showNewOrderModal) {
         // Close local modal if global modal is active
@@ -729,7 +740,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       setLastOrderIds(new Set(latestOrders.map((order: Order) => order.id)));
 
     } catch (error) {
-      console.error('Error checking for new orders:', error);
+      // Handle error silently
     }
   }, [selectedDate, selectedBranchId, userProfile, lastOrderIds]);
 
@@ -831,6 +842,8 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
   };
 
   const handleOrderClick = (orderNumber: string) => {
+    // Find the order data from the current orders list
+    const orderData = orders.find(order => order.orderNumber === orderNumber);
     setSelectedOrderId(orderNumber);
     onOrderDetailsView(true);
   };
@@ -967,16 +980,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       // Kitchen status updated successfully
       
     } catch (error: any) {
-      console.error('❌ Kitchen status update error details:', {
-        error,
-        errorMessage: error?.message,
-        errorStatus: error?.status,
-        errorCode: error?.code,
-        orderNumber: order.orderNumber,
-        nextStatus,
-        originalError: error
-      });
-      
       // Check if the error is just a response format issue but the update might have succeeded
       // Wait a moment and then refresh the order data to check if it actually updated
       setTimeout(async () => {
@@ -986,7 +989,7 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
             await fetchOrders(selectedBranchId, selectedDate.format('YYYY-MM-DD'));
           }
         } catch (refreshError) {
-          console.error('Failed to refresh orders after kitchen status error:', refreshError);
+          // Handle refresh error silently
         }
       }, 1000);
       
@@ -1075,11 +1078,10 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
             // Close the modal after all updates are complete
             setShowNewOrderModal(false);
         } catch (error) {
-            console.error('Failed to accept order:', error);
-            addNotification({
-                type: 'order_status',
-                message: 'Failed to accept order. Please try again.'
-            });
+          addNotification({
+            type: 'order_status',
+            message: 'Failed to accept order. Please try again.'
+          });
         } finally {
             // Remove loading state for accept
             setModalLoadingOrderIds(prev => {
@@ -1135,7 +1137,6 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
         // Close the modal after all updates are complete
         setShowNewOrderModal(false);
       } catch (error) {
-        console.error('Failed to decline order:', error);
         addNotification({
           type: 'order_status',
           message: 'Failed to decline order. Please try again.'
@@ -1193,25 +1194,18 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
       });
       
       audio.addEventListener('error', (e) => {
-        console.error('Audio error event:', e);
+        // Handle audio error silently
       });
 
       // Set volume and play
       audio.volume = 0.7;
       audio.play()
         .then(() => {
+          // Audio played successfully
         })
         .catch((error) => {
-          console.error('❌ Audio play failed:', error);
-          console.error('Error details:', {
-            name: error.name,
-            message: error.message,
-            code: error.code
-          });
-          
           // Try playing with user interaction if autoplay failed
           if (error.name === 'NotAllowedError') {
-            
             // Show a visual notification instead
             addNotification({
               type: 'order_created',
@@ -1263,6 +1257,8 @@ const Orders: FunctionComponent<OrdersProps> = ({ searchQuery, onOrderDetailsVie
           orderDetails={orderDetails}
           isLoading={isOrderDetailsLoading}
           error={error}
+          // Pass the order data directly from the orders list
+          orderData={orders.find(order => order.orderNumber === selectedOrderId) || null}
         />
       ) : (
         <div className="p-3 ml-4 mr-4">

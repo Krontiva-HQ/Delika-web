@@ -13,6 +13,49 @@ import { formatDate, translateOrderStatus, translateKitchenStatus } from '../../
 import dayjs from 'dayjs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 
+// Import the Order interface from Orders component
+interface Order {
+  id: string;
+  customerName: string;
+  customerPhoneNumber: string;
+  orderNumber: string;
+  deliveryDistance: string;
+  orderPrice: string;
+  trackingUrl: string;
+  courierName: string;
+  courierPhoneNumber: string;
+  orderStatus: string;
+  totalPrice: string;
+  orderDate: string;
+  deliveryPrice: string;
+  dropOff: {
+    toLatitude: string;
+    toLongitude: string;
+    toAddress: string;
+  }[];
+  pickup: {
+    fromLatitude: string;
+    fromLongitude: string;
+    fromAddress: string;
+  }[];
+  products: any[];
+  customerImage?: string;
+  pickupName: string;
+  dropoffName: string;
+  status: string;
+  transactionStatus: string;
+  paymentStatus: string;
+  orderComment?: string;
+  orderReceivedTime: string;
+  Walkin: boolean;
+  payLater: boolean;
+  payNow: boolean;
+  payVisaCard: boolean;
+  kitchenStatus: string;
+  orderAccepted: "pending" | "accepted" | "declined";
+  orderChannel: string;
+}
+
 interface InvoiceData {
   invoiceNumber: string;
   orderDate: string;
@@ -143,8 +186,14 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       kitchenStatus
     } = apiResponse;
 
+    // Handle different data types between Order and OrderDetails interfaces
+    const orderNumberStr = typeof orderNumber === 'number' ? orderNumber.toString() : orderNumber;
+    const orderPriceNum = typeof orderPrice === 'string' ? parseFloat(orderPrice) : orderPrice;
+    const deliveryPriceNum = typeof deliveryPrice === 'string' ? parseFloat(deliveryPrice) : deliveryPrice;
+    const totalPriceNum = typeof totalPrice === 'string' ? parseFloat(totalPrice) : totalPrice;
+
     return {
-      invoiceNumber: orderNumber.toString(),
+      invoiceNumber: orderNumberStr,
       orderDate: orderDate ? formatDate(new Date(orderDate)) : 'N/A',
       location: pickup[0]?.fromAddress || 'N/A',
       pickup,
@@ -164,9 +213,9 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       })),
       payment: {
         method: paymentStatus,
-        subTotal: parseFloat(orderPrice),
-        deliveryCost: parseFloat(deliveryPrice),
-        grandTotal: parseFloat(totalPrice),
+        subTotal: orderPriceNum,
+        deliveryCost: deliveryPriceNum,
+        grandTotal: totalPriceNum,
       },
       orderStatus,
       trackingUrl,
@@ -201,9 +250,10 @@ interface OrderDetailsViewProps {
   orderDetails: OrderDetails | null;
   isLoading: boolean;
   error: string | null;
+  orderData?: Order | null; // Add this new prop
 }
 
-const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, onBack }) => {
+const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, onBack, orderData }) => {
   const { t } = useTranslation();
   const { id: orderIdFromUrl } = useParams();
   const navigate = useNavigate();
@@ -211,17 +261,24 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
   const contentRef = useRef<HTMLDivElement>(null);
   const { userProfile } = useUserProfile();
 
-  const { orderDetails, isLoading, error } = useOrderDetails(orderId || orderIdFromUrl || null);
+  // Use orderData if available, otherwise fall back to the hook
+  const { orderDetails, isLoading, error } = useOrderDetails(
+    orderData ? null : (orderId || orderIdFromUrl || null)
+  );
+
+  // Use orderData if available, otherwise use orderDetails from the hook
+  const finalOrderDetails = orderData || orderDetails;
 
   useEffect(() => {
-    if (orderDetails) {
+    if (finalOrderDetails) {
       try {
-        const data = mapApiResponseToInvoiceData(orderDetails);
+        const data = mapApiResponseToInvoiceData(finalOrderDetails);
         setInvoiceData(data);
       } catch (error) {
+        // Handle error silently
       }
     }
-  }, [orderDetails]);
+  }, [finalOrderDetails]);
 
   const generatePDF = async () => {
     if (!invoiceData) return;
@@ -336,7 +393,6 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
 
       return pdf;
     } catch (error) {
-      console.error('Error generating receipt:', error);
       return null;
     }
   };
@@ -349,11 +405,11 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !orderData) {
     return <div>{t('common.loading')}</div>;
   }
 
-  if (error) {
+  if (error && !orderData) {
     return <div>{t('common.error')}: {error}</div>;
   }
 

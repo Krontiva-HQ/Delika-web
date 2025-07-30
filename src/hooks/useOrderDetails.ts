@@ -8,7 +8,13 @@ const useOrderDetails = (orderNumber: string | null) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!orderNumber) return;
+    if (!orderNumber) {
+      // If no orderNumber is provided (when orderData is passed directly), 
+      // don't make an API call and don't show loading state
+      setIsLoading(false);
+      setError(null);
+      return;
+    }
 
     const fetchOrderDetails = async () => {
       setIsLoading(true);
