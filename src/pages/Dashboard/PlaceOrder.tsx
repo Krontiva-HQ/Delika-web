@@ -1896,10 +1896,10 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                 key={category.value}
                 onClick={() => {
                   console.log('[Category Select] Clicked:', category.value, category.label);
-                  setSelectedItems([]); // Clear items when category changes
+                  // setSelectedItems([]); // Removed: Do not clear items when category changes
                   setSelectedItemForExtrasDisplay(null); // Clear extras selection if used
                   setSelectedCategory(category.value); // Use value (ID), not label
-                  console.log('[Category Select] Cleared selectedItems and extras, setSelectedCategory:', category.value);
+                  console.log('[Category Select] Cleared extras, setSelectedCategory:', category.value);
                 }}
                 className={`p-4 rounded-lg border-2 transition-all font-sans text-sm font-medium ${
                   selectedCategory === category.value

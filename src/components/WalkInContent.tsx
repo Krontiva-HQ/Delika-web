@@ -329,7 +329,7 @@ const WalkInContent: React.FC<WalkInContentProps> = ({
                           <div className="flex-1 rounded-[6px] bg-[#fff] border-[#fff] border-[1px] border-solid flex flex-row items-center justify-between py-[15px] px-[20px] text-[#858a89]">
                             <div className="flex flex-col">
                               <div className="relative leading-[20px] text-gray-600 font-sans">
-                                <span className="text-xs text-gray-400">•</span> {item.name.split(' - ')[1]}
+                                <span className="text-xs text-gray-400">•</span> {item.name}
                               </div>
                     </div>
                     <div className="flex items-center gap-3">
