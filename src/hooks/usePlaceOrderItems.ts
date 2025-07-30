@@ -104,16 +104,11 @@ export const usePlaceOrderItems = (selectedBranchId?: string): PlaceOrderItemsHo
   // Fast local filtering using useMemo - no API calls needed!
   const categoryItems = useMemo(() => {
     if (!selectedCategory || !fullMenuData.length) return [];
-    
-    const category = categories.find(cat => cat.label === selectedCategory);
-    if (!category) return [];
-    
     const categoryData = fullMenuData.find((cat: any) => 
-      (cat.id === category.value || cat._id === category.value)
+      (cat.id === selectedCategory || cat._id === selectedCategory)
     );
-    
     return categoryData?.foods || [];
-  }, [selectedCategory, categories, fullMenuData]);
+  }, [selectedCategory, fullMenuData]);
 
   const convertUrlToFile = async (url: string): Promise<File> => {
     try {

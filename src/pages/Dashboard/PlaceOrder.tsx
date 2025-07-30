@@ -1904,9 +1904,15 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             {categories.map((category) => (
               <button
                 key={category.value}
-                onClick={() => setSelectedCategory(category.label)}
+                onClick={() => {
+                  console.log('[Category Select] Clicked:', category.value, category.label);
+                  setSelectedItems([]); // Clear items when category changes
+                  setSelectedItemForExtrasDisplay(null); // Clear extras selection if used
+                  setSelectedCategory(category.value); // Use value (ID), not label
+                  console.log('[Category Select] Cleared selectedItems and extras, setSelectedCategory:', category.value);
+                }}
                 className={`p-4 rounded-lg border-2 transition-all font-sans text-sm font-medium ${
-                  selectedCategory === category.label
+                  selectedCategory === category.value
                     ? 'border-[#fd683e] bg-[#fff5f3] text-[#fd683e]'
                     : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
                 }`}
@@ -1921,39 +1927,43 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
         {selectedCategory && (
           <div className="mb-6">
             <div className="text-lg font-semibold mb-4 font-sans">
-              Select Items from {selectedCategory}
+              Select Items from {categories.find(cat => cat.value === selectedCategory)?.label || ''}
             </div>
             {/* Two-row horizontal scrolling grid with placeholder for odd items */}
             <div className="overflow-x-auto pb-2">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2" style={{ minWidth: 'min-content' }}>
                 {(() => {
-                  // Sort items by name in ascending order
-                  const sortedItems = [...categoryItems].sort((a, b) => a.name.localeCompare(b.name));
+                  console.log('[Items Grid] Rendered for selectedCategory:', selectedCategory, 'categoryItems.length:', categoryItems.length);
+                  console.log('[Items Grid] categoryItems:', categoryItems);
+                  // Deduplicate items by name
+                  const uniqueItems = Array.from(
+                    new Map(categoryItems.map(item => [item.name, item])).values()
+                  );
+                  const sortedItems = uniqueItems.sort((a, b) => a.name.localeCompare(b.name));
                   const cards = sortedItems.map((item) => {
-                     const isSelected = selectedItems.some(selected => selected.name === item.name);
-                     return (
-                       <Card
+                    const isSelected = selectedItems.some(selected => selected.name === item.name);
+                    return (
+                      <Card
                         key={item.name}
                         className={`cursor-pointer w-[220px] relative ${!item.available ? 'grayscale opacity-60' : ''} ${isSelected ? 'border-2 border-[#fd683e]' : ''}`}
-                         onClick={() => {
-                           if (item.available) {
-                             if (isSelected) {
-                               setSelectedItems(prev => prev.filter(i => i.name !== item.name));
-                               setSelectedItemForExtrasDisplay(null);
-                             } else {
-                              // Always use handleAddItem to add the item immediately
+                        onClick={() => {
+                          if (item.available) {
+                            if (isSelected) {
+                              setSelectedItems(prev => prev.filter(i => i.name !== item.name));
+                              setSelectedItemForExtrasDisplay(null);
+                            } else {
                               handleAddItem(item);
                             }
-                           }
-                         }}
-                                             >
-                         {isSelected && (
-                           <div className="absolute top-1.5 right-1.5 bg-[#fd683e] rounded-full p-0.5">
-                             <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
-                               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                             </svg>
-                           </div>
-                         )}
+                          }
+                        }}
+                      >
+                        {isSelected && (
+                          <div className="absolute top-1.5 right-1.5 bg-[#fd683e] rounded-full p-0.5">
+                            <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth="3" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          </div>
+                        )}
                         <CardContent className="p-3">
                           <div className="flex items-center gap-2">
                             {/* Product Image */}
@@ -1992,7 +2002,11 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                       </Card>
                     );
                   });
-                  return cards;
+                  return isCategoryLoading ? (
+                    <div className="col-span-full text-center py-8 text-gray-400 font-sans">Loading items...</div>
+                  ) : (
+                    cards
+                  );
                 })()}
               </div>
             </div>
@@ -2268,6 +2282,20 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       </div>
     );
   };
+
+  // Add this near other state declarations at the top of PlaceOrder
+  const [isCategoryLoading, setIsCategoryLoading] = useState(false);
+
+  // Add these effects after state declarations
+  useEffect(() => {
+    if (selectedCategory) {
+      setIsCategoryLoading(true);
+    }
+  }, [selectedCategory]);
+
+  useEffect(() => {
+    setIsCategoryLoading(false);
+  }, [categoryItems]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
