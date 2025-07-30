@@ -370,12 +370,12 @@ const WalkInContent: React.FC<WalkInContentProps> = ({
           {/* Customer Details Section - Moved here */}
           <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
             <div className="self-stretch relative leading-[20px] font-sans text-black">
-              Customer Name (Optional)
+              Customer Name 
             </div>
             <input
               className="font-sans border-[#efefef] border-[1px] border-solid [outline:none] 
                         text-[12px] bg-[#fff] self-stretch rounded-[3px] overflow-hidden flex flex-row items-center justify-center py-[10px] px-[12px] text-black"
-              placeholder="Customer Name (Optional)"
+              placeholder="Customer Name"
               type="text"
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
