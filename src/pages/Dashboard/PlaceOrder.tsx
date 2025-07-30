@@ -107,13 +107,13 @@ class WebPrinterService {
 
   // Generate TSPL commands for TSPL printers
   static generateTSPL(receiptData: any) {
-    const { orderNumber, customerName, paymentMethod, items, totalPrice } = receiptData;
+    const { customerName, paymentMethod, items, totalPrice, restaurantName } = receiptData;
     
     let tsplCommands = 'SIZE 50 mm, 60 mm\n';
     tsplCommands += 'CLS\n';
     
-    // Order number at top
-    tsplCommands += `TEXT 100,10,"4",0,2,2,"${orderNumber}"\n`;
+    // Restaurant name header
+    tsplCommands += `TEXT 100,10,"4",0,2,2,"${restaurantName || 'RESTAURANT'}"\n`;
     
     // Customer name with wrapping
     const customerNameLines = this.wrapText(customerName);
@@ -148,7 +148,7 @@ class WebPrinterService {
 
   // Generate ESC/POS commands for MP583 and similar printers
   static generateESCPOS(receiptData: any) {
-    const { orderNumber, customerName, paymentMethod, items, totalPrice } = receiptData;
+    const { customerName, paymentMethod, items, totalPrice, restaurantName } = receiptData;
     
     let escposCommands = '';
     
@@ -158,7 +158,7 @@ class WebPrinterService {
     
     // Header
     escposCommands += '\x1B\x21\x30'; // Double height, double width
-    escposCommands += `Order #${orderNumber}\n`;
+    escposCommands += `${restaurantName || 'RESTAURANT'}\n`;
     escposCommands += '\x1B\x21\x00'; // Normal size
     
     escposCommands += '\x1B\x61\x00'; // Left alignment
@@ -171,7 +171,7 @@ class WebPrinterService {
     
     // Items
     items.forEach((item: any) => {
-      const itemName = item.name.length > 20 ? item.name.substring(0, 17) + '...' : item.name;
+      const itemName = item.name; // Show full item name
       const quantity = item.quantity;
       const price = (item.price * quantity).toFixed(2);
       
@@ -794,18 +794,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
     }
   };
 
-  // Expose printReceipt function globally for testing
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      (window as any).testPrintReceipt = printReceipt;
-    }
-    
-    return () => {
-      if (typeof window !== 'undefined') {
-        delete (window as any).testPrintReceipt;
-      }
-    };
-  }, [printCharacteristic]);
+
 
   // Add automatic printer connection when modal opens for walk-in orders only
   useEffect(() => {
@@ -1190,7 +1179,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             quantity: item.quantity,
             price: item.price
           })),
-          totalPrice: calculateTotal()
+          totalPrice: calculateTotal(),
+          restaurantName: userProfile._restaurantTable?.[0]?.restaurantName || 'RESTAURANT'
         };
 
         console.log('🖨️ Walk-in order data for printing:', orderData);
