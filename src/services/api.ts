@@ -702,7 +702,7 @@ export const deleteRider = async (params: {
 
 // Add delivery price calculation endpoint
 export const CALCULATE_DELIVERY_PRICE_URL =
-  'https://api-server.krontiva.africa/api:uEBBwbSs/calculate/delivery/price';
+  'https://api-server.krontiva.africa/api:uEBBwbSs/calculate/delivery/price/restaurant/app';
 
 export interface CalculateDeliveryPriceParams {
   pickup: { fromLongitude: string | number; fromLatitude: string | number };
