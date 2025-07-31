@@ -189,7 +189,11 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
     try {
       const response = await api.get(API_ENDPOINTS.MENU.GET_ALL_CATEGORIES);
       const categories = response.data || [];
-      setMainCategories(categories);
+      // Sort categories alphabetically by categoryName
+      const sortedCategories = categories.sort((a: MainCategory, b: MainCategory) => 
+        a.categoryName.localeCompare(b.categoryName)
+      );
+      setMainCategories(sortedCategories);
     } catch (error: any) {
       setMainCategories([]);
     } finally {
@@ -246,7 +250,11 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
         // Once we have main categories, find the preselected one and set its subcategories
         const mainCat = mainCategories.find(cat => cat.id === preSelectedCategory.mainCategoryId);
         if (mainCat && mainCat.subCat) {
-          setSubCategories(mainCat.subCat);
+          // Sort subcategories alphabetically
+          const sortedSubCategories = mainCat.subCat.sort((a: SubCategory, b: SubCategory) => 
+            a.Name.localeCompare(b.Name)
+          );
+          setSubCategories(sortedSubCategories);
         }
       }
     };
@@ -496,8 +504,11 @@ const AddInventory: FunctionComponent<AddInventoryProps> = ({
     if (category) {
       setSelectedMainCategory(category.categoryName);
       setSelectedMainCategoryId(category.id);
-      // Set subcategories from the selected main category
-      setSubCategories(category.subCat || []);
+      // Set subcategories from the selected main category and sort them alphabetically
+      const sortedSubCategories = (category.subCat || []).sort((a: SubCategory, b: SubCategory) => 
+        a.Name.localeCompare(b.Name)
+      );
+      setSubCategories(sortedSubCategories);
       // Clear selected subcategory when main category changes
       setSelectedCategory('');
     }
