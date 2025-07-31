@@ -64,9 +64,9 @@ export const usePlaceOrderItems = (selectedBranchId?: string): PlaceOrderItemsHo
   const [fullMenuData, setFullMenuData] = useState<any[]>([]);
 
   // Determine which branchId to use
-  const effectiveBranchId = isAdmin 
-    ? selectedBranchId  // Use selected branch for Admin
-    : userProfile?.branchId; // Use profile branch for non-Admin
+  const effectiveBranchId = isAdmin
+    ? selectedBranchId
+    : userProfile?.branchId;
 
   // Fetch all menu data once and cache it
   useEffect(() => {

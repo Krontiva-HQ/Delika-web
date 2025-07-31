@@ -138,7 +138,8 @@ export const API_ENDPOINTS = {
     UPDATE_INVENTORY: '/update/inventory/price/quantity',
     GET_ALL_INVENTORY: '/get/inventory/by/restaurant',
     UPDATE_INVENTORY_ITEM: '/update/inventory/item',
-    DELETE_ITEM: '/delete/menu/item'
+    DELETE_ITEM: '/delete/menu/item',
+    DELETE_CATEGORY: '/delete/menu/category'
   },
   INVENTORY: {
     GET_ALL: '/delika_inventory_table',
@@ -996,6 +997,18 @@ export const deleteExtrasGroup = async (id: string) => {
   };
   return api.delete(`/delika_extras_table/${id}`, {
     data: { delikaquickshipper_extras_table_id: id },
+    headers
+  });
+};
+
+// Add function to delete menu category
+export const deleteCategory = async (categoryId: string) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.delete(API_ENDPOINTS.MENU.DELETE_CATEGORY, {
+    data: { categoryId },
     headers
   });
 };

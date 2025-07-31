@@ -1,7 +1,7 @@
 import React, { FunctionComponent, useState, useCallback, useRef, TouchEvent, MouseEvent, useEffect, useMemo, ReactElement } from "react";
 import { Button, Menu, MenuItem, Modal, IconButton } from "@mui/material";
 import { IoMdNotificationsOutline, IoMdAdd, IoMdRemove } from "react-icons/io";
-import { FaRegMoon, FaChevronDown, FaArrowAltCircleLeft, FaArrowAltCircleRight } from "react-icons/fa";
+import { FaRegMoon, FaChevronDown, FaArrowAltCircleLeft, FaArrowAltCircleRight, FaTrash } from "react-icons/fa";
 import { useNavigate } from 'react-router-dom';
 import AddInventory from './AddInventory';
 import { useMenuCategories } from '../../hooks/useMenuCategories';
@@ -28,7 +28,7 @@ import { Button as UIButton } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
 import EditInventoryModal from '../../components/EditInventoryModal';
 import AddExtrasModal from '../../components/AddExtrasModal';
-import { updateInventoryItem, updateInventoryItemWithImage, deleteMenuItem } from '../../services/api';
+import { updateInventoryItem, updateInventoryItemWithImage, deleteMenuItem, deleteCategory } from '../../services/api';
 
 interface MenuItem {
   name: string;
@@ -524,6 +524,30 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
     }
   };
 
+  const handleDeleteCategory = async (categoryId: string, categoryName: string) => {
+    // Show confirmation dialog
+    const confirmed = window.confirm(`Are you sure you want to delete the category "${categoryName}"? This will also delete all items in this category. This action cannot be undone.`);
+    if (!confirmed) return;
+
+    try {
+      await deleteCategory(categoryId);
+
+      addNotification({
+        type: 'inventory_alert',
+        message: `Category "${categoryName}" has been deleted successfully`
+      });
+
+      // Refresh the whole page after successful deletion
+      window.location.reload();
+
+    } catch (error) {
+      addNotification({
+        type: 'inventory_alert',
+        message: 'Failed to delete category. Please try again.'
+      });
+    }
+  };
+
   // Update handleBranchSelect
   const handleBranchSelect = async (branchId: string) => {
     localStorage.setItem('selectedBranchId', branchId);
@@ -603,32 +627,50 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
     remoteCategories.map((category) => (
       <div 
         key={category.id}
-        onClick={() => handleCategoryClick(category.id)}
         className={`flex-none w-[180px] rounded-[8px] border-[1px] border-solid border-[#eaeaea]
                     flex flex-row items-center justify-start p-3 gap-[10px] 
                     text-center text-[#5e5c57] transition-all duration-300
-                    hover:bg-[#FFFCF7] cursor-pointer
+                    hover:bg-[#FFFCF7] relative group
                     ${category.id === activeId ? 'bg-[#FFFCF7] dark:bg-[#2c2522]' : 'bg-[#F7F7F7] dark:bg-[#201a18]'}`}
       >
-        <img
-          className="w-[40px] h-[40px] rounded-full object-cover"
-          alt={`${category.name} category`}
-          src={category.image ? optimizeImageUrl(category.image) : '/category.jpg'}
-          loading="eager"
-          draggable="false"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            target.src = '/category.jpg';
-          }}
-        />
-        <div className="flex flex-col items-start justify-start">
-          <div className="text-[16px] leading-[20px] font-medium text-[#333] font-sans truncate" style={{ maxWidth: '110px' }}>
-            {category.name}
-          </div>
-          <div className="text-[13px] leading-[16px] text-[#999] text-left font-sans">
-            {category.itemCount} items
+        <div 
+          className="flex flex-row items-center justify-start gap-[10px] flex-1 cursor-pointer"
+          onClick={() => handleCategoryClick(category.id)}
+        >
+          <img
+            className="w-[40px] h-[40px] rounded-full object-cover"
+            alt={`${category.name} category`}
+            src={category.image ? optimizeImageUrl(category.image) : '/category.jpg'}
+            loading="eager"
+            draggable="false"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = '/category.jpg';
+            }}
+          />
+          <div className="flex flex-col items-start justify-start">
+            <div className="text-[16px] leading-[20px] font-medium text-[#333] font-sans truncate" style={{ maxWidth: '110px' }}>
+              {category.name}
+            </div>
+            <div className="text-[13px] leading-[16px] text-[#999] text-left font-sans">
+              {category.itemCount} items
+            </div>
           </div>
         </div>
+        
+        {/* Delete Icon */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            handleDeleteCategory(category.id, category.name);
+          }}
+          className="absolute top-2 right-2 p-1 rounded-full bg-red-100 hover:bg-red-200 
+                     text-red-600 hover:text-red-700 transition-colors opacity-0 group-hover:opacity-100
+                     focus:outline-none focus:ring-2 focus:ring-red-300"
+          title={`Delete ${category.name} category`}
+        >
+          <FaTrash className="w-3 h-3" />
+        </button>
       </div>
     ))
   );
