@@ -592,11 +592,13 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
   // Update refreshInventory to use selectedBranchId
   const refreshInventory = async () => {
     try {
+      const effectiveBranchId = userProfile.role === 'Admin' 
+        ? (selectedBranchId || '') 
+        : (userProfile.branchId || '');
+        
       const params = new URLSearchParams({
         restaurantId: userProfile.restaurantId || '',
-        branchId: userProfile.role === 'Admin' 
-          ? (selectedBranchId || '') 
-          : (userProfile.branchId || ''),
+        branchId: effectiveBranchId,
       }); 
 
       const response = await api.post(`/get/all/menu`, params);

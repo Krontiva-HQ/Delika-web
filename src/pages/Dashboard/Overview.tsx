@@ -96,15 +96,15 @@ const Overview: React.FC<OverviewProps> = ({ setActiveView }) => {
     selectedBranchId || userProfile.branchId
   );
 
-  // Check if user has access to overview
+  // Check if user has access to overview or is Store Clerk
   useEffect(() => {
-    if (!hasOverviewAccess(restaurantData)) {
+    if (!hasOverviewAccess(restaurantData) || userProfile?.role === 'Store Clerk') {
       setActiveView('orders');
     }
-  }, [restaurantData, setActiveView]);
+  }, [restaurantData, setActiveView, userProfile?.role]);
 
-  // If no overview access, don't render anything
-  if (!hasOverviewAccess(restaurantData)) {
+  // If no overview access or is Store Clerk, don't render anything
+  if (!hasOverviewAccess(restaurantData) || userProfile?.role === 'Store Clerk') {
     return null;
   }
 

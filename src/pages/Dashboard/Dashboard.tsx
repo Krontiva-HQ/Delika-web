@@ -47,6 +47,11 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
       return userProfile?.role === 'Store Clerk' ? 'orders' : 'dashboard';
     }
     
+    // If saved view is 'dashboard' but user is Store Clerk, redirect to orders
+    if (savedView === 'dashboard' && userProfile?.role === 'Store Clerk') {
+      return 'orders';
+    }
+    
     return savedView;
   });
   const [vuesaxlineararrowDownAnchorEl, setVuesaxlineararrowDownAnchorEl] =
@@ -102,12 +107,18 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
   };
 
   const handleViewChange = (view: string) => {
-    setActiveView(view);
-    localStorage.setItem('activeView', view);
+    // Prevent Store Clerk users from accessing dashboard
+    if (view === 'dashboard' && userProfile?.role === 'Store Clerk') {
+      setActiveView('orders');
+      localStorage.setItem('activeView', 'orders');
+    } else {
+      setActiveView(view);
+      localStorage.setItem('activeView', view);
+    }
     setSearchQuery('');
   };
 
-  const availableMenuItems = getAvailableMenuItems(restaurantData);
+  const availableMenuItems = getAvailableMenuItems(restaurantData, userProfile?.role);
 
   useEffect(() => {
     const initializeDashboard = async () => {
@@ -299,9 +310,11 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
                   alt={`${userProfile.userName || 'User'}'s profile`}
                   src={userProfile.image?.url || '/default-profile.jpg'}
                 />
-                <div className="absolute top-[5px] left-[40px] font-sans text-[14px]">
-                  {`${userProfile.userName || userProfile.fullName || 'User'}`}
-                  <div className="text-[10px] text-gray-500 font-sans">
+                <div className="absolute top-[5px] left-[40px] font-sans text-[14px] max-w-[80px]">
+                  <div className="truncate" title={`${userProfile.userName || userProfile.fullName || 'User'}`}>
+                    {`${userProfile.userName || userProfile.fullName || 'User'}`}
+                  </div>
+                  <div className="text-[10px] text-gray-500 font-sans truncate" title={userProfile.role || 'Role not specified'}>
                     {userProfile.role || 'Role not specified'}
                   </div>
                 </div>

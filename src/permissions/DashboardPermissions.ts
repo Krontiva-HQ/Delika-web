@@ -117,26 +117,31 @@ interface MenuItem {
 }
 
 // Function to determine available menu items based on permissions
-export const getAvailableMenuItems = (permissions: DashboardPermissions): MenuItem[] => {
-  const menuItems: MenuItem[] = [
-    { 
+export const getAvailableMenuItems = (permissions: DashboardPermissions, userRole?: string): MenuItem[] => {
+  const menuItems: MenuItem[] = [];
+  
+  // Only add Overview/Dashboard if user is not a Store Clerk
+  if (userRole !== 'Store Clerk') {
+    menuItems.push({ 
       name: "Overview", 
       icon: FiGrid,
       id: "dashboard", 
       requiredPermission: "Overview"
-    },
-    { 
-      name: "My Orders", 
-      icon: FiBox,
-      id: "orders", 
-      requiredPermission: null 
-    }
-  ];
+    });
+  }
+  
+  // Always add My Orders
+  menuItems.push({ 
+    name: "My Orders", 
+    icon: FiBox,
+    id: "orders", 
+    requiredPermission: null 
+  });
 
-  // Only add Menu Items if Inventory permission is granted
+  // Only add Inventory if Inventory permission is granted
   if (permissions.Inventory) {
     menuItems.push({ 
-      name: "Menu Items", 
+      name: "Inventory", 
       icon: IoFastFoodOutline,
       id: "inventory", 
       requiredPermission: "Inventory"
@@ -161,8 +166,8 @@ export const getAvailableMenuItems = (permissions: DashboardPermissions): MenuIt
     });
   }
 
-  // Only add Reports if Reports permission is granted
-  if (permissions.Reports) {
+  // Only add Reports if Reports permission is granted and user is not a Store Clerk
+  if (permissions.Reports && userRole !== 'Store Clerk') {
     menuItems.push({ 
       name: "Reports", 
       icon: LuFileSpreadsheet,

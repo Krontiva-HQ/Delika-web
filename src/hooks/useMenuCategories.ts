@@ -133,13 +133,31 @@ export const useMenuCategories = () => {
       
       try {
         const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
-      
         
-        const response = await api.post<APICategory[]>('/get/all/menu', {
+        // Determine which branchId to use
+        let effectiveBranchId;
+        if (userProfile?.role === 'Admin') {
+          effectiveBranchId = selectedBranchId || userProfile?.branchId || '';
+        } else {
+          effectiveBranchId = userProfile?.branchId || '';
+        }
+        
+        const requestBody = {
           restaurantId: userProfile.restaurantId || '',
-          branchId: userProfile?.role === 'Admin' ? selectedBranchId : userProfile?.branchId || '',
-        });
+          branchId: effectiveBranchId,
+        };
         
+        console.log('🌐 API: Fetching menu categories');
+        console.log('📡 Endpoint: POST /get/all/menu');
+        console.log('📋 Request Body:', requestBody);
+        console.log('👤 User Role:', userProfile?.role);
+        console.log('🏢 Restaurant ID:', userProfile.restaurantId);
+        console.log('🏪 Selected Branch ID:', selectedBranchId);
+        console.log('🔧 Effective Branch ID:', effectiveBranchId);
+        
+        const response = await api.post<APICategory[]>('/get/all/menu', requestBody);
+        
+        console.log('✅ API Response:', response.data);
         
         const transformedCategories = response.data
           .map(category => ({
@@ -162,9 +180,11 @@ export const useMenuCategories = () => {
           }))
           .sort((a, b) => a.name.localeCompare(b.name));
         
+        console.log('🔄 Transformed Categories:', transformedCategories);
         
         setCategories(transformedCategories);
       } catch (err) {
+        console.error('❌ Error fetching categories:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch categories');
       } finally {
         setIsLoading(false);
