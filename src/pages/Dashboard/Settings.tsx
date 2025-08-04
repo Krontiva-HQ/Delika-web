@@ -1377,10 +1377,12 @@ const Settings: FunctionComponent = () => {
                                   <span className="text-[12px]">{t('settings.serviceTypes.features.inventory')}</span>
                                 </div>
                                 
-                                <div className={`flex items-center gap-2 ${serviceSettings.Transactions ? 'text-black dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
-                                  <div className={`w-3 h-3 rounded-full ${serviceSettings.Transactions ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
-                                  <span className="text-[12px]">{t('settings.serviceTypes.features.transactions')}</span>
-                                </div>
+                                {!isStoreClerk && (
+                                  <div className={`flex items-center gap-2 ${serviceSettings.Transactions ? 'text-black dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
+                                    <div className={`w-3 h-3 rounded-full ${serviceSettings.Transactions ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>
+                                    <span className="text-[12px]">{t('settings.serviceTypes.features.transactions')}</span>
+                                  </div>
+                                )}
                                 
                                 <div className={`flex items-center gap-2 ${serviceSettings.Reports ? 'text-black dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}>
                                   <div className={`w-3 h-3 rounded-full ${serviceSettings.Reports ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}></div>

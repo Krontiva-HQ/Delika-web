@@ -30,8 +30,8 @@ export const hasExtrasAccess = (permissions: DashboardPermissions): boolean => {
   return !!permissions.Extras;
 };
 
-export const hasTransactionsAccess = (permissions: DashboardPermissions): boolean => {
-  return !!permissions.Transactions;
+export const hasTransactionsAccess = (permissions: DashboardPermissions, userRole?: string): boolean => {
+  return !!permissions.Transactions && userRole !== 'Store Clerk';
 };
 
 export const hasReportsAccess = (permissions: DashboardPermissions): boolean => {
@@ -156,8 +156,8 @@ export const getAvailableMenuItems = (permissions: DashboardPermissions, userRol
     requiredPermission: null
   });
 
-  // Only add Transactions if Transactions permission is granted
-  if (permissions.Transactions) {
+  // Only add Transactions if Transactions permission is granted and user is not a Store Clerk
+  if (permissions.Transactions && userRole !== 'Store Clerk') {
     menuItems.push({ 
       name: "Transactions", 
       icon: LuCircleDollarSign,

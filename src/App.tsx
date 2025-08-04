@@ -22,6 +22,7 @@ import { checkAuthStatus } from './services/auth';
 import { initGoogleMaps } from './utils/googleMaps';
 import 'react-toastify/dist/ReactToastify.css';
 import DocumentTitle from './components/DocumentTitle';
+import { useUserProfile } from './hooks/useUserProfile';
 
 
 // Protected Route Component
@@ -50,6 +51,18 @@ const ProtectedRoute = () => {
     return null; // Let the useEffect handle the navigation
   }
 
+  return <Outlet />;
+};
+
+// Protected Transactions Route Component (prevents Store Clerk access)
+const ProtectedTransactionsRoute = () => {
+  const { userProfile } = useUserProfile();
+  
+  // If user is Store Clerk, redirect to dashboard
+  if (userProfile?.role === 'Store Clerk') {
+    return <Navigate to="/dashboard" replace />;
+  }
+  
   return <Outlet />;
 };
 
@@ -115,11 +128,15 @@ function App() {
           <Route path="/orders" element={<Orders searchQuery="" onOrderDetailsView={() => {}} />} />
           <Route path="/inventory" element={<Inventory />} />
           <Route path="/dashboard/add-inventory" element={<AddInventory onClose={() => {/* handle close */}} branchId="" />} />
-          <Route path="/transactions" element={<Transactions />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/settings" element={<Settings />} />
-          <Route path="/dashboard/transactions/:id" element={<TransactionDetailsView orderNumber="" onBack={() => {/* handle back */}} transactionDetails={null} isLoading={false} error={null} />} />
           <Route path="/orderDetails/:id" element={<OrderDetailsView orderId="" onBack={() => {/* handle back */}} orderDetails={null} isLoading={false} error={null} />} />
+        </Route>
+
+        {/* Protected Transactions Route */}
+        <Route element={<ProtectedTransactionsRoute />}>
+          <Route path="/transactions" element={<Transactions />} />
+          <Route path="/dashboard/transactions/:id" element={<TransactionDetailsView orderNumber="" onBack={() => {/* handle back */}} transactionDetails={null} isLoading={false} error={null} />} />
         </Route>
 
         {/* Root redirect */}
