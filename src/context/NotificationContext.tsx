@@ -169,18 +169,27 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
       if (newIncomingOrders.length > 0) {
         setShowGlobalOrderModal(true);
         
-        // Play audio with better error handling
+        // Play ringing sound for new orders
         const audio = new Audio('/orderRinging.mp3');
         audio.volume = 0.8;
         
-        audio.play()
-          .catch((error) => {
-            // Show visual notification if audio fails
-            addNotification({
-              type: 'order_created',
-              message: `🔔 New order received! #${newIncomingOrders[0].orderNumber} (Audio blocked)`
+        // Play the sound multiple times for better notification
+        const playSound = () => {
+          audio.play()
+            .catch((error) => {
+              // Show visual notification if audio fails
+              addNotification({
+                type: 'order_created',
+                message: `🔔 New order received! #${newIncomingOrders[0].orderNumber} (Audio blocked)`
+              });
             });
-          });
+        };
+        
+        // Play immediately
+        playSound();
+        
+        // Play again after 2 seconds for better notification
+        setTimeout(playSound, 2000);
 
         // Add notification for each new order
         newIncomingOrders.forEach((order: Order) => {

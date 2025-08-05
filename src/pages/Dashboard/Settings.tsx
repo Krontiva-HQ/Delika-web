@@ -102,6 +102,16 @@ const Settings: FunctionComponent = () => {
   const isStoreClerk = userProfile.role === 'Store Clerk';
   const { branchData: userBranchData } = useUserProfile();
 
+  // Update serviceSettings when userProfile becomes available
+  useEffect(() => {
+    if (userProfile?.role === 'Store Clerk') {
+      setServiceSettings(prev => ({
+        ...prev,
+        Transactions: false
+      }));
+    }
+  }, [userProfile?.role]);
+
   const textfield4Open = Boolean(textfield4AnchorEl);
   const textfield9Open = Boolean(textfield9AnchorEl);
 
@@ -681,7 +691,7 @@ const Settings: FunctionComponent = () => {
       const preferences = {
         restaurantId: userData.restaurantId,
         Inventory: serviceSettings.Inventory,
-        Transactions: serviceSettings.Transactions,
+        ...(isStoreClerk ? {} : { Transactions: serviceSettings.Transactions }),
         Reports: serviceSettings.Reports,
         Overview: serviceSettings.Overview,
         DeliveryReport: serviceSettings.DeliveryReport,

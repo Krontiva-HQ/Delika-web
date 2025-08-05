@@ -54,6 +54,7 @@ interface Order {
   kitchenStatus: string;
   orderAccepted: "pending" | "accepted" | "declined";
   orderChannel: string;
+  orderOTP?: string;
 }
 
 interface InvoiceData {
@@ -112,6 +113,7 @@ interface InvoiceData {
   orderComment?: string;
   Walkin: boolean;
   kitchenStatus?: string;
+  orderOTP?: string;
 }
 
 const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
@@ -183,7 +185,8 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       branch,
       orderComment,
       Walkin = false,
-      kitchenStatus
+      kitchenStatus,
+      orderOTP
     } = apiResponse;
 
     // Handle different data types between Order and OrderDetails interfaces
@@ -237,7 +240,8 @@ const mapApiResponseToInvoiceData = (apiResponse: any): InvoiceData => {
       branch,
       orderComment,
       Walkin,
-      kitchenStatus
+      kitchenStatus,
+      orderOTP
     };
   } catch (error) {
     throw error;
@@ -519,6 +523,8 @@ const OrderDetailsView: FunctionComponent<OrderDetailsViewProps> = ({ orderId, o
                     <span>{invoiceData.customer.name}</span>
                     <span className="text-gray-500">Phone:</span>
                     <span>{invoiceData.customer.phone}</span>
+                    <span className="text-gray-500">OTP:</span>
+                    <span className="font-mono">{invoiceData.orderOTP || 'N/A'}</span>
                   </div>
                 </div>
                 {/* Courier Info */}

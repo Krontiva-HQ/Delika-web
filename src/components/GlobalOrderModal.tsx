@@ -34,9 +34,6 @@ const GlobalOrderModal: React.FC = () => {
           <h2 className="text-lg sm:text-xl font-semibold text-black dark:text-white">
             🔔 {t('orders.newOrderReceived', {count: pendingOrdersToShow.length})}
           </h2>
-          <div className="bg-[#fe5b18] text-white px-2 py-1 rounded-full text-xs font-bold animate-pulse">
-            GLOBAL
-          </div>
         </div>
         
         <div className="max-h-[70vh] overflow-y-auto mb-4 font-sans">
@@ -149,9 +146,7 @@ const GlobalOrderModal: React.FC = () => {
         </div>
 
         {/* Footer with instructions */}
-        <div className="text-center text-xs text-gray-500 dark:text-gray-400 border-t border-gray-200 pt-2">
-          📱 This notification appears on all pages when new orders arrive
-        </div>
+        
       </div>
     </div>
   );

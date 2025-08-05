@@ -23,6 +23,7 @@ import { initGoogleMaps } from './utils/googleMaps';
 import 'react-toastify/dist/ReactToastify.css';
 import DocumentTitle from './components/DocumentTitle';
 import { useUserProfile } from './hooks/useUserProfile';
+import GlobalOrderModal from './components/GlobalOrderModal';
 
 
 // Protected Route Component
@@ -112,6 +113,7 @@ function App() {
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <DocumentTitle />
+      <GlobalOrderModal />
       <Routes>
         {/* Public Routes */}
         <Route element={<PublicRoute />}>
