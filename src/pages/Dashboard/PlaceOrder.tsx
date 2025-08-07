@@ -419,16 +419,17 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   const [showPrinterModal, setShowPrinterModal] = useState(false);
   const [printerConnectionStatus, setPrinterConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected');
   const [hasShownPrinterModal, setHasShownPrinterModal] = useState(false);
-  const { 
-    categories, 
-    categoryItems, 
+    const {
+    categories,
+    categoryItems,
     selectedItems,
     setSelectedItems,
-    selectedCategory, 
+    selectedCategory,
     setSelectedCategory,
     addItem,
     updateQuantity,
-    removeItem
+    removeItem,
+    isLoading: isMenuLoading
   } = usePlaceOrderItems(selectedBranchId);
 
   // Add validation states
@@ -1895,11 +1896,8 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
               <button
                 key={category.value}
                 onClick={() => {
-                  console.log('[Category Select] Clicked:', category.value, category.label);
-                  // setSelectedItems([]); // Removed: Do not clear items when category changes
                   setSelectedItemForExtrasDisplay(null); // Clear extras selection if used
                   setSelectedCategory(category.value); // Use value (ID), not label
-                  console.log('[Category Select] Cleared extras, setSelectedCategory:', category.value);
                 }}
                 className={`p-4 rounded-lg border-2 transition-all font-sans text-sm font-medium ${
                   selectedCategory === category.value
@@ -1923,8 +1921,6 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             <div className="overflow-x-auto pb-2">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2" style={{ minWidth: 'min-content' }}>
                 {(() => {
-                  console.log('[Items Grid] Rendered for selectedCategory:', selectedCategory, 'categoryItems.length:', categoryItems.length);
-                  console.log('[Items Grid] categoryItems:', categoryItems);
                   // Deduplicate items by name
                   const uniqueItems = Array.from(
                     new Map(categoryItems.map(item => [item.name, item])).values()
@@ -1992,7 +1988,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
                       </Card>
                     );
                   });
-                  return isCategoryLoading ? (
+                  return isMenuLoading ? (
                     <div className="col-span-full text-center py-8 text-gray-400 font-sans">Loading items...</div>
                   ) : (
                     cards

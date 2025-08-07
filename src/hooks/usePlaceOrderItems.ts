@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { api } from '../services/api';
 import { useUserProfile } from './useUserProfile';
+import { useMenuCategories } from './useMenuCategories';
 import { SelectedItem } from '../types/order';
 
 interface MenuItem {
@@ -36,8 +37,6 @@ interface MenuItem {
   }>;
 }
 
-
-
 interface Category {
   foodType: string;
   id: string;
@@ -54,61 +53,73 @@ interface PlaceOrderItemsHook {
   addItem: (item: MenuItem) => void;
   updateQuantity: (itemName: string, newQuantity: number) => void;
   removeItem: (itemName: string) => void;
+  isLoading: boolean;
 }
 
 export const usePlaceOrderItems = (selectedBranchId?: string): PlaceOrderItemsHook => {
   const { userProfile, isAdmin } = useUserProfile();
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
-  const [categories, setCategories] = useState<{ label: string; value: string; }[]>([]);
-  const [fullMenuData, setFullMenuData] = useState<any[]>([]);
+  const [categoryItems, setCategoryItems] = useState<MenuItem[]>([]);
+  const [isLoadingItems, setIsLoadingItems] = useState(false);
+
+  // Use the same hook as Inventory component
+  const { categories: remoteCategories, isLoading: categoriesLoading } = useMenuCategories();
 
   // Determine which branchId to use
   const effectiveBranchId = isAdmin
     ? selectedBranchId
     : userProfile?.branchId;
 
-  // Fetch all menu data once and cache it
-  useEffect(() => {
-    const fetchMenuData = async () => {
-      if (!userProfile?.restaurantId || !effectiveBranchId) return;
+  // Extract categories from remoteCategories (same as Inventory)
+  const categories = useMemo(() => {
+    return remoteCategories.map((category) => ({
+      label: category.name,
+      value: category.id
+    }));
+  }, [remoteCategories]);
 
+  // Update items when category changes (same logic as Inventory)
+  useEffect(() => {
+    const loadCategoryItems = async () => {
+      if (!selectedCategory) {
+        setCategoryItems([]);
+        return;
+      }
+
+      setIsLoadingItems(true);
       try {
-        const response = await api.post('/get/all/menu', {
-          restaurantId: userProfile.restaurantId,
-          branchId: effectiveBranchId
-        });
-        
-        // Cache the full menu data
-        setFullMenuData(response.data);
-        
-        // Extract categories
-        const formattedCategories = response.data.map((cat: Category) => ({
-          label: cat.foodType || 'Unnamed Category',
-          value: cat.id || cat._id || ''
+        const activeCategory = remoteCategories.find(category => category.id === selectedCategory);
+        if (!activeCategory?.foods) {
+          setCategoryItems([]);
+          return;
+        }
+
+        // Add a small delay to make the loading state visible
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        // Map only the foods from the active category (same as Inventory)
+        const items = activeCategory.foods.map((food: any) => ({
+          name: food.name,
+          price: food.price,
+          available: food.available ?? false,
+          foodImage: {
+            url: food.foodImage?.url || '',
+            filename: food.name,
+            type: 'image',
+            size: 0
+          },
+          extras: food.extras || []
         }));
-        
-        const uniqueCategories = Array.from(new Map(
-          formattedCategories.map((item: { label: string; value: string }) => [item.label, item])
-        ).values()) as { label: string; value: string }[];
-        
-        setCategories(uniqueCategories);
-      } catch (error) {
-        console.error('Error fetching menu data:', error);
+
+        setCategoryItems(items);
+      } finally {
+        setIsLoadingItems(false);
       }
     };
 
-    fetchMenuData();
-  }, [userProfile?.restaurantId, effectiveBranchId]);
-
-  // Fast local filtering using useMemo - no API calls needed!
-  const categoryItems = useMemo(() => {
-    if (!selectedCategory || !fullMenuData.length) return [];
-    const categoryData = fullMenuData.find((cat: any) => 
-      (cat.id === selectedCategory || cat._id === selectedCategory)
-    );
-    return categoryData?.foods || [];
-  }, [selectedCategory, fullMenuData]);
+    loadCategoryItems();
+  }, [selectedCategory, remoteCategories]);
 
   const convertUrlToFile = async (url: string): Promise<File> => {
     try {
@@ -175,6 +186,7 @@ export const usePlaceOrderItems = (selectedBranchId?: string): PlaceOrderItemsHo
     setSelectedCategory,
     addItem,
     updateQuantity,
-    removeItem
+    removeItem,
+    isLoading: categoriesLoading || isLoadingItems
   };
 };

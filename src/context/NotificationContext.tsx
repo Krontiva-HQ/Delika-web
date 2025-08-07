@@ -229,6 +229,15 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
     const order = pendingOrders.find(o => o.id === orderId);
     if (!order) return;
 
+    // Optimistic update - immediately remove from pending orders
+    setPendingOrders(prev => prev.filter(o => o.id !== orderId));
+    
+    // Check if modal should close after this order is removed
+    const remainingPending = pendingOrders.filter(o => o.id !== orderId);
+    if (remainingPending.length === 0) {
+      setShowGlobalOrderModal(false);
+    }
+
     setGlobalLoadingOrderIds(prev => new Set(prev).add(`accept_${orderId}`));
 
     try {
@@ -237,21 +246,24 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         orderAccepted: "accepted"
       });
 
-      // Remove from pending orders
-      setPendingOrders(prev => prev.filter(o => o.id !== orderId));
+      // Clear the cache for this order so it won't be re-detected as new
+      lastCheckedOrderIdsRef.current.delete(orderId);
+      
+      // Force a refresh of the data to ensure cache is updated
+      setTimeout(() => {
+        checkForGlobalNewOrders();
+      }, 1000);
 
       addNotification({
         type: 'order_created',
         message: `✅ Accepted order #${order.orderNumber}`
       });
 
-      // If no more pending orders, close modal
-      const remainingPending = pendingOrders.filter(o => o.id !== orderId);
-      if (remainingPending.length === 0) {
-        setShowGlobalOrderModal(false);
-      }
-
     } catch (error) {
+      // Revert optimistic update on error
+      setPendingOrders(prev => [...prev, order]);
+      setShowGlobalOrderModal(true);
+      
       addNotification({
         type: 'order_status',
         message: 'Failed to accept order. Please try again.'
@@ -263,12 +275,21 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         return newSet;
       });
     }
-  }, [pendingOrders, addNotification]);
+  }, [addNotification, checkForGlobalNewOrders]);
 
   // Decline order function
   const declineGlobalOrder = useCallback(async (orderId: string) => {
     const order = pendingOrders.find(o => o.id === orderId);
     if (!order) return;
+
+    // Optimistic update - immediately remove from pending orders
+    setPendingOrders(prev => prev.filter(o => o.id !== orderId));
+    
+    // Check if modal should close after this order is removed
+    const remainingPending = pendingOrders.filter(o => o.id !== orderId);
+    if (remainingPending.length === 0) {
+      setShowGlobalOrderModal(false);
+    }
 
     setGlobalLoadingOrderIds(prev => new Set(prev).add(`decline_${orderId}`));
 
@@ -278,21 +299,24 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         orderAccepted: "declined"
       });
 
-      // Remove from pending orders
-      setPendingOrders(prev => prev.filter(o => o.id !== orderId));
+      // Clear the cache for this order so it won't be re-detected as new
+      lastCheckedOrderIdsRef.current.delete(orderId);
+      
+      // Force a refresh of the data to ensure cache is updated
+      setTimeout(() => {
+        checkForGlobalNewOrders();
+      }, 1000);
 
       addNotification({
         type: 'order_status',
         message: `❌ Declined order #${order.orderNumber}`
       });
 
-      // If no more pending orders, close modal
-      const remainingPending = pendingOrders.filter(o => o.id !== orderId);
-      if (remainingPending.length === 0) {
-        setShowGlobalOrderModal(false);
-      }
-
     } catch (error) {
+      // Revert optimistic update on error
+      setPendingOrders(prev => [...prev, order]);
+      setShowGlobalOrderModal(true);
+      
       addNotification({
         type: 'order_status',
         message: 'Failed to decline order. Please try again.'
@@ -304,7 +328,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
         return newSet;
       });
     }
-  }, [pendingOrders, addNotification]);
+  }, [addNotification, checkForGlobalNewOrders]);
 
   const value: NotificationContextType = {
     notifications,
