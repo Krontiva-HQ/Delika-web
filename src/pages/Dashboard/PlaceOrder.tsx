@@ -1542,8 +1542,10 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
   }, [pickupLocation, dropoffLocation]);
 
   // Add this delete handler function near your other handlers
-  const handleDeleteItem = (itemName: string) => {
-    setSelectedItems(selectedItems.filter(item => item.name !== itemName));
+  const handleDeleteItem = (itemName: string, itemPrice?: number) => {
+    setSelectedItems(selectedItems.filter(item => 
+      !(item.name === itemName && (itemPrice === undefined || item.price === itemPrice))
+    ));
   };
 
   useEffect(() => {
@@ -1750,10 +1752,7 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
       };
       setSelectedItems(prev => [...prev, newItem]);
     
-    // If item has extras, also set it for extras selection
-    if (item.extras && item.extras.length > 0) {
-      setSelectedItemForExtrasDisplay(item);
-    }
+    // Note: Extras display is now handled in the onClick handler
   };
 
   // Add new state for extras selection
@@ -1921,24 +1920,34 @@ const PlaceOrder: FunctionComponent<PlaceOrderProps> = ({ onClose, onOrderPlaced
             <div className="overflow-x-auto pb-2">
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2" style={{ minWidth: 'min-content' }}>
                 {(() => {
-                  // Deduplicate items by name
-                  const uniqueItems = Array.from(
-                    new Map(categoryItems.map(item => [item.name, item])).values()
-                  );
-                  const sortedItems = uniqueItems.sort((a, b) => a.name.localeCompare(b.name));
+                  // Show ALL items without deduplication as requested by user
+                  const allItems = categoryItems;
+                  
+                  const sortedItems = allItems.sort((a, b) => a.name.localeCompare(b.name));
                   const cards = sortedItems.map((item) => {
-                    const isSelected = selectedItems.some(selected => selected.name === item.name);
+                    // Use both name and price to identify unique items
+                    const isSelected = selectedItems.some(selected => 
+                      selected.name === item.name && Math.abs(Number(selected.price) - Number(item.price)) < 0.01
+                    );
                     return (
                       <Card
-                        key={item.name}
+                        key={`${item.name}-${item.price}`}
                         className={`cursor-pointer w-[220px] relative ${!item.available ? 'grayscale opacity-60' : ''} ${isSelected ? 'border-2 border-[#fd683e]' : ''}`}
                         onClick={() => {
                           if (item.available) {
                             if (isSelected) {
-                              setSelectedItems(prev => prev.filter(i => i.name !== item.name));
+                              setSelectedItems(prev => prev.filter(i => 
+                                !(i.name === item.name && Math.abs(Number(i.price) - Number(item.price)) < 0.01)
+                              ));
                               setSelectedItemForExtrasDisplay(null);
                             } else {
                               handleAddItem(item);
+                              // Update extras display for the newly selected item
+                              if (item.extras && item.extras.length > 0) {
+                                setSelectedItemForExtrasDisplay(item);
+                              } else {
+                                setSelectedItemForExtrasDisplay(null);
+                              }
                             }
                           }
                         }}

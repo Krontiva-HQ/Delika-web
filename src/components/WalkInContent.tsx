@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { IoIosArrowBack } from "react-icons/io";
 import { useTranslation } from 'react-i18next';
 import { RiDeleteBinLine } from "react-icons/ri";
@@ -93,8 +93,11 @@ const WalkInContent: React.FC<WalkInContentProps> = ({
   const [showExtrasModal, setShowExtrasModal] = useState(false);
   const [selectedItemForExtras, setSelectedItemForExtras] = useState<any>(null);
 
+
+
   // Add new function to handle menu item selection
   const handleMenuItemSelect = (item: any) => {
+
     if (item.extras && item.extras.length > 0) {
       setSelectedItemForExtras(item);
       setShowExtrasModal(true);
@@ -124,6 +127,7 @@ const WalkInContent: React.FC<WalkInContentProps> = ({
 
   // Add new function to handle extras confirmation
   const handleExtrasConfirm = (selectedExtras: { [key: string]: Selection[] }) => {
+
     if (!selectedItemForExtras) return;
 
     // Calculate total price including extras
@@ -132,6 +136,8 @@ const WalkInContent: React.FC<WalkInContentProps> = ({
         return selectionTotal + selection.foodPrice;
       }, 0);
     }, 0);
+
+
 
     // Transform the selected extras to match the SelectedItemExtra type
     const formattedExtras: SelectedItemExtra[] = Object.entries(selectedExtras).map(([groupId, selections]) => {
@@ -157,6 +163,8 @@ const WalkInContent: React.FC<WalkInContentProps> = ({
         }
       };
     }).filter(Boolean) as SelectedItemExtra[];
+
+
 
     // Update the existing item in selectedItems instead of adding a new one
     updateItemWithExtras(selectedItemForExtras.name, formattedExtras, extrasCost);
@@ -233,7 +241,9 @@ const WalkInContent: React.FC<WalkInContentProps> = ({
           <b className="font-sans text-lg font-semibold gap-2 mb-4">Walk-In Service</b>
 
           {/* Enhanced Menu Selection */}
-          {renderEnhancedMenuSelection && renderEnhancedMenuSelection()}
+          {renderEnhancedMenuSelection && (() => {
+            return renderEnhancedMenuSelection();
+          })()}
 
           {/* Selected Items */}
           <div className="self-stretch flex flex-col items-start justify-start gap-[4px] pt-6">
@@ -485,18 +495,20 @@ const WalkInContent: React.FC<WalkInContentProps> = ({
           {renderPrinterModal()}
 
           {/* Add the SelectExtrasModal component */}
-          {showExtrasModal && selectedItemForExtras && (
-            <SelectExtrasModal
-              open={showExtrasModal}
-              onClose={() => {
-                setShowExtrasModal(false);
-                setSelectedItemForExtras(null);
-              }}
-              extras={selectedItemForExtras.extras}
-              onConfirm={handleExtrasConfirm}
-              itemName={selectedItemForExtras.name}
-            />
-          )}
+          {showExtrasModal && selectedItemForExtras && (() => {
+            return (
+              <SelectExtrasModal
+                open={showExtrasModal}
+                onClose={() => {
+                  setShowExtrasModal(false);
+                  setSelectedItemForExtras(null);
+                }}
+                extras={selectedItemForExtras.extras}
+                onConfirm={handleExtrasConfirm}
+                itemName={selectedItemForExtras.name}
+              />
+            );
+          })()}
         </>
       );
     default:
