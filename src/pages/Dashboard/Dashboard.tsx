@@ -25,10 +25,18 @@ import { useNotifications } from '../../context/NotificationContext';
 import { useUserProfile } from '../../hooks/useUserProfile';
 import { IoIosClose } from "react-icons/io";
 import { useBackgroundRefresh } from '../../hooks/useBackgroundRefresh';
-import { getAvailableMenuItems, shouldShowRevenue, shouldShowInventory } from '../../permissions/DashboardPermissions';
+import { 
+  getAvailableMenuItems, 
+  shouldShowRevenue, 
+  shouldShowInventory,
+  getUserPermissions,
+  getBusinessTypeDisplayName,
+  getRoleDisplayName
+} from '../../permissions/DashboardPermissions';
 import { IconType } from 'react-icons';
 import { useTranslation } from 'react-i18next';
 import useLanguageChange from '../../hooks/useLanguageChange';
+import { BusinessUser, getBusinessTypeFromRole } from '../../types/user';
 
 interface MainDashboardProps {
   children?: React.ReactNode;
@@ -37,7 +45,7 @@ interface MainDashboardProps {
 const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { fetchUserProfile } = useAuth();
+  const { fetchUserProfile, user } = useAuth();
   const { userProfile, restaurantData } = useUserProfile();
   const [isLoading, setIsLoading] = useState(true);
   const [activeView, setActiveView] = useState(() => {
@@ -65,6 +73,13 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
   const [isViewingOrderDetails, setIsViewingOrderDetails] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const { currentLanguage } = useLanguageChange();
+  
+  // Get user's business type and role
+  const userBusinessType = user?.businessType || getBusinessTypeFromRole(userProfile?.role || '');
+  const userRole = user?.role || userProfile?.role || '';
+  
+  // Get user permissions based on business type and role
+  const userPermissions = getUserPermissions(userBusinessType, userRole);
   
   useEffect(() => {
     document.documentElement.classList.remove('dark');
@@ -118,7 +133,8 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
     setSearchQuery('');
   };
 
-  const availableMenuItems = getAvailableMenuItems(restaurantData, userProfile?.role);
+  // Get available menu items based on user permissions and business type
+  const availableMenuItems = getAvailableMenuItems(userPermissions, userRole, userBusinessType);
 
   useEffect(() => {
     const initializeDashboard = async () => {
@@ -158,8 +174,8 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
       case 'dashboard':
         return <Overview 
           setActiveView={setActiveView}
-          showRevenue={shouldShowRevenue(restaurantData)}
-          showInventory={shouldShowInventory(restaurantData)}
+          showRevenue={shouldShowRevenue(userPermissions)}
+          showInventory={shouldShowInventory(userPermissions)}
         />;
       case 'orders':
         return <Orders 
@@ -203,6 +219,18 @@ const MainDashboard: FunctionComponent<MainDashboardProps> = ({ children }) => {
                 className={isSidebarCollapsed ? 'w-[40px] h-[40px] object-contain' : 'w-[180px] h-[70px] object-contain'}
               />
             </div>
+
+            {/* Business Type and Role Display */}
+            {!isSidebarCollapsed && userBusinessType && userRole && (
+              <div className="px-3 py-2 bg-gray-50 rounded-lg mb-2">
+                <div className="text-xs text-gray-600 font-medium">
+                  {getBusinessTypeDisplayName(userBusinessType)}
+                </div>
+                <div className="text-xs text-gray-500">
+                  {getRoleDisplayName(userRole)}
+                </div>
+              </div>
+            )}
 
             <div className="flex flex-col items-start justify-start gap-[8px]">
               {availableMenuItems.map((item) => {

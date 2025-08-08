@@ -109,7 +109,8 @@ export const API_ENDPOINTS = {
     VERIFY_OTP: '/verify/otp/code',
     VERIFY_OTP_PHONE: '/verify/otp/code/phoneNumber',
     RESET_PASSWORD: '/reset/user/password/email',
-    CHANGE_PASSWORD: '/change/password'
+    CHANGE_PASSWORD: '/change/password',
+    LOGIN_WITH_PHONE: '/auth/login/restaurant/staff/phoneNumber'
   },
   DASHBOARD: {
     GET_DATA: '/get/dashboard/data'
@@ -143,12 +144,19 @@ export const API_ENDPOINTS = {
   },
   INVENTORY: {
     GET_ALL: '/delika_inventory_table',
-    UPDATE_ITEM: '/update/inventory/item'
+    UPDATE_ITEM: '/update/inventory/item',
+    ADD_ITEM: '/create/new/inventory/item',
+    CREATE_CATEGORY: '/create/new/inventory/category',
+    GET_ALL_MENU: '/get/all/menu',
+    UPDATE: '/update/inventory',
+    DELETE_ITEM: '/delete/menu/item',
+    DELETE_CATEGORY: '/delete/menu/category'
   },
   CREATE_EXTRAS_ITEM: '/create/extras/item',
   CREATE_EXTRAS_GROUP: '/create/extras/group',
   AUDIT: {
-    GET_ALL: '/delikaquickshipper_audit_table'
+    GET_ALL: '/delikaquickshipper_audit_table',
+    GET_LOGS: '/get/audit/logs'
   },
   BRANCHES: {
     GET_BY_RESTAURANT: (restaurantId: string) => `/delikaquickshipper_branches_table/${restaurantId}`,
@@ -163,7 +171,19 @@ export const API_ENDPOINTS = {
   },
   RIDERS: {
     DELETE: '/remove/courier/from/branch',
-    GET_BY_BRANCH: '/get/rider/from/branch'
+    GET_BY_BRANCH: (branchId: string) => `/get/rider/from/branch/${branchId}`
+  },
+  EXTRAS: {
+    CREATE_ITEM: '/create/extras/item',
+    CREATE_GROUP: '/create/extras/group',
+    GET_RESTAURANT_EXTRAS: (restaurantId: string | null) => `/get/restaurant/extras/${restaurantId}`,
+    GET_RESTAURANT_GROUPS: (restaurantId: string | null) => `/get/restaurant/extras/group/${restaurantId}`,
+    GET_ALL_PER_RESTAURANT: (restaurantId: string | null) => `/get/extras/per/restaurant/${restaurantId}`,
+    UPDATE_PRICE: '/edit/extras/item/price/name',
+    EDIT_GROUP: (id: string) => `/edit/extra/group/${id}`
+  },
+  DELIVERY: {
+    CALCULATE_PRICE: '/calculate/delivery/price/restaurant/app'
   }
 } as const;
 
@@ -205,6 +225,7 @@ export interface UserResponse {
   OTP: number;
   role: string;
   email: string;
+  businessType?: 'restaurant' | 'grocery' | 'pharmacy'; // Add business type
   image: {
     url: string;
     meta: {
@@ -229,6 +250,9 @@ export interface UserResponse {
   created_at: number;
   phoneNumber: string;
   restaurantId: string;
+  // Add grocery fields
+  groceryShopId?: string;
+  groceryBranchId?: string;
   branchesTable: {
     id: string;
     branchName: string;
@@ -274,10 +298,11 @@ export const updateUser = async (data: FormData | Record<string, any>) => {
   return api.patch(API_ENDPOINTS.USER.UPDATE(userId as string), data, { headers });
 };
 
-// Add dashboard service function
+// Add dashboard service function with business type support
 export const getDashboardData = async (data: { 
   restaurantId: string; 
-  branchId: string 
+  branchId: string;
+  businessType?: 'restaurant' | 'grocery' | 'pharmacy';
 }) => {
   return api.post(API_ENDPOINTS.DASHBOARD.GET_DATA, data);
 };
@@ -383,6 +408,7 @@ export interface AddMemberParams {
   fullName: string;
   phoneNumber: string;
   Status: boolean;
+  businessType?: 'restaurant' | 'grocery' | 'pharmacy'; // Add business type
 }
 
 export const addMember = (params: AddMemberParams) => {
@@ -393,7 +419,11 @@ export const addMember = (params: AddMemberParams) => {
   return api.post(API_ENDPOINTS.TEAM.ADD_MEMBER, params, { headers });
 };
 
-export const getTeamMembers = async (data: { restaurantId: string; branchId: string }) => {
+export const getTeamMembers = async (data: { 
+  restaurantId: string; 
+  branchId: string;
+  businessType?: 'restaurant' | 'grocery' | 'pharmacy';
+}) => {
   const requestParams = data;
   const token = getAuthToken();
   const headers = {
@@ -406,7 +436,10 @@ export const getTeamMembers = async (data: { restaurantId: string; branchId: str
   });
 };
 
-export const getTeamMembersAdmin = (data: { restaurantId: string }) => {
+export const getTeamMembersAdmin = (data: { 
+  restaurantId: string;
+  businessType?: 'restaurant' | 'grocery' | 'pharmacy';
+}) => {
   const headers = {
     'Content-Type': 'application/json',
     'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
@@ -424,36 +457,46 @@ export const updateTeamMember = async (data: FormData) => {
 };
 
 // Background refresh operations
-export const filterOrdersByDate = async (params: { restaurantId: string; branchId: string; date: string }) => {
+export const filterOrdersByDate = async (params: { 
+  restaurantId: string; 
+  branchId: string; 
+  date: string;
+  businessType?: 'restaurant' | 'grocery' | 'pharmacy';
+}) => {
   const headers = {
     'Content-Type': 'application/json',
     'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
 
-  return api.get(API_ENDPOINTS.ORDERS.FILTER_BY_DATE, {
-    params: params,
+  return api.post(API_ENDPOINTS.ORDERS.FILTER_BY_DATE, params, {
     headers
   });
 };
 
-export const getAllOrdersPerBranch = (params: { restaurantId: string; branchId: string }) => {
+export const getAllOrdersPerBranch = (params: { 
+  restaurantId: string; 
+  branchId: string;
+  businessType?: 'restaurant' | 'grocery' | 'pharmacy';
+}) => {
   const headers = {
     'Content-Type': 'application/json',
     'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
-  return api.get(API_ENDPOINTS.ORDERS.GET_ALL_PER_BRANCH, { 
-    params,
+  return api.post(API_ENDPOINTS.ORDERS.GET_ALL_PER_BRANCH, params, { 
     headers
   });
 };
 
-export const getAuditLogs = (params: { restaurantId: string; branchId: string }) => {
+export const getAuditLogs = (params: { 
+  restaurantId: string; 
+  branchId: string;
+  businessType?: 'restaurant' | 'grocery' | 'pharmacy';
+}) => {
   const headers = {
     'Content-Type': 'application/json',
     'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
   };
-  return api.get(API_ENDPOINTS.AUDIT.GET_ALL, { 
-    params,
+  return api.post(API_ENDPOINTS.AUDIT.GET_LOGS, params, { 
     headers
   });
 };
@@ -529,6 +572,7 @@ export interface UpdateInventoryParams {
   name: string;
   description: string;
   available: boolean;
+  businessType?: 'restaurant' | 'grocery' | 'pharmacy';
 }
 
 export const updateInventory = async (params: UpdateInventoryParams) => {
@@ -539,13 +583,17 @@ export const updateInventory = async (params: UpdateInventoryParams) => {
     'Authorization': token
   };
 
-  return api.patch(API_ENDPOINTS.MENU.UPDATE_INVENTORY, JSON.stringify(requestParams), {
+  return api.patch(API_ENDPOINTS.INVENTORY.UPDATE, JSON.stringify(requestParams), {
     headers
   });
 };
 
 // Menu service functions
-export const getAllMenu = async (data: { restaurantId: string; branchId: string }) => {
+export const getAllMenu = async (data: { 
+  restaurantId: string; 
+  branchId: string;
+  businessType?: 'restaurant' | 'grocery' | 'pharmacy';
+}) => {
   const requestParams = data;
   const token = getAuthToken();
   const headers = {
@@ -553,7 +601,7 @@ export const getAllMenu = async (data: { restaurantId: string; branchId: string 
     'Authorization': token
   };
 
-  return api.post(API_ENDPOINTS.MENU.GET_ALL, JSON.stringify(requestParams), {
+  return api.post(API_ENDPOINTS.INVENTORY.GET_ALL_MENU, JSON.stringify(requestParams), {
     headers
   });
 };
@@ -651,6 +699,7 @@ export interface RestaurantPreferences {
   AutoAssign: boolean;
   AutoCalculatePrice: boolean;
   language: string;
+  businessType?: 'restaurant' | 'grocery' | 'pharmacy';
 }
 
 export const updateRestaurantPreferences = async (preferences: RestaurantPreferences) => {
@@ -678,7 +727,7 @@ export const getRidersByBranch = async (branchId: string) => {
     'Authorization': token
   };
 
-  return api.get(API_ENDPOINTS.RIDERS.GET_BY_BRANCH, {
+  return api.get(API_ENDPOINTS.RIDERS.GET_BY_BRANCH(branchId), {
     params: requestParams,
     headers
   });
@@ -761,6 +810,7 @@ export interface UpdateInventoryItemRequest {
   restaurantId: string;
   branchId: string;
   value: string;
+  businessType?: 'restaurant' | 'grocery' | 'pharmacy';
 }
 
 export const updateInventoryItem = async (data: UpdateInventoryItemRequest) => {

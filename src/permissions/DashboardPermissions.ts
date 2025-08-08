@@ -2,8 +2,9 @@ import { FiGrid, FiBox } from "react-icons/fi";
 import { IoFastFoodOutline, IoSettingsOutline, IoAddCircleOutline } from "react-icons/io5";
 import { LuCircleDollarSign, LuFileSpreadsheet } from "react-icons/lu";
 import { IconType } from 'react-icons';
+import { BusinessType, UserRole } from '../types/user';
 
-// Interface for restaurant permissions
+// Interface for business permissions
 export interface DashboardPermissions {
   Inventory?: boolean;      // Access to inventory management
   Extras?: boolean;         // Access to extras/modifiers management
@@ -20,6 +21,145 @@ export interface DashboardPermissions {
   FullService?: boolean;   // Access to full service delivery
   language?: string;       // Language preference
 }
+
+// Business type specific permission configurations
+export const BUSINESS_PERMISSIONS: Record<BusinessType, Partial<Record<UserRole, DashboardPermissions>>> = {
+  restaurant: {
+    'Admin': {
+      Inventory: true,
+      Extras: true,
+      Transactions: true,
+      Reports: true,
+      Overview: true,
+      DeliveryReport: true,
+      WalkIn: true,
+      OnDemand: true,
+      Batch: true,
+      Schedule: true,
+      AutoAssign: true,
+      AutoCalculatePrice: true,
+      FullService: true,
+      language: 'en'
+    },
+    'Manager': {
+      Inventory: true,
+      Extras: true,
+      Transactions: true,
+      Reports: true,
+      Overview: true,
+      DeliveryReport: true,
+      WalkIn: true,
+      OnDemand: true,
+      Batch: true,
+      Schedule: true,
+      AutoAssign: true,
+      AutoCalculatePrice: true,
+      FullService: true,
+      language: 'en'
+    },
+    'Store Clerk': {
+      Inventory: false,
+      Extras: false,
+      Transactions: false,
+      Reports: false,
+      Overview: false,
+      DeliveryReport: false,
+      WalkIn: true,
+      OnDemand: true,
+      Batch: true,
+      Schedule: true,
+      AutoAssign: true,
+      AutoCalculatePrice: true,
+      FullService: true,
+      language: 'en'
+    }
+  },
+  grocery: {
+    'Grocery-Admin': {
+      Inventory: true,
+      Extras: true,
+      Transactions: true,
+      Reports: true,
+      Overview: true,
+      DeliveryReport: true,
+      WalkIn: true,
+      OnDemand: true,
+      Batch: true,
+      Schedule: true,
+      AutoAssign: true,
+      AutoCalculatePrice: true,
+      FullService: true,
+      language: 'en'
+    },
+    'Grocery-Manager': {
+      Inventory: true,
+      Extras: true,
+      Transactions: true,
+      Reports: true,
+      Overview: true,
+      DeliveryReport: true,
+      WalkIn: true,
+      OnDemand: true,
+      Batch: true,
+      Schedule: true,
+      AutoAssign: true,
+      AutoCalculatePrice: true,
+      FullService: true,
+      language: 'en'
+    }
+  },
+  pharmacy: {
+    'Pharmacy-Admin': {
+      Inventory: true,
+      Extras: true,
+      Transactions: true,
+      Reports: true,
+      Overview: true,
+      DeliveryReport: true,
+      WalkIn: true,
+      OnDemand: true,
+      Batch: true,
+      Schedule: true,
+      AutoAssign: true,
+      AutoCalculatePrice: true,
+      FullService: true,
+      language: 'en'
+    },
+    'Pharmacy-Manager': {
+      Inventory: true,
+      Extras: true,
+      Transactions: true,
+      Reports: true,
+      Overview: true,
+      DeliveryReport: true,
+      WalkIn: true,
+      OnDemand: true,
+      Batch: true,
+      Schedule: true,
+      AutoAssign: true,
+      AutoCalculatePrice: true,
+      FullService: true,
+      language: 'en'
+    }
+  }
+};
+
+// Function to get permissions for a specific user
+export const getUserPermissions = (businessType: BusinessType, role: UserRole): DashboardPermissions => {
+  const businessPermissions = BUSINESS_PERMISSIONS[businessType];
+  if (!businessPermissions) {
+    console.warn(`No permissions found for business type: ${businessType}`);
+    return {};
+  }
+  
+  const rolePermissions = businessPermissions[role];
+  if (!rolePermissions) {
+    console.warn(`No permissions found for role: ${role} in business type: ${businessType}`);
+    return {};
+  }
+  
+  return rolePermissions;
+};
 
 // Helper functions to check permissions
 export const hasInventoryAccess = (permissions: DashboardPermissions): boolean => {
@@ -116,12 +256,16 @@ interface MenuItem {
   requiredPermission: string | null;
 }
 
-// Function to determine available menu items based on permissions
-export const getAvailableMenuItems = (permissions: DashboardPermissions, userRole?: string): MenuItem[] => {
+// Function to determine available menu items based on permissions and business type
+export const getAvailableMenuItems = (
+  permissions: DashboardPermissions, 
+  userRole?: string,
+  businessType?: BusinessType
+): MenuItem[] => {
   const menuItems: MenuItem[] = [];
   
-  // Only add Overview/Dashboard if user is not a Store Clerk
-  if (userRole !== 'Store Clerk') {
+  // Only add Overview/Dashboard if user has overview access and is not a Store Clerk
+  if (permissions.Overview && userRole !== 'Store Clerk') {
     menuItems.push({ 
       name: "Overview", 
       icon: FiGrid,
@@ -260,4 +404,40 @@ export const shouldShowRevenue = (permissions: DashboardPermissions): boolean =>
 export const shouldShowInventory = (permissions: DashboardPermissions): boolean => {
   // Show inventory if FullService OR WalkIn is true
   return !!(permissions.FullService || permissions.WalkIn);
+};
+
+// Function to get business type display name
+export const getBusinessTypeDisplayName = (businessType: BusinessType): string => {
+  switch (businessType) {
+    case 'restaurant':
+      return 'Restaurant';
+    case 'grocery':
+      return 'Grocery';
+    case 'pharmacy':
+      return 'Pharmacy';
+    default:
+      return 'Business';
+  }
+};
+
+// Function to get role display name
+export const getRoleDisplayName = (role: UserRole): string => {
+  switch (role) {
+    case 'Admin':
+      return 'Admin';
+    case 'Manager':
+      return 'Manager';
+    case 'Store Clerk':
+      return 'Store Clerk';
+    case 'Grocery-Admin':
+      return 'Grocery Admin';
+    case 'Grocery-Manager':
+      return 'Grocery Manager';
+    case 'Pharmacy-Admin':
+      return 'Pharmacy Admin';
+    case 'Pharmacy-Manager':
+      return 'Pharmacy Manager';
+    default:
+      return role;
+  }
 }; 

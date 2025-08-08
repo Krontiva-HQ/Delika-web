@@ -592,16 +592,34 @@ const Inventory: FunctionComponent<InventoryProps> = ({ searchQuery = '' }): Rea
   // Update refreshInventory to use selectedBranchId
   const refreshInventory = async () => {
     try {
-      const effectiveBranchId = userProfile.role === 'Admin' 
-        ? (selectedBranchId || '') 
-        : (userProfile.branchId || '');
+      const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+      
+      // Determine endpoint and parameters based on user role
+      let endpoint: string;
+      let requestBody: any;
+      
+      if (userProfile?.role?.startsWith('Grocery-')) {
+        // Use grocery endpoint for grocery users
+        endpoint = '/get/all/menu/grocery';
+        requestBody = {
+          groceryBranchId: localStorage.getItem('groceryBranchId') || null,
+          groceryShopId: localStorage.getItem('groceryShopId') || null,
+        };
+      } else {
+        // Use restaurant endpoint for restaurant users
+        endpoint = '/get/all/menu';
         
-      const params = new URLSearchParams({
-        restaurantId: userProfile.restaurantId || '',
-        branchId: effectiveBranchId,
-      }); 
+        const effectiveBranchId = userProfile.role === 'Admin' 
+          ? (selectedBranchId || '') 
+          : (userProfile.branchId || '');
+          
+        requestBody = {
+          restaurantId: userProfile.restaurantId || '',
+          branchId: effectiveBranchId,
+        };
+      }
 
-      const response = await api.post(`/get/all/menu`, params);
+      const response = await api.post(endpoint, requestBody);
       setCategories(response.data);
 
       if (addInventoryCategory?.mainCategoryId) {

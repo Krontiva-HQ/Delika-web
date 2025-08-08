@@ -3,6 +3,7 @@ import { getAuthenticatedUser, UserResponse, login as apiLogin, verifyOTP, login
 import { useNavigate } from 'react-router-dom';
 import { useEmail } from '../context/EmailContext';
 import axios from 'axios';
+import { BusinessUser, getBusinessTypeFromRole } from '../types/user';
 
 interface LoginResponse {
   success: boolean;
@@ -11,14 +12,23 @@ interface LoginResponse {
   error?: string;
 }
 
-const ALLOWED_ROLES = ['Admin', 'Manager', 'Store Clerk'];
+// Updated allowed roles to include grocery and pharmacy roles
+const ALLOWED_ROLES = [
+  'Admin', 
+  'Manager', 
+  'Store Clerk',
+  'Grocery-Admin',
+  'Grocery-Manager',
+  'Pharmacy-Admin',
+  'Pharmacy-Manager'
+];
 
 export const useAuth = () => {
   const navigate = useNavigate();
   const { email } = useEmail();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [user, setUser] = useState<UserResponse | null>(() => {
+  const [user, setUser] = useState<BusinessUser | null>(() => {
     // Initialize user from localStorage if available
     const savedUser = localStorage.getItem('userProfile');
     return savedUser ? JSON.parse(savedUser) : null;
@@ -34,7 +44,12 @@ export const useAuth = () => {
       
       if (isPhoneLogin && userProfile) {
         // For phone login, use the stored user profile
-        setUser(JSON.parse(userProfile));
+        const parsedUser = JSON.parse(userProfile);
+        // Add business type if not present
+        if (!parsedUser.businessType) {
+          parsedUser.businessType = getBusinessTypeFromRole(parsedUser.role);
+        }
+        setUser(parsedUser);
       } else if (authToken && !isPhoneLogin) {
         // For email login, fetch user profile from API
         try {
@@ -76,8 +91,14 @@ export const useAuth = () => {
           throw new Error('You do not have access to this application');
         }
 
-        await localStorage.setItem('userProfile', JSON.stringify(userProfile.data));
-        setUser(userProfile.data);
+        // Add business type to user profile
+        const userWithBusinessType = {
+          ...userProfile.data,
+          businessType: getBusinessTypeFromRole(userProfile.data.role)
+        };
+
+        await localStorage.setItem('userProfile', JSON.stringify(userWithBusinessType));
+        setUser(userWithBusinessType);
         
         // Use React Router's navigate without setTimeout
         navigate('/2fa-login', { replace: true });
@@ -100,7 +121,10 @@ export const useAuth = () => {
         : 'Login failed. Please try again.';
       
       setError(errorMessage);
-      return { success: false, error: errorMessage };
+      return { 
+        success: false, 
+        error: errorMessage 
+      };
     } finally {
       setIsLoading(false);
     }
@@ -111,42 +135,54 @@ export const useAuth = () => {
     setIsLoading(true);
     setError(null);
     
-    if (!email) {
-      setError('Email not found. Please try logging in again.');
-      setIsLoading(false);
-      return false;
-    }
-    
     try {
-      const response = await verifyOTP({
-        OTP: parseInt(otp),
-        type: true,
-        contact: email
+      const response = await verifyOTP({ 
+        OTP: parseInt(otp), 
+        type: true, 
+        contact: email 
       });
       
-      if (response.data.otpValidate === 'otpFound') {
-        await localStorage.setItem('2faVerified', 'true');
+      if (response.data.success) {
+        localStorage.setItem('2faVerified', 'true');
         
-        const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
+        // Get user profile again to ensure we have the latest data
+        const userProfile = await getAuthenticatedUser();
         
-        const redirectPath = userProfile.role === 'Store Clerk' 
-          ? '/dashboard/orders' 
-          : '/dashboard';
+        // Add business type to user profile
+        const userWithBusinessType = {
+          ...userProfile.data,
+          businessType: getBusinessTypeFromRole(userProfile.data.role)
+        };
+
+        // Save grocery IDs if user is grocery-related
+        if (userProfile.data.role.startsWith('Grocery-')) {
+          if (userProfile.data.groceryShopId) {
+            localStorage.setItem('groceryShopId', userProfile.data.groceryShopId);
+          }
+          if (userProfile.data.groceryBranchId) {
+            localStorage.setItem('groceryBranchId', userProfile.data.groceryBranchId);
+          }
+        }
+
+        await localStorage.setItem('userProfile', JSON.stringify(userWithBusinessType));
+        setUser(userWithBusinessType);
         
-        navigate(redirectPath, { replace: true });
+        // Navigate to dashboard
+        navigate('/dashboard', { replace: true });
+        
         return true;
       }
       
-      return false;
+      throw new Error(response.data.error || '2FA verification failed');
     } catch (err: any) {
-      setError(err.message || 'Verification failed');
+      setError(err.message || '2FA verification failed');
       return false;
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Step 1: Login with phone
+  // Phone login
   const loginWithPhoneNumber = async (phoneNumber: string): Promise<LoginResponse> => {
     setIsLoading(true);
     setError(null);
@@ -154,159 +190,151 @@ export const useAuth = () => {
     try {
       const response = await loginWithPhone(phoneNumber);
       
-      if (response.data.data.authToken) {
-        // Store phone number for verification
+      if (response.data.success) {
         localStorage.setItem('loginPhoneNumber', phoneNumber);
         
-        // Clear any existing auth data and store new token
-        await Promise.all([
-          localStorage.removeItem('2faVerified'),
-          localStorage.removeItem('userProfile'),
-          localStorage.setItem('authToken', response.data.data.authToken)
-        ]);
-        
-        // Get user profile and update state
-        const userProfile = await getAuthenticatedUser();
-        
-        // Check if user has allowed role
-        if (!ALLOWED_ROLES.includes(userProfile.data.role)) {
-          throw new Error('You do not have access to this application');
-        }
-
-        await localStorage.setItem('userProfile', JSON.stringify(userProfile.data));
-        setUser(userProfile.data);
-        
         return { 
-          success: true,
-          authToken: response.data.data.authToken
+          success: true, 
+          otpFound: response.data.otpFound 
         };
       }
       
-      throw new Error('Login failed');
+      throw new Error(response.data.error || 'Phone login failed');
     } catch (err: any) {
-      let errorMessage = err.message || 'Login failed. Please try again.';
-      // If error is 500 during phone login, show invalid phone number message
-      if (err.status === 500) {
-        errorMessage = 'Invalid phone number. Please try again.';
-      }
-      setError(errorMessage);
-      return { success: false, error: errorMessage };
+      setError(err.message || 'Phone login failed');
+      return { 
+        success: false, 
+        error: err.message || 'Phone login failed' 
+      };
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Step 2: Verify Phone 2FA
+  // Phone 2FA verification
   const verifyPhone2FA = async (otp: string): Promise<boolean> => {
     setIsLoading(true);
     setError(null);
     
-    const phoneNumber = localStorage.getItem('loginPhoneNumber');
-    const userProfile = localStorage.getItem('userProfile');
-
-    if (!phoneNumber || !userProfile) {
-      setError('Session expired. Please try logging in again.');
-      setIsLoading(false);
-      return false;
-    }
-    
     try {
-      const response = await verifyPhoneOTP({
-        OTP: parseInt(otp),
-        contact: phoneNumber
+      const phoneNumber = localStorage.getItem('loginPhoneNumber');
+      if (!phoneNumber) {
+        throw new Error('Phone number not found');
+      }
+      
+      const response = await verifyPhoneOTP({ 
+        OTP: parseInt(otp), 
+        contact: phoneNumber 
       });
       
-      if (response.data.otpValidate === 'otpFound') {
-        // Get the real token from the backend (if not already)
-        const token = response.data.authToken || localStorage.getItem('authToken');
-        localStorage.setItem('authToken', token);
-        // Fetch and store user profile
-        const userProfileResponse = await getAuthenticatedUser();
-        const userData = userProfileResponse.data;
-        await Promise.all([
-          localStorage.setItem('userProfile', JSON.stringify(userData)),
-          localStorage.setItem('2faVerified', 'true'),
-          new Promise<void>((resolve) => {
-            setUser(userData);
-            resolve();
-          })
-        ]);
+      if (response.data.success) {
+        // Get user profile from response
+        const userProfile = response.data.user;
+        
+        // Check if user has allowed role
+        if (!ALLOWED_ROLES.includes(userProfile.role)) {
+          throw new Error('You do not have access to this application');
+        }
 
-        // Determine redirect path based on role
-        const redirectPath = userData.role === 'Store Clerk' 
-          ? '/dashboard/orders' 
-          : '/dashboard';
+        // Add business type to user profile
+        const userWithBusinessType = {
+          ...userProfile,
+          businessType: getBusinessTypeFromRole(userProfile.role)
+        };
+
+        // Save grocery IDs if user is grocery-related
+        if (userProfile.role.startsWith('Grocery-')) {
+          if (userProfile.groceryShopId) {
+            localStorage.setItem('groceryShopId', userProfile.groceryShopId);
+          }
+          if (userProfile.groceryBranchId) {
+            localStorage.setItem('groceryBranchId', userProfile.groceryBranchId);
+          }
+        }
+
+        await localStorage.setItem('userProfile', JSON.stringify(userWithBusinessType));
+        setUser(userWithBusinessType);
         
-        // Force a small delay to ensure state updates are processed
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Clear phone number from storage
+        localStorage.removeItem('loginPhoneNumber');
         
-        navigate(redirectPath, { replace: true });
+        // Navigate to dashboard
+        navigate('/dashboard', { replace: true });
         
         return true;
       }
       
-      return false;
+      throw new Error(response.data.error || 'Phone 2FA verification failed');
     } catch (err: any) {
-      setError(err.message || 'Verification failed');
+      setError(err.message || 'Phone 2FA verification failed');
       return false;
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Fetch user profile
+  const fetchUserProfile = async () => {
+    try {
+      const response = await getAuthenticatedUser();
+      
+      // Add business type to user profile
+      const userWithBusinessType = {
+        ...response.data,
+        businessType: getBusinessTypeFromRole(response.data.role)
+      };
+
+      await localStorage.setItem('userProfile', JSON.stringify(userWithBusinessType));
+      setUser(userWithBusinessType);
+      
+      return userWithBusinessType;
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+      throw error;
+    }
+  };
+
+  // Logout
   const logout = useCallback(() => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('userProfile');
     localStorage.removeItem('2faVerified');
+    localStorage.removeItem('loginPhoneNumber');
     setUser(null);
-    navigate('/login');
+    navigate('/login', { replace: true });
   }, [navigate]);
 
-  const fetchUserProfile = useCallback(async () => {
-    try {
-      const isPhoneLogin = !!localStorage.getItem('loginPhoneNumber');
-      const storedProfile = localStorage.getItem('userProfile');
-
-      if (isPhoneLogin && storedProfile) {
-        // For phone login, use stored profile
-        const userData = JSON.parse(storedProfile);
-        setUser(userData);
-        return userData;
-      }
-
-      // For email login, fetch from API
-      const response = await getAuthenticatedUser();
-      const userData = response.data;
-      localStorage.setItem('userProfile', JSON.stringify(userData));
-      setUser(userData);
-      return userData;
-    } catch (error) {
-      throw error;
-    }
-  }, []);
-
-  // Add computed auth state
+  // Check if user is authenticated
   const isAuthenticated = useMemo(() => {
-    const has2FAVerified = localStorage.getItem('2faVerified') === 'true';
-    const hasAuthToken = !!localStorage.getItem('authToken');
-    const hasPhoneAuth = hasAuthToken && localStorage.getItem('authToken')?.startsWith('phone_auth_');
-    const hasUser = !!user;
+    const authToken = localStorage.getItem('authToken');
+    const userProfile = localStorage.getItem('userProfile');
+    return !!(authToken && userProfile);
+  }, [user]);
 
-    return (hasUser && has2FAVerified && (hasAuthToken || hasPhoneAuth));
+  // Get user's business type
+  const getUserBusinessType = useMemo(() => {
+    if (!user) return null;
+    return user.businessType;
+  }, [user]);
+
+  // Get user's role
+  const getUserRole = useMemo(() => {
+    if (!user) return null;
+    return user.role;
   }, [user]);
 
   return {
-    login,
-    loginWithPhoneNumber,
-    verify2FA,
-    verifyPhone2FA,
+    user,
     isLoading,
     error,
-    user,
+    login,
+    verify2FA,
+    loginWithPhoneNumber,
+    verifyPhone2FA,
     logout,
-    fetchUserProfile,
     isAuthenticated,
+    fetchUserProfile,
+    getUserBusinessType,
+    getUserRole
   };
-};
-
-export default useAuth; 
+}; 

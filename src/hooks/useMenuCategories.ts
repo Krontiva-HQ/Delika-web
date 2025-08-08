@@ -134,28 +134,51 @@ export const useMenuCategories = () => {
       try {
         const userProfile = JSON.parse(localStorage.getItem('userProfile') || '{}');
         
-        // Determine which branchId to use
-        let effectiveBranchId;
-        if (userProfile?.role === 'Admin') {
-          effectiveBranchId = selectedBranchId || userProfile?.branchId || '';
+        // Determine endpoint and parameters based on user role
+        let endpoint: string;
+        let requestBody: any;
+        
+        if (userProfile?.role?.startsWith('Grocery-')) {
+          // Use grocery endpoint for grocery users
+          endpoint = '/get/all/menu/grocery';
+          requestBody = {
+            groceryBranchId: localStorage.getItem('groceryBranchId') || null,
+            groceryShopId: localStorage.getItem('groceryShopId') || null,
+          };
+          
+          console.log('🌐 API: Fetching grocery menu categories');
+          console.log('📡 Endpoint: POST /get/all/menu/grocery');
+          console.log('📋 Request Body:', requestBody);
+          console.log('👤 User Role:', userProfile?.role);
+          console.log('🏪 Grocery Shop ID:', localStorage.getItem('groceryShopId'));
+          console.log('🏪 Grocery Branch ID:', localStorage.getItem('groceryBranchId'));
         } else {
-          effectiveBranchId = userProfile?.branchId || '';
+          // Use restaurant endpoint for restaurant users
+          endpoint = '/get/all/menu';
+          
+          // Determine which branchId to use
+          let effectiveBranchId;
+          if (userProfile?.role === 'Admin') {
+            effectiveBranchId = selectedBranchId || userProfile?.branchId || '';
+          } else {
+            effectiveBranchId = userProfile?.branchId || '';
+          }
+          
+          requestBody = {
+            restaurantId: userProfile.restaurantId || '',
+            branchId: effectiveBranchId,
+          };
+          
+          console.log('🌐 API: Fetching restaurant menu categories');
+          console.log('📡 Endpoint: POST /get/all/menu');
+          console.log('📋 Request Body:', requestBody);
+          console.log('👤 User Role:', userProfile?.role);
+          console.log('🏢 Restaurant ID:', userProfile.restaurantId);
+          console.log('🏪 Selected Branch ID:', selectedBranchId);
+          console.log('🔧 Effective Branch ID:', effectiveBranchId);
         }
         
-        const requestBody = {
-          restaurantId: userProfile.restaurantId || '',
-          branchId: effectiveBranchId,
-        };
-        
-        console.log('🌐 API: Fetching menu categories');
-        console.log('📡 Endpoint: POST /get/all/menu');
-        console.log('📋 Request Body:', requestBody);
-        console.log('👤 User Role:', userProfile?.role);
-        console.log('🏢 Restaurant ID:', userProfile.restaurantId);
-        console.log('🏪 Selected Branch ID:', selectedBranchId);
-        console.log('🔧 Effective Branch ID:', effectiveBranchId);
-        
-        const response = await api.post<APICategory[]>('/get/all/menu', requestBody);
+        const response = await api.post<APICategory[]>(endpoint, requestBody);
         
         console.log('✅ API Response:', response.data);
         
