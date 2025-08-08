@@ -105,15 +105,15 @@ export const API_ENDPOINTS = {
   AUTH: {
     ME: '/auth/me',
     LOGIN: '/auth/login',
-    LOGIN_PHONE: '/auth/login/restaurant/staff/phoneNumber',
+    LOGIN_PHONE: '/auth/login/restaurant/staff/phoneNumber', // Generic endpoint for all business types
     VERIFY_OTP: '/verify/otp/code',
     VERIFY_OTP_PHONE: '/verify/otp/code/phoneNumber',
     RESET_PASSWORD: '/reset/user/password/email',
-    CHANGE_PASSWORD: '/change/password',
-    LOGIN_WITH_PHONE: '/auth/login/restaurant/staff/phoneNumber'
+    CHANGE_PASSWORD: '/change/password'
   },
   DASHBOARD: {
-    GET_DATA: '/get/dashboard/data'
+    GET_DATA: '/get/dashboard/data',
+    GET_GROCERY_DATA: '/get/grocery/dashboard/data'
   },
   ORDERS: {
     GET_DETAILS: (orderNumber: string) => `/get/order/id/${orderNumber}`,
@@ -180,7 +180,69 @@ export const API_ENDPOINTS = {
     GET_RESTAURANT_GROUPS: (restaurantId: string | null) => `/get/restaurant/extras/group/${restaurantId}`,
     GET_ALL_PER_RESTAURANT: (restaurantId: string | null) => `/get/extras/per/restaurant/${restaurantId}`,
     UPDATE_PRICE: '/edit/extras/item/price/name',
-    EDIT_GROUP: (id: string) => `/edit/extra/group/${id}`
+    EDIT_GROUP: (id: string) => `/edit/extra/group/${id}`,
+    DELETE_GROUP: (id: string) => `/delika_extras_table/${id}`
+  },
+  // Grocery-specific endpoints
+  GROCERY: {
+    // Dashboard
+    GET_DASHBOARD_DATA: '/get/grocery/dashboard/data',
+    
+    // Orders
+    GET_ORDER_DETAILS: (orderNumber: string) => `/get/grocery/order/id/${orderNumber}`,
+    FILTER_ORDERS_BY_DATE: '/filter/grocery/orders/by/date',
+    GET_ALL_ORDERS_PER_BRANCH: '/get/all/grocery/orders/per/branch',
+    EDIT_ORDER: '/edit/grocery/order',
+    ACCEPT_DECLINE_ORDERS: '/accept/decline/grocery/orders',
+    PLACE_ORDER: '/delika_grocery_orders_table',
+    
+    // Inventory/Products
+    GET_ALL_PRODUCTS: '/get/all/grocery/products',
+    GET_ALL_CATEGORIES: '/get/grocery/categories',
+    UPDATE_PRODUCT: '/update/grocery/product',
+    GET_ALL_INVENTORY: '/get/grocery/inventory/by/shop',
+    UPDATE_INVENTORY_ITEM: '/update/grocery/inventory/item',
+    DELETE_PRODUCT: '/delete/grocery/product',
+    DELETE_CATEGORY: '/delete/grocery/category',
+    CREATE_PRODUCT: '/create/new/grocery/product',
+    CREATE_CATEGORY: '/create/new/grocery/category',
+    
+    // Team Management
+    ADD_MEMBER: '/add/member/to/grocery',
+    GET_MEMBERS: '/get/grocery/team/members',
+    GET_MEMBERS_ADMIN: '/get/grocery/team/members/admin',
+    UPDATE_MEMBER: (userId: string) => `/delika_grocery_user_table/${userId}`,
+    
+    // Branches
+    GET_BRANCHES_BY_SHOP: (shopId: string) => `/delika_grocery_branches_table/${shopId}`,
+    UPDATE_BRANCH: (branchId: string) => `/delika_grocery_branches_table/${branchId}`,
+    
+    // User Management
+    DELETE_USER: (userId: string) => `/delika_grocery_user_table/${userId}`,
+    UPDATE_USER: (userId: string) => `/delika_grocery_user_table/${userId}`,
+    
+    // Shop Preferences
+    UPDATE_PREFERENCES: '/set/grocery/preference',
+    
+    // Riders
+    DELETE_RIDER: '/remove/courier/from/grocery/branch',
+    GET_RIDERS_BY_BRANCH: (branchId: string) => `/get/rider/from/grocery/branch/${branchId}`,
+    
+    // Audit
+    GET_AUDIT_LOGS: '/get/grocery/audit/logs',
+    
+    // Extras (if needed for grocery)
+    CREATE_EXTRAS_ITEM: '/create/grocery/extras/item',
+    CREATE_EXTRAS_GROUP: '/create/grocery/extras/group',
+    GET_SHOP_EXTRAS: (shopId: string | null) => `/get/grocery/shop/extras/${shopId}`,
+    GET_SHOP_EXTRAS_GROUPS: (shopId: string | null) => `/get/grocery/shop/extras/group/${shopId}`,
+    GET_ALL_EXTRAS_PER_SHOP: (shopId: string | null) => `/get/grocery/extras/per/shop/${shopId}`,
+    UPDATE_EXTRAS_PRICE: '/edit/grocery/extras/item/price/name',
+    EDIT_EXTRAS_GROUP: (id: string) => `/edit/grocery/extra/group/${id}`,
+    DELETE_EXTRAS_GROUP: (id: string) => `/delika_grocery_extras_table/${id}`,
+    
+    // Delivery
+    CALCULATE_DELIVERY_PRICE: '/calculate/grocery/delivery/price/shop/app'
   },
   DELIVERY: {
     CALCULATE_PRICE: '/calculate/delivery/price/restaurant/app'
@@ -1061,4 +1123,344 @@ export const deleteCategory = async (categoryId: string) => {
     data: { categoryId },
     headers
   });
+};
+
+// ========================================
+// GROCERY-SPECIFIC SERVICE FUNCTIONS
+// ========================================
+
+// Grocery Authentication
+export const loginWithGroceryPhone = async (phoneNumber: string) => {
+  try {
+    const response = await api.post<string>(API_ENDPOINTS.AUTH.LOGIN_PHONE, { phoneNumber });
+    localStorage.setItem('loginPhoneNumber', phoneNumber);
+    await Promise.all([
+      localStorage.removeItem('2faVerified'),
+      localStorage.removeItem('userProfile'),
+      localStorage.setItem('authToken', response.data),
+      localStorage.setItem('loginMethod', 'phone')
+    ]);
+    return {
+      data: {
+        data: {
+          authToken: response.data
+        }
+      }
+    };
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Grocery Dashboard
+export const getGroceryDashboardData = async (data: { 
+  shopId: string; 
+  branchId: string;
+  businessType?: 'restaurant' | 'grocery' | 'pharmacy';
+}) => {
+  return api.post(API_ENDPOINTS.GROCERY.GET_DASHBOARD_DATA, data);
+};
+
+// Grocery Orders
+export const getGroceryOrderDetails = (orderNumber: string) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.get<OrderDetails>(API_ENDPOINTS.GROCERY.GET_ORDER_DETAILS(orderNumber), { headers });
+};
+
+export const filterGroceryOrdersByDate = async (params: { 
+  shopId: string; 
+  branchId: string; 
+  date: string;
+  businessType?: 'restaurant' | 'grocery' | 'pharmacy';
+}) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.post(API_ENDPOINTS.GROCERY.FILTER_ORDERS_BY_DATE, params, { headers });
+};
+
+export const getAllGroceryOrdersPerBranch = (params: { 
+  shopId: string; 
+  branchId: string;
+  businessType?: 'restaurant' | 'grocery' | 'pharmacy';
+}) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.post(API_ENDPOINTS.GROCERY.GET_ALL_ORDERS_PER_BRANCH, params, { headers });
+};
+
+export const editGroceryOrder = async (params: EditOrderParams) => {
+  const requestParams = params;
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': token
+  };
+  return api.patch(API_ENDPOINTS.GROCERY.EDIT_ORDER, JSON.stringify(requestParams), { headers });
+};
+
+// Grocery Inventory/Products
+export const getAllGroceryProducts = async (data: { 
+  shopId: string; 
+  branchId: string;
+  businessType?: 'restaurant' | 'grocery' | 'pharmacy';
+}) => {
+  const requestParams = data;
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': token
+  };
+  return api.post(API_ENDPOINTS.GROCERY.GET_ALL_PRODUCTS, JSON.stringify(requestParams), { headers });
+};
+
+export const getAllGroceryCategories = async (data: { 
+  shopId: string; 
+  branchId: string;
+  businessType?: 'restaurant' | 'grocery' | 'pharmacy';
+}) => {
+  const requestParams = data;
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': token
+  };
+  return api.post(API_ENDPOINTS.GROCERY.GET_ALL_CATEGORIES, JSON.stringify(requestParams), { headers });
+};
+
+export const updateGroceryProduct = async (params: UpdateInventoryParams) => {
+  const requestParams = params;
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': token
+  };
+  return api.patch(API_ENDPOINTS.GROCERY.UPDATE_PRODUCT, JSON.stringify(requestParams), { headers });
+};
+
+export const createGroceryProduct = async (formData: FormData) => {
+  const headers = {
+    'Content-Type': 'multipart/form-data',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return directApi.post(API_ENDPOINTS.GROCERY.CREATE_PRODUCT, formData, { headers });
+};
+
+export const createGroceryCategory = async (formData: FormData) => {
+  const headers = {
+    'Content-Type': 'multipart/form-data',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return directApi.post(API_ENDPOINTS.GROCERY.CREATE_CATEGORY, formData, { headers });
+};
+
+export const deleteGroceryProduct = async (formData: FormData) => {
+  const headers = {
+    'Content-Type': 'multipart/form-data',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.delete(API_ENDPOINTS.GROCERY.DELETE_PRODUCT, {
+    data: formData,
+    headers
+  });
+};
+
+export const deleteGroceryCategory = async (categoryId: string) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.delete(API_ENDPOINTS.GROCERY.DELETE_CATEGORY, {
+    data: { categoryId },
+    headers
+  });
+};
+
+// Grocery Team Management
+export interface AddGroceryMemberParams {
+  shopId: string | null;
+  branchId: string | null;
+  email: string;
+  role: string;
+  fullName: string;
+  phoneNumber: string;
+  Status: boolean;
+  businessType?: 'restaurant' | 'grocery' | 'pharmacy';
+}
+
+export const addGroceryMember = (params: AddGroceryMemberParams) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.post(API_ENDPOINTS.GROCERY.ADD_MEMBER, params, { headers });
+};
+
+export const getGroceryTeamMembers = async (data: { 
+  shopId: string; 
+  branchId: string;
+  businessType?: 'restaurant' | 'grocery' | 'pharmacy';
+}) => {
+  const requestParams = data;
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': token
+  };
+  return api.post(API_ENDPOINTS.GROCERY.GET_MEMBERS, JSON.stringify(requestParams), { headers });
+};
+
+export const getGroceryTeamMembersAdmin = (data: { 
+  shopId: string;
+  businessType?: 'restaurant' | 'grocery' | 'pharmacy';
+}) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.post(API_ENDPOINTS.GROCERY.GET_MEMBERS_ADMIN, data, { headers });
+};
+
+export const updateGroceryTeamMember = async (data: FormData) => {
+  const userId = data.get('userId');
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.patch(API_ENDPOINTS.GROCERY.UPDATE_MEMBER(userId as string), data, { headers });
+};
+
+// Grocery Branches
+export const getGroceryBranchesByShop = (shopId: string) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.get<Branch[]>(API_ENDPOINTS.GROCERY.GET_BRANCHES_BY_SHOP(shopId), { headers });
+};
+
+export const updateGroceryBranch = async (branchId: string, branchData: any) => {
+  const token = localStorage.getItem('authToken');
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.patch(API_ENDPOINTS.GROCERY.UPDATE_BRANCH(branchId), branchData, { headers });
+};
+
+// Grocery User Management
+export const deleteGroceryUser = async (userId: string) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.delete(API_ENDPOINTS.GROCERY.DELETE_USER(userId), {
+    data: { delika_grocery_user_table_id: userId },
+    headers
+  });
+};
+
+export const updateGroceryUser = async (data: FormData | Record<string, any>) => {
+  const userId = data instanceof FormData ? data.get('userId') : data.userId;
+  const headers = {
+    'Content-Type': data instanceof FormData ? 'multipart/form-data' : 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.patch(API_ENDPOINTS.GROCERY.UPDATE_USER(userId as string), data, { headers });
+};
+
+// Grocery Shop Preferences
+export interface GroceryShopPreferences {
+  shopId: string | null;
+  AutoAssign: boolean;
+  AutoCalculatePrice: boolean;
+  language: string;
+  businessType?: 'restaurant' | 'grocery' | 'pharmacy';
+}
+
+export const updateGroceryShopPreferences = async (preferences: GroceryShopPreferences) => {
+  try {
+    const response = await api.patch(API_ENDPOINTS.GROCERY.UPDATE_PREFERENCES, preferences, {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+      }
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Grocery Riders
+export const getGroceryRidersByBranch = async (branchId: string) => {
+  const requestParams = {
+    branchName: branchId
+  };
+  const token = getAuthToken();
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': token
+  };
+  return api.get(API_ENDPOINTS.GROCERY.GET_RIDERS_BY_BRANCH(branchId), {
+    params: requestParams,
+    headers
+  });
+};
+
+export const deleteGroceryRider = async (params: { 
+  delika_grocery_user_table_id: string;
+  branchName: string;
+}) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.delete(API_ENDPOINTS.GROCERY.DELETE_RIDER, { 
+    data: {
+      delika_grocery_user_table_id: params.delika_grocery_user_table_id,
+      branchName: params.branchName
+    },
+    headers
+  });
+};
+
+// Grocery Audit
+export const getGroceryAuditLogs = (params: { 
+  shopId: string; 
+  branchId: string;
+  businessType?: 'restaurant' | 'grocery' | 'pharmacy';
+}) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  return api.post(API_ENDPOINTS.GROCERY.GET_AUDIT_LOGS, params, { headers });
+};
+
+// Grocery Delivery Price Calculation
+export const calculateGroceryDeliveryPriceAPI = async (
+  params: CalculateDeliveryPriceParams
+): Promise<CalculateDeliveryPriceResponse> => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Authorization': `${import.meta.env.VITE_XANO_AUTH_TOKEN}`
+  };
+  const response = await axios.post<CalculateDeliveryPriceResponse>(
+    API_ENDPOINTS.GROCERY.CALCULATE_DELIVERY_PRICE,
+    {
+      pickup: params.pickup,
+      dropOff: params.dropOff,
+      rider: params.rider ?? false,
+      pedestrian: params.pedestrian ?? false
+    },
+    { headers }
+  );
+  return response.data;
 };

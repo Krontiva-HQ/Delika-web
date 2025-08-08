@@ -49,7 +49,7 @@ export const useAuth = () => {
         if (!parsedUser.businessType) {
           parsedUser.businessType = getBusinessTypeFromRole(parsedUser.role);
         }
-        setUser(parsedUser);
+        setUser(parsedUser as BusinessUser);
       } else if (authToken && !isPhoneLogin) {
         // For email login, fetch user profile from API
         try {
@@ -98,7 +98,7 @@ export const useAuth = () => {
         };
 
         await localStorage.setItem('userProfile', JSON.stringify(userWithBusinessType));
-        setUser(userWithBusinessType);
+        setUser(userWithBusinessType as BusinessUser);
         
         // Use React Router's navigate without setTimeout
         navigate('/2fa-login', { replace: true });
@@ -165,7 +165,7 @@ export const useAuth = () => {
         }
 
         await localStorage.setItem('userProfile', JSON.stringify(userWithBusinessType));
-        setUser(userWithBusinessType);
+        setUser(userWithBusinessType as BusinessUser);
         
         // Navigate to dashboard
         navigate('/dashboard', { replace: true });
@@ -190,16 +190,18 @@ export const useAuth = () => {
     try {
       const response = await loginWithPhone(phoneNumber);
       
-      if (response.data.success) {
+      // Handle the actual API response structure
+      if (response.data && response.data.data && response.data.data.authToken) {
         localStorage.setItem('loginPhoneNumber', phoneNumber);
         
         return { 
           success: true, 
-          otpFound: response.data.otpFound 
+          authToken: response.data.data.authToken,
+          otpFound: true
         };
       }
       
-      throw new Error(response.data.error || 'Phone login failed');
+      throw new Error('Phone login failed');
     } catch (err: any) {
       setError(err.message || 'Phone login failed');
       return { 
@@ -253,7 +255,7 @@ export const useAuth = () => {
         }
 
         await localStorage.setItem('userProfile', JSON.stringify(userWithBusinessType));
-        setUser(userWithBusinessType);
+        setUser(userWithBusinessType as BusinessUser);
         
         // Clear phone number from storage
         localStorage.removeItem('loginPhoneNumber');
@@ -285,7 +287,7 @@ export const useAuth = () => {
       };
 
       await localStorage.setItem('userProfile', JSON.stringify(userWithBusinessType));
-      setUser(userWithBusinessType);
+      setUser(userWithBusinessType as BusinessUser);
       
       return userWithBusinessType;
     } catch (error) {

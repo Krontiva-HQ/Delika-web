@@ -1,6 +1,9 @@
 // Business type definitions
 export type BusinessType = 'restaurant' | 'grocery' | 'pharmacy';
 
+// User role type definition
+export type UserRole = 'Admin' | 'Manager' | 'Store Clerk' | 'Grocery-Admin' | 'Grocery-Manager' | 'Pharmacy-Admin' | 'Pharmacy-Manager';
+
 // Base user response interface
 export interface UserResponse {
   id: string;
