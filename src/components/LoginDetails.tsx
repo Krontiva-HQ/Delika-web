@@ -57,63 +57,55 @@ const LoginDetails: FunctionComponent<LoginDetailsProps> = ({ onSubmit }) => {
   };
 
   const handleSubmit = async () => {
-    if (!validateForm()) return;
+    console.log('🔐 LoginDetails: handleSubmit called');
+    console.log('🔐 LoginDetails: loginMethod =', loginMethod);
+    console.log('🔐 LoginDetails: formData =', formData);
+
+    if (!validateForm()) {
+      console.log('🔐 LoginDetails: Form validation failed');
+      return;
+    }
+
+    setValidationError(null);
 
     if (loginMethod === 'email') {
-      // Check rate limit before attempting login
-      const { limited, waitTime } = RateLimiter.isRateLimited(formData.email);
-      if (limited) {
-        setIsRateLimited(true);
-        setWaitTime(waitTime);
-        setValidationError(`Too many failed attempts. Try again in ${waitTime} minutes.`);
-        return;
-      }
-    
+      // Email login
       try {
+        console.log('🔐 LoginDetails: Attempting email login...');
         const response = await login(formData.email, formData.password);
-    
-        if (response.success && response.authToken) {
-          RateLimiter.resetAttempts(formData.email);
-          
-          const twoFAResponse = await sendTwoFAEmail(formData.email);
-          
-          if (twoFAResponse) {
-            setEmail(formData.email);
-            onSubmit?.(formData);
-            navigate('/2fa-login');
-          } else {
-            setValidationError('Failed to send 2FA email. Please try again.');
-          }
+        console.log('🔐 LoginDetails: Email login response =', response);
+        
+        if (!response.success) {
+          console.log('🔐 LoginDetails: Email login failed');
+          setValidationError(response.error || 'Login failed');
         } else {
-          const attempts = RateLimiter.recordFailedAttempt(formData.email);
-          const remainingAttempts = 5 - attempts;
-          
-          if (remainingAttempts > 0) {
-            setValidationError(`Invalid credentials.`);
-          } else {
-            const { waitTime } = RateLimiter.isRateLimited(formData.email);
-            setIsRateLimited(true);
-            setWaitTime(waitTime);
-            setValidationError(`Too many failed attempts. Try again in ${waitTime} minutes.`);
-          }
+          console.log('🔐 LoginDetails: Email login successful, navigating to 2FA');
+          navigate('/2fa-login');
         }
       } catch (err: any) {
+        console.log('🔐 LoginDetails: Email login error =', err);
         RateLimiter.recordFailedAttempt(formData.email);
         setValidationError('Incorrect email or password');
       }
     } else {
       // Phone number login
       try {
+        console.log('🔐 LoginDetails: Attempting phone login...');
         const response = await loginWithPhoneNumber(formData.phoneNumber);
+        console.log('🔐 LoginDetails: Phone login response =', response);
+        
         if (!response.success) {
+          console.log('🔐 LoginDetails: Phone login failed');
           setValidationError(response.error || 'Login failed');
         } else {
+          console.log('🔐 LoginDetails: Phone login successful, navigating to 2FA');
           // Store phone number for verification
           localStorage.setItem('loginPhoneNumber', formData.phoneNumber);
           // Navigate to 2FA page
           navigate('/2fa-login');
         }
       } catch (err: any) {
+        console.log('🔐 LoginDetails: Phone login error =', err);
         if (err.status === 500 || err.message === 'Invalid phone number. Please try again.') {
           setValidationError('Invalid phone number. Please try again.');
         } else {

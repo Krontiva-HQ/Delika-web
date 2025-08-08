@@ -29,29 +29,21 @@ import GlobalOrderModal from './components/GlobalOrderModal';
 // Protected Route Component
 const ProtectedRoute = () => {
   const { isAuthenticated, isLoading } = useAuth();
-  const navigate = useNavigate();
 
-  useEffect(() => {
-    const authToken = localStorage.getItem('authToken');
-    const is2FAVerified = localStorage.getItem('2faVerified');
-
-    if (!isLoading) {
-      if (!authToken) {
-        navigate('/login');
-      } else if (!is2FAVerified) {
-        navigate('/2fa-login');
-      }
-    }
-  }, [isLoading, navigate]);
+  console.log('🔐 ProtectedRoute: Component rendered');
+  console.log('🔐 ProtectedRoute: Auth state =', { isAuthenticated, isLoading });
 
   if (isLoading) {
+    console.log('🔐 ProtectedRoute: Loading, showing spinner');
     return <LoadingSpinner />;
   }
 
   if (!isAuthenticated) {
-    return null; // Let the useEffect handle the navigation
+    console.log('🔐 ProtectedRoute: Not authenticated, redirecting to login');
+    return <Navigate to="/login" replace />;
   }
 
+  console.log('🔐 ProtectedRoute: Authenticated, rendering outlet');
   return <Outlet />;
 };
 
@@ -71,14 +63,20 @@ const ProtectedTransactionsRoute = () => {
 const PublicRoute = () => {
   const { isAuthenticated, isLoading } = useAuth();
 
+  console.log('🔐 PublicRoute: Component rendered');
+  console.log('🔐 PublicRoute: Auth state =', { isAuthenticated, isLoading });
+
   if (isLoading) {
+    console.log('🔐 PublicRoute: Loading, showing spinner');
     return <LoadingSpinner />; // Or your loading component
   }
 
   if (isAuthenticated) {
+    console.log('🔐 PublicRoute: Authenticated, redirecting to dashboard');
     return <Navigate to="/dashboard" replace />;
   }
 
+  console.log('🔐 PublicRoute: Not authenticated, rendering outlet');
   return <Outlet />;
 };
 
@@ -121,8 +119,10 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPasswordDetails />} />
           <Route path="/enter-otp" element={<EnterOTP />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/2fa-login" element={<TWOFALogin />} />
         </Route>
+
+        {/* 2FA Login Route - accessible during login process */}
+        <Route path="/2fa-login" element={<TWOFALogin />} />
 
         {/* Protected Routes */}
         <Route element={<ProtectedRoute />}>

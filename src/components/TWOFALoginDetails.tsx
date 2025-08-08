@@ -18,17 +18,33 @@ const TWOFALoginDetails: FunctionComponent<TWOFALoginDetailsType> = ({
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
 
+  console.log('🔐 TWOFALoginDetails: Component mounted');
+
   // Get login method and user data from localStorage
   const isPhoneLogin = !!localStorage.getItem('loginPhoneNumber');
   const userProfile = localStorage.getItem('userProfile');
   const authToken = localStorage.getItem('authToken');
 
+  console.log('🔐 TWOFALoginDetails: Login state =', {
+    isPhoneLogin,
+    hasUserProfile: !!userProfile,
+    hasAuthToken: !!authToken,
+    email: email
+  });
+
   // Verify we have necessary data
   useEffect(() => {
+    console.log('🔐 TWOFALoginDetails: useEffect triggered');
+    const phoneNumber = localStorage.getItem('loginPhoneNumber');
+
     if (!isPhoneLogin && !email) {
+      console.log('🔐 TWOFALoginDetails: No email for email login, navigating to login');
       navigate('/login');
-    } else if (isPhoneLogin && (!userProfile || !authToken)) {
+    } else if (isPhoneLogin && (!authToken || !phoneNumber)) {
+      console.log('🔐 TWOFALoginDetails: Missing data for phone login (need authToken + loginPhoneNumber), navigating to login');
       navigate('/login');
+    } else {
+      console.log('🔐 TWOFALoginDetails: Valid login state, rendering OTP form');
     }
   }, [isPhoneLogin, email, userProfile, authToken, navigate]);
 

@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { getAuthenticatedUser, UserResponse, login as apiLogin, verifyOTP, loginWithPhone, verifyPhoneOTP } from '../services/api';
 import { useNavigate } from 'react-router-dom';
 import { useEmail } from '../context/EmailContext';
-import axios from 'axios';
+import axios, { AxiosResponse } from 'axios';
 import { BusinessUser, getBusinessTypeFromRole } from '../types/user';
 
 interface LoginResponse {
@@ -141,8 +141,11 @@ export const useAuth = () => {
         type: true, 
         contact: email 
       });
+
+      const otpStatus = response?.data?.otpValidate;
+      console.log('🔐 useAuth: verify2FA otpValidate =', otpStatus);
       
-      if (response.data.success) {
+      if (otpStatus === 'otpFound') {
         localStorage.setItem('2faVerified', 'true');
         
         // Get user profile again to ensure we have the latest data
@@ -172,8 +175,12 @@ export const useAuth = () => {
         
         return true;
       }
+
+      if (otpStatus === 'otpNotExist') {
+        throw new Error('Incorrect OTP code');
+      }
       
-      throw new Error(response.data.error || '2FA verification failed');
+      throw new Error('2FA verification failed');
     } catch (err: any) {
       setError(err.message || '2FA verification failed');
       return false;
@@ -184,25 +191,34 @@ export const useAuth = () => {
 
   // Phone login
   const loginWithPhoneNumber = async (phoneNumber: string): Promise<LoginResponse> => {
+    console.log('🔐 useAuth: loginWithPhoneNumber called with phoneNumber =', phoneNumber);
     setIsLoading(true);
     setError(null);
     
     try {
+      console.log('🔐 useAuth: Calling loginWithPhone API...');
       const response = await loginWithPhone(phoneNumber);
+      console.log('🔐 useAuth: loginWithPhone API response =', response);
       
       // Handle the actual API response structure
       if (response.data && response.data.data && response.data.data.authToken) {
+        console.log('🔐 useAuth: Valid response structure found, storing authToken');
         localStorage.setItem('loginPhoneNumber', phoneNumber);
+        localStorage.setItem('authToken', response.data.data.authToken);
         
-        return { 
+        const result = { 
           success: true, 
           authToken: response.data.data.authToken,
           otpFound: true
         };
+        console.log('🔐 useAuth: Returning successful response =', result);
+        return result;
       }
       
+      console.log('🔐 useAuth: Invalid response structure, throwing error');
       throw new Error('Phone login failed');
     } catch (err: any) {
+      console.log('🔐 useAuth: Phone login error =', err);
       setError(err.message || 'Phone login failed');
       return { 
         success: false, 
@@ -228,29 +244,43 @@ export const useAuth = () => {
         OTP: parseInt(otp), 
         contact: phoneNumber 
       });
+
+      const otpStatus = response?.data?.otpValidate;
+      console.log('🔐 useAuth: verifyPhone2FA otpValidate =', otpStatus);
       
-      if (response.data.success) {
-        // Get user profile from response
-        const userProfile = response.data.user;
-        
+      if (otpStatus === 'otpFound') {
+        // Mark 2FA as verified
+        localStorage.setItem('2faVerified', 'true');
+
+        // Prefer fetching the latest user via auth/me after verification
+        let profileResponse: AxiosResponse<UserResponse> | null = null;
+        try {
+          profileResponse = await getAuthenticatedUser();
+        } catch (fetchErr) {
+          // Fallback to response user if auth/me is unavailable
+          console.warn('verifyPhone2FA: getAuthenticatedUser failed, falling back to response.user');
+        }
+
+        const baseUser = profileResponse?.data || response.data.user;
+
         // Check if user has allowed role
-        if (!ALLOWED_ROLES.includes(userProfile.role)) {
+        if (!ALLOWED_ROLES.includes(baseUser.role)) {
           throw new Error('You do not have access to this application');
         }
 
         // Add business type to user profile
         const userWithBusinessType = {
-          ...userProfile,
-          businessType: getBusinessTypeFromRole(userProfile.role)
+          ...baseUser,
+          businessType: getBusinessTypeFromRole(baseUser.role)
         };
 
         // Save grocery IDs if user is grocery-related
-        if (userProfile.role.startsWith('Grocery-')) {
-          if (userProfile.groceryShopId) {
-            localStorage.setItem('groceryShopId', userProfile.groceryShopId);
+        if (baseUser.role.startsWith('Grocery-')) {
+          if (baseUser.groceryShopId) {
+            localStorage.setItem('groceryShopId', baseUser.groceryShopId);
           }
-          if (userProfile.groceryBranchId) {
-            localStorage.setItem('groceryBranchId', userProfile.groceryBranchId);
+          if (baseUser.groceryBranchId) {
+            localStorage.setItem('groceryBranchId', baseUser.groceryBranchId);
           }
         }
 
@@ -265,8 +295,12 @@ export const useAuth = () => {
         
         return true;
       }
+
+      if (otpStatus === 'otpNotExist') {
+        throw new Error('Incorrect OTP code');
+      }
       
-      throw new Error(response.data.error || 'Phone 2FA verification failed');
+      throw new Error('Phone 2FA verification failed');
     } catch (err: any) {
       setError(err.message || 'Phone 2FA verification failed');
       return false;
@@ -310,7 +344,36 @@ export const useAuth = () => {
   const isAuthenticated = useMemo(() => {
     const authToken = localStorage.getItem('authToken');
     const userProfile = localStorage.getItem('userProfile');
-    return !!(authToken && userProfile);
+    const loginPhoneNumber = localStorage.getItem('loginPhoneNumber');
+    const is2FAVerified = localStorage.getItem('2faVerified');
+
+    console.log('🔐 useAuth: isAuthenticated calculation =', {
+      authToken: !!authToken,
+      userProfile: !!userProfile,
+      loginPhoneNumber: !!loginPhoneNumber,
+      is2FAVerified: is2FAVerified
+    });
+
+    // For fully authenticated users (after 2FA), we need both authToken and userProfile
+    if (authToken && userProfile && is2FAVerified === 'true') {
+      console.log('🔐 useAuth: Fully authenticated user');
+      return true;
+    }
+
+    // For phone login in progress, we need authToken and loginPhoneNumber
+    if (authToken && loginPhoneNumber) {
+      console.log('🔐 useAuth: Phone login in progress');
+      return false; // Not fully authenticated yet, but has valid login state
+    }
+
+    // For email login in progress, we need authToken
+    if (authToken && !userProfile) {
+      console.log('🔐 useAuth: Email login in progress');
+      return false; // Not fully authenticated yet, but has valid login state
+    }
+
+    console.log('🔐 useAuth: Not authenticated');
+    return false;
   }, [user]);
 
   // Get user's business type
